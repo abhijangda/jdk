@@ -146,7 +146,6 @@ static Assembler::Condition j_not(TemplateTable::Condition cc) {
 // Store an oop (or NULL) at the address described by obj.
 // If val == noreg this means store a NULL
 
-
 static void do_oop_store(InterpreterMacroAssembler* _masm,
                          Address dst,
                          Register val,
@@ -1114,6 +1113,7 @@ void TemplateTable::dastore() {
 void TemplateTable::aastore() {
   Label is_null, ok_is_subtype, done;
   transition(vtos, vtos);
+  __ append_heap_event();
   // stack: ..., array, index, value
   __ movptr(rax, at_tos());    // value
   __ movl(rcx, at_tos_p1()); // index
@@ -3060,6 +3060,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   //                                              Assembler::StoreStore));
 
   Label notVolatile, Done;
+  __ append_heap_event();
   __ movl(rdx, flags);
   __ shrl(rdx, ConstantPoolCacheEntry::is_volatile_shift);
   __ andl(rdx, 0x1);

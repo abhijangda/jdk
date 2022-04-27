@@ -1190,13 +1190,16 @@ void LIR_List::store_mem_int(jint v, LIR_Opr base, int offset_in_bytes, BasicTyp
 
 
 void LIR_List::store_mem_oop(jobject o, LIR_Opr base, int offset_in_bytes, BasicType type, CodeEmitInfo* info, LIR_PatchCode patch_code) {
-  append(new LIR_Op1(
+  LIR_Op1* lir_instr = new LIR_Op1(
             lir_move,
             LIR_OprFact::oopConst(o),
             LIR_OprFact::address(new LIR_Address(base, offset_in_bytes, type)),
             type,
             patch_code,
-            info));
+            info);
+  append(lir_instr);
+  // printf("type %d\n", (int)type);
+  lir_instr->set_is_oop_store(true);
 }
 
 

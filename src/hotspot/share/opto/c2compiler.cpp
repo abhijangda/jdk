@@ -101,6 +101,7 @@ void C2Compiler::compile_method(ciEnv* env, ciMethod* target, int entry_bci, boo
   bool do_escape_analysis = DoEscapeAnalysis;
   bool eliminate_boxing = EliminateAutoBox;
   bool do_locks_coarsening = EliminateLocks;
+//  printf("Compiling: %s\n", target->name()->as_utf8());
 
   while (!env->failing()) {
     // Attempt to compile while subsuming loads into machine instructions.
@@ -157,12 +158,15 @@ void C2Compiler::compile_method(ciEnv* env, ciMethod* target, int entry_bci, boo
         continue;  // retry
       }
     }
+
     // print inlining for last compilation only
     C.dump_print_inlining();
 
     // No retry; just break the loop.
     break;
   }
+
+//  printf("Compiled: %s\n", target->name()->as_utf8());
 }
 
 void C2Compiler::print_timers() {

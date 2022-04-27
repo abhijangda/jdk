@@ -56,6 +56,7 @@ void MemTracker::initialize() {
   assert(_tracking_level == NMT_unknown, "only call once");
 
   NMT_TrackingLevel level = NMTUtil::parse_tracking_level(NativeMemoryTracking);
+  printf("MemTracker::initialize %d\n", level);
   // Should have been validated before in arguments.cpp
   assert(level == NMT_off || level == NMT_summary || level == NMT_detail,
          "Invalid setting for NativeMemoryTracking (%s)", NativeMemoryTracking);

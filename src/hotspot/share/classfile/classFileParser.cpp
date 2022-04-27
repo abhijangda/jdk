@@ -2401,16 +2401,42 @@ Method* ClassFileParser::parse_method(const ClassFileStream* const cfs,
       }
       // Code pointer
       code_start = cfs->current();
+      u4 orig_code_length = code_length;
+      if (false && code_length > 1) {
+        assert(code_length <= MAX_CODE_SIZE, "failed");
+        u1* new_code = (u1*)malloc(MAX_CODE_SIZE);
+        u4 new_code_size = 0;
+        for (u4 bci = 0; bci < code_length; bci++) {
+          u1 code = code_start[bci];
+          // if (code == Bytecodes::Code::_nop) {
+          //   new_code[new_code_size] = Bytecodes::Code::_nop;
+          //   new_code_size++;
+          // }
+          if (code == Bytecodes::Code::_return) {
+            new_code[new_code_size] = Bytecodes::Code::_nop;
+            new_code_size++;
+          }
+          
+          new_code[new_code_size] = code;
+          new_code_size++;
+        }
+        // new_code[new_code_size] = (u1)Bytecodes::Code::_nop;
+        // new_code_size++;
+        // printf("Method: %s, code size %d new code size %d\n", str, m->code_size(), new_code_size);
+        code_start = new_code;
+        code_length = new_code_size;
+      }
+
       assert(code_start != NULL, "null code start");
-      cfs->guarantee_more(code_length, CHECK_NULL);
-      cfs->skip_u1_fast(code_length);
+      cfs->guarantee_more(orig_code_length, CHECK_NULL);
+      cfs->skip_u1_fast(orig_code_length);
 
       // Exception handler table
       cfs->guarantee_more(2, CHECK_NULL);  // exception_table_length
       exception_table_length = cfs->get_u2_fast();
       if (exception_table_length > 0) {
         exception_table_start = parse_exception_table(cfs,
-                                                      code_length,
+                                                      orig_code_length,
                                                       exception_table_length,
                                                       CHECK_NULL);
       }
@@ -2422,9 +2448,9 @@ Method* ClassFileParser::parse_method(const ClassFileStream* const cfs,
       unsigned int calculated_attribute_length = 0;
 
       calculated_attribute_length =
-          sizeof(max_stack) + sizeof(max_locals) + sizeof(code_length);
+          sizeof(max_stack) + sizeof(max_locals) + sizeof(orig_code_length);
       calculated_attribute_length +=
-        code_length +
+        orig_code_length +
         sizeof(exception_table_length) +
         sizeof(code_attributes_count) +
         exception_table_length *
@@ -2448,7 +2474,7 @@ Method* ClassFileParser::parse_method(const ClassFileStream* const cfs,
             cp->symbol_at(code_attribute_name_index) == vmSymbols::tag_line_number_table()) {
           // Parse and compress line number table
           parse_linenumber_table(code_attribute_length,
-                                 code_length,
+                                 orig_code_length,
                                  &linenumber_table,
                                  CHECK_NULL);
 
@@ -2473,7 +2499,7 @@ Method* ClassFileParser::parse_method(const ClassFileStream* const cfs,
           }
           localvariable_table_start[lvt_cnt] =
             parse_localvariable_table(cfs,
-                                      code_length,
+                                      orig_code_length,
                                       max_locals,
                                       code_attribute_length,
                                       &localvariable_table_length[lvt_cnt],
@@ -2503,7 +2529,7 @@ Method* ClassFileParser::parse_method(const ClassFileStream* const cfs,
           }
           localvariable_type_table_start[lvtt_cnt] =
             parse_localvariable_table(cfs,
-                                      code_length,
+                                      orig_code_length,
                                       max_locals,
                                       code_attribute_length,
                                       &localvariable_type_table_length[lvtt_cnt],
@@ -2850,6 +2876,34 @@ Method* ClassFileParser::parse_method(const ClassFileStream* const cfs,
     _has_vanilla_constructor = true;
   }
 
+  bool is_vanilla_constructor = false;
+  is_vanilla_constructor = m->name() == vmSymbols::object_initializer_name();
+  is_vanilla_constructor = is_vanilla_constructor && (m->signature() == vmSymbols::void_method_signature());
+  if (is_vanilla_constructor)
+    is_vanilla_constructor = m->is_vanilla_constructor();
+  if (false && m->code_size() > 1 && !is_vanilla_constructor) {
+    char str[1024];
+    m->name()->as_C_string(str, 1024);
+    Bytecodes::Code* new_code = (Bytecodes::Code*)malloc(MAX_CODE_SIZE);
+    uint new_code_size = 0;
+    printf("Method: %s  code size %d \n", str, m->code_size());
+    for (int bci = 0; bci < m->code_size(); bci++) {
+      Bytecodes::Code code = m->code_or_bp_at(bci);
+      // printf("%s\n", Bytecodes::name(code));
+      // if (code == Bytecodes::Code::_nop) {
+      //   new_code[new_code_size] = Bytecodes::Code::_nop;
+      //   new_code_size++;
+      // }
+
+      new_code[new_code_size] = code;
+      new_code_size++;
+    }
+    new_code[new_code_size] = Bytecodes::Code::_nop;
+    new_code_size++;
+    printf("Method: %s, code size %d new code size %d\n", str, m->code_size(), new_code_size);
+    m->set_code_size(new_code_size);
+    m->set_code((address)&new_code[0]);
+  }
   NOT_PRODUCT(m->verify());
   return m;
 }

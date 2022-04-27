@@ -508,9 +508,16 @@ void LIR_Assembler::emit_op1(LIR_Op1* op) {
         assert(op->patch_code() == lir_patch_none, "can't patch volatiles");
         volatile_move_op(op->in_opr(), op->result_opr(), op->type(), op->info());
       } else {
+        // if (op->is_oop_store())
+        //   printf("op->is_oop_store() = true\n");
         move_op(op->in_opr(), op->result_opr(), op->type(),
                 op->patch_code(), op->info(), op->pop_fpu_stack(),
-                op->move_kind() == lir_move_wide);
+                op->move_kind() == lir_move_wide,
+                op->is_oop_store());
+      }
+      // printf("src is address dst is reg basictype %d\n", (int)type);
+      if (op->type() == T_OBJECT || op->type() == T_ARRAY) {
+        _masm->append_heap_event();
       }
       break;
 
@@ -770,8 +777,7 @@ void LIR_Assembler::roundfp_op(LIR_Opr src, LIR_Opr tmp, LIR_Opr dest, bool pop_
   reg2stack (src, dest, src->type(), pop_fpu_stack);
 }
 
-
-void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_PatchCode patch_code, CodeEmitInfo* info, bool pop_fpu_stack, bool wide) {
+void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_PatchCode patch_code, CodeEmitInfo* info, bool pop_fpu_stack, bool wide, bool is_oop_store) {
   if (src->is_register()) {
     if (dest->is_register()) {
       assert(patch_code == lir_patch_none && info == NULL, "no patching and info allowed here");
@@ -780,7 +786,7 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       assert(patch_code == lir_patch_none && info == NULL, "no patching and info allowed here");
       reg2stack(src, dest, type, pop_fpu_stack);
     } else if (dest->is_address()) {
-      reg2mem(src, dest, type, patch_code, info, pop_fpu_stack, wide);
+      reg2mem(src, dest, type, patch_code, info, pop_fpu_stack, wide);  
     } else {
       ShouldNotReachHere();
     }
@@ -810,9 +816,44 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
 
   } else if (src->is_address()) {
     mem2reg(src, dest, type, patch_code, info, wide);
+    // if (is_oop_store) printf("src is address dst is reg basictype %d T_ADDRESS %d\n", (int)type, (int)T_ADDRESS);
   } else {
     ShouldNotReachHere();
   }
+
+
+  // if (type == T_ADDRESS) {
+  //   masm incrementq(heap_event_counter_addr);
+  //   __ push(r8);
+  //   __ push(r9);
+  //   __ push(r10);
+  //   __ push(r11);
+  //   __ push(r12);
+  //   __ push(r13);
+  //   __ push(r14);
+  //   __ push(r15);
+  //   __ push(rdi);
+  //   __ push(rsi);
+  //   __ push(rbx);
+  //   __ push(rdx);
+  //   __ push(rax);
+  //   __ push(rcx);
+  //   __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, print_oop_store)));
+  //   __ pop(rcx);
+  //   __ pop(rax);
+  //   __ pop(rdx);
+  //   __ pop(rbx);
+  //   __ pop(rsi);
+  //   __ pop(rdi);
+  //   __ pop(r15);
+  //   __ pop(r14);
+  //   __ pop(r13);
+  //   __ pop(r12);
+  //   __ pop(r11);
+  //   __ pop(r10);
+  //   __ pop(r9);
+  //   __ pop(r8); 
+  // }        
 }
 
 

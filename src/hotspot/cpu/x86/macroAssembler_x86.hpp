@@ -357,6 +357,7 @@ class MacroAssembler: public Assembler {
   // Used for storing NULL. All other oop constants should be
   // stored using routines that take a jobject.
   void store_heap_oop_null(Address dst);
+  void append_heap_event();
 
 #ifdef _LP64
   void store_klass_gap(Register dst, Register src);

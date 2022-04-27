@@ -6063,6 +6063,7 @@ instruct storeP(memory mem, any_RegP src)
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
     __ movq($mem$$Address, $src$$Register);
+    __ append_heap_event();
   %}
   ins_pipe(ialu_mem_reg);
 %}

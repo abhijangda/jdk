@@ -203,6 +203,9 @@ class Method : public Metadata {
   Bytecodes::Code code_at(int bci) const {
     return Bytecodes::code_at(this, bcp_from(bci));
   }
+  Bytecodes::Code code_or_bp_at(int bci) const {
+    return Bytecodes::code_or_bp_at(bcp_from(bci));
+  }
 
   // JVMTI breakpoints
 #if !INCLUDE_JVMTI
@@ -525,6 +528,7 @@ public:
 
   // byte codes
   void    set_code(address code)      { return constMethod()->set_code(code); }
+  void    set_code_size(u4 code_size)      { return constMethod()->set_code_size(code_size); }
   address code_base() const           { return constMethod()->code_base(); }
   bool    contains(address bcp) const { return constMethod()->contains(bcp); }
 

@@ -1424,6 +1424,8 @@ instanceOop InstanceKlass::allocate_instance(TRAPS) {
   if (has_finalizer_flag && !RegisterFinalizersAtInit) {
     i = register_finalizer(i, CHECK_NULL);
   }
+  // printf("name %s\n", name()->as_C_string());
+  // i->print_address();
   return i;
 }
 

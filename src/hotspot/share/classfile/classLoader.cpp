@@ -247,6 +247,7 @@ ClassFileStream* ClassPathDirEntry::open_stream(JavaThread* current, const char*
   assert(len == (int)(path_len - 1), "sanity");
   // check if file exists
   struct stat st;
+  // printf("%d: opening file %s\n", __LINE__, path);
   if (os::stat(path, &st) == 0) {
     // found file, open it
     int file_handle = os::open(path, 0, 0);
@@ -323,6 +324,7 @@ u1* ClassPathZipEntry::open_entry(JavaThread* current, const char* name, jint* f
 ClassFileStream* ClassPathZipEntry::open_stream(JavaThread* current, const char* name) {
   jint filesize;
   u1* buffer = open_entry(current, name, &filesize, false);
+  // printf("%d: opening file %s\n", __LINE__, name);
   if (buffer == NULL) {
     return NULL;
   }
@@ -392,6 +394,7 @@ ClassFileStream* ClassPathImageEntry::open_stream(JavaThread* current, const cha
 ClassFileStream* ClassPathImageEntry::open_stream_for_loader(JavaThread* current, const char* name, ClassLoaderData* loader_data) {
   jlong size;
   JImageLocationRef location = (*JImageFindResource)(jimage_non_null(), "", get_jimage_version_string(), name, &size);
+  // printf("%d: opening file %s\n", __LINE__, name);
 
   if (location == 0) {
     TempNewSymbol class_name = SymbolTable::new_symbol(name);

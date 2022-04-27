@@ -1375,7 +1375,9 @@ class LIR_Op1: public LIR_Op {
     , _opr(opr)
     , _type(T_ILLEGAL)
     , _patch(lir_patch_none)           { assert(is_in_range(code, begin_op1, end_op1), "code check"); }
-
+  bool _is_oop_store;
+  void set_is_oop_store(bool v)                  { _is_oop_store = v; }
+  bool is_oop_store()        const               { return _is_oop_store; }
   LIR_Opr in_opr()           const               { return _opr;   }
   LIR_PatchCode patch_code() const               { return _patch; }
   BasicType type()           const               { return _type;  }

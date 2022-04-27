@@ -4605,15 +4605,72 @@ void MacroAssembler::load_heap_oop_not_null(Register dst, Address src, Register 
                                             Register thread_tmp, DecoratorSet decorators) {
   access_load_at(T_OBJECT, IN_HEAP | IS_NOT_NULL | decorators, dst, src, tmp1, thread_tmp);
 }
+#include<stdlib.h>
+#include<string.h>
+#include<stdio.h>
+#include<cuda.h>
+#include<pthread.h>
+#include<sys/types.h>
+#include<sys/syscall.h>
+
+static unsigned long heap_event_counter = 0;
+// static cudaStream_t stream;
+static const int LOG_MAX_EVENT_COUNTER = 26;
+CUdeviceptr d_heap_events;
+int* h_heap_events = nullptr;
+
+void __checkCudaErrors( CUresult err, const char *file, const int line );
+#define checkCudaErrors(err)  __checkCudaErrors ((err), __FILE__, __LINE__)
+
+#include<semaphore.h>
+sem_t cuda_semaphore;
+
+void print_oop_store() { 
+  // if ((heap_event_counter & ((1<<LOG_MAX_EVENT_COUNTER) - 1)) == 0 && heap_event_counter > 1) 
+  {
+    int i = heap_event_counter/(1<<LOG_MAX_EVENT_COUNTER);
+    printf("%ld transferring %ld h_heap_events %p\n", heap_event_counter, heap_event_counter/(1<<LOG_MAX_EVENT_COUNTER), h_heap_events);
+    sem_post(&cuda_semaphore);
+  }
+} 
+
+void MacroAssembler::append_heap_event ()
+{
+  //TODO: A analysis to remove push/pop
+  pushf();
+  push(rax);
+  
+  AddressLiteral heap_event_counter_addr((address)&heap_event_counter, relocInfo::relocType::external_word_type);
+  movq(rax, as_Address(heap_event_counter_addr));
+  incrementq(rax);
+  
+  const uint64_t div_mask = (1 << LOG_MAX_EVENT_COUNTER) - 1;
+  // printf("div_mask %ld\n", div_mask);
+  
+  movq(as_Address(heap_event_counter_addr), rax);
+  testq(rax, div_mask);
+  Label not_equal;
+  jcc(Assembler::Condition::notZero, not_equal);
+  pusha();
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, print_oop_store)));
+  popa();
+  bind(not_equal);
+  
+  pop(rax);
+  popf();
+}
+
 
 void MacroAssembler::store_heap_oop(Address dst, Register src, Register tmp1,
                                     Register tmp2, DecoratorSet decorators) {
   access_store_at(T_OBJECT, IN_HEAP | decorators, dst, src, tmp1, tmp2);
+  append_heap_event();
 }
 
 // Used for storing NULLs.
 void MacroAssembler::store_heap_oop_null(Address dst) {
   access_store_at(T_OBJECT, IN_HEAP, dst, noreg, noreg, noreg);
+  // append_heap_event();
 }
 
 #ifdef _LP64

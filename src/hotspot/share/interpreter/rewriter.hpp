@@ -92,7 +92,9 @@ class Rewriter: public StackObj {
     return _cp_cache_map.length() - _first_iteration_cp_cache_limit;
   }
 
-  int  cp_entry_to_cp_cache(int i) { assert(has_cp_cache(i), "oob"); return _cp_map.at(i); }
+  int  cp_entry_to_cp_cache(int i) { //printf("has_cp_cache(%d) %d\n", i, has_cp_cache(i)); 
+  assert(has_cp_cache(i), "oob");
+   return _cp_map.at(i); }
   bool has_cp_cache(int i) { return (uint) i < (uint) _cp_map.length() && _cp_map.at(i) >= 0; }
 
   int add_map_entry(int cp_index, GrowableArray<int>* cp_map, GrowableArray<int>* cp_cache_map) {

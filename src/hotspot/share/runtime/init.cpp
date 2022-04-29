@@ -58,7 +58,7 @@ extern sem_t cuda_semaphore;
 
 extern int* h_heap_events;
 extern CUdeviceptr d_heap_events;
-static const int MAX_EVENT_COUNTER = 1 << 26;
+static const int MAX_EVENT_COUNTER = 1 << 20;
 
 #define checkCudaErrors(err)  __checkCudaErrors ((err), __FILE__, __LINE__)
 

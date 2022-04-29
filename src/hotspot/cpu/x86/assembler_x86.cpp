@@ -5319,11 +5319,19 @@ void Assembler::rolq(Register dst, int imm8) {
 }
 #endif
 
+void Assembler::lahf() {
+// #ifdef _LP64
+//   // Not supported in 64bit mode
+//   ShouldNotReachHere();
+// #endif
+  emit_int8((unsigned char)0x9F);
+}
+
 void Assembler::sahf() {
-#ifdef _LP64
-  // Not supported in 64bit mode
-  ShouldNotReachHere();
-#endif
+// #ifdef _LP64
+//   // Not supported in 64bit mode
+//   ShouldNotReachHere();
+// #endif
   emit_int8((unsigned char)0x9E);
 }
 

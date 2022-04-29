@@ -1973,6 +1973,7 @@ private:
   void rorxd(Register dst, Register src, int imm8);
 #endif
 
+  void lahf();
   void sahf();
 
   void sall(Register dst, int imm8);

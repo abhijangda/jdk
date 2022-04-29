@@ -516,9 +516,6 @@ void LIR_Assembler::emit_op1(LIR_Op1* op) {
                 op->is_oop_store());
       }
       // printf("src is address dst is reg basictype %d\n", (int)type);
-      if (op->type() == T_OBJECT || op->type() == T_ARRAY) {
-        _masm->append_heap_event();
-      }
       break;
 
     case lir_roundfp: {
@@ -786,7 +783,11 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       assert(patch_code == lir_patch_none && info == NULL, "no patching and info allowed here");
       reg2stack(src, dest, type, pop_fpu_stack);
     } else if (dest->is_address()) {
-      reg2mem(src, dest, type, patch_code, info, pop_fpu_stack, wide);  
+      reg2mem(src, dest, type, patch_code, info, pop_fpu_stack, wide);
+      //TODO: Can also be when src is address and dst is address
+      if (is_reference_type(src->type())) {
+        // _masm->append_heap_event(as_Address(dest->as_address_ptr()), src->as_register());
+      }
     } else {
       ShouldNotReachHere();
     }

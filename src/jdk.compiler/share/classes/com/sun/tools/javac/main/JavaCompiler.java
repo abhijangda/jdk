@@ -1003,7 +1003,8 @@ public class JavaCompiler {
         for (JavaFileObject fileObject : fileObjects) {
             if (!filesSoFar.contains(fileObject)) {
                 filesSoFar.add(fileObject);
-                trees.append(parse(fileObject));
+                var tree = parse(fileObject);
+                trees.append(tree);
             }
         }
         return trees.toList();

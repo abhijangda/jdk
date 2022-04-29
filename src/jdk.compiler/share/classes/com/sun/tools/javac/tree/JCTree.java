@@ -2445,6 +2445,12 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
             this.selected = selected;
             this.name = name;
             this.sym = sym;
+            String value = System.getenv("BLABLA");
+            if (value != null) {
+                if (sym != null)
+                    System.out.print("SYM: " + sym.name.toString() + " ");    
+                System.out.print(name.toString() + "\n");
+            }
         }
         @Override
         public void accept(Visitor v) { v.visitSelect(this); }

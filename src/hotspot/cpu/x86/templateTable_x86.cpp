@@ -3135,6 +3135,7 @@ void TemplateTable::putfield_or_static_helper(int byte_no, bool is_static, Rewri
     if (!is_static) pop_and_check_object(obj);
     // Store into the field
     do_oop_store(_masm, field, rax);
+    // __ append_heap_event(field, rax);
     if (!is_static && rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_aputfield, bc, rbx, true, byte_no);
     }
@@ -3370,6 +3371,7 @@ void TemplateTable::fast_storefield_helper(Address field, Register rax) {
   // access field
   switch (bytecode()) {
   case Bytecodes::_fast_aputfield:
+    __ append_heap_event(field, rax);
     do_oop_store(_masm, field, rax);
     break;
   case Bytecodes::_fast_lputfield:

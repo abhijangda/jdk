@@ -4644,10 +4644,10 @@ void print_oop_store() {
   // if ((heap_event_counter & ((1<<LOG_MAX_EVENT_COUNTER) - 1)) == 0 && heap_event_counter > 1) 
   static int i = 0; //heap_event_counter/(1<<LOG_MAX_EVENT_COUNTER);
   heap_event_counter = 1 << LOG_MAX_EVENT_COUNTER;
-  printf("transferring %d\n", i++);
+  // printf("transferring %d\n", i++);
   for (uint64_t j = heap_event_counter - 1; j > heap_event_counter - 2; j--) {
     // if (heap_events[i].heap_event_type != 1) {
-    printf("heap_events[%ld]={%ld, %ld, %ld}\n", j, heap_events[j].heap_event_type, heap_events[j].address.src, heap_events[j].address.dst);
+    printf("%d heap_events[%ld]={%ld, %ld, %ld}\n", i++, j, heap_events[j].heap_event_type, heap_events[j].address.src, heap_events[j].address.dst);
       // break;
     // }
   }
@@ -4692,9 +4692,17 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   push(rax);
   push(r9);
   push(r10);
+  push(r11);
+  push(r12);
   // lahf();
   pushf();
+  push(src);
+  // push(dst.base());
+  // pop(r8);
   leaq(r8, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
+  // mov64(r8, 0L);
+  pop(r11);
+ 
   // movq(r8, dst.base());
   // addq(r8, dst.index());
   AddressLiteral heap_event_counter_addr((address)&heap_event_counter, relocInfo::relocType::external_word_type);
@@ -4708,7 +4716,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   addq(r10, r9);
   movq(Address(r10, 0), 1);
   //addq(r10, 8);
-  movq(Address(r10, 8), src);
+  movq(Address(r10, 8), r11);
   //addq(r10, 8);
   movq(Address(r10, 16), r8);
   //TODO: Use Addressingmode: movq(Address(r10, r9, Address::ScaleFactor::times_1, 16), 1);
@@ -4722,6 +4730,8 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   
   popf();
   // sahf();
+  pop(r12);
+  pop(r11);
   pop(r10);
   pop(r9);
   pop(rax);

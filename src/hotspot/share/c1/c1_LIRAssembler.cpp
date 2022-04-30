@@ -381,7 +381,7 @@ void LIR_Assembler::process_debug_info(LIR_Op* op) {
   }
 }
 
-// Index caller states in s, where 0 is the oldest, 1 its callee, etc.
+// base caller states in s, where 0 is the oldest, 1 its callee, etc.
 // Return NULL if n is too large.
 // Returns the caller_bci for the next-younger state, also.
 static ValueStack* nth_oldest(ValueStack* s, int n, int& bci_result) {
@@ -774,6 +774,8 @@ void LIR_Assembler::roundfp_op(LIR_Opr src, LIR_Opr tmp, LIR_Opr dest, bool pop_
   reg2stack (src, dest, src->type(), pop_fpu_stack);
 }
 
+#include <string.h>
+
 void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_PatchCode patch_code, CodeEmitInfo* info, bool pop_fpu_stack, bool wide, bool is_oop_store) {
   if (src->is_register()) {
     if (dest->is_register()) {
@@ -783,11 +785,46 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       assert(patch_code == lir_patch_none && info == NULL, "no patching and info allowed here");
       reg2stack(src, dest, type, pop_fpu_stack);
     } else if (dest->is_address()) {
-      reg2mem(src, dest, type, patch_code, info, pop_fpu_stack, wide);
       //TODO: Can also be when src is address and dst is address
-      if (is_reference_type(src->type())) {
-        // _masm->append_heap_event(as_Address(dest->as_address_ptr()), src->as_register());
+      LIR_Address* dst_to_addr = dest->as_address_ptr();
+      Address dst_addr = as_Address(dst_to_addr);
+      if (is_reference_type(type)) {
+        Register oop = src->as_register();
+        // char reg_name[1024] = "unknown";
+        // if (dst_addr.base() ==rax) {
+        //   strcpy(reg_name, "rax");
+        // } else if (dst_addr.base() == rbx) {
+        //   strcpy(reg_name, "rbx");
+        // } else if (dst_addr.base() ==rcx) {
+        //   strcpy(reg_name, "rcx");
+        // } else if (dst_addr.base() ==rdx) {
+        //   strcpy(reg_name, "rdx");
+        // } else if (dst_addr.base() ==r8) {
+        //   strcpy(reg_name, "r8");
+        // } else if (dst_addr.base() ==r9) {
+        //   strcpy(reg_name, "r9");
+        // }else if (dst_addr.base() ==r10) {
+        //   strcpy(reg_name, "r10");
+        // }else if (dst_addr.base() ==r11) {
+        //   strcpy(reg_name, "r11");
+        // }else if (dst_addr.base() ==r12) {
+        //   strcpy(reg_name, "r12");
+        // } else if (dst_addr.base() ==r13) {
+        //   strcpy(reg_name, "r13");
+        // } else if (dst_addr.base() == r14) {
+        //   strcpy(reg_name, "r14");
+        // } else if (dst_addr.base() == r15) {
+        //   strcpy(reg_name, "r15");
+        // } else if (dst_addr.base() == rsi) {
+        //   strcpy(reg_name, "rsi");
+        // } else if (dst_addr.base() == rdi) {
+        //   strcpy(reg_name, "rdi");
+        // } 
+
+        // printf("[%s]\n", reg_name);
+        _masm->append_heap_event(dst_addr, oop);
       }
+      reg2mem(src, dst_to_addr, dst_addr, type, patch_code, info, pop_fpu_stack, wide);
     } else {
       ShouldNotReachHere();
     }

@@ -957,8 +957,7 @@ void LIR_Assembler::reg2stack(LIR_Opr src, LIR_Opr dest, BasicType type, bool po
 }
 
 
-void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_PatchCode patch_code, CodeEmitInfo* info, bool pop_fpu_stack, bool wide) {
-  LIR_Address* to_addr = dest->as_address_ptr();
+void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Address* dst_to_addr, Address dest, BasicType type, LIR_PatchCode patch_code, CodeEmitInfo* info, bool pop_fpu_stack, bool wide) {
   PatchingStub* patch = NULL;
   Register compressed_src = rscratch1;
 
@@ -977,7 +976,7 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
 
   if (patch_code != lir_patch_none) {
     patch = new PatchingStub(_masm, PatchingStub::access_field_id);
-    Address toa = as_Address(to_addr);
+    Address toa = dest;
     assert(toa.disp() != 0, "must have");
   }
 
@@ -986,7 +985,7 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
     case T_FLOAT: {
 #ifdef _LP64
       assert(src->is_single_xmm(), "not a float");
-      __ movflt(as_Address(to_addr), src->as_xmm_float_reg());
+      __ movflt(dest, src->as_xmm_float_reg());
 #else
       if (src->is_single_xmm()) {
         __ movflt(as_Address(to_addr), src->as_xmm_float_reg());
@@ -1003,10 +1002,10 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
     case T_DOUBLE: {
 #ifdef _LP64
       assert(src->is_double_xmm(), "not a double");
-      __ movdbl(as_Address(to_addr), src->as_xmm_double_reg());
+      __ movdbl(dest, src->as_xmm_double_reg());
 #else
       if (src->is_double_xmm()) {
-        __ movdbl(as_Address(to_addr), src->as_xmm_double_reg());
+        __ movdbl(dest, src->as_xmm_double_reg());
       } else {
         assert(src->is_double_fpu(), "must be");
         assert(src->fpu_regnrLo() == 0, "argument must be on TOS");
@@ -1020,9 +1019,9 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
     case T_ARRAY:   // fall through
     case T_OBJECT:  // fall through
       if (UseCompressedOops && !wide) {
-        __ movl(as_Address(to_addr), compressed_src);
+        __ movl(dest, compressed_src);
       } else {
-        __ movptr(as_Address(to_addr), src->as_register());
+        __ movptr(dest, src->as_register());
       }
       break;
     case T_METADATA:
@@ -1031,20 +1030,20 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       // compressed klass ptrs: T_METADATA can be a compressed klass
       // ptr or a 64 bit method pointer.
       LP64_ONLY(ShouldNotReachHere());
-      __ movptr(as_Address(to_addr), src->as_register());
+      __ movptr(dest, src->as_register());
       break;
     case T_ADDRESS:
-      __ movptr(as_Address(to_addr), src->as_register());
+      __ movptr(dest, src->as_register());
       break;
     case T_INT:
-      __ movl(as_Address(to_addr), src->as_register());
+      __ movl(dest, src->as_register());
       break;
 
     case T_LONG: {
       Register from_lo = src->as_register_lo();
       Register from_hi = src->as_register_hi();
 #ifdef _LP64
-      __ movptr(as_Address_lo(to_addr), from_lo);
+      __ movptr(dest, from_lo);
 #else
       Register base = to_addr->base()->as_register();
       Register index = noreg;
@@ -1078,7 +1077,7 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
     case T_BYTE:    // fall through
     case T_BOOLEAN: {
       Register src_reg = src->as_register();
-      Address dst_addr = as_Address(to_addr);
+      Address dst_addr = dest;
       assert(VM_Version::is_P6() || src_reg->has_byte_register(), "must use byte registers if not P6");
       __ movb(dst_addr, src_reg);
       break;
@@ -1086,7 +1085,7 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
 
     case T_CHAR:    // fall through
     case T_SHORT:
-      __ movw(as_Address(to_addr), src->as_register());
+      __ movw(dest, src->as_register());
       break;
 
     default:
@@ -1097,7 +1096,7 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
   }
 
   if (patch_code != lir_patch_none) {
-    patching_epilog(patch, patch_code, to_addr->base()->as_register(), info);
+    patching_epilog(patch, patch_code, dst_to_addr->base()->as_register(), info);
   }
 }
 

@@ -1113,7 +1113,7 @@ void TemplateTable::dastore() {
 void TemplateTable::aastore() {
   Label is_null, ok_is_subtype, done;
   transition(vtos, vtos);
-  __ append_heap_event();
+
   // stack: ..., array, index, value
   __ movptr(rax, at_tos());    // value
   __ movl(rcx, at_tos_p1()); // index
@@ -1150,6 +1150,7 @@ void TemplateTable::aastore() {
   __ movptr(rax, at_tos());
   __ movl(rcx, at_tos_p1()); // index
   // Now store using the appropriate barrier
+  // __ append_heap_event(element_address, rax);
   do_oop_store(_masm, element_address, rax, IS_ARRAY);
   __ jmp(done);
 
@@ -1158,6 +1159,7 @@ void TemplateTable::aastore() {
   __ profile_null_seen(rbx);
 
   // Store a NULL
+  // __ append_heap_event(element_address, rax);
   do_oop_store(_masm, element_address, noreg, IS_ARRAY);
 
   // Pop stack arguments
@@ -3060,7 +3062,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   //                                              Assembler::StoreStore));
 
   Label notVolatile, Done;
-  __ append_heap_event();
+  // __ append_heap_event();
   __ movl(rdx, flags);
   __ shrl(rdx, ConstantPoolCacheEntry::is_volatile_shift);
   __ andl(rdx, 0x1);
@@ -3371,7 +3373,7 @@ void TemplateTable::fast_storefield_helper(Address field, Register rax) {
   // access field
   switch (bytecode()) {
   case Bytecodes::_fast_aputfield:
-    __ append_heap_event(field, rax);
+    // __ append_heap_event(field, rax);
     do_oop_store(_masm, field, rax);
     break;
   case Bytecodes::_fast_lputfield:

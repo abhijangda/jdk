@@ -4696,13 +4696,10 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   push(r12);
   // lahf();
   pushf();
-  push(src);
-  // push(dst.base());
-  // pop(r8);
+  Register src_reg = (src == r11) ? r12 : r11;
+  mov(src_reg, src);
   leaq(r8, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
-  // mov64(r8, 0L);
-  pop(r11);
- 
+
   // movq(r8, dst.base());
   // addq(r8, dst.index());
   AddressLiteral heap_event_counter_addr((address)&heap_event_counter, relocInfo::relocType::external_word_type);
@@ -4716,7 +4713,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   addq(r10, r9);
   movq(Address(r10, 0), 1);
   //addq(r10, 8);
-  movq(Address(r10, 8), r11);
+  movq(Address(r10, 8), src_reg);
   //addq(r10, 8);
   movq(Address(r10, 16), r8);
   //TODO: Use Addressingmode: movq(Address(r10, r9, Address::ScaleFactor::times_1, 16), 1);
@@ -4728,6 +4725,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   popa();
   bind(not_equal);
   
+  mov(src, src_reg);
   popf();
   // sahf();
   pop(r12);

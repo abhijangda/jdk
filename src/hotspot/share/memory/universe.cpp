@@ -92,11 +92,10 @@ Universe::HeapEvent Universe::heap_events[1<<Universe::LOG_MAX_EVENT_COUNTER] = 
 
 void Universe::add_heap_event(Universe::HeapEvent event)
 {
-  // Universe::heap_events[Universe::heap_event_counter--] = event;
-  // if (Universe::heap_event_counter <= 0) {
-  //   Universe::verify_heap_graph();
-  //   Universe::heap_event_counter = 1 << Universe::LOG_MAX_EVENT_COUNTER;
-  // }
+  Universe::heap_events[--Universe::heap_event_counter] = event;
+  if (Universe::heap_event_counter <= 0) {
+    Universe::verify_heap_graph();
+  }
 }
 
 
@@ -136,36 +135,41 @@ typedef std::unordered_map<uint64_t, Universe::HeapEvent> HeapHashTable;
 typedef std::vector<Universe::HeapEvent, Mallocator<Universe::HeapEvent>> SortedHeapEvents;
 GrowableArrayCHeap<Universe::HeapEvent, MEMFLAGS::mtInternal> sorted_heap_events;
 
-bool has_heap_event(uint64_t src_address) {
-  for (int i = 0; i < sorted_heap_events.length(); i++) {
-    // printf("141: 0x%lx\n", sorted_heap_events.at(i).address.src);
-    if (sorted_heap_events.at(i).address.src == src_address) {
-      return true;
-    }
-  }
-
-  return false;
-  // size_t l = 0;
-  // size_t r = sorted_heap_events.length();
-  // while (l <= r) {
-  //     int m = l + (r - l) / 2;
-
-  //     // Check if x is present at mid
-  //     if (sorted_heap_events.at(m).address.src == src_address)
-  //         return m;
-
-  //     // If x greater, ignore left half
-  //     if (sorted_heap_events.at(m).address.src < src_address)
-  //         l = m + 1;
-
-  //     // If x is smaller, ignore right half
-  //     else
-  //         r = m - 1;
+bool has_heap_event(uint64_t dst_address) {
+  // for (int i = 0; i < sorted_heap_events.length(); i++) {
+  //   // printf("141: 0x%lx\n", sorted_heap_events.at(i).address.dst);
+  //   if (sorted_heap_events.at(i).address.dst == dst_address) {
+  //     return true;
+  //   }
   // }
 
-  // // if we reach here, then element was
-  // // not present
+  // for (int i = 0; i < sorted_heap_events.length(); i++) {
+  //   // printf("141: 0x%lx\n", sorted_heap_events.at(i).address.dst);
+  //   printf("0x%lx\n", sorted_heap_events.at(i).address.dst);
+  // }
+
   // return false;
+  size_t l = 0;
+  size_t r = sorted_heap_events.length() - 1;
+  while (l <= r) {
+      size_t m = l + (r - l) / 2;
+      // printf("m %ld l %ld r %ld\n", m, l, r);
+      // Check if x is present at mid
+      if (sorted_heap_events.at(m).address.dst == dst_address)
+          return true;
+
+      // If x greater, ignore left half
+      if (sorted_heap_events.at(m).address.dst < dst_address)
+          l = m + 1;
+
+      // If x is smaller, ignore right half
+      else
+          r = m - 1;
+  }
+
+  // if we reach here, then element was
+  // not present
+  return false;
 }
 
 class AllFields : public FieldClosure {
@@ -173,12 +177,29 @@ class AllFields : public FieldClosure {
   
 public:
   bool valid;
-  AllFields(oop obj): obj_(obj), valid(true) {}
+  int num_found, num_not_found;
+  AllFields(oop obj): obj_(obj), valid(true), num_found(0), num_not_found(0) {}
   virtual void do_field(fieldDescriptor* fd) {
-    if (is_reference_type(fd->field_type())) {
+    if (fd->field_type() == T_OBJECT && fd->field_type() != T_ARRAY) { // if (is_reference_type(fd->field_type())) {
       uint64_t fd_address = ((uint64_t)(void*)obj_) + fd->offset();
-      printf("obj_ %p fd_address 0x%lx\n", (void*)obj_, fd_address);
-      valid = valid && has_heap_event(fd_address); // && heapHashTable[fd_address].dst == 
+      uint64_t val = *((uint64_t*)fd_address);
+      if (val == 0) return;
+      // printf("obj_ %p fd_address 0x%lx\n", (void*)obj_, fd_address);
+      bool found = has_heap_event(fd_address);
+      if (!found) {
+        char buf[1024];
+        char buf2[1024];
+        obj_->klass()->name()->as_C_string(buf, 1024);
+        fd->name()->as_C_string(buf2, 1024);
+        // printf("185: %s, %p, %d:0x%lx:%s\n", buf, (void*)obj_, fd->offset(), val, buf2);
+        if (num_not_found > 1)
+          abort();
+      }
+      valid = valid && found; // && heapHashTable[fd_address].dst == 
+      if (found)
+        num_found++;
+      else
+        num_not_found++;
     }
   }
 };
@@ -187,17 +208,24 @@ class AllObjects : public ObjectClosure {
   public:
     bool valid;
     bool foundPuppy;
-    AllObjects() : valid(true), foundPuppy(false) {}
+    int num_found, num_not_found;
+    AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0) {}
     
     virtual void do_object(oop obj) {
       if (obj->klass()->is_instance_klass()) {
         char buf[1024];
         obj->klass()->name()->as_C_string(buf, 1024);
-        if (strstr(buf, "Puppy")) {
+        
+        if (true || strstr(buf, "Puppy")) {
           AllFields field_printer(obj);
           ((InstanceKlass*)obj->klass())->do_nonstatic_fields(&field_printer);
-          valid = valid && field_printer.valid; 
-          foundPuppy = true;
+          valid = valid && field_printer.valid;
+          num_found += field_printer.num_found;
+          num_not_found += field_printer.num_not_found;
+          // if (!field_printer.valid) {
+          //   printf("%s\n", buf);
+          // }
+          // foundPuppy = true;
         } else {
         }
         
@@ -209,8 +237,8 @@ class AllObjects : public ObjectClosure {
 static char buf[sizeof(HeapHashTable)];
 
 int HeapEventComparer(Universe::HeapEvent* a, Universe::HeapEvent* b) {
-    if (a->address.src < b->address.src) return -1;
-    if (a->address.src == b->address.src) return 0;
+    if (a->address.dst < b->address.dst) return -1;
+    if (a->address.dst == b->address.dst) return 0;
     return 1;
 }
 
@@ -227,15 +255,15 @@ void Universe::verify_heap_graph()
   //Update heap hash table
   for (int i = Universe::heap_event_counter; i < (1 << Universe::LOG_MAX_EVENT_COUNTER); i++) {
     Universe::HeapEvent event = Universe::heap_events[i];
-    printf("event %ld 0x%lx\n", event.heap_event_type, event.address.src);
-    // sorted_heap_events.append(event);
+    // printf("event %ld 0x%lx\n", event.heap_event_type, event.address.src);
+    sorted_heap_events.append(event);
   }
 
-  // sorted_heap_events.sort(HeapEventComparer);
+  sorted_heap_events.sort(HeapEventComparer);
 
-  // AllObjects all_objects;
-  // Universe::heap()->object_iterate(&all_objects);
-  // printf("valid? %d foundPuppy? %d num_heap_events %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events.length());
+  AllObjects all_objects;
+  Universe::heap()->object_iterate(&all_objects);
+  printf("valid? %d foundPuppy? %d num_heap_events %d num_found %d num_not_found %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events.length(), all_objects.num_found, all_objects.num_not_found);
 
   Universe::heap_event_counter = 1 << Universe::LOG_MAX_EVENT_COUNTER;
 }

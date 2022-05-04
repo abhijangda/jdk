@@ -3949,6 +3949,7 @@ oop java_lang_invoke_MemberName::name(oop mname) {
 
 void java_lang_invoke_MemberName::set_name(oop mname, oop name) {
   assert(is_instance(mname), "wrong type");
+  printf("_name_offset %d\n", _name_offset);
   mname->obj_field_put(_name_offset, name);
 }
 

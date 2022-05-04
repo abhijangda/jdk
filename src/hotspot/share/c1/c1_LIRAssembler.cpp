@@ -822,7 +822,7 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
         // } 
 
         // printf("[%s]\n", reg_name);
-        // _masm->append_heap_event(dst_addr, oop);
+        _masm->append_heap_event(dst_addr, oop);
       }
       reg2mem(src, dst_to_addr, dst_addr, type, patch_code, info, pop_fpu_stack, wide);
     } else {

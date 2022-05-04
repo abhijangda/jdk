@@ -217,8 +217,41 @@ size_t   oopDesc::field_offset(T* p) const { return pointer_delta((void*)p, (voi
 template <DecoratorSet decorators>
 inline oop  oopDesc::obj_field_access(int offset) const             { return HeapAccess<decorators>::oop_load_at(as_oop(), offset); }
 inline oop  oopDesc::obj_field(int offset) const                    { return HeapAccess<>::oop_load_at(as_oop(), offset);  }
+#include"runtime/fieldDescriptor.hpp"
+#include"runtime/fieldDescriptor.inline.hpp"
 
-inline void oopDesc::obj_field_put(int offset, oop value)           { HeapAccess<>::oop_store_at(as_oop(), offset, value); }
+class FindField : public FieldClosure {  
+  int offset_;
+public:
+  fieldDescriptor* fd_;
+  FindField(int offset): offset_(offset), fd_(nullptr) {}
+  virtual void do_field(fieldDescriptor* fd) {
+    if (fd->offset() == offset_) {
+      fd_ = fd;
+    }
+  }
+};
+
+inline void oopDesc::obj_field_put(int offset, oop value)           {
+  char buf[1024];
+  oop obj = as_oop();
+  as_oop()->klass()->name()->as_C_string(buf, 1024);
+  if (as_oop()->klass()->is_instance_klass() && strstr(buf, "MemberName")) {
+    // FindField field_finder(offset);
+    // ((InstanceKlass*)as_oop()->klass())->do_nonstatic_fields(&field_finder);
+    // fieldDescriptor* fd = field_finder.fd_;
+    // int fd_offset;
+    // char buf2[1024];
+    // if (fd) {
+    //   fd->name()->as_C_string(buf2, 1024);
+    //   fd_offset = fd->offset();
+    // }
+
+    printf("224: %s, %p, %d\n", buf, (void*)as_oop(), offset);
+  }
+  Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
+  HeapAccess<>::oop_store_at(as_oop(), offset, value); 
+}
 
 inline jbyte oopDesc::byte_field(int offset) const                  { return *field_addr<jbyte>(offset);  }
 inline void  oopDesc::byte_field_put(int offset, jbyte value)       { *field_addr<jbyte>(offset) = value; }

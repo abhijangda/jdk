@@ -4680,7 +4680,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   //TODO: Use Addressingmode: movq(Address(r10, r9, Address::ScaleFactor::times_1, 16), 1);
   popf();
   Label not_equal;
-  // jcc(Assembler::Condition::notZero, not_equal);
+  jcc(Assembler::Condition::notZero, not_equal);
   pusha();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
   popa();

@@ -1835,7 +1835,7 @@ run:
           }
 
           MAYBE_POST_FIELD_MODIFICATION(obj);
-
+          printf("bytecodeinterpreter: 1838\n");  
           //
           // Now store the result
           //
@@ -2657,6 +2657,7 @@ run:
         MAYBE_POST_FIELD_MODIFICATION(obj);
 
         int field_offset = cache->f2_as_index();
+        printf("bytecodeinterpreter: 2660\n");
         obj->obj_field_put(field_offset, STACK_OBJECT(-1));
 
         UPDATE_PC_AND_TOS_AND_CONTINUE(3, -2);

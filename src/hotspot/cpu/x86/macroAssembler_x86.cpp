@@ -4615,64 +4615,29 @@ void MacroAssembler::load_heap_oop_not_null(Register dst, Address src, Register 
 #include<algorithm>
 
 // static cudaStream_t stream;
-static const int LOG_MAX_EVENT_COUNTER = 20;
-static unsigned long heap_event_counter = 1 << LOG_MAX_EVENT_COUNTER;
 CUdeviceptr d_heap_events;
 int* h_heap_events = nullptr;
-
-struct HeapEvent {
-  uint64_t heap_event_type; //0 for new object and 1 for field assignment
-  // union {
-    struct {
-      uint64_t src;
-      uint64_t dst;
-    } address;
-    // uint64_t new_obj;
-  //}
-  
-};
-
-HeapEvent heap_events[1<<LOG_MAX_EVENT_COUNTER];
-
 void __checkCudaErrors( CUresult err, const char *file, const int line );
 #define checkCudaErrors(err)  __checkCudaErrors ((err), __FILE__, __LINE__)
 
 #include<semaphore.h>
 sem_t cuda_semaphore;
+#include<vector>
 
-void print_oop_store() { 
-  // if ((heap_event_counter & ((1<<LOG_MAX_EVENT_COUNTER) - 1)) == 0 && heap_event_counter > 1) 
-  static int i = 0; //heap_event_counter/(1<<LOG_MAX_EVENT_COUNTER);
-  heap_event_counter = 1 << LOG_MAX_EVENT_COUNTER;
-  // printf("transferring %d\n", i++);
-  for (uint64_t j = heap_event_counter - 1; j > heap_event_counter - 2; j--) {
-    // if (heap_events[i].heap_event_type != 1) {
-    printf("%d heap_events[%ld]={%ld, %ld, %ld}\n", i++, j, heap_events[j].heap_event_type, heap_events[j].address.src, heap_events[j].address.dst);
-      // break;
-    // }
-  }
-  // sem_post(&cuda_semaphore);
-} 
+// void print_oop_store() { 
+//   // if ((Universe::heap_event_counter & ((1<<Universe::LOG_MAX_EVENT_COUNTER) - 1)) == 0 && Universe::heap_event_counter > 1) 
 
-// void MacroAssembler::append_heap_event ()
-// {
-//   // push(rax);
-//   // // push(rbx);
-//   // lahf();
+//   static int i = 0; //Universe::heap_event_counter/(1<<Universe::LOG_MAX_EVENT_COUNTER);
+//   Universe::heap_event_counter = 1 << Universe::LOG_MAX_EVENT_COUNTER;
+//   // AllObjects all_objects;
+//   // Universe::heap()->object_iterate(&all_objects);
+//   printf("checking %d\n", i++);
 
-//   // AddressLiteral heap_event_counter_addr((address)&heap_event_counter, relocInfo::relocType::external_word_type);
-//   // decrementq(as_Address(heap_event_counter_addr));
-//   // Label not_equal;
-//   // jcc(Assembler::Condition::notZero, not_equal);
-//   // pusha();
-//   // call(RuntimeAddress(CAST_FROM_FN_PTR(address, print_oop_store)));
-//   // popa();
-//   // bind(not_equal);
-  
-//   // sahf();
-//   // // pop(rbx);
-//   // pop(rax);
-// }
+//   for (uint64_t j = 0; j < Universe::heap_event_counter; j++) {
+//     // heap_events[j].address.src, heap_events[j].address.dst;
+//   }
+//   // sem_post(&cuda_semaphore);
+// } 
 
 Register MacroAssembler::register_for_event_counter(Register event_src)
 {
@@ -4684,10 +4649,6 @@ Register MacroAssembler::register_for_event_counter(Register event_src)
 
 void MacroAssembler::append_heap_event(Address dst, Register src)
 {
-  // if (src == rax) {
-  //   push(rbx);
-  //   mov(rbx, rax);
-  // }
   push(r8);
   push(rax);
   push(r9);
@@ -4702,14 +4663,14 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
 
   // movq(r8, dst.base());
   // addq(r8, dst.index());
-  AddressLiteral heap_event_counter_addr((address)&heap_event_counter, relocInfo::relocType::external_word_type);
+  AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
   movq(r9, as_Address(heap_event_counter_addr));
   decrementq(r9); //TODO: Using lea will not affect flags
   movq(as_Address(heap_event_counter_addr), r9);
   pushf();
-  imulq(r9, r9, sizeof(HeapEvent));
-  mov64(r10, (uint64_t)&heap_events);
+  imulq(r9, r9, sizeof(Universe::HeapEvent));
+  mov64(r10, (uint64_t)&Universe::heap_events);
   addq(r10, r9);
   movq(Address(r10, 0), 1);
   //addq(r10, 8);
@@ -4721,7 +4682,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   Label not_equal;
   // jcc(Assembler::Condition::notZero, not_equal);
   pusha();
-  call(RuntimeAddress(CAST_FROM_FN_PTR(address, print_oop_store)));
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
   popa();
   bind(not_equal);
   
@@ -4734,18 +4695,11 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   pop(r9);
   pop(rax);
   pop(r8);
-  // if (src == rax) {
-  //   pop(rbx);
-  // }
 }
 
 void MacroAssembler::store_heap_oop(Address dst, Register src, Register tmp1,
                                     Register tmp2, DecoratorSet decorators) {
   access_store_at(T_OBJECT, IN_HEAP | decorators, dst, src, tmp1, tmp2);
-  //TODO: For interpreter use r8-r9 registers and can remove pushf/lahf
-  // append_heap_event(dst, src);
-  // if (decorators & IS_ARRAY == 0)
-  //   append_heap_event(dst, src);
 }
 
 // Used for storing NULLs.

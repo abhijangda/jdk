@@ -3373,7 +3373,7 @@ void TemplateTable::fast_storefield_helper(Address field, Register rax) {
   // access field
   switch (bytecode()) {
   case Bytecodes::_fast_aputfield:
-    // __ append_heap_event(field, rax);
+    __ append_heap_event(field, rax);
     do_oop_store(_masm, field, rax);
     break;
   case Bytecodes::_fast_lputfield:
@@ -3968,7 +3968,7 @@ void TemplateTable::_new() {
 
   const bool allow_shared_alloc =
     Universe::heap()->supports_inline_contig_alloc();
-
+  
   const Register thread = LP64_ONLY(r15_thread) NOT_LP64(rcx);
 #ifndef _LP64
   if (UseTLAB || allow_shared_alloc) {

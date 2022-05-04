@@ -190,6 +190,22 @@ class Universe: AllStatic {
   static uintptr_t _verify_oop_bits;
 
  public:
+ struct HeapEvent {
+  uint64_t heap_event_type; //0 for new object and 1 for field assignment
+  // union {
+    struct {
+      uint64_t src;
+      uint64_t dst;
+    } address;
+    // uint64_t new_obj;
+  //}
+  };
+  static const int LOG_MAX_EVENT_COUNTER = 10;
+  static unsigned long heap_event_counter;
+  static HeapEvent heap_events[1<<LOG_MAX_EVENT_COUNTER];
+
+  static void add_heap_event(HeapEvent event);
+  static void verify_heap_graph();
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;
 
   // Known classes in the VM

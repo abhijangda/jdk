@@ -81,6 +81,165 @@
 #include "utilities/ostream.hpp"
 #include "utilities/preserveException.hpp"
 
+#include "utilities/hashtable.hpp"
+#include "utilities/hashtable.inline.hpp"
+#include "runtime/fieldDescriptor.inline.hpp"
+#include "memory/allocation.hpp"
+#include "utilities/quickSort.hpp"
+
+unsigned long Universe::heap_event_counter = 1 << Universe::LOG_MAX_EVENT_COUNTER;
+Universe::HeapEvent Universe::heap_events[1<<Universe::LOG_MAX_EVENT_COUNTER] = {};
+
+void Universe::add_heap_event(Universe::HeapEvent event)
+{
+  // Universe::heap_events[Universe::heap_event_counter--] = event;
+  // if (Universe::heap_event_counter <= 0) {
+  //   Universe::verify_heap_graph();
+  //   Universe::heap_event_counter = 1 << Universe::LOG_MAX_EVENT_COUNTER;
+  // }
+}
+
+
+#include<vector>
+#include<limits>
+#include<unordered_map>
+#include<algorithm>
+
+template <class T>
+struct Mallocator
+{
+  typedef T value_type;
+ 
+  Mallocator () = default;
+  template <class U> constexpr Mallocator (const Mallocator <U>&) noexcept {}
+ 
+  T* allocate(std::size_t n) {
+    return static_cast<T*>(os::malloc(n*sizeof(T), MEMFLAGS::mtInternal));
+  }
+ 
+  void deallocate(T* p, std::size_t n) noexcept {
+    os::free(p);
+  }
+ 
+private:
+};
+ 
+template <class T, class U>
+bool operator==(const Mallocator <T>&, const Mallocator <U>&) { return true; }
+template <class T, class U>
+bool operator!=(const Mallocator <T>&, const Mallocator <U>&) { return false; }
+
+template <typename K, typename V>
+using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, Mallocator<std::pair<const K, V>>>;
+
+typedef std::unordered_map<uint64_t, Universe::HeapEvent> HeapHashTable;
+typedef std::vector<Universe::HeapEvent, Mallocator<Universe::HeapEvent>> SortedHeapEvents;
+GrowableArrayCHeap<Universe::HeapEvent, MEMFLAGS::mtInternal> sorted_heap_events;
+
+bool has_heap_event(uint64_t src_address) {
+  for (int i = 0; i < sorted_heap_events.length(); i++) {
+    // printf("141: 0x%lx\n", sorted_heap_events.at(i).address.src);
+    if (sorted_heap_events.at(i).address.src == src_address) {
+      return true;
+    }
+  }
+
+  return false;
+  // size_t l = 0;
+  // size_t r = sorted_heap_events.length();
+  // while (l <= r) {
+  //     int m = l + (r - l) / 2;
+
+  //     // Check if x is present at mid
+  //     if (sorted_heap_events.at(m).address.src == src_address)
+  //         return m;
+
+  //     // If x greater, ignore left half
+  //     if (sorted_heap_events.at(m).address.src < src_address)
+  //         l = m + 1;
+
+  //     // If x is smaller, ignore right half
+  //     else
+  //         r = m - 1;
+  // }
+
+  // // if we reach here, then element was
+  // // not present
+  // return false;
+}
+
+class AllFields : public FieldClosure {
+  oop obj_;
+  
+public:
+  bool valid;
+  AllFields(oop obj): obj_(obj), valid(true) {}
+  virtual void do_field(fieldDescriptor* fd) {
+    if (is_reference_type(fd->field_type())) {
+      uint64_t fd_address = ((uint64_t)(void*)obj_) + fd->offset();
+      printf("obj_ %p fd_address 0x%lx\n", (void*)obj_, fd_address);
+      valid = valid && has_heap_event(fd_address); // && heapHashTable[fd_address].dst == 
+    }
+  }
+};
+
+class AllObjects : public ObjectClosure {
+  public:
+    bool valid;
+    bool foundPuppy;
+    AllObjects() : valid(true), foundPuppy(false) {}
+    
+    virtual void do_object(oop obj) {
+      if (obj->klass()->is_instance_klass()) {
+        char buf[1024];
+        obj->klass()->name()->as_C_string(buf, 1024);
+        if (strstr(buf, "Puppy")) {
+          AllFields field_printer(obj);
+          ((InstanceKlass*)obj->klass())->do_nonstatic_fields(&field_printer);
+          valid = valid && field_printer.valid; 
+          foundPuppy = true;
+        } else {
+        }
+        
+        // objects.push_back(obj);
+      }
+    }
+};
+
+static char buf[sizeof(HeapHashTable)];
+
+int HeapEventComparer(Universe::HeapEvent* a, Universe::HeapEvent* b) {
+    if (a->address.src < b->address.src) return -1;
+    if (a->address.src == b->address.src) return 0;
+    return 1;
+}
+
+void Universe::verify_heap_graph()
+{
+  
+  static int i = 0; 
+  printf("checking %d\n", i++);
+
+  // if (heapHashTable == nullptr) {
+    // heapHashTable = new(buf) HeapHashTable();
+  // }
+
+  //Update heap hash table
+  for (int i = Universe::heap_event_counter; i < (1 << Universe::LOG_MAX_EVENT_COUNTER); i++) {
+    Universe::HeapEvent event = Universe::heap_events[i];
+    printf("event %ld 0x%lx\n", event.heap_event_type, event.address.src);
+    // sorted_heap_events.append(event);
+  }
+
+  // sorted_heap_events.sort(HeapEventComparer);
+
+  // AllObjects all_objects;
+  // Universe::heap()->object_iterate(&all_objects);
+  // printf("valid? %d foundPuppy? %d num_heap_events %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events.length());
+
+  Universe::heap_event_counter = 1 << Universe::LOG_MAX_EVENT_COUNTER;
+}
+
 // Known objects
 Klass* Universe::_typeArrayKlassObjs[T_LONG+1]        = { NULL /*, NULL...*/ };
 Klass* Universe::_objectArrayKlassObj                 = NULL;

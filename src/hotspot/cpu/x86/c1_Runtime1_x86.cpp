@@ -1085,7 +1085,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
           __ movl(obj_size, Address(klass, Klass::layout_helper_offset()));
 
           __ eden_allocate(thread, obj, obj_size, 0, t1, slow_path);
-
+          //TODO: C1 object allocation here
           __ initialize_object(obj, klass, obj_size, 0, t1, t2, /* is_tlab_allocated */ false);
           __ verify_oop(obj);
           __ pop(rbx);

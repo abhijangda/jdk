@@ -57,6 +57,9 @@
 #include "oops/constantPool.hpp"
 #include "oops/fieldStreams.inline.hpp"
 #include "oops/instanceKlass.hpp"
+#include "oops/instanceMirrorKlass.hpp"
+#include "oops/instanceRefKlass.hpp"
+#include "oops/instanceClassLoaderKlass.hpp"
 #include "oops/klass.inline.hpp"
 #include "oops/method.hpp"
 #include "oops/recordComponent.hpp"
@@ -632,6 +635,21 @@ JVM_ENTRY(void, JVM_MonitorNotifyAll(JNIEnv* env, jobject handle))
   ObjectSynchronizer::notifyall(obj, CHECK);
 JVM_END
 
+class CloneAllFields : public FieldClosure { 
+  oop dst_;
+
+public:
+  CloneAllFields(oop dst) : dst_(dst) {}
+  virtual void do_field(fieldDescriptor* fd) {
+    if (is_reference_type(fd->field_type())) {
+      uint64_t field_address = ((uint64_t)(void*)dst_) + fd->offset();
+      oop field_val = dst_->obj_field(fd->offset());
+      if ((uint64_t)(void*)field_val == 0) return;
+      
+      Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)field_val, field_address});
+    }
+  }
+};
 
 JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
   Handle obj(THREAD, JNIHandles::resolve_non_null(handle));
@@ -669,9 +687,9 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
   } else {
     new_obj_oop = Universe::heap()->obj_allocate(klass, size, CHECK_NULL);
   }
-
+  // printf("672: new_obj_oop %p obj() %p\n", (void*)new_obj_oop, (void*)obj());
   HeapAccess<>::clone(obj(), new_obj_oop, size);
-
+  
   Handle new_obj(THREAD, new_obj_oop);
   // Caution: this involves a java upcall, so the clone should be
   // "gc-robust" by this stage.
@@ -680,6 +698,13 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
     new_obj_oop = InstanceKlass::register_finalizer(instanceOop(new_obj()), CHECK_NULL);
     new_obj = Handle(THREAD, new_obj_oop);
   }
+
+  CloneAllFields clone_fields(new_obj_oop);
+
+  //TODO: Can't I just go through all fields using oop and klass instead of using a Visitor?
+  if (obj->klass()->is_instance_klass()) {
+    ((InstanceKlass*)obj->klass())->do_nonstatic_fields(&clone_fields);
+  } //TODO: Do for all other klasses
 
   return JNIHandles::make_local(THREAD, new_obj());
 JVM_END

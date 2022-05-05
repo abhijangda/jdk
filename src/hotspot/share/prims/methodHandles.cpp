@@ -334,6 +334,11 @@ oop MethodHandles::init_method_MemberName(Handle mname, CallInfo& info) {
          "Should not change after link resolution");
 
   oop mname_oop = mname();
+  // printf("337: mname_oop %p\n", (void*)mname_oop);
+  // char buf[1024];
+  // Symbol* content = java_lang_String::as_symbol_or_null(mname_oop->obj_field(32));
+  // content->as_C_string(buf, 1024);
+  // printf("content %s\n", buf);
   java_lang_invoke_MemberName::set_flags  (mname_oop, flags);
   java_lang_invoke_MemberName::set_method (mname_oop, resolved_method());
   java_lang_invoke_MemberName::set_vmindex(mname_oop, vmindex);   // vtable/itable index

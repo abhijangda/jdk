@@ -209,6 +209,7 @@ public:
   // Clone an object from src to dst
   static inline void clone(oop src, oop dst, size_t size) {
     verify_decorators<IN_HEAP>();
+    //Setting a field of dst is an heap event
     AccessInternal::clone<decorators>(src, dst, size);
   }
 

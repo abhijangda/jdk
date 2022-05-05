@@ -1000,6 +1000,7 @@ void java_lang_Class::create_mirror(Klass* k, Handle class_loader,
   if (vmClasses::Class_klass_loaded()) {
     // Allocate mirror (java.lang.Class instance)
     oop mirror_oop = InstanceMirrorKlass::cast(vmClasses::Class_klass())->allocate_instance(k, CHECK);
+    // printf("1003: %p\n", (void*)mirror_oop);
     Handle mirror(THREAD, mirror_oop);
     Handle comp_mirror;
 
@@ -1488,6 +1489,7 @@ oop java_lang_Class::create_basic_type_mirror(const char* basic_type_name, Basic
     assert(aklass != NULL, "correct bootstrap");
     release_set_array_klass(java_class, aklass);
   }
+  printf("1491: %p\n", (void*)java_class);
 #ifdef ASSERT
   InstanceMirrorKlass* mk = InstanceMirrorKlass::cast(vmClasses::Class_klass());
   assert(static_oop_field_count(java_class) == 0, "should have been zeroed by allocation");

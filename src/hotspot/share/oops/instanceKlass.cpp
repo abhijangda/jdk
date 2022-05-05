@@ -1421,11 +1421,12 @@ instanceOop InstanceKlass::allocate_instance(TRAPS) {
   instanceOop i;
 
   i = (instanceOop)Universe::heap()->obj_allocate(this, size, CHECK_NULL);
+  // printf("1424: new_instance oop %p\n", (void*)i);
   if (has_finalizer_flag && !RegisterFinalizersAtInit) {
     i = register_finalizer(i, CHECK_NULL);
   }
   // Universe::add_heap_event(Universe::HeapEvent {0, (uint64_t)((void*)i), 0});
-  // printf("new_instance oop %p\n", (void*)i);
+  // printf("1429: new_instance oop %p\n", (void*)i);
   return i;
 }
 

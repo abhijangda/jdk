@@ -644,8 +644,8 @@ public:
     if (is_reference_type(fd->field_type())) {
       uint64_t field_address = ((uint64_t)(void*)dst_) + fd->offset();
       oop field_val = dst_->obj_field(fd->offset());
-      if ((uint64_t)(void*)field_val == 0) return;
-      
+      // if ((uint64_t)(void*)field_val == 0) return;
+      // printf("field_address 0x%lx dst_ %p\n", field_address, (void*)dst_);
       Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)field_val, field_address});
     }
   }
@@ -687,7 +687,14 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
   } else {
     new_obj_oop = Universe::heap()->obj_allocate(klass, size, CHECK_NULL);
   }
-  // printf("672: new_obj_oop %p obj() %p\n", (void*)new_obj_oop, (void*)obj());
+  
+  CloneAllFields clone_fields(new_obj_oop);
+
+  //TODO: Can't I just go through all fields using oop and klass instead of using a Visitor?
+  if (obj->klass()->is_instance_klass()) {
+    ((InstanceKlass*)obj->klass())->do_nonstatic_fields(&clone_fields);
+  } //TODO: Do for all other klasses
+
   HeapAccess<>::clone(obj(), new_obj_oop, size);
   
   Handle new_obj(THREAD, new_obj_oop);
@@ -699,12 +706,7 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
     new_obj = Handle(THREAD, new_obj_oop);
   }
 
-  CloneAllFields clone_fields(new_obj_oop);
 
-  //TODO: Can't I just go through all fields using oop and klass instead of using a Visitor?
-  if (obj->klass()->is_instance_klass()) {
-    ((InstanceKlass*)obj->klass())->do_nonstatic_fields(&clone_fields);
-  } //TODO: Do for all other klasses
 
   return JNIHandles::make_local(THREAD, new_obj());
 JVM_END

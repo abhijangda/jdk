@@ -33,17 +33,26 @@
 
 inline oop CollectedHeap::obj_allocate(Klass* klass, size_t size, TRAPS) {
   ObjAllocator allocator(klass, size, THREAD);
-  return allocator.allocate();
+  oop o = allocator.allocate();
+  if ((uint64_t)(void*)o == 0x7ff7e93b5760) {
+    printf("37: %p\n", (void*)o);
+    breakpoint();
+  }
+  return o;
 }
 
 inline oop CollectedHeap::array_allocate(Klass* klass, size_t size, int length, bool do_zero, TRAPS) {
   ObjArrayAllocator allocator(klass, size, length, do_zero, THREAD);
-  return allocator.allocate();
+  oop o = allocator.allocate();
+  // printf("44: %p\n", (void*)o);
+  return o;
 }
 
 inline oop CollectedHeap::class_allocate(Klass* klass, size_t size, TRAPS) {
   ClassAllocator allocator(klass, size, THREAD);
-  return allocator.allocate();
+  oop o = allocator.allocate();
+  // printf("49: %p\n", (void*)o);
+  return o;
 }
 
 #endif // SHARE_GC_SHARED_COLLECTEDHEAP_INLINE_HPP

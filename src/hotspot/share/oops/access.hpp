@@ -186,6 +186,7 @@ public:
     verify_heap_oop_decorators<store_mo_decorators>();
     typedef typename AccessInternal::OopOrNarrowOop<T>::type OopType;
     OopType oop_value = value;
+    // printf("256: src %p\n", (void*)base);
     AccessInternal::store_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, oop_value);
   }
 
@@ -203,12 +204,14 @@ public:
     verify_heap_oop_decorators<atomic_xchg_mo_decorators>();
     typedef typename AccessInternal::OopOrNarrowOop<T>::type OopType;
     OopType new_oop_value = new_value;
+    // printf("206: src %p dst %lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
     return AccessInternal::atomic_xchg_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, new_oop_value);
   }
 
   // Clone an object from src to dst
   static inline void clone(oop src, oop dst, size_t size) {
     verify_decorators<IN_HEAP>();
+    // printf("212: src %p dst %p\n", (void*)src, (void*)dst);
     //Setting a field of dst is an heap event
     AccessInternal::clone<decorators>(src, dst, size);
   }
@@ -223,6 +226,7 @@ public:
   template <typename P, typename T>
   static inline void store(P* addr, T value) {
     verify_primitive_decorators<store_mo_decorators>();
+    // printf("228: src %p\n", (void*)addr);
     AccessInternal::store<decorators>(addr, value);
   }
 
@@ -250,6 +254,7 @@ public:
     verify_oop_decorators<store_mo_decorators>();
     typedef typename AccessInternal::OopOrNarrowOop<T>::type OopType;
     OopType oop_value = value;
+    // printf("256: src %p\n", (void*)addr);
     AccessInternal::store<decorators | INTERNAL_VALUE_IS_OOP>(addr, oop_value);
   }
 

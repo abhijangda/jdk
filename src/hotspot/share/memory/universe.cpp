@@ -95,7 +95,7 @@ Universe::HeapEvent Universe::heap_events[1<<Universe::LOG_MAX_EVENT_COUNTER] = 
 void Universe::add_heap_event(Universe::HeapEvent event)
 {
   Universe::heap_events[--Universe::heap_event_counter] = event;
-  if (Universe::heap_event_counter <= 0) {
+  if (Universe::heap_event_counter == 0) {
     Universe::verify_heap_graph();
   }
 }
@@ -136,6 +136,7 @@ using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, M
 typedef std::unordered_map<uint64_t, Universe::HeapEvent> HeapHashTable;
 typedef std::vector<Universe::HeapEvent, Mallocator<Universe::HeapEvent>> SortedHeapEvents;
 GrowableArrayCHeap<Universe::HeapEvent, MEMFLAGS::mtInternal> sorted_heap_events;
+
 static int checking = 0;
 
 bool has_heap_event(uint64_t dst_address) {
@@ -195,7 +196,8 @@ public:
         char buf2[1024];
         obj_->klass()->name()->as_C_string(buf, 1024);
         fd->name()->as_C_string(buf2, 1024);
-        printf("185: %s, %p, %d:0x%lx:%s\n", buf, (void*)obj_, fd->offset(), val, buf2);
+        
+        // printf("185: %s, %p, klass: %d, %d:0x%lx:%s\n", buf, (void*)obj_, obj_->klass()->id(), fd->offset(), val, buf2);
 
         // if (strstr(buf2, "name")) {
         //   Symbol* content = java_lang_String::as_symbol_or_null(obj_->obj_field(fd->offset()));
@@ -203,7 +205,7 @@ public:
         //   printf("content %s\n", buf);
         // }
         // if (num_not_found > 1)
-          // abort();
+        // abort();
       }
       valid = valid && found; // && heapHashTable[fd_address].dst == 
       if (found)
@@ -222,7 +224,7 @@ class AllObjects : public ObjectClosure {
     AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0) {}
     
     virtual void do_object(oop obj) {
-      if (obj->klass()->is_instance_klass()) {
+      if (obj->klass()->is_instance_klass() && obj->klass()->id() != InstanceMirrorKlassID && obj->klass()->id() != InstanceRefKlassID && obj->klass()->id() != InstanceClassLoaderKlassID) {
         char buf[1024];
         obj->klass()->name()->as_C_string(buf, 1024);
         
@@ -275,24 +277,24 @@ void Universe::verify_heap_graph()
   
   printf("checking %d\n", checking++);
 
+  Universe::heap_event_counter = 1 << Universe::LOG_MAX_EVENT_COUNTER;
+
   // if (heapHashTable == nullptr) {
     // heapHashTable = new(buf) HeapHashTable();
   // }
 
   //Update heap hash table
-  for (int i = Universe::heap_event_counter; i < (1 << Universe::LOG_MAX_EVENT_COUNTER); i++) {
+  for (int i = 0; i < (1 << Universe::LOG_MAX_EVENT_COUNTER); i++) {
     Universe::HeapEvent event = Universe::heap_events[i];
     // printf("event %ld 0x%lx\n", event.heap_event_type, event.address.dst);
     sorted_heap_events.append(event);
   }
 
-  // sorted_heap_events.sort(HeapEventComparer);
+  sorted_heap_events.sort(HeapEventComparer);
 
-  // AllObjects all_objects;
-  // Universe::heap()->object_iterate(&all_objects);
-  // printf("valid? %d foundPuppy? %d num_heap_events %d num_found %d num_not_found %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events.length(), all_objects.num_found, all_objects.num_not_found);
-
-  Universe::heap_event_counter = 1 << Universe::LOG_MAX_EVENT_COUNTER;
+  AllObjects all_objects;
+  Universe::heap()->object_iterate(&all_objects);
+  printf("valid? %d foundPuppy? %d num_heap_events %d num_found %d num_not_found %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events.length(), all_objects.num_found, all_objects.num_not_found);
 }
 
 // Known objects

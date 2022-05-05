@@ -107,7 +107,7 @@ class CollectedHeap : public CHeapObj<mtInternal> {
  protected:
   // Not used by all GCs
   MemRegion _reserved;
-
+  void breakpoint();
   bool _is_gc_active;
 
   // Used for filler objects (static, but initialized in ctor).

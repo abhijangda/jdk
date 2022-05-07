@@ -788,40 +788,8 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       //TODO: Can also be when src is address and dst is address
       LIR_Address* dst_to_addr = dest->as_address_ptr();
       Address dst_addr = as_Address(dst_to_addr);
-      if (is_reference_type(type)) {
+      if (is_reference_type(type) || is_reference_type(src->type())) {
         Register oop = src->as_register();
-        // char reg_name[1024] = "unknown";
-        // if (dst_addr.base() ==rax) {
-        //   strcpy(reg_name, "rax");
-        // } else if (dst_addr.base() == rbx) {
-        //   strcpy(reg_name, "rbx");
-        // } else if (dst_addr.base() ==rcx) {
-        //   strcpy(reg_name, "rcx");
-        // } else if (dst_addr.base() ==rdx) {
-        //   strcpy(reg_name, "rdx");
-        // } else if (dst_addr.base() ==r8) {
-        //   strcpy(reg_name, "r8");
-        // } else if (dst_addr.base() ==r9) {
-        //   strcpy(reg_name, "r9");
-        // }else if (dst_addr.base() ==r10) {
-        //   strcpy(reg_name, "r10");
-        // }else if (dst_addr.base() ==r11) {
-        //   strcpy(reg_name, "r11");
-        // }else if (dst_addr.base() ==r12) {
-        //   strcpy(reg_name, "r12");
-        // } else if (dst_addr.base() ==r13) {
-        //   strcpy(reg_name, "r13");
-        // } else if (dst_addr.base() == r14) {
-        //   strcpy(reg_name, "r14");
-        // } else if (dst_addr.base() == r15) {
-        //   strcpy(reg_name, "r15");
-        // } else if (dst_addr.base() == rsi) {
-        //   strcpy(reg_name, "rsi");
-        // } else if (dst_addr.base() == rdi) {
-        //   strcpy(reg_name, "rdi");
-        // } 
-
-        // printf("[%s]\n", reg_name);
         _masm->append_heap_event(dst_addr, oop);
       }
       reg2mem(src, dst_to_addr, dst_addr, type, patch_code, info, pop_fpu_stack, wide);
@@ -847,6 +815,18 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       const2stack(src, dest);
     } else if (dest->is_address()) {
       assert(patch_code == lir_patch_none, "no patching allowed here");
+      
+      if (is_reference_type(type)) {
+        LIR_Const* c = src->as_constant_ptr();
+        LIR_Address* dst_to_addr = dest->as_address_ptr();
+        Address dst_addr = as_Address(dst_to_addr);
+        Register oop = r11;
+        _masm->push(r11);
+        _masm->movoop(r11, c->as_jobject());
+        _masm->append_heap_event(dst_addr, oop);
+        _masm->pop(r11);
+      }
+
       const2mem(src, dest, type, info, wide);
     } else {
       ShouldNotReachHere();
@@ -854,44 +834,9 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
 
   } else if (src->is_address()) {
     mem2reg(src, dest, type, patch_code, info, wide);
-    // if (is_oop_store) printf("src is address dst is reg basictype %d T_ADDRESS %d\n", (int)type, (int)T_ADDRESS);
   } else {
     ShouldNotReachHere();
-  }
-
-
-  // if (type == T_ADDRESS) {
-  //   masm incrementq(heap_event_counter_addr);
-  //   __ push(r8);
-  //   __ push(r9);
-  //   __ push(r10);
-  //   __ push(r11);
-  //   __ push(r12);
-  //   __ push(r13);
-  //   __ push(r14);
-  //   __ push(r15);
-  //   __ push(rdi);
-  //   __ push(rsi);
-  //   __ push(rbx);
-  //   __ push(rdx);
-  //   __ push(rax);
-  //   __ push(rcx);
-  //   __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, print_oop_store)));
-  //   __ pop(rcx);
-  //   __ pop(rax);
-  //   __ pop(rdx);
-  //   __ pop(rbx);
-  //   __ pop(rsi);
-  //   __ pop(rdi);
-  //   __ pop(r15);
-  //   __ pop(r14);
-  //   __ pop(r13);
-  //   __ pop(r12);
-  //   __ pop(r11);
-  //   __ pop(r10);
-  //   __ pop(r9);
-  //   __ pop(r8); 
-  // }        
+  }  
 }
 
 

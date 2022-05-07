@@ -34,10 +34,9 @@
 inline oop CollectedHeap::obj_allocate(Klass* klass, size_t size, TRAPS) {
   ObjAllocator allocator(klass, size, THREAD);
   oop o = allocator.allocate();
-  if ((uint64_t)(void*)o == 0x7ff7e93b5760) {
-    printf("37: %p\n", (void*)o);
-    breakpoint();
-  }
+  // printf("37: %p\n", (void*)o);
+    // breakpoint();
+  
   return o;
 }
 

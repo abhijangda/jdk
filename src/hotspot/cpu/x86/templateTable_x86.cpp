@@ -3966,9 +3966,9 @@ void TemplateTable::_new() {
   //
   //  Go to slow path.
 
-  const bool allow_shared_alloc =
+  const bool allow_shared_alloc = 
     Universe::heap()->supports_inline_contig_alloc();
-  
+  // printf("allow_shared_alloc? %d\n", (int)allow_shared_alloc);
   const Register thread = LP64_ONLY(r15_thread) NOT_LP64(rcx);
 #ifndef _LP64
   if (UseTLAB || allow_shared_alloc) {

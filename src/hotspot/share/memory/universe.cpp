@@ -88,16 +88,24 @@
 #include "utilities/quickSort.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/fieldStreams.inline.hpp"
+#include<pthread.h>
 
-unsigned long Universe::heap_event_counter = 1 << Universe::LOG_MAX_EVENT_COUNTER;
-Universe::HeapEvent Universe::heap_events[1<<Universe::LOG_MAX_EVENT_COUNTER] = {};
+pthread_mutex_t Universe::mutex_heap_event;
+unsigned long Universe::heap_event_counter = 0;
+Universe::HeapEvent Universe::heap_events[Universe::max_heap_events] = {};
 
 void Universe::add_heap_event(Universe::HeapEvent event)
 {
-  Universe::heap_events[--Universe::heap_event_counter] = event;
+  // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
+  pthread_mutex_lock(&Universe::mutex_heap_event);
+  Universe::heap_events[Universe::heap_event_counter++] = event;
+  // if (event.heap_event_type == 0) {
+  //   printf("new object at %ld\n");
+  // }
   if (Universe::heap_event_counter == 0) {
     Universe::verify_heap_graph();
   }
+  pthread_mutex_unlock(&Universe::mutex_heap_event);
 }
 
 
@@ -137,7 +145,7 @@ typedef std::unordered_map<uint64_t, Universe::HeapEvent> HeapHashTable;
 typedef std::vector<Universe::HeapEvent, Mallocator<Universe::HeapEvent>> SortedHeapEvents;
 GrowableArrayCHeap<Universe::HeapEvent, MEMFLAGS::mtInternal> sorted_heap_events;
 
-static int checking = 0;
+int Universe::checking = 0;
 
 bool has_heap_event(uint64_t dst_address) {
   // for (int i = 0; i < sorted_heap_events.length(); i++) {
@@ -177,6 +185,12 @@ bool has_heap_event(uint64_t dst_address) {
   return false;
 }
 
+static char* get_oop_klass_name(oop obj_, char buf[]) 
+{
+  obj_->klass()->name()->as_C_string(buf, 1024);
+  return buf;
+}
+
 class AllFields : public FieldClosure {
   oop obj_;
   
@@ -194,10 +208,16 @@ public:
       if (!found) {
         char buf[1024];
         char buf2[1024];
-        obj_->klass()->name()->as_C_string(buf, 1024);
+        get_oop_klass_name(obj_, buf);
         fd->name()->as_C_string(buf2, 1024);
-        
-        // printf("185: %s, %p, klass: %d, %d:0x%lx:%s\n", buf, (void*)obj_, obj_->klass()->id(), fd->offset(), val, buf2);
+        // if (strstr(buf, "ConcurrentHashMap$Node") && strstr(buf2, "key")) 
+        {
+          // printf("185: %s, %p, klass: %d, %d:0x%lx:%s\n", buf, (void*)obj_, obj_->klass()->id(), fd->offset(), val, buf2);
+          // oop key = obj_->obj_field(fd->offset());
+          // get_oop_klass_name(key, buf);
+          // printf("212: key: %s\n", buf);
+          // abort();
+        }
 
         // if (strstr(buf2, "name")) {
         //   Symbol* content = java_lang_String::as_symbol_or_null(obj_->obj_field(fd->offset()));
@@ -227,11 +247,12 @@ class AllObjects : public ObjectClosure {
       if (obj->klass()->is_instance_klass() && obj->klass()->id() != InstanceMirrorKlassID && obj->klass()->id() != InstanceRefKlassID && obj->klass()->id() != InstanceClassLoaderKlassID) {
         char buf[1024];
         obj->klass()->name()->as_C_string(buf, 1024);
-        
-        if (true || strstr(buf, "Puppy")) {
+        foundPuppy = strstr(buf, "ConcurrentHashMap$Node");
+        if (true) {
           AllFields field_printer(obj);
           ((InstanceKlass*)obj->klass())->do_nonstatic_fields(&field_printer);
           valid = valid && field_printer.valid;
+          
           if (false && !field_printer.valid) {
             for (JavaFieldStream fs(((InstanceKlass*)obj->klass())); !fs.done(); fs.next()) {
               char buf2[1024];
@@ -275,9 +296,9 @@ int HeapEventComparer(Universe::HeapEvent* a, Universe::HeapEvent* b) {
 void Universe::verify_heap_graph()
 {
   
-  printf("checking %d\n", checking++);
+  printf("checking %d %ld\n", checking++, Universe::heap_event_counter);
 
-  Universe::heap_event_counter = 1 << Universe::LOG_MAX_EVENT_COUNTER;
+  Universe::heap_event_counter = 0;
 
   // if (heapHashTable == nullptr) {
     // heapHashTable = new(buf) HeapHashTable();
@@ -294,6 +315,7 @@ void Universe::verify_heap_graph()
 
   AllObjects all_objects;
   Universe::heap()->object_iterate(&all_objects);
+  
   printf("valid? %d foundPuppy? %d num_heap_events %d num_found %d num_not_found %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events.length(), all_objects.num_found, all_objects.num_not_found);
 }
 

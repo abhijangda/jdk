@@ -4647,6 +4647,16 @@ Register MacroAssembler::register_for_event_counter(Register event_src)
   return rcx;
 }
 
+void lock_heap_event() 
+{
+  pthread_mutex_lock(&Universe::mutex_heap_event);
+}
+
+void unlock_heap_event() 
+{
+  pthread_mutex_unlock(&Universe::mutex_heap_event);
+}
+
 void MacroAssembler::append_heap_event(Address dst, Register src)
 {
   push(r8);
@@ -4665,27 +4675,34 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   // addq(r8, dst.index());
   AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
+  pusha();
+  //TODO: anyway to remove the lock?
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, lock_heap_event)));
+  popa();
   movq(r9, as_Address(heap_event_counter_addr));
-  decrementq(r9); //TODO: Using lea will not affect flags
-  movq(as_Address(heap_event_counter_addr), r9);
-  pushf();
   imulq(r9, r9, sizeof(Universe::HeapEvent));
-  mov64(r10, (uint64_t)&Universe::heap_events);
+  mov64(r10, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
   addq(r10, r9);
   movq(Address(r10, 0), 1);
   //addq(r10, 8);
   movq(Address(r10, 8), src_reg);
   //addq(r10, 8);
   movq(Address(r10, 16), r8);
+  movq(r9, as_Address(heap_event_counter_addr));
+  incrementq(r9); //TODO: Using lea will not affect flags
+  movq(as_Address(heap_event_counter_addr), r9);
   //TODO: Use Addressingmode: movq(Address(r10, r9, Address::ScaleFactor::times_1, 16), 1);
-  popf();
+  subq(r9, Universe::max_heap_events);
   Label not_equal;
   jcc(Assembler::Condition::notZero, not_equal);
   pusha();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
   popa();
   bind(not_equal);
-  
+  pusha();
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, unlock_heap_event)));
+  popa();
+
   mov(src, src_reg);
   popf();
   // sahf();

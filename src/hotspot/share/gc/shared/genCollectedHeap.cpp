@@ -810,6 +810,7 @@ bool GenCollectedHeap::supports_inline_contig_alloc() const {
 }
 
 HeapWord* volatile* GenCollectedHeap::top_addr() const {
+  // printf("813: _young_gen->top_addr() %p\n", _young_gen->top_addr());
   return _young_gen->top_addr();
 }
 

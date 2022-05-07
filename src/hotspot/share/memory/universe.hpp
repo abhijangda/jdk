@@ -190,6 +190,7 @@ class Universe: AllStatic {
   static uintptr_t _verify_oop_bits;
 
  public:
+ static int checking;
  struct HeapEvent {
   uint64_t heap_event_type; //0 for new object and 1 for field assignment
   // union {
@@ -200,9 +201,11 @@ class Universe: AllStatic {
     // uint64_t new_obj;
   //}
   };
-  static const int LOG_MAX_EVENT_COUNTER = 20;
+  static const int LOG_MAX_EVENT_COUNTER = 22;
+  static const int max_heap_events = 1 << LOG_MAX_EVENT_COUNTER;
   static unsigned long heap_event_counter;
-  static HeapEvent heap_events[1<<LOG_MAX_EVENT_COUNTER];
+  static HeapEvent heap_events[max_heap_events];
+  static pthread_mutex_t mutex_heap_event;
 
   static void add_heap_event(HeapEvent event);
   static void verify_heap_graph();

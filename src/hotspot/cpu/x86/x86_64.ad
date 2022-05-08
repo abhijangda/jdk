@@ -6077,6 +6077,7 @@ instruct storeImmP0(memory mem, immP0 zero)
   format %{ "movq    $mem, R12\t# ptr (R12_heapbase==0)" %}
   ins_encode %{
     __ movq($mem$$Address, r12);
+    __ append_heap_event($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -6090,6 +6091,7 @@ instruct storeImmP(memory mem, immP31 src)
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
     __ movq($mem$$Address, $src$$constant);
+    __ append_heap_event($mem$$Address, rax);
   %}
   ins_pipe(ialu_mem_imm);
 %}

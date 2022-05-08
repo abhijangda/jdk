@@ -816,7 +816,7 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
     } else if (dest->is_address()) {
       assert(patch_code == lir_patch_none, "no patching allowed here");
       
-      if (is_reference_type(type)) {
+      if (is_reference_type(type) || is_reference_type(src->type())) {
         LIR_Const* c = src->as_constant_ptr();
         LIR_Address* dst_to_addr = dest->as_address_ptr();
         Address dst_addr = as_Address(dst_to_addr);

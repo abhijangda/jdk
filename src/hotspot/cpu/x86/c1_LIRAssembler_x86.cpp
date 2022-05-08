@@ -1972,6 +1972,7 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
     assert(newval != addr, "new value and addr must be in different registers");
 
     if ( op->code() == lir_cas_obj) {
+      __ append_heap_event(Address(addr, 0), newval);
 #ifdef _LP64
       if (UseCompressedOops) {
         __ encode_heap_oop(cmpval);
@@ -3901,6 +3902,10 @@ void LIR_Assembler::volatile_move_op(LIR_Opr src, LIR_Opr dest, BasicType type, 
       __ movdbl(frame_map()->address_for_slot(dest->double_stack_ix()), src->as_xmm_double_reg());
     } else if (dest->is_address()) {
       __ movdbl(as_Address(dest->as_address_ptr()), src->as_xmm_double_reg());
+      __ push(rax);
+      __ movq(rax, 0);
+      __ append_heap_event(as_Address(dest->as_address_ptr()), rax);
+      __ pop(rax);
     } else {
       ShouldNotReachHere();
     }
@@ -4051,6 +4056,7 @@ void LIR_Assembler::atomic_op(LIR_Code code, LIR_Opr src, LIR_Opr data, LIR_Opr 
       __ decode_heap_oop(obj);
     } else {
       __ xchgptr(obj, as_Address(src->as_address_ptr()));
+      printf("4059\n");
     }
 #else
     __ xchgl(obj, as_Address(src->as_address_ptr()));

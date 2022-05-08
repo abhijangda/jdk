@@ -159,6 +159,7 @@ public:
 
   template <typename T>
   static inline void store_at(oop base, ptrdiff_t offset, T value) {
+    // printf("206: dst 0x%lx\n", ((uint64_t)(void*)base) + offset);
     verify_primitive_decorators<store_mo_decorators>();
     AccessInternal::store_at<decorators>(base, offset, value);
   }
@@ -196,6 +197,7 @@ public:
     typedef typename AccessInternal::OopOrNarrowOop<T>::type OopType;
     OopType new_oop_value = new_value;
     OopType compare_oop_value = compare_value;
+    // printf("206: src %p dst 0x%lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
     return AccessInternal::atomic_cmpxchg_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, compare_oop_value, new_oop_value);
   }
 
@@ -204,7 +206,7 @@ public:
     verify_heap_oop_decorators<atomic_xchg_mo_decorators>();
     typedef typename AccessInternal::OopOrNarrowOop<T>::type OopType;
     OopType new_oop_value = new_value;
-    // printf("206: src %p dst %lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
+    // printf("206: src %p dst 0x%lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
     return AccessInternal::atomic_xchg_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, new_oop_value);
   }
 
@@ -264,6 +266,7 @@ public:
     typedef typename AccessInternal::OopOrNarrowOop<T>::type OopType;
     OopType new_oop_value = new_value;
     OopType compare_oop_value = compare_value;
+    // printf("256: src %p\n", (void*)addr);
     return AccessInternal::atomic_cmpxchg<decorators | INTERNAL_VALUE_IS_OOP>(addr, compare_oop_value, new_oop_value);
   }
 
@@ -272,6 +275,7 @@ public:
     verify_oop_decorators<atomic_xchg_mo_decorators>();
     typedef typename AccessInternal::OopOrNarrowOop<T>::type OopType;
     OopType new_oop_value = new_value;
+    // printf("206: src %p dst %p\n", (void*)new_oop_value, ((void*)addr));
     return AccessInternal::atomic_xchg<decorators | INTERNAL_VALUE_IS_OOP>(addr, new_oop_value);
   }
 };

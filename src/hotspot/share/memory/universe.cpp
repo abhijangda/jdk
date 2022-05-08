@@ -102,7 +102,7 @@ void Universe::add_heap_event(Universe::HeapEvent event)
   // if (event.heap_event_type == 0) {
   //   printf("new object at %ld\n");
   // }
-  if (Universe::heap_event_counter == 0) {
+  if (Universe::heap_event_counter == Universe::max_heap_events) {
     Universe::verify_heap_graph();
   }
   pthread_mutex_unlock(&Universe::mutex_heap_event);
@@ -144,10 +144,11 @@ using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, M
 typedef std::unordered_map<uint64_t, Universe::HeapEvent> HeapHashTable;
 typedef std::vector<Universe::HeapEvent, Mallocator<Universe::HeapEvent>> SortedHeapEvents;
 GrowableArrayCHeap<Universe::HeapEvent, MEMFLAGS::mtInternal> sorted_heap_events;
+GrowableArrayCHeap<Universe::HeapEvent, MEMFLAGS::mtInternal> sorted_new_heap_events;
 
 int Universe::checking = 0;
 
-bool has_heap_event(uint64_t dst_address) {
+bool has_heap_event(uint64_t dst_address, int start = 0, int end = -1) {
   // for (int i = 0; i < sorted_heap_events.length(); i++) {
   //   // printf("141: 0x%lx\n", sorted_heap_events.at(i).address.dst);
   //   if (sorted_heap_events.at(i).address.dst == dst_address) {
@@ -162,8 +163,8 @@ bool has_heap_event(uint64_t dst_address) {
   // }
 
   // return false;
-  int l = 0;
-  int r = sorted_heap_events.length() - 1;
+  int l = start;
+  int r = (end == -1) ? sorted_heap_events.length() - 1 : end;
   while (l <= r) {
       int m = l + (r - l) / 2;
       // printf("m %d l %d r %d _len %d\n", m, l, r, sorted_heap_events.length());
@@ -212,11 +213,16 @@ public:
         fd->name()->as_C_string(buf2, 1024);
         // if (strstr(buf, "ConcurrentHashMap$Node") && strstr(buf2, "key")) 
         {
-          // printf("185: %s, %p, klass: %d, %d:0x%lx:%s\n", buf, (void*)obj_, obj_->klass()->id(), fd->offset(), val, buf2);
-          // oop key = obj_->obj_field(fd->offset());
-          // get_oop_klass_name(key, buf);
-          // printf("212: key: %s\n", buf);
-          // abort();
+          printf("185: %s, %p, klass: %d, %d:0x%lx:%s\n", buf, (void*)obj_, obj_->klass()->id(), fd->offset(), val, buf2);
+          if (fd->has_initial_value()) {
+            Symbol* content = java_lang_String::as_symbol_or_null(fd->string_initial_value(NULL));
+            content->as_C_string(buf, 1024);
+            printf("init val %s\n", buf);
+          }
+          oop key = obj_->obj_field(fd->offset());
+          get_oop_klass_name(key, buf);
+          printf("212: key: %s\n", buf);
+          abort();
         }
 
         // if (strstr(buf2, "name")) {
@@ -295,20 +301,30 @@ int HeapEventComparer(Universe::HeapEvent* a, Universe::HeapEvent* b) {
 
 void Universe::verify_heap_graph()
 {
-  
   printf("checking %d %ld\n", checking++, Universe::heap_event_counter);
 
   Universe::heap_event_counter = 0;
 
-  // if (heapHashTable == nullptr) {
-    // heapHashTable = new(buf) HeapHashTable();
-  // }
-
   //Update heap hash table
   for (int i = 0; i < (1 << Universe::LOG_MAX_EVENT_COUNTER); i++) {
     Universe::HeapEvent event = Universe::heap_events[i];
+    sorted_new_heap_events.append(event);
+  }
+
+  sorted_new_heap_events.sort(HeapEventComparer);
+
+  int orig_len = sorted_heap_events.length() - 1;
+
+  //Update heap hash table
+  for (int event_iter = 0; event_iter < (1 << Universe::LOG_MAX_EVENT_COUNTER);) {
+    Universe::HeapEvent event = Universe::heap_events[event_iter];
     // printf("event %ld 0x%lx\n", event.heap_event_type, event.address.dst);
-    sorted_heap_events.append(event);
+    if (!has_heap_event(event.address.dst, 0, orig_len)) {
+      sorted_heap_events.append(event);
+    }
+    for (int j = ++event_iter;
+         j < Universe::max_heap_events && Universe::heap_events[j].address.dst == event.address.dst; 
+         event_iter++, j++); 
   }
 
   sorted_heap_events.sort(HeapEventComparer);

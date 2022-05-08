@@ -568,7 +568,7 @@ JVM_ENTRY(jobject, JVM_CallStackWalk(JNIEnv *env, jobject stackStream, jlong mod
   // be null.
   objArrayOop fa = objArrayOop(JNIHandles::resolve_non_null(frames));
   objArrayHandle frames_array_h(THREAD, fa);
-
+  printf("571\n");
   int limit = start_index + frame_count;
   if (frames_array_h->length() < limit) {
     THROW_MSG_(vmSymbols::java_lang_IllegalArgumentException(), "not enough space in buffers", NULL);
@@ -588,7 +588,7 @@ JVM_ENTRY(jint, JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong mode, 
   // be null.
   objArrayOop fa = objArrayOop(JNIHandles::resolve_non_null(frames));
   objArrayHandle frames_array_h(THREAD, fa);
-
+  printf("591\n");
   int limit = start_index+frame_count;
   if (frames_array_h->length() < limit) {
     THROW_MSG_0(vmSymbols::java_lang_IllegalArgumentException(), "not enough space in buffers");
@@ -687,6 +687,8 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
   } else {
     new_obj_oop = Universe::heap()->obj_allocate(klass, size, CHECK_NULL);
   }
+
+  // printf("new_obj_oop %p\n", (void*)new_obj_oop);
   
   CloneAllFields clone_fields(new_obj_oop);
 

@@ -202,18 +202,23 @@ public:
   virtual void do_field(fieldDescriptor* fd) {
     if (fd->field_type() == T_OBJECT && fd->field_type() != T_ARRAY) { // if (is_reference_type(fd->field_type())) {
       uint64_t fd_address = ((uint64_t)(void*)obj_) + fd->offset();
-      uint64_t val = *((uint64_t*)fd_address);
+      oop val = obj_->obj_field(fd->offset());
       if (val == 0) return;
       // printf("obj_ %p fd_address 0x%lx\n", (void*)obj_, fd_address);
       bool found = has_heap_event(fd_address);
+      char buf[2048] = {0};
+      char buf2[2048] = {0};
+      get_oop_klass_name(obj_, buf);
+      fd->name()->as_C_string(buf2, 2048);
+      
+      if (strstr(buf, "MethodWriter")) {
+        // printf("%p field: %s\n", (void*)obj_, buf2);
+      }
       if (!found) {
-        char buf[1024];
-        char buf2[1024];
-        get_oop_klass_name(obj_, buf);
-        fd->name()->as_C_string(buf2, 1024);
         // if (strstr(buf, "ConcurrentHashMap$Node") && strstr(buf2, "key")) 
-        {
-          printf("185: %s, %p, klass: %d, %d:0x%lx:%s\n", buf, (void*)obj_, obj_->klass()->id(), fd->offset(), val, buf2);
+        if(true) {
+          printf("185: %s, %p, klass: %d, %d:%p:%s\n", buf, (void*)obj_, obj_->klass()->id(), fd->offset(), (void*)val, buf2);
+          printf("is_synthetic() %d is_transient %d\n", fd->is_synthetic(), fd->is_transient());
           if (fd->has_initial_value()) {
             Symbol* content = java_lang_String::as_symbol_or_null(fd->string_initial_value(NULL));
             content->as_C_string(buf, 1024);
@@ -222,7 +227,7 @@ public:
           oop key = obj_->obj_field(fd->offset());
           get_oop_klass_name(key, buf);
           printf("212: key: %s\n", buf);
-          abort();
+          // abort();
         }
 
         // if (strstr(buf2, "name")) {
@@ -316,23 +321,25 @@ void Universe::verify_heap_graph()
   int orig_len = sorted_heap_events.length() - 1;
 
   //Update heap hash table
-  for (int event_iter = 0; event_iter < (1 << Universe::LOG_MAX_EVENT_COUNTER);) {
-    Universe::HeapEvent event = Universe::heap_events[event_iter];
-    // printf("event %ld 0x%lx\n", event.heap_event_type, event.address.dst);
-    if (!has_heap_event(event.address.dst, 0, orig_len)) {
-      sorted_heap_events.append(event);
+  for (int event_iter = 0; event_iter < (1 << Universe::LOG_MAX_EVENT_COUNTER);event_iter++) {
+    while (event_iter < Universe::max_heap_events - 1 && sorted_new_heap_events.at(event_iter).address.dst == sorted_new_heap_events.at(event_iter+1).address.dst) {
+      event_iter++;
     }
-    for (int j = ++event_iter;
-         j < Universe::max_heap_events && Universe::heap_events[j].address.dst == event.address.dst; 
-         event_iter++, j++); 
+
+    Universe::HeapEvent event = sorted_new_heap_events.at(event_iter);
+    if (!has_heap_event(event.address.dst, 0, orig_len))
+      sorted_heap_events.append(event);
   }
+  
 
   sorted_heap_events.sort(HeapEventComparer);
-
+  sorted_new_heap_events.clear();
   AllObjects all_objects;
   Universe::heap()->object_iterate(&all_objects);
   
   printf("valid? %d foundPuppy? %d num_heap_events %d num_found %d num_not_found %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events.length(), all_objects.num_found, all_objects.num_not_found);
+
+  if (!all_objects.valid) abort();
 }
 
 // Known objects

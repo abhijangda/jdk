@@ -4667,9 +4667,10 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   push(r12);
   // lahf();
   pushf();
-  Register src_reg = (src == r11) ? r12 : r11;
-  mov(src_reg, src);
+  push(src);
   leaq(r8, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
+  Register src_reg = r11;
+  pop(src_reg);
 
   // movq(r8, dst.base());
   // addq(r8, dst.index());

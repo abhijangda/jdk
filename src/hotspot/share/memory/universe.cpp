@@ -203,27 +203,30 @@ public:
     if (fd->field_type() == T_OBJECT && fd->field_type() != T_ARRAY) { // if (is_reference_type(fd->field_type())) {
       uint64_t fd_address = ((uint64_t)(void*)obj_) + fd->offset();
       oop val = obj_->obj_field(fd->offset());
-      if (val == 0) return;
-      // printf("obj_ %p fd_address 0x%lx\n", (void*)obj_, fd_address);
+      if (val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe) return;
+      
       bool found = has_heap_event(fd_address);
       char buf[2048] = {0};
       char buf2[2048] = {0};
       get_oop_klass_name(obj_, buf);
-      fd->name()->as_C_string(buf2, 2048);
-      
+
       if (strstr(buf, "MethodWriter")) {
         // printf("%p field: %s\n", (void*)obj_, buf2);
       }
       if (!found) {
+        printf("185: %s, %p, klass: %d, %d:%p\n", buf, (void*)obj_, obj_->klass()->id(), fd->offset(), (void*)val);
+
+        fd->name()->as_C_string(buf2, 2048);
+      
         // if (strstr(buf, "ConcurrentHashMap$Node") && strstr(buf2, "key")) 
         if(true) {
           printf("185: %s, %p, klass: %d, %d:%p:%s\n", buf, (void*)obj_, obj_->klass()->id(), fd->offset(), (void*)val, buf2);
-          printf("is_synthetic() %d is_transient %d\n", fd->is_synthetic(), fd->is_transient());
-          if (fd->has_initial_value()) {
-            Symbol* content = java_lang_String::as_symbol_or_null(fd->string_initial_value(NULL));
-            content->as_C_string(buf, 1024);
-            printf("init val %s\n", buf);
-          }
+          // printf("is_synthetic() %d is_transient %d\n", fd->is_synthetic(), fd->is_transient());
+          // if (fd->has_initial_value()) {
+          //   Symbol* content = java_lang_String::as_symbol_or_null(fd->string_initial_value(NULL));
+          //   content->as_C_string(buf, 1024);
+          //   printf("init val %s\n", buf);
+          // }
           oop key = obj_->obj_field(fd->offset());
           get_oop_klass_name(key, buf);
           printf("212: key: %s\n", buf);
@@ -331,7 +334,7 @@ void Universe::verify_heap_graph()
       sorted_heap_events.append(event);
   }
   
-
+  printf("total events %d\n", sorted_heap_events.length());
   sorted_heap_events.sort(HeapEventComparer);
   sorted_new_heap_events.clear();
   AllObjects all_objects;
@@ -339,7 +342,7 @@ void Universe::verify_heap_graph()
   
   printf("valid? %d foundPuppy? %d num_heap_events %d num_found %d num_not_found %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events.length(), all_objects.num_found, all_objects.num_not_found);
 
-  if (!all_objects.valid) abort();
+  // if (!all_objects.valid) abort();
 }
 
 // Known objects

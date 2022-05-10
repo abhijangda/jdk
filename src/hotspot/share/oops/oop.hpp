@@ -63,6 +63,8 @@ class oopDesc {
   // make use of the C++ copy/assign incorrect.
   NONCOPYABLE(oopDesc);
 
+  ssize_t oop_size;
+
  public:
   // Must be trivial; see verifying static assert after the class.
   oopDesc() = default;
@@ -103,7 +105,7 @@ class oopDesc {
 
   // Returns the actual oop size of the object
   inline size_t size();
-
+  
   // Sometimes (for complicated concurrency-related reasons), it is useful
   // to be able to figure out the size of an object knowing its klass.
   inline size_t size_given_klass(Klass* klass);

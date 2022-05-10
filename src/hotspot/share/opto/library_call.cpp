@@ -2448,7 +2448,6 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
     access_store_at(heap_base_oop, adr, adr_type, val, value_type, type, decorators);
   }
 
-  printf("2451\n");
   return true;
 }
 

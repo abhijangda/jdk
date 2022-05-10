@@ -148,6 +148,10 @@ size_t oopDesc::size()  {
 }
 
 size_t oopDesc::size_given_klass(Klass* klass)  {
+  if (oop_size > 0) return oop_size;
+  if ((uint64_t)klass == 0xbaadbabe || (uint64_t)klass == 0xbaadbabebaadbabe || klass == NULL) {
+    return header_size();
+  }
   int lh = klass->layout_helper();
   size_t s;
 
@@ -200,6 +204,7 @@ size_t oopDesc::size_given_klass(Klass* klass)  {
 
   assert(s > 0, "Oop size must be greater than zero, not " SIZE_FORMAT, s);
   assert(is_object_aligned(s), "Oop size is not properly aligned: " SIZE_FORMAT, s);
+  oop_size = s;
   return s;
 }
 

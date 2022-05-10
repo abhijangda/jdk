@@ -4659,6 +4659,23 @@ void unlock_heap_event()
 
 void MacroAssembler::append_heap_event(Address dst, Register src)
 {
+  push(rax);
+  push(rbx);
+  push(rcx);
+  push(rdx);
+  push(r8);
+  push(r9);
+  push(r10);
+  push(r11);
+  push(r12);
+  push(r13);
+  push(r14);
+  push(r15);
+  push(rsp);
+  push(rbp);
+  push(rsi);
+  push(rdi);
+  pushf();
   push(r8);
   push(rax);
   push(r9);
@@ -4672,8 +4689,6 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   Register src_reg = r11;
   pop(src_reg);
 
-  // movq(r8, dst.base());
-  // addq(r8, dst.index());
   AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
   pusha();
@@ -4704,7 +4719,6 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, unlock_heap_event)));
   popa();
 
-  mov(src, src_reg);
   popf();
   // sahf();
   pop(r12);
@@ -4713,6 +4727,110 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   pop(r9);
   pop(rax);
   pop(r8);
+  popf();
+  pop(rdi);
+  pop(rsi);
+  pop(rbp);
+  pop(rsp);
+  pop(r15);
+  pop(r14);
+  pop(r13);
+  pop(r12);
+  pop(r11);
+  pop(r10);
+  pop(r9);
+  pop(r8);
+  pop(rdx);
+  pop(rcx);
+  pop(rbx);
+  pop(rax);
+}
+
+
+void MacroAssembler::append_heap_event(Address dst, int32_t src)
+{
+  push(rax);
+  push(rbx);
+  push(rcx);
+  push(rdx);
+  push(r8);
+  push(r9);
+  push(r10);
+  push(r11);
+  push(r12);
+  push(r13);
+  push(r14);
+  push(r15);
+  push(rsp);
+  push(rbp);
+  push(rsi);
+  push(rdi);
+  pushf();
+  push(r8);
+  push(rax);
+  push(r9);
+  push(r10);
+  push(r11);
+  push(r12);
+  // lahf();
+  pushf();
+  leaq(r8, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
+
+  AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
+  //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
+  pusha();
+  //TODO: anyway to remove the lock?
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, lock_heap_event)));
+  popa();
+  movq(r9, as_Address(heap_event_counter_addr));
+  imulq(r9, r9, sizeof(Universe::HeapEvent));
+  mov64(r10, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
+  addq(r10, r9);
+  movq(Address(r10, 0), 1);
+  //addq(r10, 8);
+  movq(Address(r10, 8), src);
+  //addq(r10, 8);
+  movq(Address(r10, 16), r8);
+  movq(r9, as_Address(heap_event_counter_addr));
+  incrementq(r9); //TODO: Using lea will not affect flags
+  movq(as_Address(heap_event_counter_addr), r9);
+  //TODO: Use Addressingmode: movq(Address(r10, r9, Address::ScaleFactor::times_1, 16), 1);
+  subq(r9, Universe::max_heap_events);
+  Label not_equal;
+  jcc(Assembler::Condition::notZero, not_equal);
+  pusha();
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+  popa();
+  bind(not_equal);
+  pusha();
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, unlock_heap_event)));
+  popa();
+
+  popf();
+  // sahf();
+  pop(r12);
+  pop(r11);
+  pop(r10);
+  pop(r9);
+  pop(rax);
+  pop(r8);
+  popf();
+  pop(rdi);
+  pop(rsi);
+  pop(rbp);
+  pop(rsp);
+  pop(r15);
+  pop(r14);
+  pop(r13);
+  pop(r12);
+  pop(r11);
+  pop(r10);
+  pop(r9);
+  pop(r8);
+  pop(rdx);
+  pop(rcx);
+  pop(rbx);
+  pop(rax);
 }
 
 void MacroAssembler::store_heap_oop(Address dst, Register src, Register tmp1,

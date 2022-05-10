@@ -358,6 +358,7 @@ class MacroAssembler: public Assembler {
   // stored using routines that take a jobject.
   void store_heap_oop_null(Address dst);
   void append_heap_event(Address dst, Register src);
+  void append_heap_event(Address dst, int32_t src);
   Register register_for_event_counter(Register event_src);
 
 #ifdef _LP64

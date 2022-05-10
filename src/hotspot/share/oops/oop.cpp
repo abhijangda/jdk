@@ -201,13 +201,13 @@ address oopDesc::address_field_acquire(int offset) const              { return A
 void oopDesc::address_field_put(int offset, address value)            { 
   char buf[1024];
   as_oop()->klass()->name()->as_C_string(buf, 1024);
-  // printf("204: %s, %p, %d\n", buf, (void*)as_oop(), offset);
   Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   *field_addr<address>(offset) = value; }
 void oopDesc::release_address_field_put(int offset, address value)    { Atomic::release_store(field_addr<address>(offset), value); }
 
 Metadata* oopDesc::metadata_field(int offset) const                   { return *field_addr<Metadata*>(offset); }
-void oopDesc::metadata_field_put(int offset, Metadata* value)         { *field_addr<Metadata*>(offset) = value; }
+void oopDesc::metadata_field_put(int offset, Metadata* value)         { 
+  *field_addr<Metadata*>(offset) = value; }
 
 Metadata* oopDesc::metadata_field_acquire(int offset) const           { return Atomic::load_acquire(field_addr<Metadata*>(offset)); }
 void oopDesc::release_metadata_field_put(int offset, Metadata* value) { Atomic::release_store(field_addr<Metadata*>(offset), value); }

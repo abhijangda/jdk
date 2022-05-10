@@ -6060,10 +6060,12 @@ instruct storeP(memory mem, any_RegP src)
   match(Set mem (StoreP mem src));
 
   ins_cost(125); // XXX
-  format %{ "movq    $mem, $src\t# ptr" %}
+  format %{ "movl    $mem, $src\t# ptr" %}
   ins_encode %{
-    __ movq($mem$$Address, $src$$Register);
     __ append_heap_event($mem$$Address, $src$$Register);
+    //printf("src register: %s\n", $src$$Register->name());
+    //printf("address: %s, %s\n", $mem$$Address.base()->name(), $mem$$Address.index()->name());
+    __ movq($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -6077,7 +6079,7 @@ instruct storeImmP0(memory mem, immP0 zero)
   format %{ "movq    $mem, R12\t# ptr (R12_heapbase==0)" %}
   ins_encode %{
     __ movq($mem$$Address, r12);
-    __ append_heap_event($mem$$Address, r12);
+    //__ append_heap_event($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -6090,8 +6092,9 @@ instruct storeImmP(memory mem, immP31 src)
   ins_cost(150); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
+    __ append_heap_event($mem$$Address, $src$$constant);
+    //printf("6154: %p\n", (void*)$src$$constant);
     __ movq($mem$$Address, $src$$constant);
-    __ append_heap_event($mem$$Address, rax);
   %}
   ins_pipe(ialu_mem_imm);
 %}
@@ -6104,8 +6107,8 @@ instruct storeN(memory mem, rRegN src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# compressed ptr" %}
   ins_encode %{
-    __ movl($mem$$Address, $src$$Register);
     __ append_heap_event($mem$$Address, $src$$Register);
+    __ movl($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -6117,8 +6120,8 @@ instruct storeNKlass(memory mem, rRegN src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# compressed klass ptr" %}
   ins_encode %{
-    __ movl($mem$$Address, $src$$Register);
     __ append_heap_event($mem$$Address, $src$$Register);
+    __ movl($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -6131,8 +6134,9 @@ instruct storeImmN0(memory mem, immN0 zero)
   ins_cost(125); // XXX
   format %{ "movl    $mem, R12\t# compressed ptr (R12_heapbase==0)" %}
   ins_encode %{
-    __ movl($mem$$Address, r12);
     __ append_heap_event($mem$$Address, r12);
+    //printf("6138: %p\n", (void*)$src$$constant);
+    __ movl($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -6146,11 +6150,12 @@ instruct storeImmN(memory mem, immN src)
   ins_encode %{
     address con = (address)$src$$constant;
     if (con == NULL) {
+      __ append_heap_event($mem$$Address, (int32_t)0);
       __ movl($mem$$Address, (int32_t)0);
-      __ append_heap_event($mem$$Address, rax);
     } else {
+      printf("6154: %p\n", (void*)$src$$constant);
+      //__ append_heap_event($mem$$Address, (jobject)$src$$constant);
       __ set_narrow_oop($mem$$Address, (jobject)$src$$constant);
-      __ append_heap_event($mem$$Address, rax);
     }
   %}
   ins_pipe(ialu_mem_imm);
@@ -6163,6 +6168,7 @@ instruct storeImmNKlass(memory mem, immNKlass src)
   ins_cost(150); // XXX
   format %{ "movl    $mem, $src\t# compressed klass ptr" %}
   ins_encode %{
+    printf("6171: %p\n", (void*)$src$$constant);
     __ set_narrow_klass($mem$$Address, (Klass*)$src$$constant);
   %}
   ins_pipe(ialu_mem_imm);
@@ -7777,7 +7783,7 @@ instruct compareAndSwapP(rRegI res,
             "sete    $res\n\t"
             "movzbl  $res, $res" %}
   ins_encode %{
-    __ append_heap_event($mem_ptr$$Address, $newval$$Register);
+    //__ append_heap_event($mem_ptr$$Address, $newval$$Register);
     __ lock();
     __ cmpxchgq($newval$$Register, $mem_ptr$$Address);
     __ sete($res$$Register);
@@ -7888,7 +7894,7 @@ instruct compareAndSwapN(rRegI res,
             "sete    $res\n\t"
             "movzbl  $res, $res" %}
   ins_encode %{
-    __ append_heap_event($mem_ptr$$Address, $newval$$Register);
+    //__ append_heap_event($mem_ptr$$Address, $newval$$Register);
     __ lock();
     __ cmpxchgl($newval$$Register, $mem_ptr$$Address);
     __ sete($res$$Register);
@@ -7976,7 +7982,7 @@ instruct compareAndExchangeN(
   format %{ "cmpxchgl $mem_ptr,$newval\t# "
             "If rax == $mem_ptr then store $newval into $mem_ptr\n\t" %}
   ins_encode %{
-    __ append_heap_event($mem_ptr$$Address, $newval$$Register);
+    //__ append_heap_event($mem_ptr$$Address, $newval$$Register);
     __ lock();
     __ cmpxchgl($newval$$Register, $mem_ptr$$Address);
   %}
@@ -7995,7 +8001,7 @@ instruct compareAndExchangeP(
   format %{ "cmpxchgq $mem_ptr,$newval\t# "
             "If rax == $mem_ptr then store $newval into $mem_ptr\n\t" %}
   ins_encode %{
-    __ append_heap_event($mem_ptr$$Address, $newval$$Register);
+    //__ append_heap_event($mem_ptr$$Address, $newval$$Register);
     __ lock();
     __ cmpxchgq($newval$$Register, $mem_ptr$$Address);
   %}
@@ -8135,7 +8141,7 @@ instruct xchgP( memory mem, rRegP newval) %{
   predicate(n->as_LoadStore()->barrier_data() == 0);
   format %{ "XCHGQ  $newval,[$mem]" %}
   ins_encode %{
-    __ append_heap_event($mem$$Address, $newval$$Register);
+    //__ append_heap_event($mem$$Address, $newval$$Register);
     __ xchgq($newval$$Register, $mem$$Address);
   %}
   ins_pipe( pipe_cmpxchg );
@@ -8145,7 +8151,7 @@ instruct xchgN( memory mem, rRegN newval) %{
   match(Set newval (GetAndSetN mem newval));
   format %{ "XCHGL  $newval,$mem]" %}
   ins_encode %{
-    __ append_heap_event($mem$$Address, $newval$$Register);
+    //__ append_heap_event($mem$$Address, $newval$$Register);
     __ xchgl($newval$$Register, $mem$$Address);
   %}
   ins_pipe( pipe_cmpxchg );

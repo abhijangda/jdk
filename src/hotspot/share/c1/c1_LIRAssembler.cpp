@@ -820,11 +820,7 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
         LIR_Const* c = src->as_constant_ptr();
         LIR_Address* dst_to_addr = dest->as_address_ptr();
         Address dst_addr = as_Address(dst_to_addr);
-        Register oop = r11;
-        _masm->push(r11);
-        _masm->movoop(r11, c->as_jobject());
-        _masm->append_heap_event(dst_addr, oop);
-        _masm->pop(r11);
+        _masm->append_heap_event(dst_addr, (uint64_t)c->as_jobject());
       }
 
       const2mem(src, dest, type, info, wide);

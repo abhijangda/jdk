@@ -4691,10 +4691,10 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
 
   AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
-  pusha();
+  pushaq();
   //TODO: anyway to remove the lock?
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, lock_heap_event)));
-  popa();
+  popaq();
   movq(r9, as_Address(heap_event_counter_addr));
   imulq(r9, r9, sizeof(Universe::HeapEvent));
   mov64(r10, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
@@ -4711,13 +4711,13 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   subq(r9, Universe::max_heap_events);
   Label not_equal;
   jcc(Assembler::Condition::notZero, not_equal);
-  pusha();
+  pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-  popa();
+  popaq();
   bind(not_equal);
-  pusha();
+  pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, unlock_heap_event)));
-  popa();
+  popaq();
 
   popf();
   // sahf();
@@ -4778,10 +4778,10 @@ void MacroAssembler::append_heap_event(Address dst, int32_t src)
 
   AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
-  pusha();
+  pushaq();
   //TODO: anyway to remove the lock?
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, lock_heap_event)));
-  popa();
+  popaq();
   movq(r9, as_Address(heap_event_counter_addr));
   imulq(r9, r9, sizeof(Universe::HeapEvent));
   mov64(r10, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
@@ -4798,13 +4798,13 @@ void MacroAssembler::append_heap_event(Address dst, int32_t src)
   subq(r9, Universe::max_heap_events);
   Label not_equal;
   jcc(Assembler::Condition::notZero, not_equal);
-  pusha();
+  pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-  popa();
+  popaq();
   bind(not_equal);
-  pusha();
+  pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, unlock_heap_event)));
-  popa();
+  popaq();
 
   popf();
   // sahf();

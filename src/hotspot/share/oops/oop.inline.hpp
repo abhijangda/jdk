@@ -238,22 +238,6 @@ public:
 };
 
 inline void oopDesc::obj_field_put(int offset, oop value)           {
-  char buf[1024];
-  oop obj = as_oop();
-  as_oop()->klass()->name()->as_C_string(buf, 1024);
-  if (as_oop()->klass()->is_instance_klass() && strstr(buf, "/Class")) {
-    // FindField field_finder(offset);
-    // ((InstanceKlass*)as_oop()->klass())->do_nonstatic_fields(&field_finder);
-    // fieldDescriptor* fd = field_finder.fd_;
-    // int fd_offset;
-    // char buf2[1024];
-    // if (fd) {
-    //   fd->name()->as_C_string(buf2, 1024);
-    //   fd_offset = fd->offset();
-    // }
-
-    // printf("224: %s, %p, %d => %p\n", buf, (void*)as_oop(), offset, (void*)value);
-  }
   Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   HeapAccess<>::oop_store_at(as_oop(), offset, value); 
 }

@@ -6078,8 +6078,8 @@ instruct storeImmP0(memory mem, immP0 zero)
   ins_cost(125); // XXX
   format %{ "movq    $mem, R12\t# ptr (R12_heapbase==0)" %}
   ins_encode %{
+    __ append_heap_event($mem$$Address, r12);
     __ movq($mem$$Address, r12);
-    //__ append_heap_event($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
 %}
@@ -6154,7 +6154,7 @@ instruct storeImmN(memory mem, immN src)
       __ movl($mem$$Address, (int32_t)0);
     } else {
       printf("6154: %p\n", (void*)$src$$constant);
-      //__ append_heap_event($mem$$Address, (jobject)$src$$constant);
+      __ append_heap_event($mem$$Address, (int32_t)0);
       __ set_narrow_oop($mem$$Address, (jobject)$src$$constant);
     }
   %}
@@ -6168,7 +6168,7 @@ instruct storeImmNKlass(memory mem, immNKlass src)
   ins_cost(150); // XXX
   format %{ "movl    $mem, $src\t# compressed klass ptr" %}
   ins_encode %{
-    printf("6171: %p\n", (void*)$src$$constant);
+    __ append_heap_event($mem$$Address, (uint64_t)$src$$constant);
     __ set_narrow_klass($mem$$Address, (Klass*)$src$$constant);
   %}
   ins_pipe(ialu_mem_imm);

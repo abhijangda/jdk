@@ -4340,7 +4340,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
         result_mem ->set_req(_array_path, reset_memory());
       }
     }
-
+    printf("4343\n");
     // We only go to the instance fast case code if we pass a number of guards.
     // The paths which do not pass are accumulated in the slow_region.
     RegionNode* slow_region = new RegionNode(1);

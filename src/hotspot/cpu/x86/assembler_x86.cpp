@@ -12637,6 +12637,43 @@ void Assembler::pusha() { // 64bit
   emit_copy(code_section(), pusha_code, pusha_len);
 }
 
+void Assembler::pushaq() {
+  push(rax);
+  push(rbx);
+  push(rcx);
+  push(rdx);
+  push(r8);
+  push(r9);
+  push(r10);
+  push(r11);
+  push(r12);
+  push(r13);
+  push(r14);
+  push(r15);
+  push(rsp);
+  push(rbp);
+  push(rsi);
+  push(rdi);
+}
+void Assembler::popaq() {
+  pop(rdi);
+  pop(rsi);
+  pop(rbp);
+  pop(rsp);
+  pop(r15);
+  pop(r14);
+  pop(r13);
+  pop(r12);
+  pop(r11);
+  pop(r10);
+  pop(r9);
+  pop(r8);
+  pop(rdx);
+  pop(rcx);
+  pop(rbx);
+  pop(rax);
+}
+
 // Does not actually store the value of rsp on the stack.
 // The slot for rsp just contains an arbitrary value.
 void Assembler::pusha_uncached() { // 64bit

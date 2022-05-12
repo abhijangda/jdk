@@ -916,10 +916,12 @@ private:
 
   void pusha_uncached();
   void popa_uncached();
+  void pushaq();
+  void popaq();
 #endif
   void vzeroupper_uncached();
   void decq(Register dst);
-
+  
   void pusha();
   void popa();
 

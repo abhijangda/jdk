@@ -176,21 +176,21 @@ void* oopDesc::load_oop_raw(oop obj, int offset) {
 oop oopDesc::obj_field_acquire(int offset) const                      { return HeapAccess<MO_ACQUIRE>::oop_load_at(as_oop(), offset); }
 
 void oopDesc::obj_field_put_raw(int offset, oop value)                { 
-  char buf[1024];
-  as_oop()->klass()->name()->as_C_string(buf, 1024);
+  // char buf[1024];
+  // as_oop()->klass()->name()->as_C_string(buf, 1024);
   // printf("181: %s, %p, %d\n", buf, (void*)as_oop(), offset);
   Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   RawAccess<>::oop_store_at(as_oop(), offset, value); 
   }
 void oopDesc::release_obj_field_put(int offset, oop value)            { 
-  char buf[1024];
-  as_oop()->klass()->name()->as_C_string(buf, 1024);
+  // char buf[1024];
+  // as_oop()->klass()->name()->as_C_string(buf, 1024);
   // printf("188: %s, %p, %d\n", buf, (void*)as_oop(), offset);
   Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   HeapAccess<MO_RELEASE>::oop_store_at(as_oop(), offset, value); }
 void oopDesc::obj_field_put_volatile(int offset, oop value)           { 
-  char buf[1024];
-  as_oop()->klass()->name()->as_C_string(buf, 1024);
+  // char buf[1024];
+  // as_oop()->klass()->name()->as_C_string(buf, 1024);
   // printf("194: %s, %p, %d\n", buf, (void*)as_oop(), offset);
   Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   HeapAccess<MO_SEQ_CST>::oop_store_at(as_oop(), offset, value); }
@@ -199,8 +199,8 @@ address oopDesc::address_field(int offset) const                      { return *
 address oopDesc::address_field_acquire(int offset) const              { return Atomic::load_acquire(field_addr<address>(offset)); }
 
 void oopDesc::address_field_put(int offset, address value)            { 
-  char buf[1024];
-  as_oop()->klass()->name()->as_C_string(buf, 1024);
+  // char buf[1024];
+  // as_oop()->klass()->name()->as_C_string(buf, 1024);
   Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   *field_addr<address>(offset) = value; }
 void oopDesc::release_address_field_put(int offset, address value)    { Atomic::release_store(field_addr<address>(offset), value); }

@@ -295,6 +295,7 @@ void ObjArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d,
            objArrayOop(s)->obj_at_addr<narrowOop>(src_pos), "sanity");
     assert(arrayOopDesc::obj_offset_to_raw<narrowOop>(d, dst_offset, NULL) ==
            objArrayOop(d)->obj_at_addr<narrowOop>(dst_pos), "sanity");
+    printf("298: s %p d %p \n", (void*)s, (void*)d);
     do_copy(s, src_offset, d, dst_offset, length, CHECK);
   } else {
     size_t src_offset = (size_t) objArrayOopDesc::obj_at_offset<oop>(src_pos);
@@ -303,11 +304,11 @@ void ObjArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d,
            objArrayOop(s)->obj_at_addr<oop>(src_pos), "sanity");
     assert(arrayOopDesc::obj_offset_to_raw<oop>(d, dst_offset, NULL) ==
            objArrayOop(d)->obj_at_addr<oop>(dst_pos), "sanity");
-    
+    // printf("307: s %p d %p \n", (void*)s, (void*)d);
     if(s->klass()->id() == ObjArrayKlassID) {//TODO: Is the check required? Probably not 
-      for (int i = 0; i < s->length(); i++) {
-        oop elem = ((objArrayOop)s)->obj_at(i);
-        uint64_t elem_addr = (uint64_t)(((objArrayOop)d)->base()) + i * sizeof(oop);
+      for (int i = 0; i < length; i++) {
+        oop elem = ((objArrayOop)s)->obj_at(src_pos + i);
+        uint64_t elem_addr = (uint64_t)(((objArrayOop)d)->base()) + (dst_pos + i) * sizeof(oop);
         Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
       }
     }

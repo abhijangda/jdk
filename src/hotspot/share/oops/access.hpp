@@ -31,7 +31,7 @@
 #include "oops/oopsHierarchy.hpp"
 #include "utilities/debug.hpp"
 #include "utilities/globalDefinitions.hpp"
-
+#include "memory/universe.hpp"
 
 // = GENERAL =
 // Access is an API for performing accesses with declarative semantics. Each access can have a number of "decorators".
@@ -187,7 +187,10 @@ public:
     verify_heap_oop_decorators<store_mo_decorators>();
     typedef typename AccessInternal::OopOrNarrowOop<T>::type OopType;
     OopType oop_value = value;
-    // printf("256: src %p\n", (void*)base);
+    // printf("256: src %p src+offset 0x%lx\n", (void*)base, ((uint64_t)base) + offset);
+    //TODO: This is also called by obj_put_field_at and also by unsafe PutReference?
+    //TODO: Assuming T is Oop and not a NarrowOop
+    Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)value, ((uint64_t)base) + offset});
     AccessInternal::store_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, oop_value);
   }
 

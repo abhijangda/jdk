@@ -337,15 +337,24 @@ class AllObjects : public ObjectClosure {
           // }
           // foundPuppy = true;
         } else if(klass->id() == ObjArrayKlassID) {
-          ObjArrayKlass* oaK = (ObjArrayKlass*)klass;
+          ObjArrayKlass* oak = (ObjArrayKlass*)klass;
           objArrayOop array = (objArrayOop)obj; // length
+          int num_not_found_in_klass = 0;
           for (int i = 0; i < array->length(); i++) {
             oop elem = array->obj_at(i);
             if (elem == 0 || (uint64_t)elem == 0xbaadbabebaadbabe) continue;
             uint64_t elem_addr = ((uint64_t)array->base()) + i * sizeof(oop);
             bool found = has_heap_event((uint64_t)elem_addr);
-            if (found) num_found++; else num_not_found++;
+            if (found) num_found++; else {
+              char buf2[1024];
+              printf("length %d klass %s %p\n", array->length(), oak->name()->as_C_string(buf2,1024), (void*)array);
+              printf("elem_addr 0x%lx i %d elem %p\n", elem_addr, i, elem); num_not_found++; num_not_found_in_klass++;}
             valid = valid && found;
+          }
+
+
+          if (num_not_found_in_klass > 0) {
+            ;
           }
         }
         

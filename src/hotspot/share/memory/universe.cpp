@@ -104,7 +104,6 @@ void Universe::add_heap_event(Universe::HeapEvent event)
   //   printf("new object at %ld\n");
   // }
   if (Universe::heap_event_counter == Universe::max_heap_events) {
-    printf("107\n");
     Universe::verify_heap_graph();
     
   }
@@ -275,17 +274,18 @@ class AllObjects : public ObjectClosure {
       if (((uint64_t)(void*)obj) == 0xbaadbabebaadbabe)
         return;
       Klass* klass = obj->klass_or_null();
+      //        klass->id() != InstanceMirrorKlassID && 
+          // klass->id() != InstanceRefKlassID && 
+          // klass->id() != InstanceClassLoaderKlassID &&
       if (klass && klass->is_klass() &&
           ((uint64_t)(void*)klass) != 0xbaadbabebaadbabe &&
-          klass->id() != InstanceMirrorKlassID && 
-          klass->id() != InstanceRefKlassID && 
-          klass->id() != InstanceClassLoaderKlassID &&
-          klass->id() == InstanceKlassID &&
-          klass->is_instance_klass()) {
-        char buf[1024];
-        obj->klass()->name()->as_C_string(buf, 1024);
-        InstanceKlass* ik = (InstanceKlass*)obj->klass();
-        if (true) {
+          (klass->id() == InstanceKlassID || 
+           klass->id() == ObjArrayKlassID)) {
+
+        if (klass->id() == InstanceKlassID) {
+          char buf[1024];
+          obj->klass()->name()->as_C_string(buf, 1024);
+          InstanceKlass* ik = (InstanceKlass*)obj->klass();
           AllFields field_printer(obj);
           // printf("klassID %d buf %s oop %p java_fields_count %d\n", obj->klass()->id(), buf, (void*)obj, ((InstanceKlass*)obj->klass())->java_fields_count());
 
@@ -296,7 +296,8 @@ class AllObjects : public ObjectClosure {
             Symbol* signature = ik->field_signature(f);
             char buf2[1024];
 
-            if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT) {
+            if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
+                signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
               uint64_t fd_address = ((uint64_t)(void*)obj) + ik->field_offset(f);
               oop val = obj->obj_field(ik->field_offset(f));
               if (val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe) continue;
@@ -335,7 +336,17 @@ class AllObjects : public ObjectClosure {
           //   printf("%s\n", buf);
           // }
           // foundPuppy = true;
-        } else {
+        } else if(klass->id() == ObjArrayKlassID) {
+          ObjArrayKlass* oaK = (ObjArrayKlass*)klass;
+          objArrayOop array = (objArrayOop)obj; // length
+          for (int i = 0; i < array->length(); i++) {
+            oop elem = array->obj_at(i);
+            if (elem == 0 || (uint64_t)elem == 0xbaadbabebaadbabe) continue;
+            uint64_t elem_addr = ((uint64_t)array->base()) + i * sizeof(oop);
+            bool found = has_heap_event((uint64_t)elem_addr);
+            if (found) num_found++; else num_not_found++;
+            valid = valid && found;
+          }
         }
         
         // objects.push_back(obj);

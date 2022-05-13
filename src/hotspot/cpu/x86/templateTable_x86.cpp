@@ -1159,7 +1159,7 @@ void TemplateTable::aastore() {
   __ profile_null_seen(rbx);
 
   // Store a NULL
-  __ append_heap_event(element_address, rax);
+  __ append_heap_event(element_address, 0);
   do_oop_store(_masm, element_address, noreg, IS_ARRAY);
 
   // Pop stack arguments

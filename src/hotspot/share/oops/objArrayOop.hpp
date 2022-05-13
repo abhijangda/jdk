@@ -41,7 +41,7 @@ class objArrayOopDesc : public arrayOopDesc {
   friend class CSetMarkWordClosure;
 
   template <class T> T* obj_at_addr(int index) const;
-
+public:
   template <class T>
   static ptrdiff_t obj_at_offset(int index) {
     return base_offset_in_bytes() + sizeof(T) * index;

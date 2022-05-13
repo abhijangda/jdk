@@ -48,7 +48,7 @@ inline oop objArrayOopDesc::obj_at(int index) const {
 inline void objArrayOopDesc::obj_at_put(int index, oop value) {
   assert(is_within_bounds(index), "index %d out of bounds %d", index, length());
   ptrdiff_t offset = UseCompressedOops ? obj_at_offset<narrowOop>(index) : obj_at_offset<oop>(index);
-  // Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
+  Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   HeapAccess<IS_ARRAY>::oop_store_at(as_oop(), offset, value);
 }
 

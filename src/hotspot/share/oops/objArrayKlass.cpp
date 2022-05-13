@@ -303,6 +303,14 @@ void ObjArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d,
            objArrayOop(s)->obj_at_addr<oop>(src_pos), "sanity");
     assert(arrayOopDesc::obj_offset_to_raw<oop>(d, dst_offset, NULL) ==
            objArrayOop(d)->obj_at_addr<oop>(dst_pos), "sanity");
+    
+    if(s->klass()->id() == ObjArrayKlassID) {//TODO: Is the check required? Probably not 
+      for (int i = 0; i < s->length(); i++) {
+        oop elem = ((objArrayOop)s)->obj_at(i);
+        uint64_t elem_addr = (uint64_t)(((objArrayOop)d)->base()) + i * sizeof(oop);
+        Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+      }
+    }
     do_copy(s, src_offset, d, dst_offset, length, CHECK);
   }
 }

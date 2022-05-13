@@ -294,7 +294,7 @@ JVM_ENTRY(void, JVM_ArrayCopy(JNIEnv *env, jclass ignored, jobject src, jint src
     THROW(vmSymbols::java_lang_NullPointerException());
   }
   arrayOop s = arrayOop(JNIHandles::resolve_non_null(src));
-  arrayOop d = arrayOop(JNIHandles::resolve_non_null(dst));
+  arrayOop d = arrayOop(JNIHandles::resolve_non_null(dst));    
   assert(oopDesc::is_oop(s), "JVM_ArrayCopy: src not an oop");
   assert(oopDesc::is_oop(d), "JVM_ArrayCopy: dst not an oop");
   // Do copy
@@ -695,6 +695,14 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
   //TODO: Can't I just go through all fields using oop and klass instead of using a Visitor?
   if (obj->klass()->is_instance_klass()) {
     ((InstanceKlass*)obj->klass())->do_nonstatic_fields(&clone_fields);
+  } else if (obj->klass()->id() == ObjArrayKlassID) {
+    objArrayOop array = (objArrayOop)obj();
+    objArrayOop new_array = (objArrayOop)new_obj_oop;
+    for (int i = 0; i < array->length(); i++) {
+      oop elem = array->obj_at(i);
+      uint64_t elem_addr = ((uint64_t)new_array->base()) + i * sizeof(oop);
+      Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+    }
   } //TODO: Do for all other klasses
 
   HeapAccess<>::clone(obj(), new_obj_oop, size);

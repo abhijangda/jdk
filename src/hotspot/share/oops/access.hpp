@@ -134,6 +134,46 @@ protected:
                                    size_t length) {
     verify_decorators<ARRAYCOPY_DECORATOR_MASK | IN_HEAP |
                       AS_DECORATOR_MASK | IS_ARRAY | IS_DEST_UNINITIALIZED>();
+    // //TODO: Might also be called by ObjArrayKlass:copy_array
+    if (src_obj != NULL && dst_obj != NULL) {
+      objArrayOop src_arrayoop = (objArrayOop)src_obj;
+      objArrayOop dst_arrayoop = (objArrayOop)dst_obj;
+
+      int src_pos = (src_offset_in_bytes - src_arrayoop->base_offset_in_bytes())/sizeof(oop);
+      int dst_pos = (dst_offset_in_bytes - dst_arrayoop->base_offset_in_bytes())/sizeof(oop);
+      // printf("src_obj %p dst_obj %p\n", src_obj, dst_obj);
+      for (uint64_t i = 0; i < length; i++) {
+        oop elem = src_arrayoop->obj_at(src_pos + i);
+        uint64_t elem_addr = (uint64_t)(((objArrayOop)dst_arrayoop)->base()) + (dst_pos + i) * sizeof(oop);
+        Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+      }
+    } else if (src_raw != NULL && dst_raw != NULL) {
+      // printf("src_obj %p dst_obj %p\n", src_obj, dst_obj);
+      for (uint64_t i = 0; i < length; i++) {
+        T elem = src_raw[i];
+        uint64_t elem_addr = (uint64_t)&dst_raw[i];
+        Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+      }
+    } else if (src_raw != NULL && dst_obj != NULL) {
+      objArrayOop dst_arrayoop = (objArrayOop)dst_obj;
+
+      int dst_pos = (dst_offset_in_bytes - dst_arrayoop->base_offset_in_bytes())/sizeof(oop);
+      // printf("src_obj %p dst_obj %p\n", src_obj, dst_obj);
+      for (uint64_t i = 0; i < length; i++) {
+        T elem = src_raw[i];
+        uint64_t elem_addr = (uint64_t)(((objArrayOop)dst_arrayoop)->base()) + (dst_pos + i) * sizeof(oop);
+        Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+      }
+    } else if (src_obj != NULL && dst_raw != NULL) {
+      objArrayOop src_arrayoop = (objArrayOop)src_obj;
+
+      int src_pos = (src_offset_in_bytes - src_arrayoop->base_offset_in_bytes())/sizeof(oop);
+      for (uint64_t i = 0; i < length; i++) {
+        oop elem = src_arrayoop->obj_at(src_pos + i);
+        uint64_t elem_addr = (uint64_t)&dst_raw[i];
+        Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+      }
+    } 
     return AccessInternal::arraycopy<decorators | INTERNAL_VALUE_IS_OOP>(src_obj, src_offset_in_bytes, src_raw,
                                                                          dst_obj, dst_offset_in_bytes, dst_raw,
                                                                          length);

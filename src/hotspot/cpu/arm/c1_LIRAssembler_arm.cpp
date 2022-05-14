@@ -2642,7 +2642,7 @@ void LIR_Assembler::volatile_move_op(LIR_Opr src, LIR_Opr dest, BasicType type, 
     const Register src_lo = src->as_register_lo();
     const Register src_hi = src->as_register_hi();
     assert(addr->index()->is_illegal() && addr->disp() == 0, "The address is simple already");
-
+    
     if (src_lo < src_hi) {
       null_check_offset = __ offset();
       __ stmia(addr->base()->as_register(), RegisterSet(src_lo) | RegisterSet(src_hi));

@@ -348,7 +348,13 @@ class AllObjects : public ObjectClosure {
             if (found) num_found++; else {
               char buf2[1024];
               printf("length %d klass %s %p\n", array->length(), oak->name()->as_C_string(buf2,1024), (void*)array);
-              printf("elem_addr 0x%lx i %d elem %p\n", elem_addr, i, elem); num_not_found++; num_not_found_in_klass++;}
+              printf("elem_addr 0x%lx i %d elem %p\n", elem_addr, i, elem); num_not_found++; num_not_found_in_klass++;
+              if (strstr(get_oop_klass_name(elem, buf2), "java/lang/String")) {
+                int len;
+                char* str = java_lang_String::as_utf8_string(elem, len);
+                printf("str is '%s'\n", str);
+              }
+              }
             valid = valid && found;
           }
 

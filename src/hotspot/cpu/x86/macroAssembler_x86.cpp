@@ -4657,7 +4657,23 @@ void unlock_heap_event()
   pthread_mutex_unlock(&Universe::mutex_heap_event);
 }
 
-void MacroAssembler::append_heap_event(Address dst, Register src)
+
+void MacroAssembler::gen_lock_heap_event_mutex()
+{
+  pushaq();
+  //TODO: anyway to remove the lock?
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, lock_heap_event)));
+  popaq();
+}
+
+void MacroAssembler::gen_unlock_heap_event_mutex()
+{
+  pushaq();
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, unlock_heap_event)));
+  popaq();
+}
+
+void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_flags)
 {
   push(rax);
   push(rbx);
@@ -4675,7 +4691,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   push(rbp);
   push(rsi);
   push(rdi);
-  pushf();
+  // pushf();
   push(r8);
   push(rax);
   push(r9);
@@ -4683,7 +4699,8 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   push(r11);
   push(r12);
   // lahf();
-  pushf();
+  // if (preserve_flags)
+    pushf();
   push(src);
   leaq(r8, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
   Register src_reg = r11;
@@ -4691,18 +4708,13 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
 
   AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
-  pushaq();
-  //TODO: anyway to remove the lock?
-  call(RuntimeAddress(CAST_FROM_FN_PTR(address, lock_heap_event)));
-  popaq();
+  gen_lock_heap_event_mutex();
   movq(r9, as_Address(heap_event_counter_addr));
   imulq(r9, r9, sizeof(Universe::HeapEvent));
   mov64(r10, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
   addq(r10, r9);
   movq(Address(r10, 0), 1);
-  //addq(r10, 8);
   movq(Address(r10, 8), src_reg);
-  //addq(r10, 8);
   movq(Address(r10, 16), r8);
   movq(r9, as_Address(heap_event_counter_addr));
   incrementq(r9); //TODO: Using lea will not affect flags
@@ -4711,15 +4723,15 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   subq(r9, Universe::max_heap_events);
   Label not_equal;
   jcc(Assembler::Condition::notZero, not_equal);
-  pushaq();
+  // pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-  popaq();
+  // popaq();
   bind(not_equal);
-  pushaq();
-  call(RuntimeAddress(CAST_FROM_FN_PTR(address, unlock_heap_event)));
-  popaq();
+  
+  gen_unlock_heap_event_mutex();
 
-  popf();
+  // if (preserve_flags)
+    popf();
   // sahf();
   pop(r12);
   pop(r11);
@@ -4727,7 +4739,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
   pop(r9);
   pop(rax);
   pop(r8);
-  popf();
+  // popf();
   pop(rdi);
   pop(rsi);
   pop(rbp);
@@ -4747,7 +4759,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src)
 }
 
 
-void MacroAssembler::append_heap_event(Address dst, int32_t src)
+void MacroAssembler::append_heap_event(Address dst, int32_t src, bool preserve_flags)
 {
   push(rax);
   push(rbx);
@@ -4765,7 +4777,7 @@ void MacroAssembler::append_heap_event(Address dst, int32_t src)
   push(rbp);
   push(rsi);
   push(rdi);
-  pushf();
+  // pushf();
   push(r8);
   push(rax);
   push(r9);
@@ -4773,15 +4785,13 @@ void MacroAssembler::append_heap_event(Address dst, int32_t src)
   push(r11);
   push(r12);
   // lahf();
-  pushf();
+  // if (preserve_flags)
+    pushf();
   leaq(r8, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
 
   AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
-  pushaq();
-  //TODO: anyway to remove the lock?
-  call(RuntimeAddress(CAST_FROM_FN_PTR(address, lock_heap_event)));
-  popaq();
+  gen_lock_heap_event_mutex();
   movq(r9, as_Address(heap_event_counter_addr));
   imulq(r9, r9, sizeof(Universe::HeapEvent));
   mov64(r10, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
@@ -4798,15 +4808,13 @@ void MacroAssembler::append_heap_event(Address dst, int32_t src)
   subq(r9, Universe::max_heap_events);
   Label not_equal;
   jcc(Assembler::Condition::notZero, not_equal);
-  pushaq();
+  // pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-  popaq();
+  // popaq();
   bind(not_equal);
-  pushaq();
-  call(RuntimeAddress(CAST_FROM_FN_PTR(address, unlock_heap_event)));
-  popaq();
-
-  popf();
+  gen_unlock_heap_event_mutex();
+  // if (preserve_flags)
+    popf();
   // sahf();
   pop(r12);
   pop(r11);
@@ -4814,7 +4822,7 @@ void MacroAssembler::append_heap_event(Address dst, int32_t src)
   pop(r9);
   pop(rax);
   pop(r8);
-  popf();
+  // popf();
   pop(rdi);
   pop(rsi);
   pop(rbp);

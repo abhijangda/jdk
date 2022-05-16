@@ -4661,7 +4661,6 @@ void unlock_heap_event()
 void MacroAssembler::gen_lock_heap_event_mutex()
 {
   pushaq();
-  //TODO: anyway to remove the lock?
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, lock_heap_event)));
   popaq();
 }
@@ -4675,6 +4674,9 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
 
 void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_flags)
 {
+  if (dst.base() == rsp || dst.base() == rbp)
+    return; //No need to add event if it is on the stack
+  //Template interpreter uses only a few registers. Can use other registers without push/pop?
   push(rax);
   push(rbx);
   push(rcx);
@@ -4691,18 +4693,17 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
   push(rbp);
   push(rsi);
   push(rdi);
-  // pushf();
-  push(r8);
-  push(rax);
-  push(r9);
-  push(r10);
-  push(r11);
-  push(r12);
-  // lahf();
-  // if (preserve_flags)
-    pushf();
+  if (preserve_flags) pushf(); //TODO: Use lahf/sahf
+  Register address_value = noreg;
+  // if (dst.base() != noreg && dst.base() != rsp && dst.base() != rbp) {
+  //   push(dst.base());
+  //   address_value = dst.base();
+  // } else {
+    address_value = r8;
+  // }
+  // printf("dst.base() %s noreg %s address_value %s\n", dst.base()->name(), noreg->name(), address_value->name());
   push(src);
-  leaq(r8, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
+  leaq(address_value, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
   Register src_reg = r11;
   pop(src_reg);
 
@@ -4715,7 +4716,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
   addq(r10, r9);
   movq(Address(r10, 0), 1);
   movq(Address(r10, 8), src_reg);
-  movq(Address(r10, 16), r8);
+  movq(Address(r10, 16), address_value);
   movq(r9, as_Address(heap_event_counter_addr));
   incrementq(r9); //TODO: Using lea will not affect flags
   movq(as_Address(heap_event_counter_addr), r9);
@@ -4723,23 +4724,16 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
   subq(r9, Universe::max_heap_events);
   Label not_equal;
   jcc(Assembler::Condition::notZero, not_equal);
-  // pushaq();
+  pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-  // popaq();
+  popaq();
   bind(not_equal);
   
   gen_unlock_heap_event_mutex();
-
-  // if (preserve_flags)
-    popf();
-  // sahf();
-  pop(r12);
-  pop(r11);
-  pop(r10);
-  pop(r9);
-  pop(rax);
-  pop(r8);
-  // popf();
+  // if (dst.base() != noreg && dst.base() != rsp && dst.base() != rbp) {
+  //   pop(dst.base());
+  // }
+  if (preserve_flags) popf();
   pop(rdi);
   pop(rsi);
   pop(rbp);
@@ -4761,6 +4755,9 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
 
 void MacroAssembler::append_heap_event(Address dst, int32_t src, bool preserve_flags)
 {
+  if (dst.base() == rsp || dst.base() == rbp)
+    return;
+
   push(rax);
   push(rbx);
   push(rcx);
@@ -4777,16 +4774,7 @@ void MacroAssembler::append_heap_event(Address dst, int32_t src, bool preserve_f
   push(rbp);
   push(rsi);
   push(rdi);
-  // pushf();
-  push(r8);
-  push(rax);
-  push(r9);
-  push(r10);
-  push(r11);
-  push(r12);
-  // lahf();
-  // if (preserve_flags)
-    pushf();
+  if (preserve_flags) pushf();
   leaq(r8, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
 
   AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
@@ -4813,16 +4801,7 @@ void MacroAssembler::append_heap_event(Address dst, int32_t src, bool preserve_f
   // popaq();
   bind(not_equal);
   gen_unlock_heap_event_mutex();
-  // if (preserve_flags)
-    popf();
-  // sahf();
-  pop(r12);
-  pop(r11);
-  pop(r10);
-  pop(r9);
-  pop(rax);
-  pop(r8);
-  // popf();
+  if (preserve_flags) popf();
   pop(rdi);
   pop(rsi);
   pop(rbp);

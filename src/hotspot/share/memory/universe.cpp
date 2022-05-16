@@ -395,7 +395,6 @@ void Universe::verify_heap_graph()
 
   // if (sorted_heap_events == NULL) {abort();}
   Universe::heap_event_counter = 0;
-  return;
   // printf("checking %d %ld tid %ld\n", checking++, Universe::heap_event_counter, gettid()); 
   //Update heap hash table
   // for (int i = 0; i < (1 << Universe::LOG_MAX_EVENT_COUNTER); i++) {

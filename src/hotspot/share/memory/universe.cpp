@@ -148,11 +148,11 @@ typedef std::vector<Universe::HeapEvent, Mallocator<Universe::HeapEvent>> Sorted
 Universe::HeapEvent* sorted_heap_events = NULL;
 size_t sorted_heap_events_size = 0;
 const size_t SORTED_HEAP_EVENTS_MAX_SIZE = 1L << 30;
-GrowableArrayCHeap<Universe::HeapEvent, MEMFLAGS::mtInternal> sorted_new_heap_events;
+static uint8_t* is_heap_event_in_heap = NULL;
 
 int Universe::checking = 0;
 
-bool has_heap_event(uint64_t dst_address, int start = 0, int end = -1) {
+int has_heap_event(uint64_t dst_address, int start = 0, int end = -1) {
   // for (int i = 0; i < sorted_heap_events.length(); i++) {
   //   // printf("141: 0x%lx\n", sorted_heap_events.at(i).address.dst);
   //   if (sorted_heap_events.at(i).address.dst == dst_address) {
@@ -174,7 +174,7 @@ bool has_heap_event(uint64_t dst_address, int start = 0, int end = -1) {
       // printf("m %d l %d r %d _len %d\n", m, l, r, sorted_heap_events.length());
       // Check if x is present at mid
       if (sorted_heap_events[m].address.dst == dst_address)
-          return true;
+          return m;
 
       // If x greater, ignore left half
       if (sorted_heap_events[m].address.dst < dst_address)
@@ -187,7 +187,7 @@ bool has_heap_event(uint64_t dst_address, int start = 0, int end = -1) {
 
   // if we reach here, then element was
   // not present
-  return false;
+  return -1;
 }
 
 static char* get_oop_klass_name(oop obj_, char buf[]) 
@@ -205,6 +205,7 @@ BasicType signature_to_field_type(char* signature) {
   return T_BOOLEAN; //Does not matter for this purpose yet.
 }
 
+#if 0
 class AllFields : public FieldClosure {
   oop obj_;
   
@@ -260,6 +261,7 @@ public:
     }
   }
 };
+#endif
 
 class AllObjects : public ObjectClosure {
   public:
@@ -286,33 +288,36 @@ class AllObjects : public ObjectClosure {
           char buf[1024];
           obj->klass()->name()->as_C_string(buf, 1024);
           InstanceKlass* ik = (InstanceKlass*)obj->klass();
-          AllFields field_printer(obj);
+          // AllFields field_printer(obj);
           // printf("klassID %d buf %s oop %p java_fields_count %d\n", obj->klass()->id(), buf, (void*)obj, ((InstanceKlass*)obj->klass())->java_fields_count());
 
+          do {
+            for(int f = 0; f < ik->java_fields_count(); f++) {
+              if (AccessFlags(ik->field_access_flags(f)).is_static()) continue;
+              Symbol* name = ik->field_name(f);
+              Symbol* signature = ik->field_signature(f);
+              char buf2[1024];
 
-          for(int f = 0; f < ik->java_fields_count(); f++) {
-            if (AccessFlags(ik->field_access_flags(f)).is_static()) continue;
-            Symbol* name = ik->field_name(f);
-            Symbol* signature = ik->field_signature(f);
-            char buf2[1024];
-
-            if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
-                signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
-              uint64_t fd_address = ((uint64_t)(void*)obj) + ik->field_offset(f);
-              oop val = obj->obj_field(ik->field_offset(f));
-              if (val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe) continue;
-      
-              bool found = has_heap_event(fd_address);
-              if (found) num_found++; else num_not_found++;
-              valid = valid && found;
+              if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
+                  signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
+                uint64_t fd_address = ((uint64_t)(void*)obj) + ik->field_offset(f);
+                oop val = obj->obj_field(ik->field_offset(f));
+                if (val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe) continue;
+        
+                int idx = has_heap_event(fd_address);
+                bool found = idx != -1;
+                if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else num_not_found++;
+                valid = valid && found;
+              }
+              // if (f <= 1)
+              //   printf("%s:%s\n", name->as_C_string(buf,1024), signature->as_C_string(buf2,1024));
             }
-            // if (f <= 1)
-            //   printf("%s:%s\n", name->as_C_string(buf,1024), signature->as_C_string(buf2,1024));
-          }
+            ik = ik->superklass();
+          } while (ik && ik->is_klass());
           // ik->do_nonstatic_fields(&field_printer);
           // valid = valid && field_printer.valid;
           
-          if (false && !field_printer.valid) {
+          if (false) {
             for (JavaFieldStream fs(((InstanceKlass*)obj->klass())); !fs.done(); fs.next()) {
               char buf2[1024];
               fieldDescriptor& fd = fs.field_descriptor();
@@ -344,17 +349,19 @@ class AllObjects : public ObjectClosure {
             oop elem = array->obj_at(i);
             if (elem == 0 || (uint64_t)elem == 0xbaadbabebaadbabe) continue;
             uint64_t elem_addr = ((uint64_t)array->base()) + i * sizeof(oop);
-            bool found = has_heap_event((uint64_t)elem_addr);
-            if (found) num_found++; else {
+            int idx = has_heap_event((uint64_t)elem_addr);
+            bool found = idx != -1;
+            if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else {
+              num_not_found++; 
               char buf2[1024];
               printf("length %d klass %s %p\n", array->length(), oak->name()->as_C_string(buf2,1024), (void*)array);
-              printf("elem_addr 0x%lx i %d elem %p\n", elem_addr, i, elem); num_not_found++; num_not_found_in_klass++;
+              printf("elem_addr 0x%lx i %d elem %p\n", elem_addr, i, elem); num_not_found_in_klass++;
               if (strstr(get_oop_klass_name(elem, buf2), "java/lang/String")) {
                 int len;
                 char* str = java_lang_String::as_utf8_string(elem, len);
                 printf("str is '%s'\n", str);
               }
-              }
+            }
             valid = valid && found;
           }
 
@@ -385,41 +392,34 @@ int HeapEventComparerV(const void* a, const void* b) {
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <string.h>
 #define gettid() syscall(SYS_gettid)
 
 void Universe::verify_heap_graph()
 {
   if (sorted_heap_events == NULL) {
     sorted_heap_events = (Universe::HeapEvent*)mmap ( NULL, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(HeapEvent), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
+    is_heap_event_in_heap = (uint8_t*)mmap ( NULL, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(uint8_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
   }
 
+  memset(is_heap_event_in_heap, 0, SORTED_HEAP_EVENTS_MAX_SIZE);
   // if (sorted_heap_events == NULL) {abort();}
   Universe::heap_event_counter = 0;
   // printf("checking %d %ld tid %ld\n", checking++, Universe::heap_event_counter, gettid()); 
-  //Update heap hash table
-  // for (int i = 0; i < (1 << Universe::LOG_MAX_EVENT_COUNTER); i++) {
-  //   Universe::HeapEvent event = Universe::heap_events[i];
-  //   // if (event.address.dst == 0xbaadbabebaadbabe || 
-  //   //     event.address.src == 0xbaadbabebaadbabe || 
-  //   //     event.address.dst == 0xbaadbabe || 
-  //   //     event.address.src == 0xbaadbabe)
-  //   // printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
-  // //   sorted_new_heap_events.append(event);
-  // }
-
-  // sorted_new_heap_events.sort(HeapEventComparer);
-
+  
   int orig_len = sorted_heap_events_size - 1;
 
+  qsort(Universe::heap_events, Universe::max_heap_events, sizeof(HeapEvent), HeapEventComparerV);
+  int max_prints=0;
   //Update heap hash table
   for (int event_iter = 0; event_iter < (1 << Universe::LOG_MAX_EVENT_COUNTER);event_iter++) {
-    // while (event_iter < Universe::max_heap_events - 1 && sorted_new_heap_events.at(event_iter).address.dst == sorted_new_heap_events.at(event_iter+1).address.dst) {
-    //   event_iter++;
-    // }
-    // Universe::HeapEvent event = sorted_new_heap_events.at(event_iter);
+    while (event_iter < Universe::max_heap_events - 1 && Universe::heap_events[event_iter].address.dst == Universe::heap_events[event_iter+1].address.dst) {
+      event_iter++;
+    }
 
     Universe::HeapEvent event = Universe::heap_events[event_iter];
-    if (!has_heap_event(event.address.dst, 0, orig_len)) {
+    if (has_heap_event(event.address.dst, 0, orig_len) == -1) {
+      // if((max_prints++) < 100) printf("Inserting: dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
       sorted_heap_events[sorted_heap_events_size++] = event;
     }
   }
@@ -427,13 +427,27 @@ void Universe::verify_heap_graph()
   printf("total events %ld\n", sorted_heap_events_size);
   // sorted_heap_events.sort(HeapEventComparer);
   qsort (sorted_heap_events, sorted_heap_events_size, sizeof(HeapEvent), HeapEventComparerV);
+  // max_prints = 0;
+  // for (int i = 0; i < Universe::max_heap_events && max_prints < 100; i++) {
+  //     if((max_prints++) < 100) printf("After sort: dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
+  // }
   // sorted_new_heap_events.clear();
   AllObjects all_objects;
   Universe::heap()->object_iterate(&all_objects);
   
   printf("valid? %d foundPuppy? %d num_heap_events %ld num_found %d num_not_found %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events_size, all_objects.num_found, all_objects.num_not_found);
-
-  // if (!all_objects.valid) abort();
+  max_prints = 0;
+  for (int i = 0; i < Universe::max_heap_events && max_prints < 100; i++) {
+    if (is_heap_event_in_heap[i] == 0) {
+      HeapEvent event = sorted_heap_events[i];
+      printf("at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);
+      max_prints++;
+    } else {
+      HeapEvent event = sorted_heap_events[i];
+      printf("1 at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);
+    }
+  }
+  if (!all_objects.valid) abort();
 }
 
 // Known objects

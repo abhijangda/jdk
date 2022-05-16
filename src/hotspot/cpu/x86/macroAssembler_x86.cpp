@@ -4735,7 +4735,7 @@ void MacroAssembler::append_heap_event(Address dst, int32_t src, bool preserve_f
 {
   if (dst.base() == noreg || dst.base() == rsp || dst.base() == rbp)
     return;
-
+  
   push(rax);
   push(rbx);
   push(rcx);

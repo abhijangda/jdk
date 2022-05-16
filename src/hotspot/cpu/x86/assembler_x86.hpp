@@ -298,7 +298,7 @@ class Address {
   ScaleFactor scale()            const { return _scale; }
   int         disp()             const { return _disp;  }
   bool        isxmmindex()       const { return _isxmmindex; }
-
+  void        set_index(Register idx)  {_index = idx;}
   // Convert the raw encoding form into the form expected by the constructor for
   // Address.  An index of 4 (rsp) corresponds to having no index, so convert
   // that to noreg for the Address constructor.

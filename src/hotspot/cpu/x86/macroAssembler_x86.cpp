@@ -4692,19 +4692,20 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
   push(src);
   leaq(address_value, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
   Register src_reg = r11;
-  pop(src_reg);
 
   AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
+  AddressLiteral heap_events_addr_literal((address)&Universe::heap_events, relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
   gen_lock_heap_event_mutex();
   movq(r9, as_Address(heap_event_counter_addr));
-  imulq(r9, r9, sizeof(Universe::HeapEvent));
-  mov64(r10, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
-  addq(r10, r9);
+  imulq(r10, r9, sizeof(Universe::HeapEvent));
+  mov64(src_reg, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
+  addq(r10, src_reg);
+  pop(src_reg);
   movq(Address(r10, 0), 1);
   movq(Address(r10, 8), src_reg);
   movq(Address(r10, 16), address_value);
-  movq(r9, as_Address(heap_event_counter_addr));
+  // movq(r9, as_Address(heap_event_counter_addr));
   incrementq(r9); //TODO: Using lea will not affect flags
   movq(as_Address(heap_event_counter_addr), r9);
   //TODO: Use Addressingmode: movq(Address(r10, r9, Address::ScaleFactor::times_1, 16), 1);

@@ -4674,33 +4674,20 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
 
 void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_flags)
 {
-  if (dst.base() == rsp || dst.base() == rbp)
+  if (dst.base() == noreg || dst.base() == rsp || dst.base() == rbp)
     return; //No need to add event if it is on the stack
   //Template interpreter uses only a few registers. Can use other registers without push/pop?
-  push(rax);
-  push(rbx);
-  push(rcx);
-  push(rdx);
-  push(r8);
-  push(r9);
-  push(r10);
+  push(src);
+  push(dst.base());
+  if (dst.index() != noreg)
+    push(dst.index());
+  Register address_value = r8;
+  push(address_value);
   push(r11);
-  push(r12);
-  push(r13);
-  push(r14);
-  push(r15);
-  push(rsp);
-  push(rbp);
-  push(rsi);
-  push(rdi);
+  push(r10);
+  push(r9);
   if (preserve_flags) pushf(); //TODO: Use lahf/sahf
-  Register address_value = noreg;
-  // if (dst.base() != noreg && dst.base() != rsp && dst.base() != rbp) {
-  //   push(dst.base());
-  //   address_value = dst.base();
-  // } else {
-    address_value = r8;
-  // }
+
   // printf("dst.base() %s noreg %s address_value %s\n", dst.base()->name(), noreg->name(), address_value->name());
   push(src);
   leaq(address_value, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
@@ -4730,32 +4717,22 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
   bind(not_equal);
   
   gen_unlock_heap_event_mutex();
-  // if (dst.base() != noreg && dst.base() != rsp && dst.base() != rbp) {
-  //   pop(dst.base());
-  // }
+
   if (preserve_flags) popf();
-  pop(rdi);
-  pop(rsi);
-  pop(rbp);
-  pop(rsp);
-  pop(r15);
-  pop(r14);
-  pop(r13);
-  pop(r12);
-  pop(r11);
-  pop(r10);
   pop(r9);
-  pop(r8);
-  pop(rdx);
-  pop(rcx);
-  pop(rbx);
-  pop(rax);
+  pop(r10);
+  pop(r11);
+  pop(address_value);
+  if (dst.index() != noreg)
+    pop(dst.index());
+  pop(dst.base());
+  pop(src);
 }
 
 
 void MacroAssembler::append_heap_event(Address dst, int32_t src, bool preserve_flags)
 {
-  if (dst.base() == rsp || dst.base() == rbp)
+  if (dst.base() == noreg || dst.base() == rsp || dst.base() == rbp)
     return;
 
   push(rax);

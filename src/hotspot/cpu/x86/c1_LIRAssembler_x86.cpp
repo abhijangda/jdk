@@ -753,6 +753,7 @@ void LIR_Assembler::const2mem(LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmi
           __ xorptr(rscratch1, rscratch1);
           null_check_here = code_offset();
           __ movptr(as_Address(addr), rscratch1);
+          __ append_heap_event(as_Address(addr), rscratch1);
 #else
           __ movptr(as_Address(addr), NULL_WORD);
 #endif
@@ -769,6 +770,7 @@ void LIR_Assembler::const2mem(LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmi
             null_check_here = code_offset();
             __ movl(as_Address_lo(addr), rscratch1);
           } else {
+            __ append_heap_event(as_Address(addr), rscratch1);
             null_check_here = code_offset();
             __ movptr(as_Address_lo(addr), rscratch1);
           }
@@ -3901,7 +3903,7 @@ void LIR_Assembler::volatile_move_op(LIR_Opr src, LIR_Opr dest, BasicType type, 
     } else if (dest->is_double_stack()) {
       __ movdbl(frame_map()->address_for_slot(dest->double_stack_ix()), src->as_xmm_double_reg());
     } else if (dest->is_address()) {
-      __ append_heap_event(as_Address(dest->as_address_ptr()), rax);
+      // __ append_heap_event(as_Address(dest->as_address_ptr()), rax);
       __ movdbl(as_Address(dest->as_address_ptr()), src->as_xmm_double_reg());
       __ push(rax);
       __ movq(rax, 0);

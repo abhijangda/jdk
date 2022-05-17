@@ -198,7 +198,7 @@ class Universe: AllStatic {
       uint64_t src;
       uint64_t dst;
     } address;
-    // uint64_t new_obj;
+    uint64_t id;
   //}
   };
   static const int LOG_MAX_EVENT_COUNTER = 24;

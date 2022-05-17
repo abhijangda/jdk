@@ -268,7 +268,8 @@ class AllObjects : public ObjectClosure {
     bool valid;
     bool foundPuppy;
     int num_found, num_not_found;
-    AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0) {}
+    int num_src_not_correct;
+    AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0), num_src_not_correct(0) {}
     
     virtual void do_object(oop obj) {
       // printf("obj %p\n", (void*)obj);
@@ -297,6 +298,7 @@ class AllObjects : public ObjectClosure {
               Symbol* name = ik->field_name(f);
               Symbol* signature = ik->field_signature(f);
               char buf2[1024];
+              char buf3[1024];
 
               if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
                   signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
@@ -307,6 +309,31 @@ class AllObjects : public ObjectClosure {
                 int idx = has_heap_event(fd_address);
                 bool found = idx != -1;
                 if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else num_not_found++;
+                get_oop_klass_name(obj, buf3);
+                if (sorted_heap_events[idx].address.src != (uint64_t)(void*)val) {
+                  num_src_not_correct++;
+                  // printf("0x%lx != %p\n", sorted_heap_events[idx].address.src, (void*)val);
+                  if (strstr(buf3, "ArrayList")) {
+                    printf("(%p) %s.%s:%s : 0x%lx != %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), sorted_heap_events[idx].address.src, (void*)val);
+                    if (false && strstr(buf, "elementData")) {
+                      arrayOop ao = (arrayOop)val;
+                      arrayOop srcoop = (arrayOop)(void*)sorted_heap_events[idx].address.src;
+                      printf("srclength %d vallength %d\n", srcoop->length(), ao->length());
+                    }
+                    
+                    // InstanceKlass* arrayListKlass = (InstanceKlass*)obj->klass();
+                    // for (int sf = 0; sf < arrayListKlass->java_fields_count(); sf++) {
+                    //   if (AccessFlags(arrayListKlass->field_access_flags(sf)).is_static()) {
+                    //     Symbol* name = arrayListKlass->field_name(sf);
+                    //     name->as_C_string(buf2, 1024);
+                    //     if (strstr(buf2, "EMPTY_ELEMENTDATA")) {
+                    //       // fieldDescriptor(arrayListKlass, sf) fd;
+                    //       printf("%p\n");
+                    //     }
+                    //   }
+                    // }
+                  }
+                }
                 valid = valid && found;
               }
               // if (f <= 1)
@@ -397,6 +424,7 @@ int HeapEventComparerV(const void* a, const void* b) {
 
 void Universe::verify_heap_graph()
 {
+  static int num_events_created = 0;
   if (sorted_heap_events == NULL) {
     sorted_heap_events = (Universe::HeapEvent*)mmap ( NULL, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(HeapEvent), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
     is_heap_event_in_heap = (uint8_t*)mmap ( NULL, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(uint8_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
@@ -407,20 +435,33 @@ void Universe::verify_heap_graph()
   Universe::heap_event_counter = 0;
   // printf("checking %d %ld tid %ld\n", checking++, Universe::heap_event_counter, gettid()); 
   
+  for (auto i = 0; i < Universe::max_heap_events; i++) {
+    Universe::heap_events[i].id = num_events_created++;
+  }
   int orig_len = sorted_heap_events_size - 1;
 
   qsort(Universe::heap_events, Universe::max_heap_events, sizeof(HeapEvent), HeapEventComparerV);
   int max_prints=0;
   //Update heap hash table
   for (int event_iter = 0; event_iter < (1 << Universe::LOG_MAX_EVENT_COUNTER);event_iter++) {
+    HeapEvent latest_event = Universe::heap_events[event_iter];
     while (event_iter < Universe::max_heap_events - 1 && Universe::heap_events[event_iter].address.dst == Universe::heap_events[event_iter+1].address.dst) {
+      if (latest_event.id < Universe::heap_events[event_iter].id) {
+        latest_event = Universe::heap_events[event_iter];
+      }
       event_iter++;
     }
-
-    Universe::HeapEvent event = Universe::heap_events[event_iter];
-    if (has_heap_event(event.address.dst, 0, orig_len) == -1) {
+    if (latest_event.id < Universe::heap_events[event_iter].id) {
+      latest_event = Universe::heap_events[event_iter];
+    }
+    // Universe::HeapEvent event = Universe::heap_events[event_iter];
+    int idx = has_heap_event(latest_event.address.dst, 0, orig_len);
+    if (idx == -1) {
       // if((max_prints++) < 100) printf("Inserting: dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
-      sorted_heap_events[sorted_heap_events_size++] = event;
+      sorted_heap_events[sorted_heap_events_size++] = latest_event;
+    } else {
+      if (latest_event.id > sorted_heap_events[idx].id)
+        sorted_heap_events[idx] = latest_event;
     }
   }
   
@@ -435,19 +476,21 @@ void Universe::verify_heap_graph()
   AllObjects all_objects;
   Universe::heap()->object_iterate(&all_objects);
   
-  printf("valid? %d foundPuppy? %d num_heap_events %ld num_found %d num_not_found %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events_size, all_objects.num_found, all_objects.num_not_found);
-  max_prints = 0;
-  for (int i = 0; i < Universe::max_heap_events && max_prints < 100; i++) {
-    if (is_heap_event_in_heap[i] == 0) {
-      HeapEvent event = sorted_heap_events[i];
-      printf("at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);
-      max_prints++;
-    } else {
-      HeapEvent event = sorted_heap_events[i];
-      printf("1 at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);
-    }
-  }
+  printf("valid? %d foundPuppy? %d num_heap_events %ld num_found %d num_not_found %d num_src_not_correct %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_heap_events_size, all_objects.num_found, all_objects.num_not_found, all_objects.num_src_not_correct);
+
   if (!all_objects.valid) abort();
+  // if (all_objects.num_src_not_correct > 0) abort();
+  // max_prints = 0;
+  // for (int i = 0; i < Universe::max_heap_events && max_prints < 100; i++) {
+  //   if (is_heap_event_in_heap[i] == 0) {
+  //     HeapEvent event = sorted_heap_events[i];
+  //     printf("at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);
+  //     max_prints++;
+  //   } else {
+  //     HeapEvent event = sorted_heap_events[i];
+  //     printf("1 at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);
+  //   }
+  // }
 }
 
 // Known objects

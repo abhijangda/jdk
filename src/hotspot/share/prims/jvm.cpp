@@ -636,14 +636,15 @@ JVM_ENTRY(void, JVM_MonitorNotifyAll(JNIEnv* env, jobject handle))
 JVM_END
 
 class CloneAllFields : public FieldClosure { 
+  oop src_;
   oop dst_;
 
 public:
-  CloneAllFields(oop dst) : dst_(dst) {}
+  CloneAllFields(oop src, oop dst) : src_(src), dst_(dst) {}
   virtual void do_field(fieldDescriptor* fd) {
     if (is_reference_type(fd->field_type())) {
       uint64_t field_address = ((uint64_t)(void*)dst_) + fd->offset();
-      oop field_val = dst_->obj_field(fd->offset());
+      oop field_val = src_->obj_field(fd->offset());
       // if ((uint64_t)(void*)field_val == 0) return;
       // printf("field_address 0x%lx dst_ %p\n", field_address, (void*)dst_);
       Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)field_val, field_address});
@@ -690,10 +691,10 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
 
   // printf("new_obj_oop %p\n", (void*)new_obj_oop);
   
-  CloneAllFields clone_fields(new_obj_oop);
 
   //TODO: Can't I just go through all fields using oop and klass instead of using a Visitor?
   if (obj->klass()->is_instance_klass()) {
+    CloneAllFields clone_fields(obj(), new_obj_oop);
     ((InstanceKlass*)obj->klass())->do_nonstatic_fields(&clone_fields);
   } else if (obj->klass()->id() == ObjArrayKlassID) {
     objArrayOop array = (objArrayOop)obj();

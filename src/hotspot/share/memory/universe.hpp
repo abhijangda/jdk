@@ -190,7 +190,7 @@ class Universe: AllStatic {
   static uintptr_t _verify_oop_bits;
 
  public:
- static int checking;
+ static uint32_t checking;
  struct HeapEvent {
   uint64_t heap_event_type; //0 for new object and 1 for field assignment
   // union {

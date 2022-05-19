@@ -6060,7 +6060,7 @@ instruct storeP(memory mem, any_RegP src)
   match(Set mem (StoreP mem src));
 
   ins_cost(125); // XXX
-  format %{ "movl    $mem, $src\t# ptr" %}
+  format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
     //__ append_heap_event($mem$$Address, $src$$Register);
     //printf("src register: %s\n", $src$$Register->name());

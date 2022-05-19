@@ -167,7 +167,7 @@ class LIR_Assembler: public CompilationResourceObj {
   void const2mem  (LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmitInfo* info, bool wide);
   void reg2stack  (LIR_Opr src, LIR_Opr dest, BasicType type, bool pop_fpu_stack);
   void reg2reg    (LIR_Opr src, LIR_Opr dest);
-  void reg2mem    (LIR_Opr src, LIR_Address* dest_to_addr, Address dest, BasicType type,
+  void reg2mem    (LIR_Opr src, LIR_Opr dest, BasicType type,
                    LIR_PatchCode patch_code, CodeEmitInfo* info,
                    bool pop_fpu_stack, bool wide);
   void stack2reg  (LIR_Opr src, LIR_Opr dest, BasicType type);

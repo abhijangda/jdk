@@ -2876,34 +2876,34 @@ Method* ClassFileParser::parse_method(const ClassFileStream* const cfs,
     _has_vanilla_constructor = true;
   }
 
-  bool is_vanilla_constructor = false;
-  is_vanilla_constructor = m->name() == vmSymbols::object_initializer_name();
-  is_vanilla_constructor = is_vanilla_constructor && (m->signature() == vmSymbols::void_method_signature());
-  if (is_vanilla_constructor)
-    is_vanilla_constructor = m->is_vanilla_constructor();
-  if (false && m->code_size() > 1 && !is_vanilla_constructor) {
-    char str[1024];
-    m->name()->as_C_string(str, 1024);
-    Bytecodes::Code* new_code = (Bytecodes::Code*)malloc(MAX_CODE_SIZE);
-    uint new_code_size = 0;
-    printf("Method: %s  code size %d \n", str, m->code_size());
-    for (int bci = 0; bci < m->code_size(); bci++) {
-      Bytecodes::Code code = m->code_or_bp_at(bci);
-      // printf("%s\n", Bytecodes::name(code));
-      // if (code == Bytecodes::Code::_nop) {
-      //   new_code[new_code_size] = Bytecodes::Code::_nop;
-      //   new_code_size++;
-      // }
+  // bool is_vanilla_constructor = false;
+  // is_vanilla_constructor = m->name() == vmSymbols::object_initializer_name();
+  // is_vanilla_constructor = is_vanilla_constructor && (m->signature() == vmSymbols::void_method_signature());
+  // if (is_vanilla_constructor)
+  //   is_vanilla_constructor = m->is_vanilla_constructor();
+  // if (false && m->code_size() > 1 && !is_vanilla_constructor) {
+  //   char str[1024];
+  //   m->name()->as_C_string(str, 1024);
+  //   Bytecodes::Code* new_code = (Bytecodes::Code*)malloc(MAX_CODE_SIZE);
+  //   uint new_code_size = 0;
+  //   printf("Method: %s  code size %d \n", str, m->code_size());
+  //   for (int bci = 0; bci < m->code_size(); bci++) {
+  //     Bytecodes::Code code = m->code_or_bp_at(bci);
+  //     // printf("%s\n", Bytecodes::name(code));
+  //     // if (code == Bytecodes::Code::_nop) {
+  //     //   new_code[new_code_size] = Bytecodes::Code::_nop;
+  //     //   new_code_size++;
+  //     // }
 
-      new_code[new_code_size] = code;
-      new_code_size++;
-    }
-    new_code[new_code_size] = Bytecodes::Code::_nop;
-    new_code_size++;
-    printf("Method: %s, code size %d new code size %d\n", str, m->code_size(), new_code_size);
-    m->set_code_size(new_code_size);
-    m->set_code((address)&new_code[0]);
-  }
+  //     new_code[new_code_size] = code;
+  //     new_code_size++;
+  //   }
+  //   new_code[new_code_size] = Bytecodes::Code::_nop;
+  //   new_code_size++;
+  //   printf("Method: %s, code size %d new code size %d\n", str, m->code_size(), new_code_size);
+  //   m->set_code_size(new_code_size);
+  //   m->set_code((address)&new_code[0]);
+  // }
   NOT_PRODUCT(m->verify());
   return m;
 }

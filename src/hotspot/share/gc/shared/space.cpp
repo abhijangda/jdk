@@ -547,7 +547,7 @@ void CompactibleSpace::compact() {
 
       // size and destination
       size_t size = cast_to_oop(cur_obj)->size();
-      printf("550: cur_obj %p forwardee %p\n", (void*)cast_to_oop(cur_obj), (void*)cast_to_oop(cur_obj)->forwardee());
+      // printf("550: cur_obj %p forwardee %p\n", (void*)cast_to_oop(cur_obj), (void*)cast_to_oop(cur_obj)->forwardee());
       HeapWord* compaction_top = cast_from_oop<HeapWord*>(cast_to_oop(cur_obj)->forwardee());
 
       // prefetch beyond compaction_top

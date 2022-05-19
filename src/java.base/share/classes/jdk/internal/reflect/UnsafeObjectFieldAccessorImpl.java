@@ -81,7 +81,6 @@ class UnsafeObjectFieldAccessorImpl extends UnsafeFieldAccessorImpl {
                 throwSetIllegalArgumentException(value);
             }
         }
-        System.out.println("UnsafeObjectFieldAccessorImpl.java " + fieldOffset);
         unsafe.putReference(obj, fieldOffset, value);
     }
 

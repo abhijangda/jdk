@@ -148,10 +148,10 @@ size_t oopDesc::size()  {
 }
 
 size_t oopDesc::size_given_klass(Klass* klass)  {
-  if (oop_size > 0) return oop_size;
-  if ((uint64_t)klass == 0xbaadbabe || (uint64_t)klass == 0xbaadbabebaadbabe || klass == NULL) {
-    return header_size();
-  }
+  // if (oop_size > 0) return oop_size;
+  // if ((uint64_t)klass == 0xbaadbabe || (uint64_t)klass == 0xbaadbabebaadbabe || klass == NULL) {
+  //   return header_size();
+  // }
   int lh = klass->layout_helper();
   size_t s;
 

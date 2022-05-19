@@ -88,7 +88,8 @@
 #include "utilities/quickSort.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/fieldStreams.inline.hpp"
-#include<pthread.h>
+#include <pthread.h>
+#include "oops/instanceMirrorKlass.inline.hpp"
 
 pthread_mutex_t Universe::mutex_heap_event;
 unsigned long Universe::heap_event_counter = 0;
@@ -152,9 +153,67 @@ Universe::HeapEvent* sorted_heap_events = NULL;
 size_t sorted_heap_events_size = 0;
 const size_t SORTED_HEAP_EVENTS_MAX_SIZE = 1L << 30;
 static uint8_t* is_heap_event_in_heap = NULL;
+static InstanceKlass** iks_static_fields_checked = NULL;
+static size_t iks_static_fields_checked_size = 0;
 uint32_t Universe::checking = 0;
+uint64_t first_klass_addr = 1L << 63;
+uint64_t last_klass_addr = 0;
+uint64_t first_oop_addr = 1L << 63;
+uint64_t last_oop_addr = 0;
 
-int has_heap_event(uint64_t dst_address, int start = 0, int end = -1) {
+template<typename T>
+static T min(T a1, T a2) { return (a1 < a2) ? a1 : a2;}
+template<typename T>
+static T max(T a1, T a2) { return (a1 > a2) ? a1 : a2;}
+
+
+int has_heap_event(uint64_t dst_address, int start = 0, int end = -1, int* floor_idx = NULL) {
+  // for (int i = 0; i < sorted_heap_events.length(); i++) {
+  //   // printf("141: 0x%lx\n", sorted_heap_events.at(i).address.dst);
+  //   if (sorted_heap_events.at(i).address.dst == dst_address) {
+  //     return true;
+  //   }
+  // }
+
+  // if (checking > 15)
+  // for (int i = 0; i < sorted_heap_events.length(); i++) {
+  //   // printf("141: 0x%lx\n", sorted_heap_events.at(i).address.dst);
+  //   printf("0x%lx\n", sorted_heap_events.at(i).address.dst);
+  // }
+
+  // return false;
+  if (floor_idx) {
+    if (dst_address <= sorted_heap_events[sorted_heap_events_size - 1].address.dst)
+      *floor_idx = 0;
+  }
+  int l = start;
+  int r = (end == -1) ? sorted_heap_events_size - 1 : end;
+  int m;
+  while (l <= r) {
+      int m = l + (r - l) / 2;
+      // printf("m %d l %d r %d _len %d\n", m, l, r, sorted_heap_events.length());
+      // Check if x is present at mid
+      if (sorted_heap_events[m].address.dst == dst_address)
+          return m;
+
+      // If x greater, ignore left half
+      if (sorted_heap_events[m].address.dst < dst_address) {
+        if (floor_idx)
+          *floor_idx = m;
+        l = m + 1;
+      }
+      // If x is smaller, ignore right half
+      else
+          r = m - 1;
+  }
+
+  // if we reach here, then element was
+  // not present
+  return -1;
+}
+
+template<typename T>
+int binary_search(T* arr, int start, int end, T x) {
   // for (int i = 0; i < sorted_heap_events.length(); i++) {
   //   // printf("141: 0x%lx\n", sorted_heap_events.at(i).address.dst);
   //   if (sorted_heap_events.at(i).address.dst == dst_address) {
@@ -170,18 +229,19 @@ int has_heap_event(uint64_t dst_address, int start = 0, int end = -1) {
 
   // return false;
   int l = start;
-  int r = (end == -1) ? sorted_heap_events_size - 1 : end;
+  int r = end;
+  int m;
   while (l <= r) {
       int m = l + (r - l) / 2;
       // printf("m %d l %d r %d _len %d\n", m, l, r, sorted_heap_events.length());
       // Check if x is present at mid
-      if (sorted_heap_events[m].address.dst == dst_address)
+      if (arr[m] == x)
           return m;
 
       // If x greater, ignore left half
-      if (sorted_heap_events[m].address.dst < dst_address)
-          l = m + 1;
-
+      if (arr[m] < x) {
+        l = m + 1;
+      }
       // If x is smaller, ignore right half
       else
           r = m - 1;
@@ -194,7 +254,8 @@ int has_heap_event(uint64_t dst_address, int start = 0, int end = -1) {
 
 static char* get_oop_klass_name(oop obj_, char buf[]) 
 {
-  obj_->klass()->name()->as_C_string(buf, 1024);
+  if (obj_->klass()->is_klass())
+    obj_->klass()->name()->as_C_string(buf, 1024);
   return buf;
 }
 
@@ -205,6 +266,14 @@ BasicType signature_to_field_type(char* signature) {
     return T_ARRAY;
   
   return T_BOOLEAN; //Does not matter for this purpose yet.
+}
+
+int InstanceKlassPointerComparer(const void* a, const void* b) {
+  InstanceKlass* bik = *(InstanceKlass**)b;
+  InstanceKlass* aik = *(InstanceKlass**)a;
+  if (aik < bik) return -1;
+  if (aik == bik) return 0;
+  return 1;
 }
 
 #if 0
@@ -271,7 +340,8 @@ class AllObjects : public ObjectClosure {
     bool foundPuppy;
     int num_found, num_not_found;
     int num_src_not_correct;
-    AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0), num_src_not_correct(0) {}
+    int num_statics_checked;
+    AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0), num_src_not_correct(0), num_statics_checked(0) {}
     
     virtual void do_object(oop obj) {
       // printf("obj %p\n", (void*)obj);
@@ -283,11 +353,24 @@ class AllObjects : public ObjectClosure {
           // klass->id() != InstanceRefKlassID && 
           // klass->id() != InstanceClassLoaderKlassID &&
       if (klass && klass->is_klass() &&
-          ((uint64_t)(void*)klass) != 0xbaadbabebaadbabe &&
-          (klass->id() == InstanceKlassID || 
-           klass->id() == ObjArrayKlassID)) {
+          ((uint64_t)(void*)klass) != 0xbaadbabebaadbabe) {
+          first_klass_addr = min(first_klass_addr, (uint64_t)klass);
+          last_klass_addr = max(last_klass_addr, (uint64_t)klass);
+          //
+          first_oop_addr = min(first_oop_addr, (uint64_t)(void*)obj);
+          last_oop_addr = max(last_oop_addr, (uint64_t)(void*)obj); 
+          // printf("klass %p\n", klass);
+          // int floor_idx = -1; 
+          // int idx = has_heap_event((uint64_t)klass, 0, sorted_heap_events_size - 1, &floor_idx);
+          // if (floor_idx != -1) {
+          //   printf("is_klass? floor_idx [%d]: 0x%lx; klass %p size %d \n", floor_idx, sorted_heap_events[floor_idx].address.dst, klass, klass->size());
+          // }
+          // (klass->id() == InstanceKlassID || 
+          //  klass->id() == InstanceMirrorKlassID ||
+          //  klass->id() == InstanceRefKlassID ||
+          //  klass->id() == ObjArrayKlassID)) {
 
-        if (klass->id() == InstanceKlassID) {
+        if (klass->is_instance_klass()) {
           char buf[1024];
           obj->klass()->name()->as_C_string(buf, 1024);
           InstanceKlass* ik = (InstanceKlass*)obj->klass();
@@ -295,17 +378,27 @@ class AllObjects : public ObjectClosure {
           // printf("klassID %d buf %s oop %p java_fields_count %d\n", obj->klass()->id(), buf, (void*)obj, ((InstanceKlass*)obj->klass())->java_fields_count());
 
           do {
+            char buf2[1024];
+            char buf3[1024];
+
             for(int f = 0; f < ik->java_fields_count(); f++) {
               if (AccessFlags(ik->field_access_flags(f)).is_static()) continue;
               Symbol* name = ik->field_name(f);
               Symbol* signature = ik->field_signature(f);
-              char buf2[1024];
-              char buf3[1024];
 
               if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
                   signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
-                uint64_t fd_address = ((uint64_t)(void*)obj) + ik->field_offset(f);
-                oop val = obj->obj_field(ik->field_offset(f));
+                uint64_t fd_address;
+                oop val;
+                if (AccessFlags(ik->field_access_flags(f)).is_static()) {
+                  oop ikoop = ik->static_field_base_raw();
+                  InstanceMirrorKlass* imk = (InstanceMirrorKlass*)ikoop->klass();
+                  val = ikoop->obj_field(imk->field_offset(f));
+                  fd_address = ((uint64_t)(void*)ikoop) + imk->field_offset(f);
+                } else {
+                  fd_address = ((uint64_t)(void*)obj) + ik->field_offset(f);
+                  val = obj->obj_field(ik->field_offset(f));
+                }
                 if (val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe) continue;
         
                 int idx = has_heap_event(fd_address);
@@ -313,8 +406,8 @@ class AllObjects : public ObjectClosure {
                 get_oop_klass_name(obj, buf3);
                 if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else 
                 {
-                  if (strstr(buf3, "MemberName"))
-                    printf("Not found: (%p) %s.%s:%s : %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), (void*)val);
+                  // if (strstr(buf3, "MemberName"))
+                  printf("Not found: (%p) %s.%s:%s : %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), (void*)val);
                   num_not_found++;
                 }
                 if (found && sorted_heap_events[idx].address.src != (uint64_t)(void*)val &&
@@ -352,10 +445,72 @@ class AllObjects : public ObjectClosure {
               // if (f <= 1)
               //   printf("%s:%s\n", name->as_C_string(buf,1024), signature->as_C_string(buf2,1024));
             }
+            
+            oop ikoop = ik->static_field_base_raw();
+            InstanceMirrorKlass* imk = (InstanceMirrorKlass*)ikoop->klass();
+            // printf("imk->fields %d static_fields %d %d ik->fields %d %s\n", imk->java_fields_count(), java_lang_Class::static_oop_field_count(obj), java_lang_Class::static_oop_field_count(ikoop), ik->java_fields_count(), buf);
+
+            if (java_lang_Class::static_oop_field_count(ikoop) > 0) {
+              bool has_imk_checked = binary_search(iks_static_fields_checked, 0, iks_static_fields_checked_size - 1, ik) != -1;
+              if (!has_imk_checked) {
+                int static_field_to_field_index[ik->java_fields_count()];
+                int static_field_number = 0;
+                for(int f = 0; f < ik->java_fields_count(); f++) {
+                  if (AccessFlags(ik->field_access_flags(f)).is_static()) {
+                    Symbol* name = ik->field_name(f);
+                    Symbol* signature = ik->field_signature(f);
+                    char buf2[1024];
+
+                    if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
+                        signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
+                      static_field_to_field_index[static_field_number++] = f;
+                    }
+                  }
+                }
+
+                HeapWord* p = imk->start_of_static_fields(ikoop);
+                HeapWord* end = p + java_lang_Class::static_oop_field_count(ikoop);
+                // printf("%p -> %p %d %s\n", p, end, java_lang_Class::static_oop_field_count(obj), ik->name()->as_C_string(buf2, 1024));
+                if (static_field_number != java_lang_Class::static_oop_field_count(ikoop)) {
+                  printf("not eq static_field_number %d %d\n", static_field_number, java_lang_Class::static_oop_field_count(ikoop));
+                }
+                for (int i = 0; p < end; p++, i++) {
+                  int f = static_field_to_field_index[i];
+                  if (!AccessFlags(ik->field_access_flags(f)).is_static()) printf("not static %d\n", i);
+                  if (!AccessFlags(ik->field_access_flags(f)).is_final()) continue;
+                  // if (AccessFlags(imk->field_access_flags(i)).is_final()) continue;
+
+                  num_statics_checked++;
+                  // oop f = oop(p);
+                  // uint64_t val = (uint64_t);
+                  uint64_t fd_address = (uint64_t)p;
+                  int idx = has_heap_event(fd_address);
+                  bool found = idx != -1;
+                  if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else 
+                  {
+                    Symbol* name = ik->field_name(f);
+                    Symbol* signature = ik->field_signature(f);
+                    char buf2[1024];
+                    char buf[1024];
+                    char buf3[1024];
+
+                    if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
+                        signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
+                      printf("%s.%s : %s\n", ik->name()->as_C_string(buf3, 1024), name->as_C_string(buf, 1024), buf2);
+                    }
+                    num_not_found++;
+                  }
+                }
+
+                iks_static_fields_checked[iks_static_fields_checked_size++] = ik;
+              }
+            }
             ik = ik->superklass();
           } while (ik && ik->is_klass());
           // ik->do_nonstatic_fields(&field_printer);
           // valid = valid && field_printer.valid;
+
+          qsort(iks_static_fields_checked, iks_static_fields_checked_size, sizeof(InstanceKlass*), InstanceKlassPointerComparer);
           
           if (false) {
             for (JavaFieldStream fs(((InstanceKlass*)obj->klass())); !fs.done(); fs.next()) {
@@ -387,7 +542,7 @@ class AllObjects : public ObjectClosure {
           int num_not_found_in_klass = 0;
           for (int i = 0; i < array->length(); i++) {
             oop elem = array->obj_at(i);
-            if (elem == 0 || (uint64_t)elem == 0xbaadbabebaadbabe) continue;
+            if (elem == 0 || (uint64_t)(void*)elem == 0xbaadbabebaadbabe) continue;
             uint64_t elem_addr = ((uint64_t)array->base()) + i * sizeof(oop);
             int idx = has_heap_event((uint64_t)elem_addr);
             bool found = idx != -1;
@@ -412,11 +567,40 @@ class AllObjects : public ObjectClosure {
             }
             valid = valid && found;
           }
-
-
-          if (num_not_found_in_klass > 0) {
-            ;
-          }
+        } else if (klass->id() == TypeArrayKlassID) {
+          TypeArrayKlass* tak = (TypeArrayKlass*)klass;
+          typeArrayOop array = (typeArrayOop)obj; // length
+          if (is_reference_type(((TypeArrayKlass*)klass)->element_type()))
+            printf("t %d\n", tak->element_type());
+          // for (int i = 0; i < array->length(); i++) {
+          //   oop elem = array->obj_at(i);
+          //   if (elem == 0 || (uint64_t)elem == 0xbaadbabebaadbabe) continue;
+          //   uint64_t elem_addr = ((uint64_t)array->base()) + i * sizeof(oop);
+          //   int idx = has_heap_event((uint64_t)elem_addr);
+          //   bool found = idx != -1;
+          //   if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else {
+              
+          //     num_not_found++;
+          //     // printf("length %d klass %s %p\n", array->length(), oak->name()->as_C_string(buf2,1024), (void*)array);
+          //     // printf("elem_addr 0x%lx i %d elem %p\n", elem_addr, i, elem); num_not_found_in_klass++;
+          //     // if (strstr(get_oop_klass_name(elem, buf2), "java/lang/String")) {
+          //     //   int len;
+          //     //   char* str = java_lang_String::as_utf8_string(elem, len);
+          //     //   printf("str is '%s'\n", str);
+          //     // }
+          //   }
+          //   if (found && sorted_heap_events[idx].address.src != (uint64_t)(void*)elem &&
+          //       sorted_heap_events[idx].id != Universe::checking*Universe::max_heap_events - 1) {
+          //         //Ignore the last event because elem value might not have been updated to address.src
+          //     char buf2[1024];
+          //     num_src_not_correct++;
+          //     printf("(%p) %s[%d] : 0x%lx != %p\n", (void*)obj, tak->name()->as_C_string(buf2,1024), i, sorted_heap_events[idx].address.src, (void*)elem);
+          //     printf("sorted_heap_events[idx].id %ld\n", sorted_heap_events[idx].id);
+          //   }
+          //   valid = valid && found;
+          // }
+        } else {
+          printf("oop %p klass ID %d\n", (void*)obj, klass->id());
         }
         
         // objects.push_back(obj);
@@ -449,14 +633,16 @@ void Universe::verify_heap_graph()
   if (sorted_heap_events == NULL) {
     sorted_heap_events = (Universe::HeapEvent*)mmap ( NULL, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(HeapEvent), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
     is_heap_event_in_heap = (uint8_t*)mmap ( NULL, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(uint8_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
+    iks_static_fields_checked = (InstanceKlass**)mmap ( NULL, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(InstanceKlass*), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
   }
 
-  memset(is_heap_event_in_heap, 0, SORTED_HEAP_EVENTS_MAX_SIZE);
+  memset(is_heap_event_in_heap, 0, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(char));
   // if (sorted_heap_events == NULL) {abort();}
   Universe::heap_event_counter = 0;
   checking++;
   // printf("checking %d %ld tid %ld\n", checking++, Universe::heap_event_counter, gettid()); 
-  
+  iks_static_fields_checked_size = 0;
+
   for (auto i = 0; i < Universe::max_heap_events; i++) {
     Universe::heap_events[i].id = num_events_created++;
   }
@@ -489,7 +675,16 @@ void Universe::verify_heap_graph()
   
   printf("total events %ld\n", sorted_heap_events_size);
   // sorted_heap_events.sort(HeapEventComparer);
-  qsort (sorted_heap_events, sorted_heap_events_size, sizeof(HeapEvent), HeapEventComparerV);
+  qsort(sorted_heap_events, sorted_heap_events_size, sizeof(HeapEvent), HeapEventComparerV);
+  int dst_src_null = 0;
+  for (uint32_t i = 0; i < sorted_heap_events_size; i++) {
+    HeapEvent event = sorted_heap_events[i];
+    if (event.address.src == 0x0 && event.address.dst == 0x0) {
+      dst_src_null++;
+    }
+  }
+
+  printf("dst_src_null %d\n", dst_src_null);
   // max_prints = 0;
   // for (int i = 0; i < Universe::max_heap_events && max_prints < 100; i++) {
   //     if((max_prints++) < 100) printf("After sort: dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
@@ -503,16 +698,40 @@ void Universe::verify_heap_graph()
   if (!all_objects.valid) abort();
   // if (all_objects.num_src_not_correct > 0) abort();
   // max_prints = 0;
-  // for (int i = 0; i < Universe::max_heap_events && max_prints < 100; i++) {
+  // return;
+  HeapWord* volatile* top_addrs = Universe::heap()->top_addr();
+  printf("top_addrs %p %p\n", top_addrs[0], top_addrs[1]);
+  printf("first_klass_addr 0x%lx last_klass_addr 0x%lx\n", first_klass_addr, last_klass_addr);
+  printf("first_oop_addr 0x%lx last_oop_addr 0x%lx\n", first_oop_addr, last_oop_addr);
+
+  // for (uint32_t i = 0; i < sorted_heap_events_size && max_prints < 0; i++) {
   //   if (is_heap_event_in_heap[i] == 0) {
   //     HeapEvent event = sorted_heap_events[i];
-  //     printf("at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);
+  //     printf("at %d: heap_event_type %ld dst 0x%lx src 0x%lx\n", i, event.heap_event_type, event.address.dst, event.address.src);
+  //     if (event.address.src != 0x0) {
+  //       oop obj = (oop)(void*)event.address.src;
+  //       if (oopDesc::is_oop(obj)) {
+  //         char buf[1024];
+  //         printf("src: %s\n", get_oop_klass_name(obj, buf));
+  //       }
+  //     }
+  //     // if (event.address.dst != 0x0) {
+  //     //   oop obj = (oop)(void*)(event.address.dst - 0x10);
+  //     //   if (oopDesc::is_oop(obj)) {
+  //     //     char buf[1024];
+  //     //     printf("dst: %s\n", get_oop_klass_name(obj, buf));
+  //     //   }
+  //     // }
   //     max_prints++;
-  //   } else {
-  //     HeapEvent event = sorted_heap_events[i];
-  //     printf("1 at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);
   //   }
   // }
+  //   //  else {
+  //   //   HeapEvent event = sorted_heap_events[i];
+  //   //   printf("1 at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);
+  //   // }
+  // }
+  // abort();
+  // if (max_prints >= 100)  abort();
 }
 
 // Known objects

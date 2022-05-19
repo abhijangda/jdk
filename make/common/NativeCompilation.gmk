@@ -1163,7 +1163,7 @@ define SetupNativeCompilationBody
 		  $$(call ExecuteWithLog, $$($1_OBJECT_DIR)/$$($1_SAFE_NAME)_link, \
 		      $$($1_LD) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) $$($1_SYSROOT_LDFLAGS) \
 		          $(LD_OUT_OPTION)$$($1_TARGET) $$($1_LD_OBJ_ARG) $$($1_RES) \
-		          $$($1_LIBS) $$($1_EXTRA_LIBS) -L/usr/local/cuda/lib64 -lcudart_static -lcudadevrt -lcuda) \
+		          $$($1_LIBS) $$($1_EXTRA_LIBS) -L/usr/local/cuda/lib64 -lcudart_static -lcudadevrt -L/usr/lib/x86_64-linux-gnu/ -lcuda) \
 		      | $(GREP) -v "^   Creating library .*\.lib and object .*\.exp" || \
 		          test "$$$$?" = "1" ; \
 		  $$($1_CREATE_DEBUGINFO_CMDS)
@@ -1176,7 +1176,7 @@ define SetupNativeCompilationBody
 		      $$(if $$($1_LINK_OBJS_RELATIVE), $$(CD) $$(OUTPUTDIR) ; ) \
 		      $$($1_LD) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) $$($1_SYSROOT_LDFLAGS) \
 		          $(LD_OUT_OPTION)$$($1_TARGET) $$($1_LD_OBJ_ARG) $$($1_RES) \
-		          $$($1_LIBS) $$($1_EXTRA_LIBS) -L/usr/local/cuda/lib64 -lcudart_static -lcudadevrt -lcuda) ; \
+		          $$($1_LIBS) $$($1_EXTRA_LIBS) -L/usr/local/cuda/lib64 -lcudart_static -lcudadevrt -L/usr/lib/x86_64-linux-gnu/ -lcuda) ; \
 		  $$($1_CREATE_DEBUGINFO_CMDS)
 		  $$($1_STRIP_CMD)
                 endif

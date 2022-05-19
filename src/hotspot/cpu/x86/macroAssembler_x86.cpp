@@ -4675,7 +4675,7 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
   popaq();
 }
 
-void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_flags)
+void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_flags, bool is_static)
 {
   if (dst.base() == noreg || dst.base() == rsp || dst.base() == rbp)
     return; //No need to add event if it is on the stack
@@ -4705,7 +4705,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
   mov64(src_reg, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
   addq(r10, src_reg);
   pop(src_reg);
-  movq(Address(r10, 0), 1);
+  movq(Address(r10, 0), (is_static) ? 2 : 1);
   movq(Address(r10, 8), src_reg);
   movq(Address(r10, 16), address_value);
   // movq(r9, as_Address(heap_event_counter_addr));

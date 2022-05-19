@@ -208,9 +208,9 @@ jint init_globals() {
   }
   
   sem_init(&cuda_semaphore, 0, 0);
-  int error = pthread_create(&cumemcpy_tid, NULL, &cumemcpy_func, NULL);
-  if (error != 0)
-    printf("\nThread can't be created : [%s]", strerror(error));
+  // int error = pthread_create(&cumemcpy_tid, NULL, &cumemcpy_func, NULL);
+  // if (error != 0)
+  //   printf("\nThread can't be created : [%s]", strerror(error));
 
   return JNI_OK;
 }

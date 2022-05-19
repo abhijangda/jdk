@@ -295,7 +295,7 @@ void ObjArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d,
            objArrayOop(s)->obj_at_addr<narrowOop>(src_pos), "sanity");
     assert(arrayOopDesc::obj_offset_to_raw<narrowOop>(d, dst_offset, NULL) ==
            objArrayOop(d)->obj_at_addr<narrowOop>(dst_pos), "sanity");
-    printf("298: s %p d %p \n", (void*)s, (void*)d);
+    //printf("298: s %p d %p \n", (void*)s, (void*)d);
     do_copy(s, src_offset, d, dst_offset, length, CHECK);
   } else {
     size_t src_offset = (size_t) objArrayOopDesc::obj_at_offset<oop>(src_pos);

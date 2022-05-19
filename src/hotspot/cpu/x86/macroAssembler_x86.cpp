@@ -4677,6 +4677,7 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
 
 void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_flags, bool is_static)
 {
+  return;
   if (dst.base() == noreg || dst.base() == rsp || dst.base() == rbp)
     return; //No need to add event if it is on the stack
   //Template interpreter uses only a few registers. Can use other registers without push/pop?
@@ -4736,6 +4737,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
 
 void MacroAssembler::append_heap_event(Address dst, int32_t src, bool preserve_flags)
 {
+  return;
   if (dst.base() == noreg || dst.base() == rsp || dst.base() == rbp)
     return;
   

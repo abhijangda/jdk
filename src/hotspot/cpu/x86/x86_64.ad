@@ -6062,7 +6062,7 @@ instruct storeP(memory mem, any_RegP src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# ptr" %}
   ins_encode %{
-    __ append_heap_event($mem$$Address, $src$$Register);
+    //__ append_heap_event($mem$$Address, $src$$Register);
     //printf("src register: %s\n", $src$$Register->name());
     //printf("address: %s, %s\n", $mem$$Address.base()->name(), $mem$$Address.index()->name());
     __ movq($mem$$Address, $src$$Register);
@@ -6078,7 +6078,7 @@ instruct storeImmP0(memory mem, immP0 zero)
   ins_cost(125); // XXX
   format %{ "movq    $mem, R12\t# ptr (R12_heapbase==0)" %}
   ins_encode %{
-    __ append_heap_event($mem$$Address, r12);
+    //__ append_heap_event($mem$$Address, r12);
     __ movq($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
@@ -6092,7 +6092,7 @@ instruct storeImmP(memory mem, immP31 src)
   ins_cost(150); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
-    __ append_heap_event($mem$$Address, $src$$constant);
+    //__ append_heap_event($mem$$Address, $src$$constant);
     //printf("6154: %p\n", (void*)$src$$constant);
     __ movq($mem$$Address, $src$$constant);
   %}
@@ -6107,7 +6107,7 @@ instruct storeN(memory mem, rRegN src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# compressed ptr" %}
   ins_encode %{
-    __ append_heap_event($mem$$Address, $src$$Register);
+    //__ append_heap_event($mem$$Address, $src$$Register);
     __ movl($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
@@ -6120,7 +6120,7 @@ instruct storeNKlass(memory mem, rRegN src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# compressed klass ptr" %}
   ins_encode %{
-    __ append_heap_event($mem$$Address, $src$$Register);
+    //__ append_heap_event($mem$$Address, $src$$Register);
     __ movl($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
@@ -6134,7 +6134,7 @@ instruct storeImmN0(memory mem, immN0 zero)
   ins_cost(125); // XXX
   format %{ "movl    $mem, R12\t# compressed ptr (R12_heapbase==0)" %}
   ins_encode %{
-    __ append_heap_event($mem$$Address, r12);
+    //__ append_heap_event($mem$$Address, r12);
     //printf("6138: %p\n", (void*)$src$$constant);
     __ movl($mem$$Address, r12);
   %}
@@ -6150,11 +6150,11 @@ instruct storeImmN(memory mem, immN src)
   ins_encode %{
     address con = (address)$src$$constant;
     if (con == NULL) {
-      __ append_heap_event($mem$$Address, (int32_t)0);
+      //__ append_heap_event($mem$$Address, (int32_t)0);
       __ movl($mem$$Address, (int32_t)0);
     } else {
-      printf("6154: %p\n", (void*)$src$$constant);
-      __ append_heap_event($mem$$Address, (int32_t)0);
+      //printf("6154: %p\n", (void*)$src$$constant);
+      //__ append_heap_event($mem$$Address, (int32_t)0);
       __ set_narrow_oop($mem$$Address, (jobject)$src$$constant);
     }
   %}
@@ -6168,7 +6168,7 @@ instruct storeImmNKlass(memory mem, immNKlass src)
   ins_cost(150); // XXX
   format %{ "movl    $mem, $src\t# compressed klass ptr" %}
   ins_encode %{
-    __ append_heap_event($mem$$Address, (uint64_t)$src$$constant);
+    //__ append_heap_event($mem$$Address, (uint64_t)$src$$constant);
     __ set_narrow_klass($mem$$Address, (Klass*)$src$$constant);
   %}
   ins_pipe(ialu_mem_imm);

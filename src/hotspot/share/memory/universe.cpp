@@ -97,6 +97,7 @@ Universe::HeapEvent Universe::heap_events[Universe::max_heap_events] = {};
 
 void Universe::add_heap_event(Universe::HeapEvent event)
 {  
+  return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
   pthread_mutex_lock(&Universe::mutex_heap_event);
   // Universe::heap_event_counter++;

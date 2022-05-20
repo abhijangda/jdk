@@ -59,7 +59,7 @@
 #include "utilities/events.hpp"
 
 class ClassLoaderData;
-void CollectedHeap::breakpoint() {printf("breakpoint\n");}
+
 size_t CollectedHeap::_filler_array_max_size = 0;
 
 class GCMessage : public FormatBuffer<1024> {

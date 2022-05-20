@@ -1046,7 +1046,7 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       Register from_lo = src->as_register_lo();
       Register from_hi = src->as_register_hi();
 #ifdef _LP64
-      __ movptr(as_Address(to_addr), from_lo);
+      __ movptr(as_Address_lo(to_addr), from_lo);
 #else
       Register base = to_addr->base()->as_register();
       Register index = noreg;
@@ -3906,9 +3906,6 @@ void LIR_Assembler::volatile_move_op(LIR_Opr src, LIR_Opr dest, BasicType type, 
     } else if (dest->is_address()) {
       // __ append_heap_event(as_Address(dest->as_address_ptr()), rax);
       __ movdbl(as_Address(dest->as_address_ptr()), src->as_xmm_double_reg());
-      __ push(rax);
-      __ movq(rax, 0);
-      __ pop(rax);
     } else {
       ShouldNotReachHere();
     }

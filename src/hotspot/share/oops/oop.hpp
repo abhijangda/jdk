@@ -63,8 +63,6 @@ class oopDesc {
   // make use of the C++ copy/assign incorrect.
   NONCOPYABLE(oopDesc);
 
-  ssize_t oop_size;
-
  public:
   // Must be trivial; see verifying static assert after the class.
   oopDesc() = default;

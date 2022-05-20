@@ -752,8 +752,8 @@ void LIR_Assembler::const2mem(LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmi
 #ifdef _LP64
           __ xorptr(rscratch1, rscratch1);
           null_check_here = code_offset();
+          __ append_heap_event(as_Address(addr), rscratch1);
           __ movptr(as_Address(addr), rscratch1);
-          // __ append_heap_event(as_Address(addr), rscratch1);
 #else
           __ movptr(as_Address(addr), NULL_WORD);
 #endif
@@ -770,7 +770,7 @@ void LIR_Assembler::const2mem(LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmi
             null_check_here = code_offset();
             __ movl(as_Address_lo(addr), rscratch1);
           } else {
-            // __ append_heap_event(as_Address(addr), rscratch1);
+            __ append_heap_event(as_Address(addr), rscratch1);
             null_check_here = code_offset();
             __ movptr(as_Address_lo(addr), rscratch1);
           }
@@ -1975,7 +1975,7 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
     assert(newval != addr, "new value and addr must be in different registers");
 
     if ( op->code() == lir_cas_obj) {
-      // __ append_heap_event(Address(addr, 0), newval);
+      __ append_heap_event(Address(addr, 0), newval);
 #ifdef _LP64
       if (UseCompressedOops) {
         __ encode_heap_oop(cmpval);

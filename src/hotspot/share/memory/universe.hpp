@@ -201,12 +201,12 @@ class Universe: AllStatic {
     uint64_t id;
   //}
   };
-  static const int LOG_MAX_EVENT_COUNTER = 10;
+  static const int LOG_MAX_EVENT_COUNTER = 24;
   static const int max_heap_events = 1 << LOG_MAX_EVENT_COUNTER;
   static unsigned long heap_event_counter;
   static HeapEvent heap_events[max_heap_events];
   static pthread_mutex_t mutex_heap_event;
-
+  static bool enable_heap_event_logging;
   static void add_heap_event(HeapEvent event);
   static void verify_heap_graph();
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;

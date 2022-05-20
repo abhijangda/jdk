@@ -647,7 +647,7 @@ public:
       oop field_val = src_->obj_field(fd->offset());
       // if ((uint64_t)(void*)field_val == 0) return;
       // printf("field_address 0x%lx dst_ %p\n", field_address, (void*)dst_);
-      // Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)field_val, field_address});
+      Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)field_val, field_address});
     }
   }
 };
@@ -693,7 +693,6 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
   
 
   //TODO: Can't I just go through all fields using oop and klass instead of using a Visitor?
-  #if 0
   if (obj->klass()->is_instance_klass()) {
     CloneAllFields clone_fields(obj(), new_obj_oop);
     ((InstanceKlass*)obj->klass())->do_nonstatic_fields(&clone_fields);
@@ -706,7 +705,6 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
       Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
     }
   } //TODO: Do for all other klasses
-  #endif
   
   HeapAccess<>::clone(obj(), new_obj_oop, size);
   

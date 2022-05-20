@@ -94,10 +94,11 @@
 pthread_mutex_t Universe::mutex_heap_event;
 unsigned long Universe::heap_event_counter = 0;
 Universe::HeapEvent Universe::heap_events[Universe::max_heap_events] = {};
+bool Universe::enable_heap_event_logging = true;
 
 void Universe::add_heap_event(Universe::HeapEvent event)
 {  
-  return;
+  if (!Universe::enable_heap_event_logging) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
   pthread_mutex_lock(&Universe::mutex_heap_event);
   // Universe::heap_event_counter++;
@@ -630,7 +631,6 @@ int HeapEventComparerV(const void* a, const void* b) {
 
 void Universe::verify_heap_graph()
 {
-  return;
   static int num_events_created = 0;
   if (sorted_heap_events == NULL) {
     sorted_heap_events = (Universe::HeapEvent*)mmap ( NULL, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(HeapEvent), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );

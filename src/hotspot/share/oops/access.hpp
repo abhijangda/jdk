@@ -135,6 +135,7 @@ protected:
     verify_decorators<ARRAYCOPY_DECORATOR_MASK | IN_HEAP |
                       AS_DECORATOR_MASK | IS_ARRAY | IS_DEST_UNINITIALIZED>();
     // //TODO: Might also be called by ObjArrayKlass:copy_array
+    #if 0
     if (src_obj != NULL && dst_obj != NULL) {
       objArrayOop src_arrayoop = (objArrayOop)src_obj;
       objArrayOop dst_arrayoop = (objArrayOop)dst_obj;
@@ -174,6 +175,7 @@ protected:
         Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
       }
     } 
+    #endif
     return AccessInternal::arraycopy<decorators | INTERNAL_VALUE_IS_OOP>(src_obj, src_offset_in_bytes, src_raw,
                                                                          dst_obj, dst_offset_in_bytes, dst_raw,
                                                                          length);

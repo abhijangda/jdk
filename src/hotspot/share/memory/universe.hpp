@@ -201,7 +201,7 @@ class Universe: AllStatic {
     uint64_t id;
   //}
   };
-  static const int LOG_MAX_EVENT_COUNTER = 20;
+  static const int LOG_MAX_EVENT_COUNTER = 10;
   static const int max_heap_events = 1 << LOG_MAX_EVENT_COUNTER;
   static unsigned long heap_event_counter;
   static HeapEvent heap_events[max_heap_events];

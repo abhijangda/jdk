@@ -238,7 +238,7 @@ public:
 };
 
 inline void oopDesc::obj_field_put(int offset, oop value)           {
-  Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
+  // Universe::add_heap_event(Universe::HeapEvent({1, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   HeapAccess<>::oop_store_at(as_oop(), offset, value); 
 }
 

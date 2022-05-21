@@ -4660,6 +4660,8 @@ void unlock_heap_event()
 
 void MacroAssembler::gen_lock_heap_event_mutex()
 {
+  if (!Universe::enable_heap_graph_verify)
+    return;
   pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, lock_heap_event)));
   popaq();
@@ -4670,6 +4672,8 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
   //TODO: Do not push scratch registers
   //REGISTER_DECLARATION(Register, rscratch1, r10);  // volatile
   //REGISTER_DECLARATION(Register, rscratch2, r11);  // volatile
+  if (!Universe::enable_heap_graph_verify)
+    return;
   pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, unlock_heap_event)));
   popaq();

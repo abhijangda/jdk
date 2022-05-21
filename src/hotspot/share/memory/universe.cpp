@@ -95,12 +95,14 @@ pthread_mutex_t Universe::mutex_heap_event;
 unsigned long Universe::heap_event_counter = 0;
 Universe::HeapEvent Universe::heap_events[Universe::max_heap_events] = {};
 bool Universe::enable_heap_event_logging = true;
+bool Universe::enable_heap_graph_verify = true;
 
 void Universe::add_heap_event(Universe::HeapEvent event)
 {  
   if (!Universe::enable_heap_event_logging) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
-  pthread_mutex_lock(&Universe::mutex_heap_event);
+  if (Universe::enable_heap_graph_verify)
+    pthread_mutex_lock(&Universe::mutex_heap_event);
   // Universe::heap_event_counter++;
   // if (event.address.src == 0x0) {
   //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
@@ -113,7 +115,8 @@ void Universe::add_heap_event(Universe::HeapEvent event)
     Universe::verify_heap_graph();
     
   }
-  pthread_mutex_unlock(&Universe::mutex_heap_event);
+  if (Universe::enable_heap_graph_verify)
+    pthread_mutex_unlock(&Universe::mutex_heap_event);
 }
 
 
@@ -502,6 +505,8 @@ class AllObjects : public ObjectClosure {
                     }
                     num_not_found++;
                   }
+
+                  //TODO: Lazy.... Static value will probably be right.
                 }
 
                 iks_static_fields_checked[iks_static_fields_checked_size++] = ik;
@@ -638,10 +643,13 @@ void Universe::verify_heap_graph()
     is_heap_event_in_heap = (uint8_t*)mmap ( NULL, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(uint8_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
     iks_static_fields_checked = (InstanceKlass**)mmap ( NULL, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(InstanceKlass*), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
   }
-
+  
+  Universe::heap_event_counter = 0;
+  
+  if (!Universe::enable_heap_graph_verify)
+    return;
   memset(is_heap_event_in_heap, 0, SORTED_HEAP_EVENTS_MAX_SIZE*sizeof(char));
   // if (sorted_heap_events == NULL) {abort();}
-  Universe::heap_event_counter = 0;
   checking++;
   // printf("checking %d %ld tid %ld\n", checking++, Universe::heap_event_counter, gettid()); 
   iks_static_fields_checked_size = 0;

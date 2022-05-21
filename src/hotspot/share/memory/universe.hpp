@@ -207,6 +207,7 @@ class Universe: AllStatic {
   static HeapEvent heap_events[max_heap_events];
   static pthread_mutex_t mutex_heap_event;
   static bool enable_heap_event_logging;
+  static bool enable_heap_graph_verify;
   static void add_heap_event(HeapEvent event);
   static void verify_heap_graph();
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;

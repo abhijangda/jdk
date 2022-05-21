@@ -358,7 +358,7 @@ class AllObjects : public ObjectClosure {
           ((uint64_t)(void*)klass) != 0xbaadbabebaadbabe) {
           first_klass_addr = min(first_klass_addr, (uint64_t)klass);
           last_klass_addr = max(last_klass_addr, (uint64_t)klass);
-          //
+          
           first_oop_addr = min(first_oop_addr, (uint64_t)(void*)obj);
           last_oop_addr = max(last_oop_addr, (uint64_t)(void*)obj); 
           // printf("klass %p\n", klass);
@@ -378,7 +378,7 @@ class AllObjects : public ObjectClosure {
           InstanceKlass* ik = (InstanceKlass*)obj->klass();
           // AllFields field_printer(obj);
           // printf("klassID %d buf %s oop %p java_fields_count %d\n", obj->klass()->id(), buf, (void*)obj, ((InstanceKlass*)obj->klass())->java_fields_count());
-
+          bool iks_static_fields_checked_changed = false;
           do {
             char buf2[1024];
             char buf3[1024];
@@ -505,14 +505,15 @@ class AllObjects : public ObjectClosure {
                 }
 
                 iks_static_fields_checked[iks_static_fields_checked_size++] = ik;
+                iks_static_fields_checked_changed = true;
               }
             }
             ik = ik->superklass();
           } while (ik && ik->is_klass());
           // ik->do_nonstatic_fields(&field_printer);
           // valid = valid && field_printer.valid;
-
-          qsort(iks_static_fields_checked, iks_static_fields_checked_size, sizeof(InstanceKlass*), InstanceKlassPointerComparer);
+          if (iks_static_fields_checked_changed)
+            qsort(iks_static_fields_checked, iks_static_fields_checked_size, sizeof(InstanceKlass*), InstanceKlassPointerComparer);
           
           if (false) {
             for (JavaFieldStream fs(((InstanceKlass*)obj->klass())); !fs.done(); fs.next()) {

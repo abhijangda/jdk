@@ -4679,16 +4679,17 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
   popaq();
 }
 
-void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_flags, bool is_static)
+void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, Register src_or_obj_size, bool preserve_flags)
 {
+  if (event_type == Universe::NewObject) return;
   if (!Universe::enable_heap_event_logging) return;
-  if (dst.base() == noreg || dst.base() == rsp || dst.base() == rbp)
+  if (dst_or_new_obj.base() == noreg || dst_or_new_obj.base() == rsp || dst_or_new_obj.base() == rbp)
     return; //No need to add event if it is on the stack
   //Template interpreter uses only a few registers. Can use other registers without push/pop?
-  push(src);
-  push(dst.base());
-  if (dst.index() != noreg)
-    push(dst.index());
+  push(src_or_obj_size);
+  push(dst_or_new_obj.base());
+  if (dst_or_new_obj.index() != noreg)
+    push(dst_or_new_obj.index());
   Register address_value = r8;
   push(address_value);
   push(r11);
@@ -4697,8 +4698,8 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
   if (preserve_flags) pushf(); //TODO: Use lahf/sahf
 
   // printf("dst.base() %s noreg %s address_value %s\n", dst.base()->name(), noreg->name(), address_value->name());
-  push(src);
-  leaq(address_value, dst); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
+  push(src_or_obj_size);
+  leaq(address_value, dst_or_new_obj); //TODO: dst.base() is rcx and dst.off is rbx for interpreter
   Register src_reg = r11;
 
   AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
@@ -4710,7 +4711,7 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
   mov64(src_reg, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
   addq(r10, src_reg);
   pop(src_reg);
-  movq(Address(r10, 0), (is_static) ? 2 : 1);
+  movq(Address(r10, 0), (uint64_t)event_type);
   movq(Address(r10, 8), src_reg);
   movq(Address(r10, 16), address_value);
   // movq(r9, as_Address(heap_event_counter_addr));
@@ -4732,15 +4733,16 @@ void MacroAssembler::append_heap_event(Address dst, Register src, bool preserve_
   pop(r10);
   pop(r11);
   pop(address_value);
-  if (dst.index() != noreg)
-    pop(dst.index());
-  pop(dst.base());
-  pop(src);
+  if (dst_or_new_obj.index() != noreg)
+    pop(dst_or_new_obj.index());
+  pop(dst_or_new_obj.base());
+  pop(src_or_obj_size);
 }
 
 
-void MacroAssembler::append_heap_event(Address dst, int32_t src, bool preserve_flags)
+void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Address dst, int32_t src, bool preserve_flags)
 {
+  if (event_type == Universe::NewObject) return;
   if (!Universe::enable_heap_event_logging) return;
 
   if (dst.base() == noreg || dst.base() == rsp || dst.base() == rbp)
@@ -4772,7 +4774,7 @@ void MacroAssembler::append_heap_event(Address dst, int32_t src, bool preserve_f
   imulq(r9, r9, sizeof(Universe::HeapEvent));
   mov64(r10, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
   addq(r10, r9);
-  movq(Address(r10, 0), 1);
+  movq(Address(r10, 0), (uint64_t)event_type);
   //addq(r10, 8);
   movq(Address(r10, 8), src);
   //addq(r10, 8);

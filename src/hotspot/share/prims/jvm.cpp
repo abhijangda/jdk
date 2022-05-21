@@ -647,7 +647,7 @@ public:
       oop field_val = src_->obj_field(fd->offset());
       // if ((uint64_t)(void*)field_val == 0) return;
       // printf("field_address 0x%lx dst_ %p\n", field_address, (void*)dst_);
-      Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)field_val, field_address});
+      Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)field_val, field_address});
     }
   }
 };
@@ -702,7 +702,7 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
     for (int i = 0; i < array->length(); i++) {
       oop elem = array->obj_at(i);
       uint64_t elem_addr = ((uint64_t)new_array->base()) + i * sizeof(oop);
-      Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+      Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
     }
   } //TODO: Do for all other klasses
   

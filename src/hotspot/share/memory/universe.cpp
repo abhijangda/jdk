@@ -99,6 +99,7 @@ bool Universe::enable_heap_graph_verify = true;
 
 void Universe::add_heap_event(Universe::HeapEvent event)
 {  
+  if (event.heap_event_type == NewObject) return;
   if (!Universe::enable_heap_event_logging) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
   if (Universe::enable_heap_graph_verify)
@@ -673,6 +674,8 @@ void Universe::verify_heap_graph()
     if (latest_event.id < Universe::heap_events[event_iter].id) {
       latest_event = Universe::heap_events[event_iter];
     }
+    if (latest_event.heap_event_type == Universe::NewObject)
+      continue;
     // Universe::HeapEvent event = Universe::heap_events[event_iter];
     int idx = has_heap_event(latest_event.address.dst, 0, orig_len);
     if (idx == -1) {
@@ -715,27 +718,56 @@ void Universe::verify_heap_graph()
   printf("first_klass_addr 0x%lx last_klass_addr 0x%lx\n", first_klass_addr, last_klass_addr);
   printf("first_oop_addr 0x%lx last_oop_addr 0x%lx\n", first_oop_addr, last_oop_addr);
 
-  // for (uint32_t i = 0; i < sorted_heap_events_size && max_prints < 0; i++) {
-  //   if (is_heap_event_in_heap[i] == 0) {
-  //     HeapEvent event = sorted_heap_events[i];
-  //     printf("at %d: heap_event_type %ld dst 0x%lx src 0x%lx\n", i, event.heap_event_type, event.address.dst, event.address.src);
-  //     if (event.address.src != 0x0) {
-  //       oop obj = (oop)(void*)event.address.src;
-  //       if (oopDesc::is_oop(obj)) {
-  //         char buf[1024];
-  //         printf("src: %s\n", get_oop_klass_name(obj, buf));
-  //       }
-  //     }
-  //     // if (event.address.dst != 0x0) {
-  //     //   oop obj = (oop)(void*)(event.address.dst - 0x10);
-  //     //   if (oopDesc::is_oop(obj)) {
-  //     //     char buf[1024];
-  //     //     printf("dst: %s\n", get_oop_klass_name(obj, buf));
-  //     //   }
-  //     // }
-  //     max_prints++;
-  //   }
-  // }
+  return;
+  int events_with_src_null = 0;
+  int events_with_src_not_null = 0;
+  int heap_event_2 = 0;
+  int heap_event_1 = 0;
+  int num_minus_2 = 0;
+
+  for (uint32_t i = 0; i < sorted_heap_events_size; i++) {
+    if (is_heap_event_in_heap[i] == 0) {
+      HeapEvent event = sorted_heap_events[i];
+      if (event.address.src == 0x0) {
+        events_with_src_null++;
+        continue;
+      } else {
+        events_with_src_not_null++;
+        if (event.heap_event_type == 2) {
+          heap_event_2++;
+          continue;
+        }
+        else {
+          heap_event_1++;
+        }
+
+        if (event.address.src == 0xfffffffffffffffe) {
+          num_minus_2++;
+        }
+        
+      }
+      if (max_prints < 100) {
+        printf("at %d: heap_event_type %ld dst 0x%lx src 0x%lx\n", i, (uint64_t)event.heap_event_type, event.address.dst, event.address.src);
+        if (event.address.src != 0x0) {
+          oop obj = (oop)(void*)event.address.src;
+          if (oopDesc::is_oop(obj)) {
+            char buf[1024];
+            printf("src: %s\n", get_oop_klass_name(obj, buf));
+          }
+        }
+        // if (event.address.dst != 0x0) {
+        //   oop obj = (oop)(void*)(event.address.dst - 0xc0);
+        //   if (oopDesc::is_oop(obj)) {
+        //     char buf[1024];
+        //     printf("dst: %s\n", get_oop_klass_name(obj, buf));
+        //   }
+        // }
+        max_prints++;
+      }
+    }
+  }
+
+  printf("events_with_src_null %d events_with_src_not_null %d heap_event_2 %d heap_event_1 %d num_minus_2 %d\n", events_with_src_null, events_with_src_not_null, heap_event_2, heap_event_1, num_minus_2);
   //   //  else {
   //   //   HeapEvent event = sorted_heap_events[i];
   //   //   printf("1 at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);

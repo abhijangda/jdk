@@ -31,6 +31,7 @@
 #include "utilities/macros.hpp"
 #include "runtime/rtmLocking.hpp"
 #include "runtime/vm_version.hpp"
+#include "memory/universe.hpp"
 
 // MacroAssembler extends Assembler by frequently used macros.
 //
@@ -357,8 +358,8 @@ class MacroAssembler: public Assembler {
   // Used for storing NULL. All other oop constants should be
   // stored using routines that take a jobject.
   void store_heap_oop_null(Address dst);
-  void append_heap_event(Address dst, Register src, bool preserve_flags = false, bool is_static = false);
-  void append_heap_event(Address dst, int32_t src, bool preserve_flags = false);
+  void append_heap_event(Universe::HeapEventType heap_event_type, Address dst_or_new_obj, Register src_or_obj_size, bool preserve_flags = false);
+  void append_heap_event(Universe::HeapEventType heap_event_type, Address dst, int32_t src, bool preserve_flags = false);
   Register register_for_event_counter(Register event_src);
   void gen_lock_heap_event_mutex();
   void gen_unlock_heap_event_mutex();

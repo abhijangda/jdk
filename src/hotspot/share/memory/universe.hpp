@@ -191,8 +191,16 @@ class Universe: AllStatic {
 
  public:
  static uint32_t checking;
+
+ enum HeapEventType {
+   FieldSet = 1L,
+   NewObject = 2L,
+
+   LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
+ };
+
  struct HeapEvent {
-  uint64_t heap_event_type; //0 for new object and 1 for field assignment
+  HeapEventType heap_event_type; //0 for new object and 1 for field assignment
   // union {
     struct {
       uint64_t src;

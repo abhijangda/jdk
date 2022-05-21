@@ -145,14 +145,14 @@ protected:
       for (uint64_t i = 0; i < length; i++) {
         oop elem = src_arrayoop->obj_at(src_pos + i);
         uint64_t elem_addr = (uint64_t)(((objArrayOop)dst_arrayoop)->base()) + (dst_pos + i) * sizeof(oop);
-        Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+        Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
       }
     } else if (src_raw != NULL && dst_raw != NULL) {
       // printf("src_obj %p dst_obj %p\n", src_obj, dst_obj);
       for (uint64_t i = 0; i < length; i++) {
         T elem = src_raw[i];
         uint64_t elem_addr = (uint64_t)&dst_raw[i];
-        Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+        Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
       }
     } else if (src_raw != NULL && dst_obj != NULL) {
       objArrayOop dst_arrayoop = (objArrayOop)dst_obj;
@@ -162,7 +162,7 @@ protected:
       for (uint64_t i = 0; i < length; i++) {
         T elem = src_raw[i];
         uint64_t elem_addr = (uint64_t)(((objArrayOop)dst_arrayoop)->base()) + (dst_pos + i) * sizeof(oop);
-        Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+        Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
       }
     } else if (src_obj != NULL && dst_raw != NULL) {
       objArrayOop src_arrayoop = (objArrayOop)src_obj;
@@ -171,7 +171,7 @@ protected:
       for (uint64_t i = 0; i < length; i++) {
         oop elem = src_arrayoop->obj_at(src_pos + i);
         uint64_t elem_addr = (uint64_t)&dst_raw[i];
-        Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)elem, elem_addr});
+        Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
       }
     } 
     
@@ -231,7 +231,7 @@ public:
     // printf("256: src %p src+offset 0x%lx\n", (void*)base, ((uint64_t)base) + offset);
     //TODO: This is also called by obj_put_field_at and also by unsafe PutReference?
     //TODO: Assuming T is Oop and not a NarrowOop
-    Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)value, ((uint64_t)(void*)base) + offset});
+    Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)value, ((uint64_t)(void*)base) + offset});
     AccessInternal::store_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, oop_value);
   }
 
@@ -244,7 +244,7 @@ public:
     // printf("206: src %p dst 0x%lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
     //TODO: Is this also called by some other function
     //TODO: Assuming T is oop and not a narrowoop
-    Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
+    Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
     return AccessInternal::atomic_cmpxchg_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, compare_oop_value, new_oop_value);
   }
 
@@ -256,7 +256,7 @@ public:
     // printf("206: src %p dst 0x%lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
     //TODO: Is this also called by some other function
     //TODO: Assuming T is oop and not a narrowoop
-    Universe::add_heap_event(Universe::HeapEvent{1, (uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
+    Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
     return AccessInternal::atomic_xchg_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, new_oop_value);
   }
 

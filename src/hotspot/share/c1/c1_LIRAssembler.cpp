@@ -790,7 +790,7 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
         LIR_Address* dst_to_addr = dest->as_address_ptr();
         Address dst_addr = as_Address(dst_to_addr);
         Register oop = src->as_register();
-        _masm->append_heap_event(dst_addr, oop);
+        _masm->append_heap_event(Universe::FieldSet, dst_addr, oop);
       }
       reg2mem(src, dest, type, patch_code, info, pop_fpu_stack, wide);
     } else {

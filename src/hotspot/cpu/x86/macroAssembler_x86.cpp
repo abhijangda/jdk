@@ -4681,7 +4681,6 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
 
 void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, Register src_or_obj_size, bool preserve_flags)
 {
-  if (event_type == Universe::NewObject) return;
   if (!Universe::enable_heap_event_logging) return;
   if (dst_or_new_obj.base() == noreg || dst_or_new_obj.base() == rsp || dst_or_new_obj.base() == rbp)
     return; //No need to add event if it is on the stack
@@ -4742,7 +4741,6 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
 
 void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Address dst, int32_t src, bool preserve_flags)
 {
-  if (event_type == Universe::NewObject) return;
   if (!Universe::enable_heap_event_logging) return;
 
   if (dst.base() == noreg || dst.base() == rsp || dst.base() == rbp)

@@ -318,7 +318,7 @@ void ClassFileParser::parse_constant_pool_entries(const ClassFileStream* const s
         // Got utf8 string, guarantee utf8_length+1 bytes, set stream position forward.
         cfs->guarantee_more(utf8_length+1, CHECK);  // utf8 string, tag/access_flags
         cfs->skip_u1_fast(utf8_length);
-
+  
         // Before storing the symbol, make sure it's legal
         if (_need_verify) {
           verify_legal_utf8(utf8_buffer, utf8_length, CHECK);
@@ -344,6 +344,7 @@ void ClassFileParser::parse_constant_pool_entries(const ClassFileStream* const s
             names_count = 0;
           }
         } else {
+          // Universe::add_heap_event(Universe::HeapEvent({Universe::NewObject, utf8_length, (uint64_t)result}));
           cp->symbol_at_put(index, result);
         }
         break;

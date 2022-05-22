@@ -3978,7 +3978,7 @@ void TemplateTable::_new() {
 
   if (UseTLAB) {
     __ tlab_allocate(thread, rax, rdx, 0, rcx, rbx, slow_case);
-    __ append_heap_event(Universe::NewObject, Address(rax, 0), rdx);
+    __ append_heap_event(Universe::NewObject, Address(rax, 0), rdx); //TODO: Make apped_heap_event also accept a register
     if (ZeroTLAB) {
       // the fields have been already cleared
       __ jmp(initialize_header);

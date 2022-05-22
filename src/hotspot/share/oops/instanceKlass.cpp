@@ -1425,7 +1425,9 @@ instanceOop InstanceKlass::allocate_instance(TRAPS) {
   if (has_finalizer_flag && !RegisterFinalizersAtInit) {
     i = register_finalizer(i, CHECK_NULL);
   }
-  // Universe::add_heap_event(Universe::HeapEvent {0, (uint64_t)((void*)i), 0});
+  //TODO: It could be already called from InterpreterRuntime::_new?
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, size, (uint64_t)((void*)i)}); 
+
   // printf("1429: new_instance oop %p\n", (void*)i);
   return i;
 }

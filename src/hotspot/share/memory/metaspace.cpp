@@ -930,6 +930,7 @@ MetaWord* Metaspace::allocate(ClassLoaderData* loader_data, size_t word_size,
     log_trace(metaspace)("Metaspace::allocate: type %d return " PTR_FORMAT ".", (int)type, p2i(result));
   }
 
+  // Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, word_size, (uint64_t)result});
   return result;
 }
 

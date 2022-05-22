@@ -319,6 +319,8 @@ oop HeapShared::archive_object(oop obj) {
       err_msg("Out of memory. Please run with a larger Java heap, current MaxHeapSize = "
               SIZE_FORMAT "M", MaxHeapSize/M));
   }
+
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)archived_oop->size(), (uint64_t)(void*)archived_oop});
   return archived_oop;
 }
 

@@ -333,7 +333,9 @@ oop StringTable::intern(Handle string_or_null_h, const jchar* name, int len, TRA
   if (found_string != NULL) {
     return found_string;
   }
-  return do_intern(string_or_null_h, name, len, hash, THREAD);
+  oop r = do_intern(string_or_null_h, name, len, hash, THREAD);
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)r->size(), (uint64_t)(void*)r});
+  return r;
 }
 
 oop StringTable::do_intern(Handle string_or_null_h, const jchar* name,
@@ -385,6 +387,7 @@ void StringTable::grow(JavaThread* jt) {
   if (!gt.prepare(jt)) {
     return;
   }
+  printf("390:\n");
   log_trace(stringtable)("Started to grow");
   {
     TraceTime timer("Grow", TRACETIME_LOG(Debug, stringtable, perf));

@@ -338,6 +338,8 @@ JVM_ENTRY(jobjectArray, JVM_GetProperties(JNIEnv *env))
   // Allocate result String array
   InstanceKlass* ik = vmClasses::String_klass();
   objArrayOop r = oopFactory::new_objArray(ik, (count + fixedCount) * 2, CHECK_NULL);
+  // Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, ik->size() *((count + fixedCount) * 2), (uint64_t)(void*)r});
+
   objArrayHandle result_h(THREAD, r);
 
   while (p != NULL) {
@@ -680,13 +682,16 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
 
   // Make shallow object copy
   const size_t size = obj->size();
+  size_t event_size;
   oop new_obj_oop = NULL;
   if (obj->is_array()) {
     const int length = ((arrayOop)obj())->length();
     new_obj_oop = Universe::heap()->array_allocate(klass, size, length,
                                                    /* do_zero */ true, CHECK_NULL);
+    event_size = size*length;
   } else {
     new_obj_oop = Universe::heap()->obj_allocate(klass, size, CHECK_NULL);
+    event_size = size;
   }
 
   // printf("new_obj_oop %p\n", (void*)new_obj_oop);
@@ -717,7 +722,7 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
     new_obj = Handle(THREAD, new_obj_oop);
   }
 
-
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, event_size, (uint64_t)(void*)new_obj_oop});
 
   return JNIHandles::make_local(THREAD, new_obj());
 JVM_END

@@ -334,7 +334,6 @@ oop StringTable::intern(Handle string_or_null_h, const jchar* name, int len, TRA
     return found_string;
   }
   oop r = do_intern(string_or_null_h, name, len, hash, THREAD);
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)r->size(), (uint64_t)(void*)r});
   return r;
 }
 

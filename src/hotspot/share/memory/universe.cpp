@@ -391,6 +391,12 @@ class AllObjects : public ObjectClosure {
           }
         }
 
+        if (idx != -1 && klass->is_instance_klass()) {
+          if (obj->size() != sorted_new_object_events[idx].address.src) {
+            num_src_not_correct++;
+          }
+        }
+
         if (klass->is_instance_klass()) {
           InstanceKlass* ik = (InstanceKlass*)obj->klass();
           // AllFields field_printer(obj);
@@ -1379,7 +1385,7 @@ void Universe::create_preallocated_out_of_memory_errors(TRAPS) {
 
   Handle msg = java_lang_String::create_from_str("Java heap space", CHECK);
   java_lang_Throwable::set_message(oom_array->obj_at(_oom_java_heap), msg());
-  printf("msg %p\n", msg());
+  
   msg = java_lang_String::create_from_str("C heap space", CHECK);
   java_lang_Throwable::set_message(oom_array->obj_at(_oom_c_heap), msg());
 

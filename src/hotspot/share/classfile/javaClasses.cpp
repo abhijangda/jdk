@@ -435,7 +435,7 @@ Handle java_lang_String::create_from_platform_dependent_str(const char* str, TRA
   }
 
   Handle native_platform_string(THREAD, JNIHandles::resolve(js));
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)JNIHandles::resolve(js)->size(), (uint64_t)(void*)JNIHandles::resolve(js)});
+  // Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)JNIHandles::resolve(js)->size(), (uint64_t)(void*)JNIHandles::resolve(js)});
   JNIHandles::destroy_local(js);  // destroy local JNIHandle.
   return native_platform_string;
 }
@@ -808,7 +808,7 @@ inline static void assert_valid_static_string_field(fieldDescriptor* fd) {
 static void initialize_static_string_field(fieldDescriptor* fd, Handle mirror, TRAPS) {
   DEBUG_ONLY(assert_valid_static_string_field(fd);)
   oop string = fd->string_initial_value(CHECK);
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)string->size(), (uint64_t)(void*)string});
+  // Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)string->size(), (uint64_t)(void*)string});
   mirror()->obj_field_put(fd->offset(), string);
 }
 
@@ -820,7 +820,7 @@ static void initialize_static_string_field_for_dump(fieldDescriptor* fd, Handle 
   // Archive the String field and update the pointer.
   oop s = mirror()->obj_field(fd->offset());
   oop archived_s = StringTable::create_archived_string(s);
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)archived_s->size(), (uint64_t)(void*)archived_s});
+  // Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)archived_s->size(), (uint64_t)(void*)archived_s});
   mirror()->obj_field_put(fd->offset(), archived_s);
 }
 #endif

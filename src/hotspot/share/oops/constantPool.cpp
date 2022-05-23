@@ -1162,7 +1162,6 @@ oop ConstantPool::resolve_constant_at_impl(const constantPoolHandle& this_cp,
     }
   } else {
     assert(result_oop != Universe::the_null_sentinel(), "");
-    // Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)result_oop->size(), (uint64_t)(void*)result_oop}); //TODO: This is not creation but access of oop
     return result_oop;
   }
 }
@@ -1170,7 +1169,6 @@ oop ConstantPool::resolve_constant_at_impl(const constantPoolHandle& this_cp,
 oop ConstantPool::uncached_string_at(int which, TRAPS) {
   Symbol* sym = unresolved_string_at(which);
   oop str = StringTable::intern(sym, CHECK_(NULL));
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, 10, (uint64_t)(void*)str});
   assert(java_lang_String::is_instance(str), "must be string");
   return str;
 }
@@ -1219,7 +1217,6 @@ oop ConstantPool::string_at_impl(const constantPoolHandle& this_cp, int which, i
   if (str != NULL) return str;
   Symbol* sym = this_cp->unresolved_string_at(which);
   str = StringTable::intern(sym, CHECK_(NULL));
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, 10, (uint64_t)(void*)str});
   this_cp->string_at_put(which, obj_index, str);
   assert(java_lang_String::is_instance(str), "must be string");
   return str;

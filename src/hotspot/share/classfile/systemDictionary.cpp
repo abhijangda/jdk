@@ -138,8 +138,6 @@ void SystemDictionary::compute_java_loaders(TRAPS) {
                          CHECK);
 
   _java_platform_loader = OopHandle(Universe::vm_global(), result.get_oop());
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)_java_system_loader.resolve()->size(), (uint64_t)(void*)_java_system_loader.resolve()});
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)_java_platform_loader.resolve()->size(), (uint64_t)(void*)_java_platform_loader.resolve()});
 }
 
 ClassLoaderData* SystemDictionary::register_loader(Handle class_loader, bool create_mirror_cld) {
@@ -1331,7 +1329,6 @@ InstanceKlass* SystemDictionary::load_instance_class_impl(Symbol* class_name, Ha
 
     assert(result.get_type() == T_OBJECT, "just checking");
     oop obj = result.get_oop();
-    Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)obj->size(), (uint64_t)(void*)obj});
     // Primitive classes return null since forName() can not be
     // used to obtain any of the Class objects representing primitives or void
     if ((obj != NULL) && !(java_lang_Class::is_primitive(obj))) {
@@ -2089,7 +2086,6 @@ Method* SystemDictionary::find_method_handle_invoker(Klass* klass,
 
   int ref_kind = JVM_REF_invokeVirtual;
   oop name_oop = StringTable::intern(name, CHECK_NULL);
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)name_oop->size(), (uint64_t)(void*)name_oop});
   Handle name_str (THREAD, name_oop);
   objArrayHandle appendix_box = oopFactory::new_objArray_handle(vmClasses::Object_klass(), 1, CHECK_NULL);
   assert(appendix_box->obj_at(0) == NULL, "");

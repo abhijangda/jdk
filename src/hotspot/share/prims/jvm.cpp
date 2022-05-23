@@ -338,7 +338,6 @@ JVM_ENTRY(jobjectArray, JVM_GetProperties(JNIEnv *env))
   // Allocate result String array
   InstanceKlass* ik = vmClasses::String_klass();
   objArrayOop r = oopFactory::new_objArray(ik, (count + fixedCount) * 2, CHECK_NULL);
-  // Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, ik->size() *((count + fixedCount) * 2), (uint64_t)(void*)r});
 
   objArrayHandle result_h(THREAD, r);
 

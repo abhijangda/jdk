@@ -1395,6 +1395,7 @@ objArrayOop InstanceKlass::allocate_objArray(int n, int length, TRAPS) {
   Klass* ak = array_klass(n, CHECK_NULL);
   objArrayOop o = (objArrayOop)Universe::heap()->array_allocate(ak, size, length,
                                                                 /* do_zero */ true, CHECK_NULL);
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)(size*length), (uint64_t)(void*)o});
   return o;
 }
 

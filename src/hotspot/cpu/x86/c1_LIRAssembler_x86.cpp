@@ -1621,6 +1621,7 @@ void LIR_Assembler::emit_alloc_obj(LIR_OpAllocObj* op) {
                      op->object_size(),
                      op->klass()->as_register(),
                      *op->stub()->entry());
+  __ append_heap_event(Universe::NewObject, Address(op->obj()->as_register(), 0), op->object_size());
   __ bind(*op->stub()->continuation());
 }
 
@@ -1653,6 +1654,7 @@ void LIR_Assembler::emit_alloc_array(LIR_OpAllocArray* op) {
                       array_element_size(op->type()),
                       op->klass()->as_register(),
                       *op->stub()->entry());
+    __ append_heap_event(Universe::NewObject, Address(op->obj()->as_register(), 0), len);
   }
   __ bind(*op->stub()->continuation());
 }

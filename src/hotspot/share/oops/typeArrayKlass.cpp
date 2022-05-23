@@ -90,15 +90,19 @@ typeArrayOop TypeArrayKlass::allocate_common(int length, bool do_zero, TRAPS) {
   assert(log2_element_size() >= 0, "bad scale");
   check_array_allocation_length(length, max_length(), CHECK_NULL);
   size_t size = typeArrayOopDesc::object_size(layout_helper(), length);
-  return (typeArrayOop)Universe::heap()->array_allocate(this, size, length,
+  typeArrayOop r = (typeArrayOop)Universe::heap()->array_allocate(this, size, length,
                                                         do_zero, CHECK_NULL);
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)length*size, (uint64_t)(void*)r});
+  return r;
 }
 
 oop TypeArrayKlass::multi_allocate(int rank, jint* last_size, TRAPS) {
   // For typeArrays this is only called for the last dimension
   assert(rank == 1, "just checking");
   int length = *last_size;
-  return allocate(length, THREAD);
+  oop r = allocate(length, THREAD);
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)length, (uint64_t)(void*)r});
+  return r;
 }
 
 

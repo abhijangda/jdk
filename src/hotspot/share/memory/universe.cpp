@@ -373,24 +373,26 @@ class AllObjects : public ObjectClosure {
         first_oop_addr = min(first_oop_addr, (uint64_t)(void*)obj);
         last_oop_addr = max(last_oop_addr, (uint64_t)(void*)obj); 
 
-        if (klass->is_instance_klass()) {
-          char buf[1024];
-          obj->klass()->name()->as_C_string(buf, 1024);
-          InstanceKlass* ik = (InstanceKlass*)obj->klass();
-          num_oops++;
-          int idx = has_heap_event(sorted_new_object_events, (uint64_t)(void*)obj, 0, sorted_new_object_events_size - 1);
-          if (idx != -1) {
-            num_found++;
-          } else {
-            printf("%p not found for %s: ik->id() %d\n", (void*)obj, buf, ik->id());
-            num_not_found++;
-            const char* java_lang_String_str = "java/lang/String";
-            if (strstr(buf, java_lang_String_str) && strlen(buf) == strlen(java_lang_String_str)) {
-              int len;
-              char* str = java_lang_String::as_utf8_string(obj, len);
-              printf("str %s\n", str);
-            }
+        char buf[1024];
+        obj->klass()->name()->as_C_string(buf, 1024);
+
+        num_oops++;
+        int idx = has_heap_event(sorted_new_object_events, (uint64_t)(void*)obj, 0, sorted_new_object_events_size - 1);
+        if (idx != -1) {
+          num_found++;
+        } else {
+          printf("%p not found for %s: ik->id() %d\n", (void*)obj, buf, klass->id());
+          num_not_found++;
+          const char* java_lang_String_str = "java/lang/String";
+          if (strstr(buf, java_lang_String_str) && strlen(buf) == strlen(java_lang_String_str)) {
+            int len;
+            char* str = java_lang_String::as_utf8_string(obj, len);
+            printf("str %s\n", str);
           }
+        }
+
+        if (klass->is_instance_klass()) {
+          InstanceKlass* ik = (InstanceKlass*)obj->klass();
           // AllFields field_printer(obj);
           // printf("klassID %d buf %s oop %p java_fields_count %d\n", obj->klass()->id(), buf, (void*)obj, ((InstanceKlass*)obj->klass())->java_fields_count());
           bool iks_static_fields_checked_changed = false;

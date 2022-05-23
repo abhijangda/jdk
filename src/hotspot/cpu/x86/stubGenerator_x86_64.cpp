@@ -1311,7 +1311,6 @@ class StubGenerator: public StubCodeGenerator {
       }
     } else {
       // Copy 32-bytes per iteration
-      printf("1309\n");
       //TODO: Do this only for oop
       __ BIND(L_loop);
       __ movq(to, Address(from, qword_count, Address::times_8, 24));

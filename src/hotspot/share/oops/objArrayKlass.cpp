@@ -163,8 +163,10 @@ size_t ObjArrayKlass::oop_size(oop obj) const {
 objArrayOop ObjArrayKlass::allocate(int length, TRAPS) {
   check_array_allocation_length(length, arrayOopDesc::max_array_length(T_OBJECT), CHECK_NULL);
   size_t size = objArrayOopDesc::object_size(length);
-  return (objArrayOop)Universe::heap()->array_allocate(this, size, length,
+  objArrayOop r = (objArrayOop)Universe::heap()->array_allocate(this, size, length,
                                                        /* do_zero */ true, THREAD);
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)length*size, (uint64_t)(void*)r});
+  return r;
 }
 
 oop ObjArrayKlass::multi_allocate(int rank, jint* sizes, TRAPS) {
@@ -174,6 +176,7 @@ oop ObjArrayKlass::multi_allocate(int rank, jint* sizes, TRAPS) {
   Klass* ld_klass = lower_dimension();
   // If length < 0 allocate will throw an exception.
   objArrayOop array = allocate(length, CHECK_NULL);
+  //allocate adds a heap event, so no need to add another heap event
   objArrayHandle h_array (THREAD, array);
   if (rank > 1) {
     if (length != 0) {

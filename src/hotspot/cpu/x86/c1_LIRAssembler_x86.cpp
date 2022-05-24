@@ -1646,6 +1646,7 @@ void LIR_Assembler::emit_alloc_array(LIR_OpAllocArray* op) {
     } else {
       __ mov(tmp3, len);
     }
+    __ push(len);
     __ allocate_array(op->obj()->as_register(),
                       len,
                       tmp1,
@@ -1654,6 +1655,7 @@ void LIR_Assembler::emit_alloc_array(LIR_OpAllocArray* op) {
                       array_element_size(op->type()),
                       op->klass()->as_register(),
                       *op->stub()->entry());
+    __ pop(len);
     __ append_heap_event(Universe::NewObject, Address(op->obj()->as_register(), 0), len);
   }
   __ bind(*op->stub()->continuation());

@@ -239,7 +239,6 @@ JRT_ENTRY(void, InterpreterRuntime::_new(JavaThread* current, ConstantPool* pool
   //       If we have a breakpoint, then we don't rewrite
   //       because the _breakpoint bytecode would be lost.
   oop obj = klass->allocate_instance(CHECK);
-  // Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)(void*)obj, (uint64_t)klass->size()});
   current->set_vm_result(obj);
 JRT_END
 

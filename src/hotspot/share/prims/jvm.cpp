@@ -687,7 +687,7 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
     const int length = ((arrayOop)obj())->length();
     new_obj_oop = Universe::heap()->array_allocate(klass, size, length,
                                                    /* do_zero */ true, CHECK_NULL);
-    event_size = size*length;
+    event_size = length;
   } else {
     new_obj_oop = Universe::heap()->obj_allocate(klass, size, CHECK_NULL);
     event_size = size;

@@ -92,7 +92,7 @@ typeArrayOop TypeArrayKlass::allocate_common(int length, bool do_zero, TRAPS) {
   size_t size = typeArrayOopDesc::object_size(layout_helper(), length);
   typeArrayOop r = (typeArrayOop)Universe::heap()->array_allocate(this, size, length,
                                                         do_zero, CHECK_NULL);
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)length*size, (uint64_t)(void*)r});
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)length, (uint64_t)(void*)r});
   return r;
 }
 

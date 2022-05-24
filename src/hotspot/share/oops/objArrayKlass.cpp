@@ -165,7 +165,7 @@ objArrayOop ObjArrayKlass::allocate(int length, TRAPS) {
   size_t size = objArrayOopDesc::object_size(length);
   objArrayOop r = (objArrayOop)Universe::heap()->array_allocate(this, size, length,
                                                        /* do_zero */ true, THREAD);
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)length*size, (uint64_t)(void*)r});
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, (uint64_t)length, (uint64_t)(void*)r});
   return r;
 }
 

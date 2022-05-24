@@ -4681,6 +4681,7 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
 
 void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, Register src_or_obj_size, bool preserve_flags)
 {
+  //TODO: Use Temporary Registers of the Assembler instead of new registers.
   if (!Universe::enable_heap_event_logging) return;
   if (dst_or_new_obj.base() == noreg || dst_or_new_obj.base() == rsp || dst_or_new_obj.base() == rbp)
     return; //No need to add event if it is on the stack
@@ -4710,6 +4711,7 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   mov64(src_reg, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
   addq(r10, src_reg);
   pop(src_reg);
+
   movq(Address(r10, 0), (uint64_t)event_type);
   movq(Address(r10, 8), src_reg);
   movq(Address(r10, 16), address_value);

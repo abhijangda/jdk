@@ -391,9 +391,19 @@ class AllObjects : public ObjectClosure {
           }
         }
 
-        if (idx != -1 && klass->is_instance_klass()) {
-          if (obj->size() != sorted_new_object_events[idx].address.src) {
-            num_src_not_correct++;
+        if (idx != -1) {
+          if (klass->is_instance_klass()) {
+            if (obj->size() != sorted_new_object_events[idx].address.src) {
+              printf("%s: obj->size() %ld != %ld\n", buf, obj->size(), sorted_new_object_events[idx].address.src);
+              num_src_not_correct++;
+            }
+          } else if (klass->id() == ObjArrayKlassID) {
+            ObjArrayKlass* oak = (ObjArrayKlass*)klass;
+            objArrayOop array = (objArrayOop)obj;
+            if ((size_t)array->length() != sorted_new_object_events[idx].address.src) {
+              printf("%s: array->length() %d != %ld\n", buf, array->length(), sorted_new_object_events[idx].address.src);
+              num_src_not_correct++;
+            }
           }
         }
 

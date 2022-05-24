@@ -3977,8 +3977,10 @@ void TemplateTable::_new() {
 #endif // _LP64
 
   if (UseTLAB) {
+    __ movq(r11, rdx); //rdx is instance size in bits
+    __ shrq(r11, 3);
     __ tlab_allocate(thread, rax, rdx, 0, rcx, rbx, slow_case);
-    __ append_heap_event(Universe::NewObject, Address(rax, 0), rdx); //TODO: Make apped_heap_event also accept a register
+    __ append_heap_event(Universe::NewObject, Address(rax, 0), r11); //TODO: Make apped_heap_event also accept a register
     if (ZeroTLAB) {
       // the fields have been already cleared
       __ jmp(initialize_header);
@@ -3990,8 +3992,10 @@ void TemplateTable::_new() {
     // Allocation in the shared Eden, if allowed.
     //
     // rdx: instance size in bytes
+    __ movq(r11, rdx);
+    __ shrq(r11, 3); //rdx is instance size in bits
     __ eden_allocate(thread, rax, rdx, 0, rbx, slow_case);
-    __ append_heap_event(Universe::NewObject, Address(rax, 0), rdx);
+    __ append_heap_event(Universe::NewObject, Address(rax, 0), r11);
   }
 
   // If UseTLAB or allow_shared_alloc are true, the object is created above and

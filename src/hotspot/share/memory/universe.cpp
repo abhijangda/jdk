@@ -353,7 +353,8 @@ class AllObjects : public ObjectClosure {
     int num_src_not_correct;
     int num_statics_checked;
     int num_oops;
-    AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0), num_src_not_correct(0), num_statics_checked(0) {}
+    int num_fields;
+    AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0), num_src_not_correct(0), num_statics_checked(0), num_fields(0) {}
     
     virtual void do_object(oop obj) {
       // printf("obj %p\n", (void*)obj);
@@ -434,8 +435,8 @@ class AllObjects : public ObjectClosure {
                   fd_address = ((uint64_t)(void*)obj) + ik->field_offset(f);
                   val = obj->obj_field(ik->field_offset(f));
                 }
+                num_fields++;
                 if (val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe) continue;
-        
                 int idx = has_heap_event(sorted_field_set_events, fd_address, 0, sorted_field_set_events_size - 1);
                 bool found = idx != -1;
                 get_oop_klass_name(obj, buf3);
@@ -521,6 +522,7 @@ class AllObjects : public ObjectClosure {
                   uint64_t fd_address = (uint64_t)p;
                   int idx = has_heap_event(sorted_field_set_events, fd_address, 0, sorted_field_set_events_size - 1);
                   bool found = idx != -1;
+                  num_fields++;
                   if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else 
                   {
                     Symbol* name = ik->field_name(f);
@@ -580,6 +582,7 @@ class AllObjects : public ObjectClosure {
           int num_not_found_in_klass = 0;
           for (int i = 0; i < array->length(); i++) {
             oop elem = array->obj_at(i);
+            num_fields++;
             if (elem == 0 || (uint64_t)(void*)elem == 0xbaadbabebaadbabe) continue;
             uint64_t elem_addr = ((uint64_t)array->base()) + i * sizeof(oop);
             int idx = has_heap_event(sorted_field_set_events, elem_addr, 0, sorted_field_set_events_size - 1);
@@ -751,7 +754,8 @@ void Universe::verify_heap_graph()
   AllObjects all_objects;
   Universe::heap()->object_iterate(&all_objects);
   
-  printf("valid? %d foundPuppy? %d num_heap_events %ld num_found %d num_not_found %d num_src_not_correct %d num_oops %d\n", (int)all_objects.valid, (int)all_objects.foundPuppy, sorted_field_set_events_size + sorted_new_object_events_size, all_objects.num_found, all_objects.num_not_found, all_objects.num_src_not_correct, all_objects.num_oops);
+  printf("valid? %d num_heap_events %ld {NewObject: %ld, FieldSet: %ld} num_found %d {NewObject: %d, FieldSet:%d} num_not_found %d num_src_not_correct %d\n", (int)all_objects.valid, sorted_field_set_events_size + sorted_new_object_events_size, 
+  sorted_new_object_events_size, sorted_field_set_events_size, all_objects.num_found, all_objects.num_oops, all_objects.num_fields, all_objects.num_not_found, all_objects.num_src_not_correct);
 
   if (!all_objects.valid) abort();
   // if (all_objects.num_src_not_correct > 0) abort();
@@ -761,7 +765,6 @@ void Universe::verify_heap_graph()
   printf("top_addrs %p %p\n", top_addrs[0], top_addrs[1]);
   printf("first_klass_addr 0x%lx last_klass_addr 0x%lx\n", first_klass_addr, last_klass_addr);
   printf("first_oop_addr 0x%lx last_oop_addr 0x%lx\n", first_oop_addr, last_oop_addr);
-
   return;
   int events_with_src_null = 0;
   int events_with_src_not_null = 0;
@@ -772,6 +775,7 @@ void Universe::verify_heap_graph()
   for (uint32_t i = 0; i < sorted_field_set_events_size; i++) {
     if (is_heap_event_in_heap[i] == 0) {
       HeapEvent event = sorted_field_set_events[i];
+      if (event.heap_event_type != Universe::FieldSet) continue;
       if (event.address.src == 0x0) {
         events_with_src_null++;
         continue;
@@ -790,14 +794,18 @@ void Universe::verify_heap_graph()
         }
         
       }
-      if (max_prints < 100) {
+      if (max_prints < 10) {
         printf("at %d: heap_event_type %ld dst 0x%lx src 0x%lx\n", i, (uint64_t)event.heap_event_type, event.address.dst, event.address.src);
-        if (event.address.src != 0x0) {
-          oop obj = (oop)(void*)event.address.src;
-          if (oopDesc::is_oop(obj)) {
-            char buf[1024];
-            printf("src: %s\n", get_oop_klass_name(obj, buf));
-          }
+        oop obj = (oop)(void*)event.address.src;
+        char buf2[1024];
+        get_oop_klass_name(obj, buf2);
+        int obj_index = -1;
+        has_heap_event(sorted_new_object_events, event.address.dst, 0, sorted_new_object_events_size - 1, &obj_index);
+        if (obj_index != -1) {
+          char buf[1024];
+          oop obj = (oop)(void*)sorted_new_object_events[obj_index].address.dst;
+          get_oop_klass_name(obj, buf);
+          printf("[%d] %p, %ld: %s.xxx = %s\n", obj_index, (void*)obj, obj->size(), buf, buf2);
         }
         // if (event.address.dst != 0x0) {
         //   oop obj = (oop)(void*)(event.address.dst - 0xc0);

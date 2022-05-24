@@ -134,6 +134,7 @@ protected:
                                    size_t length) {
     verify_decorators<ARRAYCOPY_DECORATOR_MASK | IN_HEAP |
                       AS_DECORATOR_MASK | IS_ARRAY | IS_DEST_UNINITIALIZED>();
+    #if 0
     // //TODO: Might also be called by ObjArrayKlass:copy_array
     if (src_obj != NULL && dst_obj != NULL) {
       objArrayOop src_arrayoop = (objArrayOop)src_obj;
@@ -174,7 +175,7 @@ protected:
         Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
       }
     } 
-    
+    #endif
     return AccessInternal::arraycopy<decorators | INTERNAL_VALUE_IS_OOP>(src_obj, src_offset_in_bytes, src_raw,
                                                                          dst_obj, dst_offset_in_bytes, dst_raw,
                                                                          length);
@@ -256,7 +257,7 @@ public:
     // printf("206: src %p dst 0x%lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
     //TODO: Is this also called by some other function
     //TODO: Assuming T is oop and not a narrowoop
-    Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
+    // Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
     return AccessInternal::atomic_xchg_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, new_oop_value);
   }
 

@@ -1008,7 +1008,7 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       __ movdbl(as_Address(to_addr), src->as_xmm_double_reg());
 #else
       if (src->is_double_xmm()) {
-        __ movdbl(dest, src->as_xmm_double_reg());
+        __ movdbl(as_Address(to_addr), src->as_xmm_double_reg());
       } else {
         assert(src->is_double_fpu(), "must be");
         assert(src->fpu_regnrLo() == 0, "argument must be on TOS");
@@ -1646,7 +1646,8 @@ void LIR_Assembler::emit_alloc_array(LIR_OpAllocArray* op) {
     } else {
       __ mov(tmp3, len);
     }
-    __ push(len);
+    if (Universe::enable_heap_event_logging)
+      __ push(len);
     __ allocate_array(op->obj()->as_register(),
                       len,
                       tmp1,
@@ -1655,7 +1656,8 @@ void LIR_Assembler::emit_alloc_array(LIR_OpAllocArray* op) {
                       array_element_size(op->type()),
                       op->klass()->as_register(),
                       *op->stub()->entry());
-    __ pop(len);
+    if (Universe::enable_heap_event_logging)
+      __ pop(len);
     __ append_heap_event(Universe::NewObject, Address(op->obj()->as_register(), 0), len);
   }
   __ bind(*op->stub()->continuation());

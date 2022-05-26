@@ -255,6 +255,7 @@ UNSAFE_ENTRY(void, Unsafe_PutReference(JNIEnv *env, jobject unsafe, jobject obj,
   oop x = JNIHandles::resolve(x_h);
   oop p = JNIHandles::resolve(obj);
   assert_field_offset_sane(p, offset);
+  // printf("258: 0x%lx\n", ((uint64_t)(void*)p) + offset);
   HeapAccess<ON_UNKNOWN_OOP_REF>::oop_store_at(p, offset, x);
 } UNSAFE_END
 
@@ -269,6 +270,7 @@ UNSAFE_ENTRY(void, Unsafe_PutReferenceVolatile(JNIEnv *env, jobject unsafe, jobj
   oop x = JNIHandles::resolve(x_h);
   oop p = JNIHandles::resolve(obj);
   assert_field_offset_sane(p, offset);
+  // printf("273: 0x%lx\n", ((uint64_t)(void*)p) + offset);
   HeapAccess<MO_SEQ_CST | ON_UNKNOWN_OOP_REF>::oop_store_at(p, offset, x);
 } UNSAFE_END
 

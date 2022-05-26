@@ -237,7 +237,9 @@ public:
 };
 
 inline void oopDesc::obj_field_put(int offset, oop value)           {
-  Universe::add_heap_event(Universe::HeapEvent({Universe::FieldSet, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
+  // char buf[1024];
+  // as_oop()->klass()->name()->as_C_string(buf, 1024);
+  // printf("240: 0x%lx , %p:%s size %ld klass id %d\n", ((uint64_t)(void*)as_oop() + offset), as_oop(), buf, as_oop()->size(), as_oop()->klass()->id());
   HeapAccess<>::oop_store_at(as_oop(), offset, value); 
 }
 

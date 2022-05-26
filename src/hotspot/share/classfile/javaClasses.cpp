@@ -1489,7 +1489,6 @@ oop java_lang_Class::create_basic_type_mirror(const char* basic_type_name, Basic
     assert(aklass != NULL, "correct bootstrap");
     release_set_array_klass(java_class, aklass);
   }
-  // printf("1491: %p %ld\n", (void*)java_class, java_class->size());
 #ifdef ASSERT
   InstanceMirrorKlass* mk = InstanceMirrorKlass::cast(vmClasses::Class_klass());
   assert(static_oop_field_count(java_class) == 0, "should have been zeroed by allocation");

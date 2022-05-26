@@ -1878,6 +1878,7 @@ JNI_ENTRY_NO_PRESERVE(void, jni_SetObjectField(JNIEnv *env, jobject obj, jfieldI
     field_value.l = value;
     o = JvmtiExport::jni_SetField_probe(thread, obj, o, k, fieldID, false, JVM_SIGNATURE_CLASS, (jvalue *)&field_value);
   }
+  printf("1881: 0x%lx\n", ((uint64_t)(void*)o) + offset);
   HeapAccess<ON_UNKNOWN_OOP_REF>::oop_store_at(o, offset, JNIHandles::resolve(value));
   HOTSPOT_JNI_SETOBJECTFIELD_RETURN();
 JNI_END
@@ -2060,6 +2061,8 @@ DEFINE_GETSTATICFIELD(jfloat,   float,  Float
 DEFINE_GETSTATICFIELD(jdouble,  double, Double
                       , HOTSPOT_JNI_GETSTATICDOUBLEFIELD_ENTRY(env, clazz, (uintptr_t) fieldID),  HOTSPOT_JNI_GETSTATICDOUBLEFIELD_RETURN()         )
 
+#include "oops/instanceMirrorKlass.hpp"
+#include "oops/instanceMirrorKlass.inline.hpp"
 JNI_ENTRY(void, jni_SetStaticObjectField(JNIEnv *env, jclass clazz, jfieldID fieldID, jobject value))
  HOTSPOT_JNI_SETSTATICOBJECTFIELD_ENTRY(env, clazz, (uintptr_t) fieldID, value);
   JNIid* id = jfieldIDWorkaround::from_static_jfieldID(fieldID);
@@ -2071,6 +2074,15 @@ JNI_ENTRY(void, jni_SetStaticObjectField(JNIEnv *env, jclass clazz, jfieldID fie
     field_value.l = value;
     JvmtiExport::jni_SetField_probe(thread, NULL, NULL, id->holder(), fieldID, true, JVM_SIGNATURE_CLASS, (jvalue *)&field_value);
   }
+  // char buf[1024];
+  // oop obj = id->holder()->java_mirror();
+  // InstanceMirrorKlass* imk = (InstanceMirrorKlass*)obj->klass();
+  // obj->klass()->name()->as_C_string(buf, 1024);
+  // int offset = id->offset();
+  // HeapWord* p = imk->start_of_static_fields(obj);
+  // HeapWord* end = p + java_lang_Class::static_oop_field_count(obj);
+
+  // printf("2079: 0x%lx , %p:%s size %ld klass id %d offset %d p %p end %p static_field_base_raw() %p klass id %d \n", ((uint64_t)(void*)obj + offset), obj, buf, obj->size(), obj->klass()->id(), offset, p, end, ((InstanceKlass*)id->holder())->static_field_base_raw(), id->holder()->id());
   id->holder()->java_mirror()->obj_field_put(id->offset(), JNIHandles::resolve(value));
   HOTSPOT_JNI_SETSTATICOBJECTFIELD_RETURN();
 JNI_END

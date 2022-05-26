@@ -179,19 +179,21 @@ void oopDesc::obj_field_put_raw(int offset, oop value)                {
   // char buf[1024];
   // as_oop()->klass()->name()->as_C_string(buf, 1024);
   // printf("181: %s, %p, %d\n", buf, (void*)as_oop(), offset);
+  // printf("182: 0x%lx\n", ((uint64_t)(void*)as_oop() + offset));
   // Universe::add_heap_event(Universe::HeapEvent({Universe::FieldSet, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   RawAccess<>::oop_store_at(as_oop(), offset, value); 
   }
 void oopDesc::release_obj_field_put(int offset, oop value)            { 
   // char buf[1024];
   // as_oop()->klass()->name()->as_C_string(buf, 1024);
-  // printf("188: %s, %p, %d\n", buf, (void*)as_oop(), offset);
+  // printf("189: 0x%lx\n", ((uint64_t)(void*)as_oop() + offset));
   // Universe::add_heap_event(Universe::HeapEvent({Universe::FieldSet, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   HeapAccess<MO_RELEASE>::oop_store_at(as_oop(), offset, value); }
 void oopDesc::obj_field_put_volatile(int offset, oop value)           { 
   // char buf[1024];
   // as_oop()->klass()->name()->as_C_string(buf, 1024);
   // printf("194: %s, %p, %d\n", buf, (void*)as_oop(), offset);
+  // printf("196: 0x%lx\n", ((uint64_t)(void*)as_oop() + offset));
   // Universe::add_heap_event(Universe::HeapEvent({Universe::FieldSet, (uint64_t)(void*) value, ((uint64_t)(void*)as_oop())+offset}));
   HeapAccess<MO_SEQ_CST>::oop_store_at(as_oop(), offset, value); }
 

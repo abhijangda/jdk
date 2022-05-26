@@ -827,7 +827,7 @@ class LambdaForm {
         // TO DO: Maybe add invokeGeneric, invokeWithArguments
     }
 
-    private static @Stable PerfCounter LF_FAILED;
+    private static PerfCounter LF_FAILED;
 
     private static PerfCounter failedCompilationCounter() {
         if (LF_FAILED == null) {
@@ -859,7 +859,7 @@ class LambdaForm {
             // bytecode generation failed - mark this LambdaForm as to be run in interpretation mode only
             invocationCounter = -1;
             failedCompilationCounter().increment();
-            if (LOG_LF_COMPILATION_FAILURE) {
+            if (true || LOG_LF_COMPILATION_FAILURE) {
                 System.out.println("LambdaForm compilation failed: " + this);
                 bge.printStackTrace(System.out);
             }

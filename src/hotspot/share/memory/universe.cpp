@@ -786,7 +786,7 @@ void Universe::verify_heap_graph()
   sorted_new_object_events_size, sorted_field_set_events_size, all_objects.num_found, all_objects.num_oops, all_objects.num_fields, all_objects.num_not_found, all_objects.num_src_not_correct);
 
   if (!all_objects.valid) abort();
-  return;
+  
   // if (all_objects.num_src_not_correct > 0) abort();
   // max_prints = 0;
   // return;
@@ -808,7 +808,6 @@ void Universe::verify_heap_graph()
       if (event.heap_event_type == Universe::NewObject || event.heap_event_type == Universe::FieldSet) continue;
       if (event.address.src == 0x0) {
         events_with_src_null++;
-        continue;
       } else {
         events_with_src_not_null++;
         if (event.heap_event_type == 2) {
@@ -822,20 +821,24 @@ void Universe::verify_heap_graph()
         if (event.address.src == 0xfffffffffffffffe) {
           num_minus_2++;
         }
-        
+        continue;
       }
-      if (max_prints < 10) {
+      if (max_prints < 20) {
         printf("at %d: heap_event_type %ld dst 0x%lx src 0x%lx\n", i, (uint64_t)event.heap_event_type, event.address.dst, event.address.src);
-        oop obj = (oop)(void*)event.address.src;
-        char buf2[1024];
-        get_oop_klass_name(obj, buf2);
+        // oop obj = oop((oopDesc*)(void*)event.address.src);
+        char buf2[1024]={0};
+        // get_oop_klass_name(obj, buf2);
         int obj_index = -1;
         has_heap_event(sorted_new_object_events, event.address.dst, 0, sorted_new_object_events_size - 1, &obj_index);
         if (obj_index != -1) {
           char buf[1024];
-          oop obj = (oop)(void*)sorted_new_object_events[obj_index].address.dst;
-          get_oop_klass_name(obj, buf);
-          printf("[%d] %p, %ld: %s.xxx = %s\n", obj_index, (void*)obj, obj->size(), buf, buf2);
+          oop obj = oop((oopDesc*)sorted_new_object_events[obj_index].address.dst);
+          if (obj->klass()->id() == ObjArrayKlassID) {
+            get_oop_klass_name(obj, buf);
+            HeapWord* static_start1 = ((InstanceMirrorKlass*)obj->klass()->java_mirror()->klass())->start_of_static_fields(obj);
+            HeapWord* static_start2 = ((InstanceMirrorKlass*)obj->klass()->java_mirror()->klass())->start_of_static_fields(obj->klass()->java_mirror());
+            printf("[%d] %p, length %d: %s.xxx = %s obj->klass()->id() %d, static_start1 %p static_start2 %p\n", obj_index, (void*)obj, ((objArrayOop)obj)->length(), buf, buf2, obj->klass()->id(), static_start1, static_start2);
+          }
         }
         // if (event.address.dst != 0x0) {
         //   oop obj = (oop)(void*)(event.address.dst - 0xc0);

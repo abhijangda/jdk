@@ -4683,12 +4683,10 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
 {
   //TODO: Use Temporary Registers of the Assembler instead of new registers.
   if (!Universe::enable_heap_event_logging) return;
-  // if (dst_or_new_obj.base() == noreg || dst_or_new_obj.base() == rsp || dst_or_new_obj.base() == rbp)
-  //   return; //No need to add event if it is on the stack
+  if (dst_or_new_obj.base() == noreg || dst_or_new_obj.base() == rsp || dst_or_new_obj.base() == rbp)
+    return; //No need to add event if it is on the stack
   //Template interpreter uses only a few registers. Can use other registers without push/pop?
   push(src_or_obj_size);
-  if (!(dst_or_new_obj.base() == noreg || dst_or_new_obj.base() == rsp || dst_or_new_obj.base() == rbp))
-    push(dst_or_new_obj.base());
   if (dst_or_new_obj.index() != noreg)
     push(dst_or_new_obj.index());
   Register address_value = r8;
@@ -4737,8 +4735,6 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   pop(address_value);
   if (dst_or_new_obj.index() != noreg)
     pop(dst_or_new_obj.index());
-  if (!(dst_or_new_obj.base() == noreg || dst_or_new_obj.base() == rsp || dst_or_new_obj.base() == rbp))
-    pop(dst_or_new_obj.base());
   pop(src_or_obj_size);
 }
 

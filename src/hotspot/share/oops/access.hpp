@@ -232,7 +232,17 @@ public:
     // printf("256: src %p src+offset 0x%lx\n", (void*)base, ((uint64_t)base) + offset);
     //TODO: This is also called by obj_put_field_at and also by unsafe PutReference?
     //TODO: Assuming T is Oop and not a NarrowOop
-    Universe::add_heap_event(Universe::HeapEvent{Universe::OopStoreAt, (uint64_t)(void*)value, ((uint64_t)(void*)base) + offset});
+    // if (true) {
+    //   uint64_t dst = ((uint64_t)(void*)base) + offset;
+    //   char hex_dst[1024];
+    //   sprintf(hex_dst, "0x%lx", dst);
+    //   if (strstr(hex_dst, "03f6e0")) {
+    //     char buf[1024];
+    //     base->klass()->name()->as_C_string(buf, 1024);
+    //     printf("0x%lx: oop %p offset 0x%lx src %p oop-class %s oop-class-id %d\n", dst, (void*)base, offset, (void*)value, buf, base->klass()->id());
+    //   }
+    // }
+    Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)value, ((uint64_t)(void*)base) + offset});
     AccessInternal::store_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, oop_value);
   }
 

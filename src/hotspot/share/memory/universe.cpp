@@ -423,19 +423,18 @@ class AllObjects : public ObjectClosure {
             // char hex_obj[1024];
             // sprintf(hex_obj, "%p", obj);
             // if (strstr(hex_obj, "018d8"))
-            // printf("ikoop %p obj %p ik->id() %d p %p end %p num_statics %d found_p %d ik %p imk %p: %s\n",ikoop, obj, ik->id(), p, end, num_statics, found_p, ik, imk, buf);
             if (num_statics > 0  && num_statics < 100 && !found_p) {
               for (;p < end; p++) {
                 num_statics_checked++;
                 // uint64_t val = (uint64_t);
                 uint64_t fd_address = (uint64_t)p;
                 uint64_t val = *((uint64_t*)fd_address);
-                if (val == 0) continue;
+                
                 int idx = has_heap_event(sorted_field_set_events, fd_address, 0, sorted_field_set_events_size - 1);
                 bool found = idx != -1;
                 num_fields++;
                 if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else 
-                {num_not_found++;}
+                {if (val != 0) num_not_found++;}
               }
               
               iks_static_fields_checked[iks_static_fields_checked_size++] = (InstanceKlass*)obj_static_start;
@@ -460,12 +459,11 @@ class AllObjects : public ObjectClosure {
                 oop val;
                 fd_address = ((uint64_t)(void*)obj) + ik->field_offset(f);
                 val = obj->obj_field(ik->field_offset(f));
-                if (val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe) continue;
                 num_fields++;
                 int idx = has_heap_event(sorted_field_set_events, fd_address, 0, sorted_field_set_events_size - 1);
                 bool found = idx != -1;
                 get_oop_klass_name(obj, buf3);
-                if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else 
+                if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else if (!(val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe))
                 {
                   // if (strstr(buf3, "MemberName"))
                   printf("Not found: (%p) %s.%s:%s : %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), (void*)val);
@@ -501,7 +499,6 @@ class AllObjects : public ObjectClosure {
                     // }
                   }
                 }
-                valid = valid && found;
               }
               // if (f <= 1)
               //   printf("%s:%s\n", name->as_C_string(buf,1024), signature->as_C_string(buf2,1024));
@@ -511,7 +508,7 @@ class AllObjects : public ObjectClosure {
             InstanceMirrorKlass* imk = (InstanceMirrorKlass*)ikoop->klass();
             // printf("imk->fields %d static_fields %d %d ik->fields %d %s\n", imk->java_fields_count(), java_lang_Class::static_oop_field_count(obj), java_lang_Class::static_oop_field_count(ikoop), ik->java_fields_count(), buf);
 
-            if (java_lang_Class::static_oop_field_count(obj) > 0) {
+            if (java_lang_Class::static_oop_field_count(ikoop) > 0) {
               HeapWord* static_start = imk->start_of_static_fields(ikoop);
               HeapWord* p = static_start;
               bool has_p_checked = binary_search(iks_static_fields_checked, 0, iks_static_fields_checked_size - 1, (InstanceKlass*)static_start) != -1;
@@ -547,11 +544,11 @@ class AllObjects : public ObjectClosure {
                   // uint64_t val = (uint64_t);
                   uint64_t fd_address = (uint64_t)p;
                   uint64_t val = *((uint64_t*)fd_address);
-                  if (val == 0) continue;
+                  // if (val == 0) continue;
                   int idx = has_heap_event(sorted_field_set_events, fd_address, 0, sorted_field_set_events_size - 1);
                   bool found = idx != -1;
                   num_fields++;
-                  if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else 
+                  if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else if (val != 0)
                   {
                     Symbol* name = ik->field_name(f);
                     Symbol* signature = ik->field_signature(f);
@@ -610,12 +607,11 @@ class AllObjects : public ObjectClosure {
           int num_not_found_in_klass = 0;
           for (int i = 0; i < array->length(); i++) {
             oop elem = array->obj_at(i);
-            if (elem == 0 || (uint64_t)(void*)elem == 0xbaadbabebaadbabe) continue;
             num_fields++;
             uint64_t elem_addr = ((uint64_t)array->base()) + i * sizeof(oop);
             int idx = has_heap_event(sorted_field_set_events, elem_addr, 0, sorted_field_set_events_size - 1);
             bool found = idx != -1;
-            if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else {
+            if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else if (!(elem == 0 || ((uint64_t)(void*)elem) == 0xbaadbabebaadbabe)) {
               
               num_not_found++;
               // printf("length %d klass %s %p\n", array->length(), oak->name()->as_C_string(buf2,1024), (void*)array);
@@ -634,7 +630,6 @@ class AllObjects : public ObjectClosure {
               printf("(%p) %s[%d] : 0x%lx != %p\n", (void*)obj, oak->name()->as_C_string(buf2,1024), i, sorted_field_set_events[idx].address.src, (void*)elem);
               printf("sorted_field_set_events[idx].id %ld\n", sorted_field_set_events[idx].id);
             }
-            valid = valid && found;
           }
         } else if (klass->id() == TypeArrayKlassID) {
           TypeArrayKlass* tak = (TypeArrayKlass*)klass;
@@ -673,6 +668,8 @@ class AllObjects : public ObjectClosure {
         }
         
         // objects.push_back(obj);
+
+        valid = valid && num_not_found == 0;
       }
     }
 };
@@ -824,21 +821,23 @@ void Universe::verify_heap_graph()
         continue;
       }
       if (max_prints < 20) {
-        printf("at %d: heap_event_type %ld dst 0x%lx src 0x%lx\n", i, (uint64_t)event.heap_event_type, event.address.dst, event.address.src);
         // oop obj = oop((oopDesc*)(void*)event.address.src);
         char buf2[1024]={0};
         // get_oop_klass_name(obj, buf2);
         int obj_index = -1;
         has_heap_event(sorted_new_object_events, event.address.dst, 0, sorted_new_object_events_size - 1, &obj_index);
+        printf("at %d: heap_event_type %ld dst 0x%lx src 0x%lx obj_index %d\n", i, (uint64_t)event.heap_event_type, event.address.dst, event.address.src, obj_index);
         if (obj_index != -1) {
           char buf[1024];
           oop obj = oop((oopDesc*)sorted_new_object_events[obj_index].address.dst);
-          if (obj->klass()->id() == ObjArrayKlassID) {
-            get_oop_klass_name(obj, buf);
-            HeapWord* static_start1 = ((InstanceMirrorKlass*)obj->klass()->java_mirror()->klass())->start_of_static_fields(obj);
-            HeapWord* static_start2 = ((InstanceMirrorKlass*)obj->klass()->java_mirror()->klass())->start_of_static_fields(obj->klass()->java_mirror());
-            printf("[%d] %p, length %d: %s.xxx = %s obj->klass()->id() %d, static_start1 %p static_start2 %p\n", obj_index, (void*)obj, ((objArrayOop)obj)->length(), buf, buf2, obj->klass()->id(), static_start1, static_start2);
-          }
+          // if (obj->klass()->id() == ObjArrayKlassID) {
+          get_oop_klass_name(obj, buf);
+          HeapWord* static_start1 = ((InstanceMirrorKlass*)obj->klass()->java_mirror()->klass())->start_of_static_fields(obj);
+          int count1 = java_lang_Class::static_oop_field_count(obj);
+          HeapWord* static_start2 = ((InstanceMirrorKlass*)obj->klass()->java_mirror()->klass())->start_of_static_fields(obj->klass()->java_mirror());
+          int count2 = java_lang_Class::static_oop_field_count(obj->klass()->java_mirror());
+          printf("[%d] %p, size %ld: %s.xxx = %s obj->klass()->id() %d, static_start1 %p count1 %d static_start2 %p count2 %d\n", obj_index, (void*)obj, obj->size(), buf, buf2, obj->klass()->id(), static_start1, count1, static_start2, count2);
+          // }
         }
         // if (event.address.dst != 0x0) {
         //   oop obj = (oop)(void*)(event.address.dst - 0xc0);

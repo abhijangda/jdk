@@ -752,7 +752,7 @@ void LIR_Assembler::const2mem(LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmi
 #ifdef _LP64
           __ xorptr(rscratch1, rscratch1);
           null_check_here = code_offset();
-          // __ append_heap_event(Universe::HeapEventType::FieldSet, as_Address(addr), rscratch1);
+          __ append_heap_event(Universe::HeapEventType::FieldSet, as_Address(addr), rscratch1);
           __ movptr(as_Address(addr), rscratch1);
 #else
           __ movptr(as_Address(addr), NULL_WORD);

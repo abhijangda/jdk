@@ -1159,7 +1159,7 @@ void TemplateTable::aastore() {
   __ profile_null_seen(rbx);
 
   // Store a NULL
-  // __ append_heap_event(Universe::OopStoreAt, element_address, 0);
+  __ append_heap_event(Universe::FieldSet, element_address, 0);
   do_oop_store(_masm, element_address, noreg, IS_ARRAY);
 
   // Pop stack arguments
@@ -3135,7 +3135,7 @@ void TemplateTable::putfield_or_static_helper(int byte_no, bool is_static, Rewri
   {
     __ pop(atos);
     if (!is_static) pop_and_check_object(obj);
-    __ append_heap_event(Universe::FieldSet, field, rax, true);
+    __ append_heap_event(Universe::OopStoreAt, field, rax, true);
     // Store into the field
     do_oop_store(_masm, field, rax);
     if (!is_static && rc == may_rewrite) {

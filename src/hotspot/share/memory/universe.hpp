@@ -217,7 +217,28 @@ class Universe: AllStatic {
   static pthread_mutex_t mutex_heap_event;
   static bool enable_heap_event_logging;
   static bool enable_heap_graph_verify;
-  static void add_heap_event(HeapEvent event);
+  static inline void add_heap_event(Universe::HeapEvent event)
+  {  
+    if (!Universe::enable_heap_event_logging) return;
+    // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
+    if (Universe::enable_heap_graph_verify)
+      pthread_mutex_lock(&Universe::mutex_heap_event);
+    // Universe::heap_event_counter++;
+    // if (event.address.src == 0x0) {
+    //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
+    // }
+    Universe::heap_events[Universe::heap_event_counter++] = event;
+    // if (event.heap_event_type == 0) {
+    //   printf("new object at %ld\n");
+    // }
+    if (Universe::heap_event_counter == Universe::max_heap_events) {
+      Universe::verify_heap_graph();
+      
+    }
+    if (Universe::enable_heap_graph_verify)
+      pthread_mutex_unlock(&Universe::mutex_heap_event);
+  }
+
   static void verify_heap_graph();
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;
 

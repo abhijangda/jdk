@@ -95,30 +95,7 @@ pthread_mutex_t Universe::mutex_heap_event;
 unsigned long Universe::heap_event_counter = 0;
 Universe::HeapEvent Universe::heap_events[Universe::max_heap_events] = {};
 bool Universe::enable_heap_event_logging = true;
-bool Universe::enable_heap_graph_verify = true;
-
-void Universe::add_heap_event(Universe::HeapEvent event)
-{  
-  if (!Universe::enable_heap_event_logging) return;
-  // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
-  if (Universe::enable_heap_graph_verify)
-    pthread_mutex_lock(&Universe::mutex_heap_event);
-  // Universe::heap_event_counter++;
-  // if (event.address.src == 0x0) {
-  //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
-  // }
-  Universe::heap_events[Universe::heap_event_counter++] = event;
-  // if (event.heap_event_type == 0) {
-  //   printf("new object at %ld\n");
-  // }
-  if (Universe::heap_event_counter == Universe::max_heap_events) {
-    Universe::verify_heap_graph();
-    
-  }
-  if (Universe::enable_heap_graph_verify)
-    pthread_mutex_unlock(&Universe::mutex_heap_event);
-}
-
+bool Universe::enable_heap_graph_verify = false;
 
 #include<vector>
 #include<limits>

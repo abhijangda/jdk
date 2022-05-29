@@ -1804,6 +1804,7 @@ void GraphBuilder::access_field(Bytecodes::Code code) {
       if (!needs_patching) store = _memory->store(store);
       if (store != NULL) {
         append(store);
+        
       }
       break;
     }

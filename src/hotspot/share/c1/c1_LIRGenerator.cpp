@@ -1651,6 +1651,7 @@ void LIRGenerator::do_StoreField(StoreField* x) {
 
   access_store_at(decorators, field_type, object, LIR_OprFact::intConst(x->offset()),
                   value.result(), info != NULL ? new CodeEmitInfo(info) : NULL, info);
+  
 }
 
 void LIRGenerator::do_StoreIndexed(StoreIndexed* x) {

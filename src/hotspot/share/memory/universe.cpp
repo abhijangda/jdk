@@ -95,7 +95,7 @@ pthread_mutex_t Universe::mutex_heap_event;
 unsigned long Universe::heap_event_counter = 0;
 Universe::HeapEvent Universe::heap_events[Universe::max_heap_events] = {};
 bool Universe::enable_heap_event_logging = true;
-bool Universe::enable_heap_graph_verify = true;
+bool Universe::enable_heap_graph_verify = false;
 
 #include<vector>
 #include<limits>

@@ -759,7 +759,7 @@ void Universe::verify_heap_graph()
   printf("valid? %d num_heap_events %ld {NewObject: %ld, FieldSet: %ld} num_found %d {NewObject: %d, FieldSet:%d} num_not_found %d num_src_not_correct %d\n", (int)all_objects.valid, sorted_field_set_events_size + sorted_new_object_events_size, 
   sorted_new_object_events_size, sorted_field_set_events_size, all_objects.num_found, all_objects.num_oops, all_objects.num_fields, all_objects.num_not_found, all_objects.num_src_not_correct);
 
-  if (!all_objects.valid) abort();
+  // if (!all_objects.valid) abort();
   
   // if (all_objects.num_src_not_correct > 0) abort();
   // max_prints = 0;

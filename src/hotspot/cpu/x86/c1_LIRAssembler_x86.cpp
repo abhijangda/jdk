@@ -770,7 +770,7 @@ void LIR_Assembler::const2mem(LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmi
             null_check_here = code_offset();
             __ movl(as_Address_lo(addr), rscratch1);
           } else {
-            __ append_heap_event(Universe::HeapEventType::FieldSet, as_Address(addr), rscratch1);
+            __ append_heap_event(Universe::HeapEventType::OopStoreAt, as_Address(addr), rscratch1, r10, true, r11, true, r9, true, r8, true, false);
             null_check_here = code_offset();
             __ movptr(as_Address_lo(addr), rscratch1);
           }

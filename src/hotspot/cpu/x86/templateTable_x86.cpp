@@ -1150,7 +1150,7 @@ void TemplateTable::aastore() {
   __ movptr(rax, at_tos());
   __ movl(rcx, at_tos_p1()); // index
   // Now store using the appropriate barrier
-  __ append_heap_event(Universe::FieldSet, element_address, rax, true);
+  __ append_heap_event(Universe::FieldSet, element_address, rax, r11, false, r10, false, r9, false, r8, false, true); //TODO: Make apped_heap_event also accept a register);
   do_oop_store(_masm, element_address, rax, IS_ARRAY);
   __ jmp(done);
 
@@ -3135,7 +3135,7 @@ void TemplateTable::putfield_or_static_helper(int byte_no, bool is_static, Rewri
   {
     __ pop(atos);
     if (!is_static) pop_and_check_object(obj);
-    __ append_heap_event(Universe::OopStoreAt, field, rax, true);
+    __ append_heap_event(Universe::OopStoreAt, field, rax, r11, false, r10, false, r9, false, r8, false, true); //TODO: Make apped_heap_event also accept a register);
     // Store into the field
     do_oop_store(_masm, field, rax);
     if (!is_static && rc == may_rewrite) {
@@ -3373,7 +3373,7 @@ void TemplateTable::fast_storefield_helper(Address field, Register rax) {
   // access field
   switch (bytecode()) {
   case Bytecodes::_fast_aputfield:
-    __ append_heap_event(Universe::FieldSet, field, rax, true);
+    __ append_heap_event(Universe::FieldSet, field, rax, r11, false, r10, false, r9, false, r8, false, true);
     do_oop_store(_masm, field, rax);
     break;
   case Bytecodes::_fast_lputfield:
@@ -3982,7 +3982,7 @@ void TemplateTable::_new() {
       __ shrq(r11, 3);
     }
     __ tlab_allocate(thread, rax, rdx, 0, rcx, rbx, slow_case);
-    __ append_heap_event(Universe::NewObject, Address(rax, 0), r11); //TODO: Make apped_heap_event also accept a register
+    __ append_heap_event(Universe::NewObject, Address(rax, 0), r11, r12, false, r10, false, r9, false, r8, false, true); //TODO: Make apped_heap_event also accept a register
     if (ZeroTLAB) {
       // the fields have been already cleared
       __ jmp(initialize_header);
@@ -3999,7 +3999,7 @@ void TemplateTable::_new() {
       __ shrq(r11, 3); //rdx is instance size in bits
     }
     __ eden_allocate(thread, rax, rdx, 0, rbx, slow_case);
-    __ append_heap_event(Universe::NewObject, Address(rax, 0), r11);
+    __ append_heap_event(Universe::NewObject, Address(rax, 0), r11, r12, false, r10, false, r9, false, r8, false, true); //TODO: Make apped_heap_event also accept a register
   }
 
   // If UseTLAB or allow_shared_alloc are true, the object is created above and

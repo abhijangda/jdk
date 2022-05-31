@@ -3135,7 +3135,7 @@ void TemplateTable::putfield_or_static_helper(int byte_no, bool is_static, Rewri
   {
     __ pop(atos);
     if (!is_static) pop_and_check_object(obj);
-    __ append_heap_event(Universe::OopStoreAt, field, rax, r11, false, r10, false, r9, false, r8, false, true); //TODO: Make apped_heap_event also accept a register);
+    __ append_heap_event(Universe::FieldSet, field, rax, r11, false, r10, false, r9, false, r8, false, true); //TODO: Make apped_heap_event also accept a register);
     // Store into the field
     do_oop_store(_masm, field, rax);
     if (!is_static && rc == may_rewrite) {

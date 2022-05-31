@@ -4649,12 +4649,16 @@ Register MacroAssembler::register_for_event_counter(Register event_src)
 
 void lock_heap_event() 
 {
-  pthread_mutex_lock(&Universe::mutex_heap_event);
+  // printf("macroassembler try-lock\n");
+  // printf("macroassembler locked\n");
+  Universe::lock_mutex_heap_event();
 }
 
 void unlock_heap_event() 
 {
-  pthread_mutex_unlock(&Universe::mutex_heap_event);
+  // printf("macroassembler unlock\n");
+  // pthread_mutex_unlock(&Universe::mutex_heap_event);
+  Universe::unlock_mutex_heap_event();
 }
 
 
@@ -4714,7 +4718,7 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   AddressLiteral heap_events_addr_literal((address)&Universe::heap_events, relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
   gen_lock_heap_event_mutex();
-  movq(temp3, as_Address(heap_event_counter_addr));
+  movl(temp3, as_Address(heap_event_counter_addr));
   imulq(temp2, temp3, sizeof(Universe::HeapEvent));
   mov64(temp1, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
   addq(temp2, temp1);
@@ -4723,8 +4727,8 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   movq(Address(temp2, 16), temp4);
   pop(temp4);
   movq(Address(temp2, 8), temp4);
-  incrementq(temp3); //TODO: Using lea will not affect flags
-  movq(as_Address(heap_event_counter_addr), temp3);
+  incrementl(temp3); //TODO: Using lea will not affect flags
+  movl(as_Address(heap_event_counter_addr), temp3);
   //TODO: Use Addressingmode: movq(Address(temp2, temp3, Address::ScaleFactor::times_1, 16), 1);
   subq(temp3, Universe::max_heap_events);
   Label not_equal;

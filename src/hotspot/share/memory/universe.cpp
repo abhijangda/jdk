@@ -91,12 +91,12 @@
 #include <pthread.h>
 #include "oops/instanceMirrorKlass.inline.hpp"
 
-pthread_mutex_t Universe::mutex_heap_event;
-unsigned long Universe::heap_event_counter = 0;
+pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
+unsigned int Universe::heap_event_counter = 0;
 Universe::HeapEvent Universe::heap_events[Universe::max_heap_events] = {};
 bool Universe::enable_heap_event_logging = true;
 bool Universe::enable_heap_graph_verify = true;
-bool Universe::heap_event_stub_in_C1_LIR = true;
+bool Universe::heap_event_stub_in_C1_LIR = false;
 
 #include<vector>
 #include<limits>
@@ -675,13 +675,22 @@ int HeapEventComparerV(const void* a, const void* b) {
 JRT_LEAF(void, Universe::lock_mutex_heap_event())
   // if (!Universe::enable_heap_graph_verify)
   //   return;
+  // printf("try-lock %ld\n", gettid());
   pthread_mutex_lock(&Universe::mutex_heap_event);
+  // printf("locked %ld\n", gettid());
 JRT_END
 
 JRT_LEAF(void, Universe::unlock_mutex_heap_event())
   // if (!Universe::enable_heap_graph_verify)
   //   return;
+  // printf("unlock %ld\n", gettid());
   pthread_mutex_unlock(&Universe::mutex_heap_event);
+JRT_END
+
+JRT_LEAF(void, Universe::print_heap_event_counter())
+  printf("Universe::heap_event_counter %d\n", Universe::heap_event_counter);
+  if (Universe::heap_event_counter == Universe::max_heap_events) 
+    Universe::heap_event_counter = 0;  
 JRT_END
 
 JRT_LEAF(void, Universe::verify_heap_graph())
@@ -715,12 +724,16 @@ JRT_LEAF(void, Universe::verify_heap_graph())
 
   qsort(Universe::heap_events, Universe::max_heap_events, sizeof(HeapEvent), HeapEventComparerV);
   int max_prints=0;
+  int zero_event_types = 0;
   //Update heap hash table
   for (uint64_t event_iter = 0; event_iter < (1 << Universe::LOG_MAX_EVENT_COUNTER);event_iter++) {
     HeapEvent latest_event = Universe::heap_events[event_iter];
     while (event_iter < Universe::max_heap_events - 1 && Universe::heap_events[event_iter].address.dst == Universe::heap_events[event_iter+1].address.dst) {
       if (latest_event.id < Universe::heap_events[event_iter].id) {
         latest_event = Universe::heap_events[event_iter];
+      }
+      if (Universe::heap_events[event_iter].heap_event_type == 0) {
+        zero_event_types++;
       }
       event_iter++;
     }
@@ -746,12 +759,16 @@ JRT_LEAF(void, Universe::verify_heap_graph())
           sorted_field_set_events[idx] = latest_event;
       }
     } else {
-      printf("invalid event type %ld\n", latest_event.heap_event_type);
+      printf("invalid event type %ld at event_iter %ld\n", latest_event.heap_event_type, event_iter);
       // ShouldNotReachHere();
     }
+
+    if (latest_event.heap_event_type == OopStoreAt)
+      printf("latest_event.heap_event_type == OopStoreAt %ld\n", latest_event.heap_event_type);
   }
   
-  printf("total events %ld\n", sorted_field_set_events_size);
+  printf("total events %ld zero_event_types %d\n", sorted_field_set_events_size, zero_event_types);
+  
   // sorted_field_set_events.sort(HeapEventComparer);
   qsort(sorted_field_set_events, sorted_field_set_events_size, sizeof(HeapEvent), HeapEventComparerV);
   qsort(sorted_new_object_events, sorted_new_object_events_size, sizeof(HeapEvent), HeapEventComparerV);

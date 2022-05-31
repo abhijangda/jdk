@@ -138,6 +138,10 @@ LIR_Opr BarrierSetC1::atomic_add_at(LIRAccess& access, LIRItem& value) {
   return atomic_add_at_resolved(access, value);
 }
 
+static int test_counter = 0;
+
+void print_test_counter() {printf("test_counter %d %p\n", test_counter, &test_counter);}
+
 void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
   DecoratorSet decorators = access.decorators();
   bool is_volatile = (((decorators & MO_SEQ_CST) != 0) || AlwaysAtomicAccesses);
@@ -147,6 +151,46 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
 
   if (mask_boolean) {
     value = gen->mask_boolean(access.base().opr(), value, access.access_emit_info());
+  }
+
+  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging && is_reference_type(value.type())) {
+    // printf("Universe::heap_event_counter %ld\n", Universe::heap_event_counter);
+    LIR_Opr heap_event_counter_addr_reg = gen->new_pointer_register();
+    LIR_Opr heap_events_addr_reg = gen->new_pointer_register();
+    LIR_Opr heap_events_idx = gen->new_register(T_INT);
+    LIR_Opr size_heap_event = gen->new_register(T_INT);
+    LabelObj* pass_through = new LabelObj();
+    BasicTypeList signature;
+    // if (!Universe::enable_heap_graph_verify)
+    gen->call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::lock_mutex_heap_event), (ValueType*)voidType, NULL);
+    __ move(LIR_OprFact::intConst(sizeof(Universe::HeapEvent)), size_heap_event);
+    __ move(LIR_OprFact::longConst((uint64_t)&test_counter), heap_event_counter_addr_reg);
+    LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_INT);
+    LIR_Opr counter = gen->new_register(T_INT);
+    __ move(heap_event_counter_addr, counter);
+    //TODO: Figure out the branch
+    // __ cmp(LIR_Condition::lir_cond_less, counter, LIR_OprFact::longConst(Universe::max_heap_events));
+    // __ branch(LIR_Condition::lir_cond_less, pass_through->label()); 
+    // __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_events), heap_events_addr_reg);
+    __ shift_left(counter, 5, heap_events_idx);
+    // __ add(heap_events_addr_reg, heap_events_idx, heap_events_addr_reg);
+    // LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, 0, T_LONG);
+    // LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, 8, T_LONG);
+    // LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 16, T_LONG);
+    // __ move(LIR_OprFact::longConst(Universe::OopStoreAt), heap_events_addr_type);
+    // __ move(value, heap_events_addr_src);
+    
+    // __ leal(access.resolved_addr()->as_address_ptr(), heap_events_idx);
+    // __ move(heap_events_idx, heap_events_addr_dst);
+    // __ move (LIR_OprFact::longConst(1L), counter);
+
+    __ add(counter, LIR_OprFact::intConst(1L), counter);
+    __ move(counter, heap_event_counter_addr);
+
+    gen->call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, print_test_counter), (ValueType*)voidType, NULL);
+    // if (!Universe::enable_heap_graph_verify)
+    gen->call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::unlock_mutex_heap_event), (ValueType*)voidType, NULL);
+    // __ branch_destination(pass_through->label());
   }
 
   if (is_volatile) {

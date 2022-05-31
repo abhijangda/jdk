@@ -211,12 +211,13 @@ class Universe: AllStatic {
   //}
   };
   static const int LOG_MAX_EVENT_COUNTER = 24;
-  static const int max_heap_events = 1 << LOG_MAX_EVENT_COUNTER;
+  static const unsigned long max_heap_events = 1L << LOG_MAX_EVENT_COUNTER;
   static unsigned long heap_event_counter;
   static HeapEvent heap_events[max_heap_events];
   static pthread_mutex_t mutex_heap_event;
   static bool enable_heap_event_logging;
   static bool enable_heap_graph_verify;
+  static bool heap_event_stub_in_C1_LIR;
   static inline void add_heap_event(Universe::HeapEvent event)
   {  
     if (!Universe::enable_heap_event_logging) return;
@@ -238,6 +239,8 @@ class Universe: AllStatic {
     if (Universe::enable_heap_graph_verify)
       pthread_mutex_unlock(&Universe::mutex_heap_event);
   }
+  static void lock_mutex_heap_event();
+  static void unlock_mutex_heap_event();
 
   static void verify_heap_graph();
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;

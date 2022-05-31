@@ -1585,6 +1585,7 @@ void LIRGenerator::do_CompareAndSwap(Intrinsic* x, ValueType* type) {
 // case is placed after volatile-stores although it could just as well go
 // before volatile-loads.
 
+#include "memory/universe.hpp"
 
 void LIRGenerator::do_StoreField(StoreField* x) {
   bool needs_patching = x->needs_patching();
@@ -1651,7 +1652,48 @@ void LIRGenerator::do_StoreField(StoreField* x) {
 
   access_store_at(decorators, field_type, object, LIR_OprFact::intConst(x->offset()),
                   value.result(), info != NULL ? new CodeEmitInfo(info) : NULL, info);
-  
+
+  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging && is_reference_type(field_type)) {
+    // printf("Universe::heap_event_counter %ld\n", Universe::heap_event_counter);
+    LIR_Opr heap_event_counter_addr_reg = new_pointer_register();
+    LIR_Opr heap_events_addr_reg = new_pointer_register();
+    LIR_Opr heap_events_idx = new_register(T_LONG);
+    LIR_Opr size_heap_event = new_register(T_LONG);
+    __ move(LIR_OprFact::longConst(sizeof(Universe::HeapEvent)), size_heap_event);
+    LabelObj* pass_through = new LabelObj();
+    BasicTypeList signature;
+    // if (!Universe::enable_heap_graph_verify)
+      call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::lock_mutex_heap_event), (ValueType*)voidType, NULL);
+    __ move(LIR_OprFact::intptrConst(&Universe::heap_event_counter), heap_event_counter_addr_reg);
+    LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
+    LIR_Opr counter = LIRGenerator::new_register(T_LONG);
+    LIR_Opr obj_add_field = LIRGenerator::new_register(T_LONG);
+    __ move(heap_event_counter_addr, counter);
+    //TODO: Figure out the branch
+    // __ cmp(LIR_Condition::lir_cond_less, counter, LIR_OprFact::longConst(Universe::max_heap_events));
+    // __ branch(LIR_Condition::lir_cond_less, pass_through->label()); 
+    __ move(LIR_OprFact::intptrConst(&Universe::heap_events), heap_events_addr_reg);
+    __ mul(counter, size_heap_event, heap_events_idx);
+    LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, heap_events_idx, 0, T_LONG);
+    LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, heap_events_idx, 8, T_LONG);
+    LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, heap_events_idx, 16, T_LONG);
+    __ move(LIR_OprFact::longConst(Universe::FieldSet), heap_events_addr_type);
+    __ move(value.result(), heap_events_addr_src);
+    
+    LIR_Opr addr_opr = LIR_OprFact::address(generate_address(object.result(), LIR_OprFact::intConst(x->offset()), 0, 0, field_type));
+    LIR_Opr resolved_addr = new_pointer_register();
+    __ leal(addr_opr, resolved_addr);
+
+    __ move(resolved_addr, heap_events_addr_dst);
+
+    __ add(counter, LIR_OprFact::longConst(1), counter);
+    __ move(counter, heap_event_counter_addr);
+
+    call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::verify_heap_graph), (ValueType*)voidType, NULL);
+    // if (!Universe::enable_heap_graph_verify)
+      call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::unlock_mutex_heap_event), (ValueType*)voidType, NULL);
+    // __ branch_destination(pass_through->label());
+  }
 }
 
 void LIRGenerator::do_StoreIndexed(StoreIndexed* x) {

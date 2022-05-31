@@ -208,6 +208,7 @@ void SharedRuntime::print_ic_miss_histogram() {
 
 
 JRT_LEAF(jlong, SharedRuntime::lmul(jlong y, jlong x))
+  printf("211\n");
   return x * y;
 JRT_END
 

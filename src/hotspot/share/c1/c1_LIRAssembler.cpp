@@ -786,7 +786,7 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       reg2stack(src, dest, type, pop_fpu_stack);
     } else if (dest->is_address()) {
       //TODO: Can also be when src is address and dst is address
-      if (is_reference_type(type) || is_reference_type(src->type())) {
+      if (!Universe::heap_event_stub_in_C1_LIR && (is_reference_type(type) || is_reference_type(src->type()))) {
         LIR_Address* dst_to_addr = dest->as_address_ptr();
         Address dst_addr = as_Address(dst_to_addr);
         Register oop = src->as_register();

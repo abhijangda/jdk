@@ -82,6 +82,7 @@ void BarrierSetC1::store_at(LIRAccess& access, LIR_Opr value) {
 
   LIR_Opr resolved = resolve_address(access, false);
   access.set_resolved_addr(resolved);
+  access.set_resolved_in_register(false);
   store_at_resolved(access, value);
 }
 
@@ -149,10 +150,6 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
   bool mask_boolean = (decorators & C1_MASK_BOOLEAN) != 0;
   LIRGenerator* gen = access.gen();
 
-  if (mask_boolean) {
-    value = gen->mask_boolean(access.base().opr(), value, access.access_emit_info());
-  }
-
   if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging && is_reference_type(value.type())) {
     // printf("Universe::heap_event_counter %ld\n", Universe::heap_event_counter);
     LIR_Opr heap_event_counter_addr_reg = gen->new_pointer_register();
@@ -161,36 +158,61 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
     LIR_Opr size_heap_event = gen->new_register(T_INT);
     LabelObj* pass_through = new LabelObj();
     BasicTypeList signature;
-    // if (!Universe::enable_heap_graph_verify)
-    gen->call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::lock_mutex_heap_event), (ValueType*)voidType, NULL);
-    __ move(LIR_OprFact::intConst(sizeof(Universe::HeapEvent)), size_heap_event);
-    __ move(LIR_OprFact::longConst((uint64_t)&test_counter), heap_event_counter_addr_reg);
-    LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_INT);
-    LIR_Opr counter = gen->new_register(T_INT);
-    __ move(heap_event_counter_addr, counter);
-    //TODO: Figure out the branch
-    // __ cmp(LIR_Condition::lir_cond_less, counter, LIR_OprFact::longConst(Universe::max_heap_events));
-    // __ branch(LIR_Condition::lir_cond_less, pass_through->label()); 
-    // __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_events), heap_events_addr_reg);
-    __ shift_left(counter, 5, heap_events_idx);
-    // __ add(heap_events_addr_reg, heap_events_idx, heap_events_addr_reg);
-    // LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, 0, T_LONG);
-    // LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, 8, T_LONG);
-    // LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 16, T_LONG);
-    // __ move(LIR_OprFact::longConst(Universe::OopStoreAt), heap_events_addr_type);
-    // __ move(value, heap_events_addr_src);
+    if (Universe::enable_heap_graph_verify)
+      gen->call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::lock_mutex_heap_event), (ValueType*)voidType, NULL);
     
-    // __ leal(access.resolved_addr()->as_address_ptr(), heap_events_idx);
-    // __ move(heap_events_idx, heap_events_addr_dst);
-    // __ move (LIR_OprFact::longConst(1L), counter);
+    {
+      __ move(LIR_OprFact::intConst(sizeof(Universe::HeapEvent)), size_heap_event);
+      __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_event_counter), heap_event_counter_addr_reg);
+      LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_INT);
+      LIR_Opr counter = gen->new_register(T_INT);
+      __ move(heap_event_counter_addr, counter);
+      __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_events), heap_events_addr_reg);
+      __ shift_left(counter, 5, heap_events_idx);
 
-    __ add(counter, LIR_OprFact::intConst(1L), counter);
-    __ move(counter, heap_event_counter_addr);
+      LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, heap_events_idx, 0, T_LONG);
+      LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, heap_events_idx, 8, T_LONG);
+      LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, heap_events_idx, 16, T_LONG);
+      __ move(LIR_OprFact::longConst(Universe::FieldSet), heap_events_addr_type);
+      __ move(value, heap_events_addr_src);
+      
+      LIR_Opr __reg__ = gen->new_register(T_LONG);
+      // __ leal(access.resolved_addr()->as_address_ptr(), __reg__);
+      if (!access.resolved_in_register()) {
+        LIR_Address* orig_addr = access.resolved_addr()->as_address_ptr();
+        LIR_Opr new_base = gen->new_pointer_register();
+        __ move(orig_addr->base(), new_base);
+        LIR_Address* field_addr;
 
-    gen->call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, print_test_counter), (ValueType*)voidType, NULL);
-    // if (!Universe::enable_heap_graph_verify)
-    gen->call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::unlock_mutex_heap_event), (ValueType*)voidType, NULL);
-    // __ branch_destination(pass_through->label());
+        if (orig_addr->index()->is_valid()) {
+          LIR_Opr new_index = gen->new_register(orig_addr->index()->type());
+          __ move(orig_addr->index(), new_index);
+          field_addr = new LIR_Address(new_base, new_index, orig_addr->disp(), orig_addr->type());
+        } else {
+          field_addr = new LIR_Address(new_base, orig_addr->disp(), orig_addr->type());
+        }
+      
+        __ leal(field_addr, __reg__);
+      } else {
+        printf("store_at_resolved is true\n");
+      }
+      __ move(__reg__, heap_events_addr_dst);
+
+      __ add(counter, LIR_OprFact::intConst(1L), counter);
+      __ move(counter, heap_event_counter_addr); //Can optimize this by saving only if counter < Max heap events
+
+      __ cmp(LIR_Condition::lir_cond_less, counter, LIR_OprFact::intConst(Universe::max_heap_events));
+      __ branch(LIR_Condition::lir_cond_less, pass_through->label()); 
+      gen->call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::verify_heap_graph), (ValueType*)voidType, NULL);
+      __ branch_destination(pass_through->label());
+    }
+
+    if (Universe::enable_heap_graph_verify)
+      gen->call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::unlock_mutex_heap_event), (ValueType*)voidType, NULL);
+  }
+
+  if (mask_boolean) {
+    value = gen->mask_boolean(access.base().opr(), value, access.access_emit_info());
   }
 
   if (is_volatile) {

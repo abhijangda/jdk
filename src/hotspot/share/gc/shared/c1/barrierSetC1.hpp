@@ -70,7 +70,7 @@ class LIRAccess: public StackObj {
   LIR_Opr       _resolved_addr;
   CodeEmitInfo* _patch_emit_info;
   CodeEmitInfo* _access_emit_info;
-
+  bool _resolved_in_register;
 public:
   LIRAccess(LIRGenerator* gen, DecoratorSet decorators,
             LIRAddressOpr base, LIRAddressOpr offset, BasicType type,
@@ -82,7 +82,8 @@ public:
     _type(type),
     _resolved_addr(),
     _patch_emit_info(patch_emit_info),
-    _access_emit_info(access_emit_info) {}
+    _access_emit_info(access_emit_info),
+    _resolved_in_register(true) {}
 
   void load_base()   { _base.item().load_item(); }
   void load_offset() { _offset.item().load_nonconstant(); }
@@ -104,6 +105,8 @@ public:
   DecoratorSet decorators() const        { return _decorators; }
   void clear_decorators(DecoratorSet ds) { _decorators &= ~ds; }
   bool is_raw() const                    { return (_decorators & AS_RAW) != 0; }
+  void set_resolved_in_register(bool v)  {_resolved_in_register = v;}
+  bool resolved_in_register()            {return _resolved_in_register;}
 };
 
 // The BarrierSetC1 class is the main entry point for the GC backend of the Access API in C1.

@@ -96,7 +96,7 @@ unsigned int Universe::heap_event_counter = 0;
 Universe::HeapEvent Universe::heap_events[Universe::max_heap_events] = {};
 bool Universe::enable_heap_event_logging = true;
 bool Universe::enable_heap_graph_verify = true;
-bool Universe::heap_event_stub_in_C1_LIR = false;
+bool Universe::heap_event_stub_in_C1_LIR = true;
 
 #include<vector>
 #include<limits>
@@ -325,6 +325,7 @@ public:
 
 class AllObjects : public ObjectClosure {
   public:
+    const bool print_not_found = false;
     bool valid;
     bool foundPuppy;
     int num_found, num_not_found;
@@ -360,13 +361,15 @@ class AllObjects : public ObjectClosure {
         if (idx != -1) {
           num_found++;
         } else {
-          printf("%p not found for %s: ik->id() %d\n", (void*)obj, buf, klass->id());
           num_not_found++;
-          const char* java_lang_String_str = "java/lang/String";
-          if (strstr(buf, java_lang_String_str) && strlen(buf) == strlen(java_lang_String_str)) {
-            int len;
-            char* str = java_lang_String::as_utf8_string(obj, len);
-            printf("str %s\n", str);
+          if (print_not_found) { 
+            printf("%p not found for %s: ik->id() %d\n", (void*)obj, buf, klass->id());
+            const char* java_lang_String_str = "java/lang/String";
+            if (strstr(buf, java_lang_String_str) && strlen(buf) == strlen(java_lang_String_str)) {
+              int len;
+              char* str = java_lang_String::as_utf8_string(obj, len);
+              printf("str %s\n", str);
+            }
           }
         }
 
@@ -443,8 +446,10 @@ class AllObjects : public ObjectClosure {
                 get_oop_klass_name(obj, buf3);
                 if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else if (!(val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe))
                 {
-                  // if (strstr(buf3, "MemberName"))
-                  printf("Not found: (%p) %s.%s:%s : %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), (void*)val);
+                  if (print_not_found) { 
+                    // if (strstr(buf3, "MemberName"))
+                    printf("Not found: (%p) %s.%s:%s : %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), (void*)val);
+                  }
                   num_not_found++;
                 }
                 if (found && sorted_field_set_events[idx].address.src != (uint64_t)(void*)val &&
@@ -453,28 +458,30 @@ class AllObjects : public ObjectClosure {
 
                   num_src_not_correct++;
                   // printf("0x%lx != %p\n", sorted_field_set_events[idx].address.src, (void*)val);
-                  printf("(%p) %s.%s:%s : [0x%lx] 0x%lx != %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), fd_address, sorted_field_set_events[idx].address.src, (void*)val);
-                  if (strstr(buf3, "MemberName")) {
-                    if (strstr(buf, "name")) {
-                      int len;
-                      char* str = java_lang_String::as_utf8_string(val, len);
-                      printf("str %s\n", str);
-                      // arrayOop ao = (arrayOop)val;
-                      // arrayOop srcoop = (arrayOop)(void*)sorted_field_set_events[idx].address.src;
-                      // printf("srclength %d vallength %d\n", srcoop->length(), ao->length());
+                  if (print_not_found) {
+                    printf("(%p) %s.%s:%s : [0x%lx] 0x%lx != %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), fd_address, sorted_field_set_events[idx].address.src, (void*)val);
+                    if (strstr(buf3, "MemberName")) {
+                      if (strstr(buf, "name")) {
+                        int len;
+                        char* str = java_lang_String::as_utf8_string(val, len);
+                        printf("str %s\n", str);
+                        // arrayOop ao = (arrayOop)val;
+                        // arrayOop srcoop = (arrayOop)(void*)sorted_field_set_events[idx].address.src;
+                        // printf("srclength %d vallength %d\n", srcoop->length(), ao->length());
+                      }
+                      
+                      // InstanceKlass* arrayListKlass = (InstanceKlass*)obj->klass();
+                      // for (int sf = 0; sf < arrayListKlass->java_fields_count(); sf++) {
+                      //   if (AccessFlags(arrayListKlass->field_access_flags(sf)).is_static()) {
+                      //     Symbol* name = arrayListKlass->field_name(sf);
+                      //     name->as_C_string(buf2, 1024);
+                      //     if (strstr(buf2, "EMPTY_ELEMENTDATA")) {
+                      //       // fieldDescriptor(arrayListKlass, sf) fd;
+                      //       printf("%p\n");
+                      //     }
+                      //   }
+                      // }
                     }
-                    
-                    // InstanceKlass* arrayListKlass = (InstanceKlass*)obj->klass();
-                    // for (int sf = 0; sf < arrayListKlass->java_fields_count(); sf++) {
-                    //   if (AccessFlags(arrayListKlass->field_access_flags(sf)).is_static()) {
-                    //     Symbol* name = arrayListKlass->field_name(sf);
-                    //     name->as_C_string(buf2, 1024);
-                    //     if (strstr(buf2, "EMPTY_ELEMENTDATA")) {
-                    //       // fieldDescriptor(arrayListKlass, sf) fd;
-                    //       printf("%p\n");
-                    //     }
-                    //   }
-                    // }
                   }
                 }
               }
@@ -528,15 +535,17 @@ class AllObjects : public ObjectClosure {
                   num_fields++;
                   if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else if (val != 0)
                   {
-                    Symbol* name = ik->field_name(f);
-                    Symbol* signature = ik->field_signature(f);
-                    char buf2[1024];
-                    char buf[1024];
-                    char buf3[1024];
-                    
-                    if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
-                        signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
-                      printf("%p: %s.%s : %s 0x%lx\n", p, ik->name()->as_C_string(buf3, 1024), name->as_C_string(buf, 1024), buf2, val);
+                    if (print_not_found) { 
+                      Symbol* name = ik->field_name(f);
+                      Symbol* signature = ik->field_signature(f);
+                      char buf2[1024];
+                      char buf[1024];
+                      char buf3[1024];
+                      
+                      if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
+                          signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
+                        printf("%p: %s.%s : %s 0x%lx\n", p, ik->name()->as_C_string(buf3, 1024), name->as_C_string(buf, 1024), buf2, val);
+                      }
                     }
                     num_not_found++;
                   }
@@ -605,8 +614,10 @@ class AllObjects : public ObjectClosure {
                   //Ignore the last event because elem value might not have been updated to address.src
               char buf2[1024];
               num_src_not_correct++;
-              printf("(%p) %s[%d] : 0x%lx != %p\n", (void*)obj, oak->name()->as_C_string(buf2,1024), i, sorted_field_set_events[idx].address.src, (void*)elem);
-              printf("sorted_field_set_events[idx].id %ld\n", sorted_field_set_events[idx].id);
+              if (print_not_found) {
+                printf("(%p) %s[%d] : 0x%lx != %p\n", (void*)obj, oak->name()->as_C_string(buf2,1024), i, sorted_field_set_events[idx].address.src, (void*)elem);
+                printf("sorted_field_set_events[idx].id %ld\n", sorted_field_set_events[idx].id);
+              }
             }
           }
         } else if (klass->id() == TypeArrayKlassID) {
@@ -689,7 +700,7 @@ JRT_END
 
 JRT_LEAF(void, Universe::print_heap_event_counter())
   printf("Universe::heap_event_counter %d\n", Universe::heap_event_counter);
-  if (Universe::heap_event_counter == Universe::max_heap_events) 
+  if (Universe::heap_event_counter >= Universe::max_heap_events) 
     Universe::heap_event_counter = 0;  
 JRT_END
 

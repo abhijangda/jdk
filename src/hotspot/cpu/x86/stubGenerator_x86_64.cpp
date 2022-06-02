@@ -2647,7 +2647,7 @@ class StubGenerator: public StubCodeGenerator {
       // Copy trailing qwords
     __ BIND(L_copy_8_bytes);
       __ movq(rax, Address(from, qword_count, Address::times_8, -8));
-      if (type == T_OBJECT) __ append_heap_event(Universe::FieldSet,Address(to, qword_count, Address::times_8, -8), rax);
+      if (is_oop) __ append_heap_event(Universe::FieldSet,Address(to, qword_count, Address::times_8, -8), rax);
       __ movq(Address(to, qword_count, Address::times_8, -8), rax);
       __ decrement(qword_count);
       __ jcc(Assembler::notZero, L_copy_8_bytes);

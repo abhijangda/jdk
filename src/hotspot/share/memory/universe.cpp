@@ -333,6 +333,7 @@ class AllObjects : public ObjectClosure {
     int num_statics_checked;
     int num_oops;
     int num_fields;
+    
     AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0), num_src_not_correct(0), num_statics_checked(0), num_oops(0), num_fields(0) {}
     
     virtual void do_object(oop obj) {
@@ -446,7 +447,7 @@ class AllObjects : public ObjectClosure {
                 get_oop_klass_name(obj, buf3);
                 if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else if (!(val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe))
                 {
-                  if (print_not_found) { 
+                  if (num_not_found < 100) { 
                     // if (strstr(buf3, "MemberName"))
                     printf("Not found: (%p) %s.%s:%s : %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), (void*)val);
                   }
@@ -535,7 +536,7 @@ class AllObjects : public ObjectClosure {
                   num_fields++;
                   if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else if (val != 0)
                   {
-                    if (print_not_found) { 
+                    if (num_not_found < 100) { 
                       Symbol* name = ik->field_name(f);
                       Symbol* signature = ik->field_signature(f);
                       char buf2[1024];
@@ -601,8 +602,11 @@ class AllObjects : public ObjectClosure {
             if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else if (!(elem == 0 || ((uint64_t)(void*)elem) == 0xbaadbabebaadbabe)) {
               
               num_not_found++;
-              // printf("length %d klass %s %p\n", array->length(), oak->name()->as_C_string(buf2,1024), (void*)array);
-              // printf("elem_addr 0x%lx i %d elem %p\n", elem_addr, i, elem); num_not_found_in_klass++;
+              if (num_not_found < 100) {
+                char buf2[1024];
+                printf("length %d klass %s %p\n", array->length(), oak->name()->as_C_string(buf2,1024), (void*)array);
+                printf("elem_addr 0x%lx i %d elem %p\n", elem_addr, i, elem); num_not_found_in_klass++;
+              }
               // if (strstr(get_oop_klass_name(elem, buf2), "java/lang/String")) {
               //   int len;
               //   char* str = java_lang_String::as_utf8_string(elem, len);

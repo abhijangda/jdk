@@ -2003,7 +2003,7 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
     assert(newval != addr, "new value and addr must be in different registers");
 
     if ( op->code() == lir_cas_obj) {
-      if (!Universe::heap_event_stub_in_C1_LIR)
+      // if (!Universe::heap_event_stub_in_C1_LIR)
         __ append_heap_event(Universe::HeapEventType::FieldSet, Address(addr, 0), newval);
 #ifdef _LP64
       if (UseCompressedOops) {

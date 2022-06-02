@@ -51,6 +51,7 @@ LIR_Opr BarrierSetC1::resolve_address(LIRAccess& access, bool resolve_in_registe
   LIR_Opr addr_opr;
   if (is_array) {
     addr_opr = LIR_OprFact::address(gen->emit_array_address(base.result(), offset, access.type()));
+    // printf("54: addr_opr %p\n", addr_opr->as_address_ptr());
   } else if (needs_patching) {
     // we need to patch the offset in the instruction so don't allow
     // generate_address to try to be smart about emitting the -1.
@@ -69,8 +70,11 @@ LIR_Opr BarrierSetC1::resolve_address(LIRAccess& access, bool resolve_in_registe
     } else {
       __ leal(addr_opr, resolved_addr);
     }
-    return LIR_OprFact::address(new LIR_Address(resolved_addr, access.type()));
+    access.set_resolved_in_register(true);
+    LIR_Opr r = LIR_OprFact::address(new LIR_Address(resolved_addr, access.type()));
+    return r;
   } else {
+    access.set_resolved_in_register(false);
     return addr_opr;
   }
 }
@@ -82,7 +86,7 @@ void BarrierSetC1::store_at(LIRAccess& access, LIR_Opr value) {
 
   LIR_Opr resolved = resolve_address(access, false);
   access.set_resolved_addr(resolved);
-  access.set_resolved_in_register(false);
+  // printf("resolved %p IS_ARRAY %d\n", resolved->as_address_ptr(), (decorators & IS_ARRAY) != 0);
   store_at_resolved(access, value);
 }
 
@@ -148,9 +152,14 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
   bool is_volatile = (((decorators & MO_SEQ_CST) != 0) || AlwaysAtomicAccesses);
   bool needs_patching = (decorators & C1_NEEDS_PATCHING) != 0;
   bool mask_boolean = (decorators & C1_MASK_BOOLEAN) != 0;
+  bool is_array = (decorators & IS_ARRAY) != 0;
   LIRGenerator* gen = access.gen();
 
-  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging && is_reference_type(value.type())) {
+  bool reference_type = (is_reference_type(value.type()) ||  is_reference_type(access.type()));
+
+  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging && reference_type) {
+    // printf("access.resolved_addr()->as_address_ptr() %d\n", LIR_OprFact::address(access.resolved_addr()->as_address_ptr()).is_address());
+    // printf("value.is_constant() %d value.is_register() %d value.is_address() %d\n", value.is_constant(), value.is_register(), value.is_address());
     // printf("Universe::heap_event_counter %ld\n", Universe::heap_event_counter);
     LIR_Opr heap_event_counter_addr_reg = gen->new_pointer_register();
     LIR_Opr heap_events_addr_reg = gen->new_pointer_register();
@@ -166,40 +175,48 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
       __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_event_counter), heap_event_counter_addr_reg);
       LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_INT);
       LIR_Opr counter = gen->new_register(T_INT);
-      __ move(heap_event_counter_addr, counter);
+      __ load(heap_event_counter_addr, counter);
       __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_events), heap_events_addr_reg);
       __ shift_left(counter, 5, heap_events_idx);
 
       LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, heap_events_idx, 0, T_LONG);
       LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, heap_events_idx, 8, T_LONG);
       LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, heap_events_idx, 16, T_LONG);
-      __ move(LIR_OprFact::longConst(Universe::FieldSet), heap_events_addr_type);
-      __ move(value, heap_events_addr_src);
+      __ store(LIR_OprFact::longConst(Universe::FieldSet), heap_events_addr_type);
+      __ store(value, heap_events_addr_src);
       
-      LIR_Opr __reg__ = gen->new_register(T_LONG);
       // __ leal(access.resolved_addr()->as_address_ptr(), __reg__);
-      if (!access.resolved_in_register()) {
-        LIR_Address* orig_addr = access.resolved_addr()->as_address_ptr();
-        LIR_Opr new_base = gen->new_pointer_register();
-        __ move(orig_addr->base(), new_base);
-        LIR_Address* field_addr;
+      // {
+      //   LIR_Address* orig_addr = access.resolved_addr()->as_address_ptr();
+      //   if ((access.decorators() & IS_ARRAY) != 0) {
+      //     printf("resolved_in_reg %d orig_addr %p orig_addr->index()->is_valid() %d %d %d %d IS_ARRAY %d\n", access.resolved_in_register(), orig_addr, orig_addr->index()->is_register(), orig_addr->index()->is_constant(),
+      //       orig_addr->index()->is_cpu_register(), orig_addr->index()->is_address(), (access.decorators() & IS_ARRAY) != 0);
+      //   }
+      // }
+      LIR_Address* orig_addr = access.resolved_addr()->as_address_ptr();      
+      LIR_Address* field_addr;
 
+      if (!(is_volatile && !needs_patching) || (is_volatile && !needs_patching && orig_addr->type() != T_LONG)) {
         if (orig_addr->index()->is_valid()) {
-          LIR_Opr new_index = gen->new_register(orig_addr->index()->type());
-          __ move(orig_addr->index(), new_index);
-          field_addr = new LIR_Address(new_base, new_index, orig_addr->disp(), orig_addr->type());
+          LIR_Opr __reg__ = gen->new_pointer_register();
+          field_addr = new LIR_Address(orig_addr->base(), orig_addr->index(), orig_addr->disp(), orig_addr->type());
+          __ leal(field_addr, __reg__);
+          __ store(__reg__, heap_events_addr_dst);
+        } else if (orig_addr->disp() != 0) {
+          LIR_Opr __reg__ = gen->new_pointer_register();
+          field_addr = new LIR_Address(orig_addr->base(), orig_addr->disp(), orig_addr->type());
+          __ leal(field_addr, __reg__);
+          __ store(__reg__, heap_events_addr_dst);
         } else {
-          field_addr = new LIR_Address(new_base, orig_addr->disp(), orig_addr->type());
+          __ store(orig_addr->base(), heap_events_addr_dst);
         }
-      
-        __ leal(field_addr, __reg__);
       } else {
-        printf("store_at_resolved is true\n");
+        printf("type %d\n", orig_addr->type());
       }
-      __ move(__reg__, heap_events_addr_dst);
+  
 
       __ add(counter, LIR_OprFact::intConst(1L), counter);
-      __ move(counter, heap_event_counter_addr); //Can optimize this by saving only if counter < Max heap events
+      __ store(counter, heap_event_counter_addr); //Can optimize this by saving only if counter < Max heap events
 
       __ cmp(LIR_Condition::lir_cond_less, counter, LIR_OprFact::intConst(Universe::max_heap_events));
       __ branch(LIR_Condition::lir_cond_less, pass_through->label()); 

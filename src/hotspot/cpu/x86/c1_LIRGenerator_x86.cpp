@@ -224,6 +224,7 @@ LIR_Address* LIRGenerator::emit_array_address(LIR_Opr array_opr, LIR_Opr index_o
       LIR_Opr tmp = new_register(T_LONG);
       __ convert(Bytecodes::_i2l, index_opr, tmp);
       index_opr = tmp;
+
     }
 #endif // _LP64
     addr =  new LIR_Address(array_opr,

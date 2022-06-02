@@ -167,22 +167,22 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
     // printf("Universe::heap_event_counter %ld\n", Universe::heap_event_counter);
     LIR_Opr heap_event_counter_addr_reg = gen->new_pointer_register();
     LIR_Opr heap_events_addr_reg = gen->new_pointer_register();
-    LIR_Opr heap_events_idx = gen->new_register(T_INT);
-    LIR_Opr size_heap_event = gen->new_register(T_INT);
+    LIR_Opr heap_events_idx = gen->new_register(T_LONG);
+    LIR_Opr counter = gen->new_register(T_INT);
+
     LabelObj* pass_through = new LabelObj();
     BasicTypeList signature;
     if (Universe::enable_heap_graph_verify)
       gen->call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::lock_mutex_heap_event), (ValueType*)voidType, NULL);
     
     {
-      LIR_Opr counter = gen->new_register(T_INT);
-      __ move(LIR_OprFact::intConst(sizeof(Universe::HeapEvent)), size_heap_event);
       __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_event_counter), heap_event_counter_addr_reg);
       LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_INT);
       __ load(heap_event_counter_addr, counter);
       __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_events), heap_events_addr_reg);
-      __ shift_left(counter, 5, heap_events_idx);
-
+      
+      __ move(counter, heap_events_idx); //move (left, dst) is anyway done by c1_LIRAssembler_x86
+      __ shift_left(heap_events_idx, 5, heap_events_idx); //HeapEvent size is 1<<5
       __ add(heap_events_addr_reg, heap_events_idx, heap_events_addr_reg);
       LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, 0, T_LONG);
       BasicType src_type = (value.is_constant() && value.as_jobject() != NULL) ? T_OBJECT : T_LONG; //Extra additions must be done to constant object pointers.
@@ -196,12 +196,12 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
       LIR_Address* field_addr;
 
       if (orig_addr->index()->is_valid()) {
-        LIR_Opr __reg__ = gen->new_pointer_register();
+        LIR_Opr __reg__ = heap_events_idx;
         field_addr = new LIR_Address(orig_addr->base(), orig_addr->index(), orig_addr->disp(), orig_addr->type());
         __ leal(field_addr, __reg__);
         __ store(__reg__, heap_events_addr_dst);
       } else if (orig_addr->disp() != 0) {
-        LIR_Opr __reg__ = gen->new_pointer_register();
+        LIR_Opr __reg__ = heap_events_idx;
         field_addr = new LIR_Address(orig_addr->base(), orig_addr->disp(), orig_addr->type());
         __ leal(field_addr, __reg__);
         __ store(__reg__, heap_events_addr_dst);

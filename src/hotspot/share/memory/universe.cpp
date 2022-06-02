@@ -459,7 +459,7 @@ class AllObjects : public ObjectClosure {
 
                   num_src_not_correct++;
                   // printf("0x%lx != %p\n", sorted_field_set_events[idx].address.src, (void*)val);
-                  if (print_not_found) {
+                  if (num_src_not_correct < 100) {
                     printf("(%p) %s.%s:%s : [0x%lx] 0x%lx != %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), fd_address, sorted_field_set_events[idx].address.src, (void*)val);
                     if (strstr(buf3, "MemberName")) {
                       if (strstr(buf, "name")) {
@@ -618,7 +618,7 @@ class AllObjects : public ObjectClosure {
                   //Ignore the last event because elem value might not have been updated to address.src
               char buf2[1024];
               num_src_not_correct++;
-              if (print_not_found) {
+              if (num_src_not_correct < 100) {
                 printf("(%p) %s[%d] : 0x%lx != %p\n", (void*)obj, oak->name()->as_C_string(buf2,1024), i, sorted_field_set_events[idx].address.src, (void*)elem);
                 printf("sorted_field_set_events[idx].id %ld\n", sorted_field_set_events[idx].id);
               }
@@ -708,10 +708,10 @@ JRT_LEAF(void, Universe::print_heap_event_counter())
     Universe::heap_event_counter = 0;  
 JRT_END
 
-JRT_LEAF(void, Universe::verify_heap_graph())
-  if (Universe::heap_event_counter < Universe::max_heap_events) 
+JRT_LEAF(void, Universe::verify_heap_graph()) 
+  if (Universe::heap_event_counter < Universe::max_heap_events)
     return;
-  
+    
   Universe::heap_event_counter = 0;
   if (!Universe::enable_heap_graph_verify)
     return;

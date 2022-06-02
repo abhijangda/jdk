@@ -2153,7 +2153,7 @@ void LIR_Assembler::arith_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
     Register lreg_lo = left->as_register_lo();
     Register lreg_hi = left->as_register_hi();
 
-    if (right->is_double_cpu()) {
+    if (right->is_double_cpu() || right->is_single_cpu()) {
       // cpu register - cpu register
       Register rreg_lo = right->as_register_lo();
       Register rreg_hi = right->as_register_hi();

@@ -711,7 +711,7 @@ JRT_END
 JRT_LEAF(void, Universe::verify_heap_graph()) 
   if (Universe::heap_event_counter < Universe::max_heap_events)
     return;
-    
+
   Universe::heap_event_counter = 0;
   if (!Universe::enable_heap_graph_verify)
     return;

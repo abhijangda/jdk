@@ -184,7 +184,8 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
       __ shift_left(counter, 5, heap_events_idx);
 
       LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, heap_events_idx, 0, T_LONG);
-      LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, heap_events_idx, 8, T_LONG);
+      BasicType src_type = (value.is_constant() && value.as_jobject() != NULL) ? T_OBJECT : T_LONG; //Extra additions must be done to constant object pointers.
+      LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, heap_events_idx, 8, src_type);
       LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, heap_events_idx, 16, T_LONG);
       
       __ store(LIR_OprFact::longConst(Universe::FieldSet), heap_events_addr_type);

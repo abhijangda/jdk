@@ -1625,25 +1625,27 @@ void LIR_Assembler::emit_alloc_obj(LIR_OpAllocObj* op) {
                      op->object_size(),
                      op->klass()->as_register(),
                      *op->stub()->entry());
-  Register temp_regs[] = {r8, r9, r10, r11, r12, r13, r14, r15};
-  Register final_temp_regs[4] = {noreg, noreg, noreg, noreg};
-  int n_final_temp_regs = 0;
-  if (Universe::enable_heap_event_logging) {
-    for (size_t i = 0; i < sizeof(temp_regs)/sizeof(Register); i++) {
-      if (op->tmp1()->as_register() == temp_regs[i] || op->tmp2()->as_register() == temp_regs[i] || op->obj()->as_register() == temp_regs[i]) 
-        temp_regs[i] = noreg;
-    }
-
-    for (size_t i = 0; i < sizeof(temp_regs)/sizeof(Register) && n_final_temp_regs < 4; i++) {
-      if (temp_regs[i] != noreg)  {
-        final_temp_regs[n_final_temp_regs++] = temp_regs[i];
+  if (!Universe::heap_event_stub_in_C1_LIR) {
+    Register temp_regs[] = {r8, r9, r10, r11, r12, r13, r14, r15};
+    Register final_temp_regs[4] = {noreg, noreg, noreg, noreg};
+    int n_final_temp_regs = 0;
+    if (Universe::enable_heap_event_logging) {
+      for (size_t i = 0; i < sizeof(temp_regs)/sizeof(Register); i++) {
+        if (op->tmp1()->as_register() == temp_regs[i] || op->tmp2()->as_register() == temp_regs[i] || op->obj()->as_register() == temp_regs[i]) 
+          temp_regs[i] = noreg;
       }
-    }
 
-    if (n_final_temp_regs < 4) {printf("n_final_temp_regs %d != 4\n", n_final_temp_regs);}
-  }
+      for (size_t i = 0; i < sizeof(temp_regs)/sizeof(Register) && n_final_temp_regs < 4; i++) {
+        if (temp_regs[i] != noreg)  {
+          final_temp_regs[n_final_temp_regs++] = temp_regs[i];
+        }
+      }
+
+      if (n_final_temp_regs < 4) {printf("n_final_temp_regs %d != 4\n", n_final_temp_regs);}
+    }
   // printf("op->tmp1()->as_register() %s op->tmp2()->as_register() %s op->obj()->as_register() %s final_temp_regs[0] %s final_temp_regs[1] %s\n", op->tmp1()->as_register()->name(), op->tmp2()->as_register()->name(), op->obj()->as_register()->name(), final_temp_regs[0]->name(), final_temp_regs[1]->name());
-  __ append_heap_event(Universe::NewObject, Address(op->obj()->as_register(), 0), op->object_size(), final_temp_regs[3], true, final_temp_regs[2], true, final_temp_regs[0], true, final_temp_regs[1], true, false);  
+    __ append_heap_event(Universe::NewObject, Address(op->obj()->as_register(), 0), op->object_size(), final_temp_regs[3], true, final_temp_regs[2], true, final_temp_regs[0], true, final_temp_regs[1], true, false);
+  }
   __ bind(*op->stub()->continuation());
 }
 
@@ -1668,8 +1670,9 @@ void LIR_Assembler::emit_alloc_array(LIR_OpAllocArray* op) {
     } else {
       __ mov(tmp3, len);
     }
-    if (Universe::enable_heap_event_logging)
+    if (!Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
       __ push(len);
+    }
     __ allocate_array(op->obj()->as_register(),
                       len,
                       tmp1,
@@ -1678,9 +1681,10 @@ void LIR_Assembler::emit_alloc_array(LIR_OpAllocArray* op) {
                       array_element_size(op->type()),
                       op->klass()->as_register(),
                       *op->stub()->entry());
-    if (Universe::enable_heap_event_logging)
+    if (!Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
       __ pop(len);
-    __ append_heap_event(Universe::NewObject, Address(op->obj()->as_register(), 0), len);
+      __ append_heap_event(Universe::NewObject, Address(op->obj()->as_register(), 0), len);
+    }
   }
   __ bind(*op->stub()->continuation());
 }

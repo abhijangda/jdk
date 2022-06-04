@@ -686,6 +686,14 @@ int HeapEventComparerV(const void* a, const void* b) {
 #include <string.h>
 #define gettid() syscall(SYS_gettid)
 #include "runtime/interfaceSupport.inline.hpp"
+pthread_spinlock_t spin_lock_heap_event;
+
+__attribute__((constructor))
+void init_lock () {
+  if ( pthread_spin_init ( &spin_lock_heap_event, 0 ) != 0 ) {
+    exit ( 1 );
+  }
+}
 
 JRT_LEAF(void, Universe::lock_mutex_heap_event())
   // if (!Universe::enable_heap_graph_verify)

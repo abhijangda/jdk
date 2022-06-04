@@ -1290,14 +1290,18 @@ void LIRGenerator::do_NewInstance(NewInstance* x) {
 
   CodeEmitInfo* info = state_for(x, x->state());
   LIR_Opr reg = result_register_for(x->type());
-  new_instance(reg, x->klass(), x->is_unresolved(),
-                       FrameMap::rcx_oop_opr,
-                       FrameMap::rdi_oop_opr,
-                       FrameMap::rsi_oop_opr,
-                       LIR_OprFact::illegalOpr,
-                       FrameMap::rdx_metadata_opr, info);
+  LIR_Opr instance_size = new_instance(reg, x->klass(), x->is_unresolved(),
+                                       FrameMap::rcx_oop_opr,
+                                       FrameMap::rdi_oop_opr,
+                                       FrameMap::rsi_oop_opr,
+                                       LIR_OprFact::illegalOpr,
+                                       FrameMap::rdx_metadata_opr, info);
   LIR_Opr result = rlock_result(x);
   __ move(reg, result);
+
+  if (instance_size != LIR_OprFact::illegalOpr && Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+    append_heap_event(Universe::NewObject, result, instance_size);
+  }
 }
 
 
@@ -1314,6 +1318,11 @@ void LIRGenerator::do_NewTypeArray(NewTypeArray* x) {
   LIR_Opr tmp4 = reg;
   LIR_Opr klass_reg = FrameMap::rdx_metadata_opr;
   LIR_Opr len = length.result();
+  LIR_Opr len2 = new_register(T_LONG);
+  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+    __ move(len, len2);
+  }
+
   BasicType elem_type = x->elt_type();
 
   __ metadata2reg(ciTypeArrayKlass::make(elem_type)->constant_encoding(), klass_reg);
@@ -1323,6 +1332,10 @@ void LIRGenerator::do_NewTypeArray(NewTypeArray* x) {
 
   LIR_Opr result = rlock_result(x);
   __ move(reg, result);
+  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+    //TODO: this is also executed for slow path and add_heap_event function is also called in stubs
+    append_heap_event(Universe::NewObject, result, len2);
+  }
 }
 
 
@@ -1346,7 +1359,11 @@ void LIRGenerator::do_NewObjectArray(NewObjectArray* x) {
 
   length.load_item_force(FrameMap::rbx_opr);
   LIR_Opr len = length.result();
-
+  LIR_Opr len2 = new_register(T_LONG);
+  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+    __ move(len, len2);
+  }
+  
   CodeStub* slow_path = new NewObjectArrayStub(klass_reg, len, reg, info);
   ciKlass* obj = (ciKlass*) ciObjArrayKlass::make(x->klass());
   if (obj == ciEnv::unloaded_ciobjarrayklass()) {
@@ -1357,6 +1374,10 @@ void LIRGenerator::do_NewObjectArray(NewObjectArray* x) {
 
   LIR_Opr result = rlock_result(x);
   __ move(reg, result);
+  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+    //TODO: this is also executed for slow path and add_heap_event function is also called in stubs
+    append_heap_event(Universe::NewObject, result, len2);
+  }
 }
 
 

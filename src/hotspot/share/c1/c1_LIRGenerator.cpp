@@ -1812,11 +1812,11 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
   if (Universe::enable_heap_graph_verify)
     call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::lock_mutex_heap_event), (ValueType*)voidType, NULL);
   
-  {
-    __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_event_counter), heap_event_counter_addr_reg);
+  if (true) {
+    __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
     LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_INT);
     __ load(heap_event_counter_addr, counter);
-    __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_events), heap_events_addr_reg);
+    __ move(LIR_OprFact::longConst((uint64_t)&Universe::heap_events[1]), heap_events_addr_reg);
     
     __ move(counter, heap_events_idx); //move (left, dst) is anyway done by c1_LIRAssembler_x86
     __ shift_left(heap_events_idx, 5, heap_events_idx); //HeapEvent size is 1<<5

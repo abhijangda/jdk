@@ -212,8 +212,8 @@ class Universe: AllStatic {
   };
   static const int LOG_MAX_EVENT_COUNTER = 24;
   static const int max_heap_events = 1L << LOG_MAX_EVENT_COUNTER;
-  static unsigned int heap_event_counter;
-  static HeapEvent heap_events[max_heap_events];
+  static unsigned int *heap_event_counter_ptr;
+  static HeapEvent heap_events[1+max_heap_events];
   static pthread_mutex_t mutex_heap_event;
   static bool enable_heap_event_logging;
   static bool enable_heap_graph_verify;
@@ -228,11 +228,13 @@ class Universe: AllStatic {
     // if (event.address.src == 0x0) {
     //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
     // }
-    Universe::heap_events[Universe::heap_event_counter++] = event;
+    uint32_t v = *Universe::heap_event_counter_ptr;
+    Universe::heap_events[1+v] = event;
+    *Universe::heap_event_counter_ptr = v + 1;
     // if (event.heap_event_type == 0) {
     //   printf("new object at %ld\n");
     // }
-    if (Universe::heap_event_counter == Universe::max_heap_events) {
+    if (*Universe::heap_event_counter_ptr == Universe::max_heap_events) {
       Universe::verify_heap_graph();
       
     }

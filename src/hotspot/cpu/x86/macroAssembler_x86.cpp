@@ -4714,13 +4714,13 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   push(src_or_obj_size);
   leaq(temp4, dst_or_new_obj);
 
-  AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
-  AddressLiteral heap_events_addr_literal((address)&Universe::heap_events, relocInfo::relocType::external_word_type);
+  AddressLiteral heap_event_counter_addr((address)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type);
+  AddressLiteral heap_events_addr_literal((address)&Universe::heap_events[1], relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
   gen_lock_heap_event_mutex();
   movl(temp3, as_Address(heap_event_counter_addr));
   imulq(temp2, temp3, sizeof(Universe::HeapEvent));
-  mov64(temp1, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
+  mov64(temp1, (uint64_t)&Universe::heap_events[1], relocInfo::relocType::external_word_type, 0);
   addq(temp2, temp1);
   
   movq(Address(temp2, 0), (uint64_t)event_type);
@@ -4782,13 +4782,13 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   // printf("dst.base() %s noreg %s temp4 %s\n", dst.base()->name(), noreg->name(), temp4->name());
   leaq(temp4, dst_or_new_obj);
 
-  AddressLiteral heap_event_counter_addr((address)&Universe::heap_event_counter, relocInfo::relocType::external_word_type);
-  AddressLiteral heap_events_addr_literal((address)&Universe::heap_events, relocInfo::relocType::external_word_type);
+  AddressLiteral heap_event_counter_addr((address)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type);
+  AddressLiteral heap_events_addr_literal((address)&Universe::heap_events[1], relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
   gen_lock_heap_event_mutex();
   movq(temp3, as_Address(heap_event_counter_addr));
   imulq(temp2, temp3, sizeof(Universe::HeapEvent));
-  mov64(temp1, (uint64_t)&Universe::heap_events, relocInfo::relocType::external_word_type, 0);
+  mov64(temp1, (uint64_t)&Universe::heap_events[1], relocInfo::relocType::external_word_type, 0);
   addq(temp2, temp1);
   
   movq(Address(temp2, 0), (uint64_t)event_type);

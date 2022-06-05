@@ -792,9 +792,13 @@ void LIR_Assembler::const2mem(LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmi
         ShouldNotReachHere();
         __ movptr(as_Address(addr, r15_thread), (intptr_t)c->as_jlong_bits());
       } else {
-        __ movptr(r10, (intptr_t)c->as_jlong_bits());
-        null_check_here = code_offset();
-        __ movptr(as_Address_lo(addr), r10);
+        if (info == NULL) {
+          __ movptr(as_Address_lo(addr), (intptr_t)c->as_jlong_bits());
+        } else {
+          __ movptr(r10, (intptr_t)c->as_jlong_bits());
+          null_check_here = code_offset();
+          __ movptr(as_Address_lo(addr), r10);
+        }
       }
 #else
       // Always reachable in 32bit so this doesn't produce useless move literal
@@ -2192,16 +2196,20 @@ void LIR_Assembler::arith_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
       // cpu register - constant
 #ifdef _LP64
       jlong c = right->as_constant_ptr()->as_jlong_bits();
-      __ movptr(r10, (intptr_t) c);
-      switch (code) {
-        case lir_add:
-          __ addptr(lreg_lo, r10);
-          break;
-        case lir_sub:
-          __ subptr(lreg_lo, r10);
-          break;
-        default:
-          ShouldNotReachHere();
+      if (c == 1 && code == lir_add) {
+        __ incrementq(lreg_lo);
+      } else {
+        __ movptr(r10, (intptr_t) c);
+        switch (code) {
+          case lir_add:
+            __ addptr(lreg_lo, r10);
+            break;
+          case lir_sub:
+            __ subptr(lreg_lo, r10);
+            break;
+          default:
+            ShouldNotReachHere();
+        }
       }
 #else
       jint c_lo = right->as_constant_ptr()->as_jint_lo();

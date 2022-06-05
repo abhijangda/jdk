@@ -1812,7 +1812,7 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
   if (Universe::enable_heap_graph_verify)
     call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::lock_mutex_heap_event), (ValueType*)voidType, NULL);
   
-  if (false) {
+  if (true) {
     __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
     LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
     __ load(heap_event_counter_addr, counter);
@@ -1858,8 +1858,9 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
     if (Universe::enable_heap_graph_verify) {
       call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::verify_heap_graph), (ValueType*)voidType, NULL);
     } else {
-      __ cmp(LIR_Condition::lir_cond_less, counter, LIR_OprFact::longConst(Universe::max_heap_events*sizeof(Universe::HeapEvent)));
-      __ branch(LIR_Condition::lir_cond_less, pass_through->label()); 
+      __ cmp(LIR_Condition::lir_cond_greaterEqual, counter, LIR_OprFact::longConst(Universe::max_heap_events*sizeof(Universe::HeapEvent)));
+      __ branch(LIR_Condition::lir_cond_greaterEqual, pass_through->label()); 
+      // call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::print_heap_event_counter), (ValueType*)voidType, NULL);
       __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
       __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
       __ branch_destination(pass_through->label());

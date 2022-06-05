@@ -4719,7 +4719,9 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
   gen_lock_heap_event_mutex();
   movl(temp3, as_Address(heap_event_counter_addr));
-  imulq(temp2, temp3, sizeof(Universe::HeapEvent));
+  movq(temp2, temp3);
+  shlq(temp2, 5);
+  // imulq(temp2, temp3, sizeof(Universe::HeapEvent));
   mov64(temp1, (uint64_t)&Universe::heap_events[1], relocInfo::relocType::external_word_type, 0);
   addq(temp2, temp1);
   
@@ -4787,7 +4789,9 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
   gen_lock_heap_event_mutex();
   movq(temp3, as_Address(heap_event_counter_addr));
-  imulq(temp2, temp3, sizeof(Universe::HeapEvent));
+  // imulq(temp2, temp3, sizeof(Universe::HeapEvent));
+  movq(temp2, temp3);
+  shlq(temp2, 5);
   mov64(temp1, (uint64_t)&Universe::heap_events[1], relocInfo::relocType::external_word_type, 0);
   addq(temp2, temp1);
   

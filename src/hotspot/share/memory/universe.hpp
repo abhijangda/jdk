@@ -197,6 +197,10 @@ class Universe: AllStatic {
   NewObject = 1L<<1,
   OopStoreAt = 1L << 2,
   ArrayElemSet = 1L << 3,
+  CopyObject = 1L << 4,
+  CopyArray = 1L << 5,
+  CopyArrayOffsets = 1L << 6,
+  CopyArrayLength = 1L << 7,
   LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
  };
 
@@ -218,6 +222,7 @@ class Universe: AllStatic {
   static bool enable_heap_event_logging;
   static bool enable_heap_graph_verify;
   static bool heap_event_stub_in_C1_LIR;
+  static bool enable_heap_event_logging_in_interpreter;
   static inline void add_heap_event(Universe::HeapEvent event)
   {  
     if (!Universe::enable_heap_event_logging) return;

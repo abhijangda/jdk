@@ -193,6 +193,7 @@ class Universe: AllStatic {
  static uint32_t checking;
 
  enum HeapEventType {
+  None = 0,
   FieldSet = 1L<<0,
   NewObject = 1L<<1,
   OopStoreAt = 1L << 2,

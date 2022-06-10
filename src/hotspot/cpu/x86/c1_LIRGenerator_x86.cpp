@@ -1055,7 +1055,7 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
 
   __ arraycopy(src.result(), src_pos.result(), dst.result(), dst_pos.result(), length.result(), tmp, expected_type, flags, info); // does add_safepoint
   
-  if ((expected_type != NULL && is_reference_type(expected_type->element_type()->basic_type())) && Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+  if ((expected_type == NULL || is_reference_type(expected_type->element_type()->basic_type())) && Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
     append_copy_array(dst_result, src_result, dst_pos_result, src_pos_result, length_result);
   }
 }

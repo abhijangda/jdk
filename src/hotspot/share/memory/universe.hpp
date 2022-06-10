@@ -223,6 +223,35 @@ class Universe: AllStatic {
   static bool enable_heap_graph_verify;
   static bool heap_event_stub_in_C1_LIR;
   static bool enable_heap_event_logging_in_interpreter;
+  static inline void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3)
+  {  
+    if (!Universe::enable_heap_event_logging) return;
+    // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
+    if (Universe::enable_heap_graph_verify)
+      Universe::lock_mutex_heap_event();
+    // Universe::heap_event_counter++;
+    // if (event.address.src == 0x0) {
+    //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
+    // }
+    if (*Universe::heap_event_counter_ptr + 3 > Universe::max_heap_events) {
+      Universe::verify_heap_graph();
+    }
+    uint64_t v = *Universe::heap_event_counter_ptr;
+    (&Universe::heap_events[1])[v] = event1;
+    (&Universe::heap_events[1])[1+v] = event2;
+    (&Universe::heap_events[1])[2+v] = event3;
+    *Universe::heap_event_counter_ptr = v + 3;
+    // if (event.heap_event_type == 0) {
+    //   printf("new object at %ld\n");
+    // }
+    if (*Universe::heap_event_counter_ptr == Universe::max_heap_events) {
+      Universe::verify_heap_graph();
+      
+    }
+    if (Universe::enable_heap_graph_verify)
+      Universe::unlock_mutex_heap_event();
+  }
+  
   static inline void add_heap_event(Universe::HeapEvent event)
   {  
     if (!Universe::enable_heap_event_logging) return;
@@ -234,7 +263,7 @@ class Universe: AllStatic {
     //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
     // }
     uint64_t v = *Universe::heap_event_counter_ptr;
-    Universe::heap_events[1+v] = event;
+    (&Universe::heap_events[1])[v] = event;
     *Universe::heap_event_counter_ptr = v + 1;
     // if (event.heap_event_type == 0) {
     //   printf("new object at %ld\n");
@@ -250,6 +279,7 @@ class Universe: AllStatic {
   static void unlock_mutex_heap_event();
   static void print_heap_event_counter();
   static void verify_heap_graph();
+  static void verify_heap_graph_for_copy_array();
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;
 
   // Known classes in the VM

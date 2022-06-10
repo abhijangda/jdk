@@ -1230,16 +1230,13 @@ class StubGenerator: public StubCodeGenerator {
       // Copy 32-bytes per iteration
       __ BIND(L_loop);
       __ movq(to, Address(end_from, qword_count, Address::times_8, -24));
-      __ append_heap_event(Universe::FieldSet, Address(end_to, qword_count, Address::times_8, -24), to);
       __ movq(Address(end_to, qword_count, Address::times_8, -24), to);
       __ movq(to, Address(end_from, qword_count, Address::times_8, -16));
-      __ append_heap_event(Universe::FieldSet,Address(end_to, qword_count, Address::times_8, -16), to);
       __ movq(Address(end_to, qword_count, Address::times_8, -16), to);
       __ movq(to, Address(end_from, qword_count, Address::times_8, - 8));
-      __ append_heap_event(Universe::FieldSet,Address(end_to, qword_count, Address::times_8, -8), to);
       __ movq(Address(end_to, qword_count, Address::times_8, - 8), to);
       __ movq(to, Address(end_from, qword_count, Address::times_8, - 0));
-      __ append_heap_event(Universe::FieldSet,Address(end_to, qword_count, Address::times_8, -0), to);
+      // __ append_heap_event(Universe::FieldSet,Address(end_to, qword_count, Address::times_8, -0), to);
       __ movq(Address(end_to, qword_count, Address::times_8, - 0), to);
 
       __ BIND(L_copy_bytes);
@@ -1314,16 +1311,13 @@ class StubGenerator: public StubCodeGenerator {
       //TODO: Do this only for oop
       __ BIND(L_loop);
       __ movq(to, Address(from, qword_count, Address::times_8, 24));
-      __ append_heap_event(Universe::FieldSet,Address(dest, qword_count, Address::times_8, 24), to);
       __ movq(Address(dest, qword_count, Address::times_8, 24), to);
       __ movq(to, Address(from, qword_count, Address::times_8, 16));
-      __ append_heap_event(Universe::FieldSet,Address(dest, qword_count, Address::times_8, 16), to);
       __ movq(Address(dest, qword_count, Address::times_8, 16), to);
       __ movq(to, Address(from, qword_count, Address::times_8,  8));
-      __ append_heap_event(Universe::FieldSet,Address(dest, qword_count, Address::times_8, 8), to);
       __ movq(Address(dest, qword_count, Address::times_8,  8), to);
       __ movq(to, Address(from, qword_count, Address::times_8,  0));
-      __ append_heap_event(Universe::FieldSet,Address(dest, qword_count, Address::times_8, 0), to);
+      // __ append_heap_event(Universe::FieldSet,Address(dest, qword_count, Address::times_8, 0), to);
       __ movq(Address(dest, qword_count, Address::times_8,  0), to);
 
       __ BIND(L_copy_bytes);
@@ -2282,6 +2276,10 @@ class StubGenerator: public StubCodeGenerator {
     // End pointers are inclusive, and if count is not zero they point
     // to the last unit copied:  end_to[0] := end_from[0]
 
+    if (is_oop) {
+      // __ append_heap_event3(Universe::CopyArray, Address(end_to, qword_count, Address::times_8, 8), rax);
+    }
+
     __ enter(); // required for proper stackwalking of RuntimeStub frame
     assert_clean_int(c_rarg2, rax);    // Make sure 'count' is clean int.
 
@@ -2322,7 +2320,6 @@ class StubGenerator: public StubCodeGenerator {
       // Copy trailing qwords
     __ BIND(L_copy_8_bytes);
       __ movq(rax, Address(end_from, qword_count, Address::times_8, 8));
-      if (is_oop) __ append_heap_event(Universe::FieldSet,Address(end_to, qword_count, Address::times_8, 8), rax);
       __ movq(Address(end_to, qword_count, Address::times_8, 8), rax);
       __ increment(qword_count);
       __ jcc(Assembler::notZero, L_copy_8_bytes);
@@ -2435,7 +2432,7 @@ class StubGenerator: public StubCodeGenerator {
       // Copy trailing qwords
     __ BIND(L_copy_8_bytes);
       __ movq(rax, Address(from, qword_count, Address::times_8, -8));
-      if (is_oop) __ append_heap_event(Universe::FieldSet,Address(to, qword_count, Address::times_8, -8), rax);
+      // if (is_oop) __ append_heap_event(Universe::FieldSet,Address(to, qword_count, Address::times_8, -8), rax);
       __ movq(Address(to, qword_count, Address::times_8, -8), rax);
       __ decrement(qword_count);
       __ jcc(Assembler::notZero, L_copy_8_bytes);
@@ -2544,7 +2541,7 @@ class StubGenerator: public StubCodeGenerator {
       // Copy trailing qwords
     __ BIND(L_copy_8_bytes);
       __ movq(rax, Address(end_from, qword_count, Address::times_8, 8));
-      if (is_oop) __ append_heap_event(Universe::FieldSet,Address(end_to, qword_count, Address::times_8, 8), rax);
+      // if (is_oop) __ append_heap_event(Universe::FieldSet,Address(end_to, qword_count, Address::times_8, 8), rax);
       __ movq(Address(end_to, qword_count, Address::times_8, 8), rax);
       __ increment(qword_count);
       __ jcc(Assembler::notZero, L_copy_8_bytes);
@@ -2647,7 +2644,7 @@ class StubGenerator: public StubCodeGenerator {
       // Copy trailing qwords
     __ BIND(L_copy_8_bytes);
       __ movq(rax, Address(from, qword_count, Address::times_8, -8));
-      if (is_oop) __ append_heap_event(Universe::FieldSet,Address(to, qword_count, Address::times_8, -8), rax);
+      // if (is_oop) __ append_heap_event(Universe::FieldSet,Address(to, qword_count, Address::times_8, -8), rax);
       __ movq(Address(to, qword_count, Address::times_8, -8), rax);
       __ decrement(qword_count);
       __ jcc(Assembler::notZero, L_copy_8_bytes);
@@ -2858,7 +2855,7 @@ class StubGenerator: public StubCodeGenerator {
 
     __ BIND(L_store_element);
     __ store_heap_oop(to_element_addr, rax_oop, noreg, noreg, AS_RAW);  // store the oop
-    __ append_heap_event(Universe::FieldSet,to_element_addr, rax_oop);
+    // __ append_heap_event(Universe::FieldSet,to_element_addr, rax_oop);
     __ increment(count);               // increment the count toward zero
     __ jcc(Assembler::zero, L_do_card_marks);
 

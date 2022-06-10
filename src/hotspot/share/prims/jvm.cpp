@@ -679,14 +679,11 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
   if (obj->klass()->is_instance_klass()) {
     Universe::add_heap_event(Universe::HeapEvent{Universe::CopyObject, (uint64_t)(void*)obj(), (uint64_t)(void*)new_obj_oop});
   } else if (obj->klass()->id() == ObjArrayKlassID) {
-    objArrayOop array = (objArrayOop)obj();
-    objArrayOop new_array = (objArrayOop)new_obj_oop;
-    for (int i = 0; i < array->length(); i++) {
-      oop elem = array->obj_at(i);
-      uint64_t elem_addr = ((uint64_t)new_array->base()) + i * sizeof(oop);
-      Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
-    }
-  } //TODO: Do for all other klasses
+    //TODO: Add these using single function call
+    Universe::add_heap_events(Universe::HeapEvent{Universe::CopyArray, (uint64_t)(void*)obj(), (uint64_t)(void*)new_obj_oop}, 
+                              Universe::HeapEvent{Universe::CopyArrayOffsets, 0L, 0L},
+                              Universe::HeapEvent{Universe::CopyArrayLength, event_size, event_size});
+  }
   
   HeapAccess<>::clone(obj(), new_obj_oop, size);
   

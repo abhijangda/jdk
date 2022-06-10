@@ -312,6 +312,7 @@ class LIRGenerator: public InstructionVisitor, public BlockClosure {
   LIR_Opr atomic_add(BasicType type, LIR_Opr addr, LIRItem& new_value);
 
   void append_heap_event(Universe::HeapEventType event_type, LIR_Opr dst_or_new_obj, LIR_Opr src_or_obj_size);
+  void append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_Opr dst_offset, LIR_Opr src_offset, LIR_Opr count);
 #ifdef CARDTABLEBARRIERSET_POST_BARRIER_HELPER
   virtual void CardTableBarrierSet_post_barrier_helper(LIR_Opr addr, LIR_Const* card_table_base);
 #endif

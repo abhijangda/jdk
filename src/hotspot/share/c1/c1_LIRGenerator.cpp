@@ -1873,6 +1873,68 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
     call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::unlock_mutex_heap_event), (ValueType*)voidType, NULL);
 }
 
+void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_Opr dst_offset, LIR_Opr src_offset, LIR_Opr count) {
+  if (!Universe::heap_event_stub_in_C1_LIR)
+    return;
+  LIR_Opr heap_event_counter_addr_reg = new_pointer_register();
+  LIR_Opr heap_events_addr_reg = heap_event_counter_addr_reg;
+  LIR_Opr counter = new_pointer_register();
+  LIR_Opr heap_events_idx = new_pointer_register();
+  printf("dst_array %d src_array %d\n", dst_array->is_register(), src_array->is_register());
+  LabelObj* pass_through = new LabelObj();
+  BasicTypeList signature;
+  if (Universe::enable_heap_graph_verify)
+    call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::lock_mutex_heap_event), (ValueType*)voidType, NULL);
+  
+  if (true) {
+    if (Universe::enable_heap_graph_verify) {
+      call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::verify_heap_graph_for_copy_array), (ValueType*)voidType, NULL);
+    } else {printf("1894: todo\n");}
+
+    __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
+    LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
+    __ load(heap_event_counter_addr, counter);
+    __ add(counter, LIR_OprFact::longConst(1L), counter);
+    __ move(counter, heap_events_idx);
+    __ add(counter, LIR_OprFact::longConst(2L), counter);
+    __ store(counter, heap_event_counter_addr);
+
+    __ shift_left(heap_events_idx, 5, heap_events_idx); //HeapEvent size is 1<<5
+    __ leal(new LIR_Address(heap_event_counter_addr_reg, heap_events_idx, 0, T_LONG), heap_events_addr_reg);
+
+    LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, 0, T_LONG);
+    LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, 8, T_LONG);
+    LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 16, T_LONG);
+    __ store(LIR_OprFact::longConst(Universe::CopyArray), heap_events_addr_type);
+    __ store(src_array, heap_events_addr_src);
+    __ store(dst_array, heap_events_addr_dst);
+
+    __ add(heap_event_counter_addr_reg, LIR_OprFact::longConst(sizeof(Universe::HeapEvent)), heap_event_counter_addr_reg);
+    __ store(LIR_OprFact::longConst(Universe::CopyArrayOffsets), heap_events_addr_type);
+    __ store(src_offset, heap_events_addr_src);
+    __ store(dst_offset, heap_events_addr_dst);
+      
+    __ add(heap_event_counter_addr_reg, LIR_OprFact::longConst(sizeof(Universe::HeapEvent)), heap_event_counter_addr_reg);
+    __ store(LIR_OprFact::longConst(Universe::CopyArrayLength), heap_events_addr_type);
+    __ store(count, heap_events_addr_src);
+    __ store(count, heap_events_addr_dst);
+
+    if (Universe::enable_heap_graph_verify) {
+      call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::verify_heap_graph), (ValueType*)voidType, NULL);
+    } else {
+      // __ cmp(LIR_Condition::lir_cond_greaterEqual, counter, LIR_OprFact::longConst(Universe::max_heap_events*sizeof(Universe::HeapEvent)));
+      // __ branch(LIR_Condition::lir_cond_greaterEqual, pass_through->label()); 
+      // // call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::print_heap_event_counter), (ValueType*)voidType, NULL);
+      // __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
+      // __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
+      // __ branch_destination(pass_through->label());
+    }
+  }
+
+  if (Universe::enable_heap_graph_verify)
+    call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::unlock_mutex_heap_event), (ValueType*)voidType, NULL);
+}
+
 void LIRGenerator::do_LoadField(LoadField* x) {
   bool needs_patching = x->needs_patching();
   bool is_volatile = x->field()->is_volatile();

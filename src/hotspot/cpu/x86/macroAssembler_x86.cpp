@@ -4757,6 +4757,85 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
     pop(src_or_obj_size);
 }
 
+void MacroAssembler::append_copy_array(Register dst_array, Register src_array, Register src_offset, Register dst_offset, Register count, 
+                                       Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, Register temp3, bool preserve_temp3, 
+                                       Register temp4, bool preserve_temp4, bool preserve_flags)
+{
+  //TODO: Use Temporary Registers of the Assembler instead of new registers.
+  if (!Universe::enable_heap_event_logging) return;
+  
+  if (preserve_temp4)
+    push(temp4);
+  if (preserve_temp1)
+    push(temp1);
+  if (preserve_temp2)
+    push(temp2);
+  if (preserve_temp3)
+    push(temp3);
+  if (preserve_flags) pushf(); //TODO: Use lahf/sahf
+
+  // printf("dst.base() %s noreg %s temp4 %s\n", dst.base()->name(), noreg->name(), temp4->name());
+  AddressLiteral heap_event_counter_addr((address)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type);
+  AddressLiteral heap_events_addr_literal((address)&Universe::heap_events[1], relocInfo::relocType::external_word_type);
+  //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
+  gen_lock_heap_event_mutex();
+  movl(temp3, as_Address(heap_event_counter_addr));
+  addq(temp3, 3);
+  Label not_equal;
+  jcc(Assembler::Condition::notZero, not_equal);
+  pushaq();
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+  popaq();
+  bind(not_equal);
+  
+  movl(temp3, as_Address(heap_event_counter_addr));
+  movq(temp2, temp3);
+  shlq(temp2, 5);
+  // imulq(temp2, temp3, sizeof(Universe::HeapEvent));
+  mov64(temp1, (uint64_t)&Universe::heap_events[1], relocInfo::relocType::external_word_type, 0);
+  addq(temp2, temp1);
+  
+  
+  movq(Address(temp2, 0), (uint64_t)Universe::CopyArray);
+  movq(Address(temp2, 8), src_array);
+  movq(Address(temp2, 16), dst_array);
+
+  addq(temp2, sizeof(Universe::HeapEvent));
+
+  movq(Address(temp2, 0), (uint64_t)Universe::CopyArrayOffsets);
+  movq(Address(temp2, 8), src_offset);
+  movq(Address(temp2, 16), dst_offset);
+
+  addq(temp2, sizeof(Universe::HeapEvent));
+
+  movq(Address(temp2, 0), (uint64_t)Universe::CopyArrayLength);
+  movq(Address(temp2, 8), count);
+  movq(Address(temp2, 16), count);
+
+  addq(temp3, 3); //TODO: Using lea will not affect flags
+  movl(as_Address(heap_event_counter_addr), temp3);
+  //TODO: Use Addressingmode: movq(Address(temp2, temp3, Address::ScaleFactor::times_1, 16), 1);
+  subq(temp3, Universe::max_heap_events);
+  Label not_equal2;
+  jcc(Assembler::Condition::notZero, not_equal2);
+  pushaq();
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+  popaq();
+  bind(not_equal2);
+  
+  gen_unlock_heap_event_mutex();
+
+  if (preserve_flags) popf();
+  if (preserve_temp3)
+    pop(temp3);
+  if (preserve_temp2)
+    pop(temp2);
+  if (preserve_temp1)
+    pop(temp1);
+  if (preserve_temp4)
+    pop(temp4);
+}
+
 void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, int32_t src_or_obj_size, 
                                        Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, Register temp3, bool preserve_temp3, 
                                        Register temp4, bool preserve_temp4, bool preserve_flags)

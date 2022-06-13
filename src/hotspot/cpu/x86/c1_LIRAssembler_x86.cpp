@@ -976,8 +976,10 @@ void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
     Label not_equal;
     __ jcc(Assembler::Condition::notZero, not_equal);
     __ pushaq();
-    __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::print_heap_event_counter)));
+    __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
     __ popaq();
+    AddressLiteral heap_event_counter_addr((address)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type);
+    __ movq(__ as_Address(heap_event_counter_addr), 0);
     __ bind(not_equal);
   }
 }
@@ -1071,7 +1073,9 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
         Register from = src->as_register();
         //TODO: Storing integer to a long address for CopyArrayLength, CopyArrayOffset, and NewObject size
         //Fix this by treating HeapEvent::src (and dst) as long or int based on HeapEventType
-        __ movq(as_Address_lo(to_addr), 0);
+        if (Universe::enable_heap_graph_verify)
+          __ movq(as_Address_lo(to_addr), 0);
+
         __ movl(as_Address_lo(to_addr), from);
       } else {
         Register from_lo = src->as_register_lo();

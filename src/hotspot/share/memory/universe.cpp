@@ -88,16 +88,17 @@
 #include "utilities/quickSort.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/fieldStreams.inline.hpp"
-#include <pthread.h>
 #include "oops/instanceMirrorKlass.inline.hpp"
 
 pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
 Universe::HeapEvent Universe::heap_events[1+Universe::max_heap_events] = {};
 uint64_t* Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
-bool Universe::enable_heap_event_logging = false;
+bool Universe::enable_heap_event_logging = true;
 bool Universe::enable_heap_graph_verify = false && Universe::enable_heap_event_logging;
 bool Universe::heap_event_stub_in_C1_LIR = true && Universe::enable_heap_event_logging;
 bool Universe::enable_heap_event_logging_in_interpreter = true && Universe::enable_heap_event_logging;
+bool Universe::enable_transfer_events = true;
+sem_t Universe::cuda_semaphore;
 
 #include<vector>
 #include<limits>
@@ -729,6 +730,12 @@ void init_lock () {
   if ( pthread_spin_init ( &spin_lock_heap_event, 0 ) != 0 ) {
     exit ( 1 );
   }
+}
+
+void Universe::transfer_events_to_gpu() {
+  printf("Transfering Events to GPU *Universe::heap_event_counter_ptr %ld\n", *Universe::heap_event_counter_ptr);
+  sem_post(&cuda_semaphore);
+  *Universe::heap_event_counter_ptr = 0;
 }
 
 void Universe::verify_heap_graph_for_copy_array() {

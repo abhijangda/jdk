@@ -4620,8 +4620,7 @@ int* h_heap_events = nullptr;
 void __checkCudaErrors( CUresult err, const char *file, const int line );
 #define checkCudaErrors(err)  __checkCudaErrors ((err), __FILE__, __LINE__)
 
-#include<semaphore.h>
-sem_t cuda_semaphore;
+
 #include<vector>
 
 // void print_oop_store() { 
@@ -4736,7 +4735,10 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   Label not_equal;
   jcc(Assembler::Condition::notZero, not_equal);
   pushaq();
-  call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+  if (Universe::enable_transfer_events)
+    call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+  else
+    call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
   popaq();
   bind(not_equal);
   

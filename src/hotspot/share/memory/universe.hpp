@@ -31,6 +31,9 @@
 #include "runtime/handles.hpp"
 #include "utilities/growableArray.hpp"
 
+#include <pthread.h>
+#include<semaphore.h>
+
 // Universe is a name space holding known system classes and objects in the VM.
 //
 // Loaded classes are accessible through the SystemDictionary.
@@ -223,7 +226,10 @@ class Universe: AllStatic {
   static bool enable_heap_event_logging;
   static bool enable_heap_graph_verify;
   static bool heap_event_stub_in_C1_LIR;
+  static bool enable_transfer_events;
   static bool enable_heap_event_logging_in_interpreter;
+  static void transfer_events_to_gpu();
+  static sem_t cuda_semaphore;
   static inline void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3)
   {  
     if (!Universe::enable_heap_event_logging) return;
@@ -235,7 +241,10 @@ class Universe: AllStatic {
     //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
     // }
     if (*Universe::heap_event_counter_ptr + 3 > Universe::max_heap_events) {
-      Universe::verify_heap_graph();
+      if (Universe::enable_transfer_events)
+        Universe::transfer_events_to_gpu();
+      else
+        Universe::verify_heap_graph();
     }
     uint64_t v = *Universe::heap_event_counter_ptr;
     (&Universe::heap_events[1])[v] = event1;
@@ -246,7 +255,10 @@ class Universe: AllStatic {
     //   printf("new object at %ld\n");
     // }
     if (*Universe::heap_event_counter_ptr == Universe::max_heap_events) {
-      Universe::verify_heap_graph();
+      if (Universe::enable_transfer_events)
+        Universe::transfer_events_to_gpu();
+      else
+        Universe::verify_heap_graph();
       
     }
     if (Universe::enable_heap_graph_verify)
@@ -270,7 +282,10 @@ class Universe: AllStatic {
     //   printf("new object at %ld\n");
     // }
     if (*Universe::heap_event_counter_ptr == Universe::max_heap_events) {
-      Universe::verify_heap_graph();
+      if (Universe::enable_transfer_events)
+        Universe::transfer_events_to_gpu();
+      else
+        Universe::verify_heap_graph();
       
     }
     if (Universe::enable_heap_graph_verify)

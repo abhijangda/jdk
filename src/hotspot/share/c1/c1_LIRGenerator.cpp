@@ -1817,12 +1817,12 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
     __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
     LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
     __ load(heap_event_counter_addr, counter);
-    
     __ add(counter, LIR_OprFact::longConst(1L), counter);
     __ store(counter, heap_event_counter_addr);
 
     __ shift_left(counter, 5, counter); //HeapEvent size is 1<<5
     __ leal(new LIR_Address(heap_event_counter_addr_reg, counter, 0, T_LONG), heap_events_addr_reg);
+    
     LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, 0, T_LONG);
     __ store(LIR_OprFact::longConst(event_type), heap_events_addr_type);
 
@@ -1830,7 +1830,6 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
       // Extra additions must be done to constant object pointers.
       BasicType src_type = (src_or_obj_size.is_constant() && src_or_obj_size.as_jobject() != NULL) ? T_OBJECT : src_or_obj_size.type(); 
       LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, 8, src_type);
-      // printf("src_or_obj_size.type() %d\n", src_or_obj_size.type());
       __ store(src_or_obj_size, heap_events_addr_src);
 
       LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 16, T_LONG);
@@ -1848,18 +1847,26 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
         __ leal(field_addr, r);
         __ store(r, heap_events_addr_dst);
       } else {
+        #ifndef PRODUCT
         field_addr = new LIR_Address(orig_addr->base(), orig_addr->disp(), orig_addr->type());
         LIR_Opr r = new_pointer_register();
         __ leal(field_addr, r);
         __ store(r, heap_events_addr_dst);
+        #else
+        __ store(orig_addr->base(), heap_events_addr_dst);
+        #endif
       }
     } else if (event_type == Universe::NewObject) {
       LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, 8, T_LONG); //Object size is in Integer and not Long
       LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 16, T_LONG);
       __ store(src_or_obj_size, heap_events_addr_src);
-      LIR_Opr r = new_pointer_register();
-      __ leal(new LIR_Address(dst_or_new_obj, 0, T_LONG), r); //TODO: Remove this leal (make sure that debug build works)
-      __ store(r, heap_events_addr_dst);
+      #ifndef PRODUCT
+        LIR_Opr r = new_pointer_register();
+        __ leal(new LIR_Address(dst_or_new_obj, 0, T_LONG), r); //TODO: Remove this leal (make sure that debug build works)
+        __ store(r, heap_events_addr_dst);
+      #else
+        __ store(dst_or_new_obj, heap_events_addr_dst);
+      #endif
     }
 
     if (Universe::enable_heap_graph_verify) {

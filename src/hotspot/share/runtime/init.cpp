@@ -54,11 +54,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-extern sem_t cuda_semaphore;
-
 extern int* h_heap_events;
 extern CUdeviceptr d_heap_events;
-static const int MAX_EVENT_COUNTER = 1 << 10;
 
 #define checkCudaErrors(err)  __checkCudaErrors ((err), __FILE__, __LINE__)
 
@@ -138,13 +135,13 @@ void* cumemcpy_func(void* arg)
   checkCudaErrors(cuDeviceGet(&device, 0));
   checkCudaErrors(cuCtxCreate(&context, 0, device));
   checkCudaErrors(cuStreamCreate(&stream, CU_STREAM_NON_BLOCKING));
-  checkCudaErrors(cuMemAlloc(&d_heap_events, MAX_EVENT_COUNTER * sizeof(int)));
-  checkCudaErrors(cuMemAllocHost((void**)&h_heap_events, sizeof(int) * MAX_EVENT_COUNTER));
+  checkCudaErrors(cuMemAlloc(&d_heap_events, Universe::max_heap_events * sizeof(Universe::HeapEvent)));
+  checkCudaErrors(cuMemAllocHost((void**)&h_heap_events, Universe::max_heap_events * sizeof(Universe::HeapEvent)));
 
   while(true) {
-    sem_wait(&cuda_semaphore);
+    sem_wait(&Universe::cuda_semaphore);
 
-    checkCudaErrors(cuMemcpyHtoDAsync(d_heap_events, h_heap_events, MAX_EVENT_COUNTER * sizeof(int), stream));
+    checkCudaErrors(cuMemcpyHtoDAsync(d_heap_events, h_heap_events, Universe::max_heap_events * sizeof(Universe::HeapEvent), stream));
   }
 }
 
@@ -207,10 +204,10 @@ jint init_globals() {
     JVMFlag::printFlags(tty, false, PrintFlagsRanges);
   }
   
-  sem_init(&cuda_semaphore, 0, 0);
-  // int error = pthread_create(&cumemcpy_tid, NULL, &cumemcpy_func, NULL);
-  // if (error != 0)
-  //   printf("\nThread can't be created : [%s]", strerror(error));
+  sem_init(&Universe::cuda_semaphore, 0, 0);
+  int error = pthread_create(&cumemcpy_tid, NULL, &cumemcpy_func, NULL);
+  if (error != 0)
+    printf("CUDA Thread can't be created : [%s]\n", strerror(error));
 
   return JNI_OK;
 }

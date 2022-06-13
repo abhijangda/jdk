@@ -966,12 +966,13 @@ void LIR_Assembler::reg2stack(LIR_Opr src, LIR_Opr dest, BasicType type, bool po
   }
 }
 
-void LIR_Assembler::transfer_events(LIR_Opr counter) {
+void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
   if (Universe::enable_heap_event_logging && Universe::heap_event_stub_in_C1_LIR) {
     assert(counter->is_cpu_register(), "");
+    assert(max_events->is_constant(), "");
+    
     Register reg = counter->as_register_lo();
-
-    __ subq(reg, Universe::max_heap_events*sizeof(Universe::HeapEvent));
+    __ subq(reg, max_events->as_jlong());
     Label not_equal;
     __ jcc(Assembler::Condition::notZero, not_equal);
     __ pushaq();

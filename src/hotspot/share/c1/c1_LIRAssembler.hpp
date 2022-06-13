@@ -161,7 +161,7 @@ class LIR_Assembler: public CompilationResourceObj {
 
   // returns offset of poll instruction
   int safepoint_poll(LIR_Opr result, CodeEmitInfo* info);
-  void transfer_events(LIR_Opr counter);
+  void transfer_events(LIR_Opr counter, LIR_Opr max_events);
   void const2reg  (LIR_Opr src, LIR_Opr dest, LIR_PatchCode patch_code, CodeEmitInfo* info);
   void const2stack(LIR_Opr src, LIR_Opr dest);
   void const2mem  (LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmitInfo* info, bool wide);

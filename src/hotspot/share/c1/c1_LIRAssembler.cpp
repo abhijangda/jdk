@@ -586,7 +586,7 @@ void LIR_Assembler::emit_op1(LIR_Op1* op) {
       break;
 
     case lir_transfer_events:
-      transfer_events(op->in_opr());
+      transfer_events(op->in_opr(), op->result_opr());
       break;
       
     default:

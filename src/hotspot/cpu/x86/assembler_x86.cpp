@@ -12641,19 +12641,19 @@ void Assembler::pushaq() {
   //https://stackoverflow.com/questions/18024672/what-registers-are-preserved-through-a-linux-x86-64-function-call
   //Do not push/pop callee saved registers
   push(rax);
-  // push(rbx);
+  push(rbx);
   push(rcx);
   push(rdx);
   push(r8);
   push(r9);
-  // push(r10);
-  // push(r11);
-  // push(r12);
-  // push(r13);
-  // push(r14);
-  // push(r15);
-  // push(rsp);
-  // push(rbp);
+  push(r10);
+  push(r11);
+  push(r12);
+  push(r13);
+  push(r14);
+  push(r15);
+  push(rsp);
+  push(rbp);
   push(rsi);
   push(rdi);
 }
@@ -12661,19 +12661,19 @@ void Assembler::popaq() {
   //Do not push/pop callee saved registers
   pop(rdi);
   pop(rsi);
-  // pop(rbp);
-  // pop(rsp);
-  // pop(r15);
-  // pop(r14);
-  // pop(r13);
-  // pop(r12);
-  // pop(r11);
-  // pop(r10);
+  pop(rbp);
+  pop(rsp);
+  pop(r15);
+  pop(r14);
+  pop(r13);
+  pop(r12);
+  pop(r11);
+  pop(r10);
   pop(r9);
   pop(r8);
   pop(rdx);
   pop(rcx);
-  // pop(rbx);
+  pop(rbx);
   pop(rax);
 }
 

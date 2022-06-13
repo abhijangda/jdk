@@ -1858,20 +1858,23 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
       LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 16, T_LONG);
       __ store(src_or_obj_size, heap_events_addr_src);
       LIR_Opr r = new_pointer_register();
-      __ leal(new LIR_Address(dst_or_new_obj, 0, T_LONG), r);
+      __ leal(new LIR_Address(dst_or_new_obj, 0, T_LONG), r); //TODO: Remove this leal (make sure that debug build works)
       __ store(r, heap_events_addr_dst);
     }
 
     if (Universe::enable_heap_graph_verify) {
       call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::verify_heap_graph), (ValueType*)voidType, NULL);
     } else {
-      __ sub(counter, LIR_OprFact::longConst(Universe::max_heap_events*sizeof(Universe::HeapEvent)), counter);
-      __ cmp(LIR_Condition::lir_cond_notEqual, counter, LIR_OprFact::longConst(0));
-      __ branch(LIR_Condition::lir_cond_notEqual, pass_through->label()); 
+      __ transfer_events(counter);
+      // __ sub(counter, LIR_OprFact::longConst(Universe::max_heap_events*sizeof(Universe::HeapEvent)), counter);
+      // __ cmp(LIR_Condition::lir_cond_notEqual, counter, LIR_OprFact::longConst(0));
+      // __ branch(LIR_Condition::lir_cond_notEqual, pass_through->label()); 
+      // __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
+      // __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
       // call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::print_heap_event_counter), (ValueType*)voidType, NULL);
-      __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
-      __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
-      __ branch_destination(pass_through->label());
+      // __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
+      // __ branch_destination(pass_through->label());
+      // __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
     }
   }
 
@@ -1880,6 +1883,7 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
 }
 
 void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_Opr dst_offset, LIR_Opr src_offset, LIR_Opr count) {
+  return;
   if (!Universe::heap_event_stub_in_C1_LIR)
     return;
   LIR_Opr heap_event_counter_addr_reg = new_pointer_register();

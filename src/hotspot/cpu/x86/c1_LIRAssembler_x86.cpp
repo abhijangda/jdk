@@ -966,6 +966,20 @@ void LIR_Assembler::reg2stack(LIR_Opr src, LIR_Opr dest, BasicType type, bool po
   }
 }
 
+void LIR_Assembler::transfer_events(LIR_Opr counter) {
+  if (Universe::enable_heap_event_logging && Universe::heap_event_stub_in_C1_LIR) {
+    assert(counter->is_cpu_register(), "");
+    Register reg = counter->as_register_lo();
+
+    __ subq(reg, Universe::max_heap_events*sizeof(Universe::HeapEvent));
+    Label not_equal;
+    __ jcc(Assembler::Condition::notZero, not_equal);
+    __ pushaq();
+    __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::print_heap_event_counter)));
+    __ popaq();
+    __ bind(not_equal);
+  }
+}
 
 void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_PatchCode patch_code, CodeEmitInfo* info, bool pop_fpu_stack, bool wide) {
   LIR_Address* to_addr = dest->as_address_ptr();

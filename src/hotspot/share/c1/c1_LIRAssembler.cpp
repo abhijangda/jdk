@@ -585,6 +585,10 @@ void LIR_Assembler::emit_op1(LIR_Op1* op) {
       unwind_op(op->in_opr());
       break;
 
+    case lir_transfer_events:
+      transfer_events(op->in_opr());
+      break;
+      
     default:
       Unimplemented();
       break;

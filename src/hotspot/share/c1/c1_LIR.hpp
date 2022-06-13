@@ -941,6 +941,7 @@ enum LIR_Code {
       , lir_safepoint
       , lir_unwind
       , lir_load_klass
+      , lir_transfer_events
   , end_op1
   , begin_op2
       , lir_cmp
@@ -2142,7 +2143,7 @@ class LIR_List: public CompilationResourceObj {
   void return_op(LIR_Opr result)                   { append(new LIR_OpReturn(result)); }
 
   void convert(Bytecodes::Code code, LIR_Opr left, LIR_Opr dst, ConversionStub* stub = NULL/*, bool is_32bit = false*/) { append(new LIR_OpConvert(code, left, dst, stub)); }
-
+  void transfer_events(LIR_Opr counter) {append(new LIR_Op1(lir_transfer_events, counter));}
   void logical_and (LIR_Opr left, LIR_Opr right, LIR_Opr dst) { append(new LIR_Op2(lir_logic_and,  left, right, dst)); }
   void logical_or  (LIR_Opr left, LIR_Opr right, LIR_Opr dst) { append(new LIR_Op2(lir_logic_or,   left, right, dst)); }
   void logical_xor (LIR_Opr left, LIR_Opr right, LIR_Opr dst) { append(new LIR_Op2(lir_logic_xor,  left, right, dst)); }

@@ -752,10 +752,10 @@ void Universe::unlock_mutex_heap_event() {
   pthread_mutex_unlock(&Universe::mutex_heap_event);
 }
 
-int Universe::print_heap_event_counter(JavaThread* thread) {
+int Universe::print_heap_event_counter() {
   printf("Universe::heap_event_counter %d\n", (int)*Universe::heap_event_counter_ptr);
   // if (*Universe::heap_event_counter_ptr >= Universe::max_heap_events) 
-  //   Universe::heap_event_counter_ptr = 0; 
+  *Universe::heap_event_counter_ptr = 0; 
   return 0; 
 }
 

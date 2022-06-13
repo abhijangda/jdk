@@ -94,10 +94,11 @@
 pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
 Universe::HeapEvent Universe::heap_events[1+Universe::max_heap_events] = {};
 uint64_t* Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
-bool Universe::enable_heap_event_logging = false;
-bool Universe::enable_heap_graph_verify = false && Universe::enable_heap_event_logging;
+bool Universe::enable_heap_event_logging = true;
+bool Universe::enable_heap_graph_verify = true && Universe::enable_heap_event_logging;
 bool Universe::heap_event_stub_in_C1_LIR = true && Universe::enable_heap_event_logging;
 bool Universe::enable_heap_event_logging_in_interpreter = true && Universe::enable_heap_event_logging;
+
 #include<vector>
 #include<limits>
 #include<unordered_map>
@@ -730,34 +731,35 @@ void init_lock () {
   }
 }
 
-JRT_LEAF(void, Universe::verify_heap_graph_for_copy_array())
+void Universe::verify_heap_graph_for_copy_array() {
   if ((*Universe::heap_event_counter_ptr) + 3 > Universe::max_heap_events) {
     Universe::verify_heap_graph();
   }
-JRT_END
+}
 
-JRT_LEAF(void, Universe::lock_mutex_heap_event())
+void Universe::lock_mutex_heap_event() {
   // if (!Universe::enable_heap_graph_verify)
   //   return;
   // printf("try-lock %ld\n", gettid());
   pthread_mutex_lock(&Universe::mutex_heap_event);
   // printf("locked %ld\n", gettid());
-JRT_END
+}
 
-JRT_LEAF(void, Universe::unlock_mutex_heap_event())
+void Universe::unlock_mutex_heap_event() {
   // if (!Universe::enable_heap_graph_verify)
   //   return;
   // printf("unlock %ld\n", gettid());
   pthread_mutex_unlock(&Universe::mutex_heap_event);
-JRT_END
+}
 
-JRT_LEAF(void, Universe::print_heap_event_counter())
-  printf("Universe::heap_event_counter %d\n", (int)*Universe::heap_event_counter_ptr);
-  if (*Universe::heap_event_counter_ptr >= Universe::max_heap_events) 
-    Universe::heap_event_counter_ptr = 0;  
-JRT_END
+int Universe::print_heap_event_counter(JavaThread* thread) {
+  // printf("Universe::heap_event_counter %d\n", (int)*Universe::heap_event_counter_ptr);
+  // if (*Universe::heap_event_counter_ptr >= Universe::max_heap_events) 
+  //   Universe::heap_event_counter_ptr = 0; 
+  return 0; 
+}
 
-JRT_LEAF(void, Universe::verify_heap_graph()) 
+void Universe::verify_heap_graph() {
   if (*Universe::heap_event_counter_ptr < Universe::max_heap_events)
     return;
 
@@ -895,8 +897,8 @@ JRT_LEAF(void, Universe::verify_heap_graph())
         } while(ik && ik->is_klass());
       }
     } else if (event.heap_event_type == Universe::CopyArray) {
-      objArrayOop obj_src = objArrayOop((void*)event.address.src);
-      objArrayOop obj_dst = objArrayOop((void*)event.address.dst);
+      objArrayOop obj_src = objArrayOop((objArrayOopDesc*)event.address.src);
+      objArrayOop obj_dst = objArrayOop((objArrayOopDesc*)event.address.dst);
       if (!obj_src->klass()->is_objArray_klass()) continue;
       int idx = has_heap_event_with_id(copy_array_events, event.id, 0, copy_array_events_size - 1);
       HeapEvent offsets = copy_array_events[idx+1];
@@ -905,15 +907,15 @@ JRT_LEAF(void, Universe::verify_heap_graph())
       char buf[1024];
 
       for (uint i = 0; i < length_event.address.src; i++) {
-        bool can_print = false;// obj_dst->length() >= 3000 && obj_dst->length() <= 4000 && i < 100 && Universe::checking > 5 && first_src_elem != NULL && strstr(get_oop_klass_name(first_src_elem, buf), "PyInteger") != NULL;
-        if (can_print)
-          printf("i %d offsets.type %ld offset_src %ld offset_dst %ld length_event.address.src %ld obj_src %p obj_dst %p\n", i, offsets.heap_event_type, offsets.address.src, offsets.address.dst, length_event.address.src, obj_src, obj_dst);
+        bool can_print = true;// obj_dst->length() >= 3000 && obj_dst->length() <= 4000 && i < 100 && Universe::checking > 5 && first_src_elem != NULL && strstr(get_oop_klass_name(first_src_elem, buf), "PyInteger") != NULL;
+        // if (can_print)
+        //   printf("i %d offsets.type %ld offset_src %ld offset_dst %ld length_event.address.src %ld obj_src %p obj_dst %p\n", i, offsets.heap_event_type, offsets.address.src, offsets.address.dst, length_event.address.src, (void*)obj_src, (void*)obj_dst);
         int src_array_index = offsets.address.src + i;
         int dst_array_index = offsets.address.dst + i;
         uint64_t src_elem_addr = ((uint64_t)obj_src->base()) + src_array_index * sizeof(oop);
         uint64_t dst_elem_addr = ((uint64_t)obj_dst->base()) + dst_array_index * sizeof(oop);
-        if (can_print)
-          printf("i %d dst_elem_addr 0x%lx src_elem_addr 0x%lx\n", i, dst_elem_addr, src_elem_addr);
+        // if (can_print)
+        //   printf("i %d dst_elem_addr 0x%lx src_elem_addr 0x%lx\n", i, dst_elem_addr, src_elem_addr);
         int idx;
         bool field_set_later = false;
         // idx = has_heap_event(heap_events_start, dst_elem_addr, 0, heap_events_size - 1);
@@ -965,7 +967,7 @@ JRT_LEAF(void, Universe::verify_heap_graph())
               }
               if (src_field_set_event.id < event.id) {
                 // if (offsets.address.src == 0 && offsets.address.dst == 0 && length_event.address.src == 10)
-                if (can_print) printf("850: event.id %ld dst 0x%lx src 0x%lx} src_field_set_event {id %ld dst 0x%lx src 0x%lx} i %d\n", event.id, event.address.dst, event.address.src, src_field_set_event.id, src_field_set_event.address.dst, src_field_set_event.address.src, i);
+                // if (can_print) printf("850: event.id %ld dst 0x%lx src 0x%lx} src_field_set_event {id %ld dst 0x%lx src 0x%lx} i %d\n", event.id, event.address.dst, event.address.src, src_field_set_event.id, src_field_set_event.address.dst, src_field_set_event.address.src, i);
                 final_event1 = Universe::HeapEvent{Universe::FieldSet, src_field_set_event.address.src, dst_elem_addr, event.id};
                 final_event1_src_id = src_field_set_event.id;
               } else {
@@ -975,15 +977,15 @@ JRT_LEAF(void, Universe::verify_heap_graph())
           }
 
           if (true || idx == -1) {
-            int ii = has_heap_event(copy_object_events, (uint64_t)obj_src, 0, copy_object_events_size - 1);
+            int ii = has_heap_event(copy_object_events, (uint64_t)(void*)obj_src, 0, copy_object_events_size - 1);
             if (ii != -1) {
               //Go to first event with same dst.
-              while (ii > 0 && copy_object_events[ii-1].address.dst == (uint64_t)obj_src) {
+              while (ii > 0 && copy_object_events[ii-1].address.dst == (uint64_t)(void*)obj_src) {
                 ii--;
               }
               HeapEvent src_copy_event = copy_object_events[ii];
               bool found = false;
-              for (; copy_object_events[ii].address.dst == (uint64_t)obj_src; ii++) {
+              for (; copy_object_events[ii].address.dst == (uint64_t)(void*)obj_src; ii++) {
                 int i3 = has_heap_event_with_id(copy_array_events, copy_object_events[ii].id, 0, copy_array_events_size - 1);
                 uint64_t start = ((uint64_t)obj_src->base()) + copy_array_events[i3+1].address.dst * sizeof(oop);
                 uint64_t end = start + copy_array_events[i3+2].address.src * sizeof(oop);
@@ -996,7 +998,7 @@ JRT_LEAF(void, Universe::verify_heap_graph())
               }
               if (found) {
                 idx = has_heap_event_with_id(flattened_heap_events, src_copy_event.id, 0, flattened_heap_events_size - 1);
-                if (can_print) printf("1008: event {id %ld dst 0x%lx src 0x%lx} dst_elem_addr 0x%lx src_copy_event {id %ld src 0x%lx dst 0x%lx} obj_src %p idx %d i %d\n", event.id, event.address.dst, event.address.src, dst_elem_addr, src_copy_event.id, src_copy_event.address.src, src_copy_event.address.dst, obj_src, idx, i);
+                // if (can_print) printf("1008: event {id %ld dst 0x%lx src 0x%lx} dst_elem_addr 0x%lx src_copy_event {id %ld src 0x%lx dst 0x%lx} obj_src %p idx %d i %d\n", event.id, event.address.dst, event.address.src, dst_elem_addr, src_copy_event.id, src_copy_event.address.src, src_copy_event.address.dst, (void*)obj_src, idx, i);
                 if (idx != -1) {
                   while (idx > 0 && src_copy_event.id == flattened_heap_events[idx-1].id) {
                     idx--;
@@ -1007,9 +1009,9 @@ JRT_LEAF(void, Universe::verify_heap_graph())
                       src_field_set_event = flattened_heap_events[idx];
                     }
                   }
-                  if (can_print) printf("1022: event {id %ld dst 0x%lx src 0x%lx} dst_elem_addr 0x%lx src_field_set_event {id %ld src 0x%lx dst 0x%lx} src_elem_addr 0x%lx i %d\n", event.id, event.address.dst, event.address.src, dst_elem_addr, src_field_set_event.id, src_field_set_event.address.src, src_field_set_event.address.dst, src_elem_addr, i);
+                  // if (can_print) printf("1022: event {id %ld dst 0x%lx src 0x%lx} dst_elem_addr 0x%lx src_field_set_event {id %ld src 0x%lx dst 0x%lx} src_elem_addr 0x%lx i %d\n", event.id, event.address.dst, event.address.src, dst_elem_addr, src_field_set_event.id, src_field_set_event.address.src, src_field_set_event.address.dst, src_elem_addr, i);
                   if (src_field_set_event.address.dst == src_elem_addr) {
-                    if (can_print) printf("1024: event {id %ld dst 0x%lx src 0x%lx} src_field_set_event {id %ld dst 0x%lx src 0x%lx} i %d\n", event.id, event.address.dst, event.address.src, src_field_set_event.id, src_field_set_event.address.dst, src_field_set_event.address.src, i);
+                    // if (can_print) printf("1024: event {id %ld dst 0x%lx src 0x%lx} src_field_set_event {id %ld dst 0x%lx src 0x%lx} i %d\n", event.id, event.address.dst, event.address.src, src_field_set_event.id, src_field_set_event.address.dst, src_field_set_event.address.src, i);
                     final_event2 = Universe::HeapEvent{Universe::FieldSet, src_field_set_event.address.src, dst_elem_addr, event.id};
                     final_event2_src_id = src_field_set_event.id;
                   } else {
@@ -1034,7 +1036,7 @@ JRT_LEAF(void, Universe::verify_heap_graph())
             if (idx != -1) {
               HeapEvent src_field_set_event = sorted_field_set_events[idx];
               // if (offsets.address.src == 0 && offsets.address.dst == 0 && length_event.address.src == 10)
-              if (can_print) printf("813: dst 0x%lx src 0x%lx dst_obj_field_offset 0x%lx i %d\n", event.address.dst, src_field_set_event.address.src, dst_elem_addr, i);
+              // if (can_print) printf("813: dst 0x%lx src 0x%lx dst_obj_field_offset 0x%lx i %d\n", event.address.dst, src_field_set_event.address.src, dst_elem_addr, i);
               flattened_heap_events[flattened_heap_events_size++] = Universe::HeapEvent{Universe::FieldSet, src_field_set_event.address.src, dst_elem_addr, event.id};
             }
           }
@@ -1215,7 +1217,7 @@ JRT_LEAF(void, Universe::verify_heap_graph())
   // }
   // abort();
   // if (max_prints >= 100)  abort();
-JRT_END
+}
 
 // Known objects
 Klass* Universe::_typeArrayKlassObjs[T_LONG+1]        = { NULL /*, NULL...*/ };

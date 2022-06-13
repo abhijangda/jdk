@@ -1006,6 +1006,24 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   LIRItem dst_pos(x->argument_at(3), this);
   LIRItem length(x->argument_at(4), this);
 
+  int flags;
+  ciArrayKlass* expected_type;
+  arraycopy_helper(x, &flags, &expected_type);
+
+  LIR_Opr src_result = new_register(src.result().type());;
+  LIR_Opr dst_result = new_register(dst.result().type());
+  LIR_Opr src_pos_result = new_register(src_pos.result().type());
+  LIR_Opr dst_pos_result = new_register(dst_pos.result().type());
+  LIR_Opr length_result = new_register(length.result().type());
+
+  if ((expected_type == NULL || is_reference_type(expected_type->element_type()->basic_type())) && Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+    __ move(src.result(), src_result);
+    __ move(dst.result(), dst_result);
+    __ move(src_pos.result(), src_pos_result);
+    __ move(dst_pos.result(), dst_pos_result);
+    __ move(length.result(), length_result);
+  }
+
   // operands for arraycopy must use fixed registers, otherwise
   // LinearScan will fail allocation (because arraycopy always needs a
   // call)
@@ -1037,23 +1055,6 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
 #endif // LP64
 
   set_no_result(x);
-
-  int flags;
-  ciArrayKlass* expected_type;
-  arraycopy_helper(x, &flags, &expected_type);
-  LIR_Opr src_result = new_pointer_register();
-  LIR_Opr dst_result = new_pointer_register();
-  LIR_Opr src_pos_result = new_pointer_register();
-  LIR_Opr dst_pos_result = new_pointer_register();
-  LIR_Opr length_result = new_pointer_register();
-
-  if ((expected_type == NULL || is_reference_type(expected_type->element_type()->basic_type())) && Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
-    __ move(src.result(), src_result);
-    __ move(dst.result(), dst_result);
-    __ move(src_pos.result(), src_pos_result);
-    __ move(dst_pos.result(), dst_pos_result);
-    __ move(length.result(), length_result);
-  }
 
   __ arraycopy(src.result(), src_pos.result(), dst.result(), dst_pos.result(), length.result(), tmp, expected_type, flags, info); // does add_safepoint
   
@@ -1335,7 +1336,7 @@ void LIRGenerator::do_NewTypeArray(NewTypeArray* x) {
   LIR_Opr tmp4 = reg;
   LIR_Opr klass_reg = FrameMap::rdx_metadata_opr;
   LIR_Opr len = length.result();
-  LIR_Opr len2 = new_register(T_LONG);
+  LIR_Opr len2 = new_register(len.type());
   if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
     __ move(len, len2);
   }
@@ -1376,7 +1377,7 @@ void LIRGenerator::do_NewObjectArray(NewObjectArray* x) {
 
   length.load_item_force(FrameMap::rbx_opr);
   LIR_Opr len = length.result();
-  LIR_Opr len2 = new_register(T_LONG);
+  LIR_Opr len2 = new_register(len.type());
   if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
     __ move(len, len2);
   }

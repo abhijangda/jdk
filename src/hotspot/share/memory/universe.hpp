@@ -278,7 +278,7 @@ class Universe: AllStatic {
   }
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();
-  static void print_heap_event_counter();
+  static int print_heap_event_counter(JavaThread* thread);
   static void verify_heap_graph();
   static void verify_heap_graph_for_copy_array();
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;

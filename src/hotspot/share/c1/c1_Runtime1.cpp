@@ -336,6 +336,10 @@ const char* Runtime1::name_for_address(address entry) {
   FUNCTION_CASE(entry, StubRoutines::dcos());
   FUNCTION_CASE(entry, StubRoutines::dtan());
   FUNCTION_CASE(entry, Universe::verify_heap_graph);
+  FUNCTION_CASE(entry, Universe::print_heap_event_counter);
+  FUNCTION_CASE(entry, Universe::lock_mutex_heap_event);
+  FUNCTION_CASE(entry, Universe::unlock_mutex_heap_event);
+  FUNCTION_CASE(entry, Universe::verify_heap_graph_for_copy_array);
 
 #undef FUNCTION_CASE
 

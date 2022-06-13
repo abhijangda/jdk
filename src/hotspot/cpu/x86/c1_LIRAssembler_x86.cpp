@@ -1051,37 +1051,46 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       break;
 
     case T_LONG: {
-      Register from_lo = src->as_register_lo();
-      Register from_hi = src->as_register_hi();
-#ifdef _LP64
-      __ movptr(as_Address_lo(to_addr), from_lo);
-#else
-      Register base = to_addr->base()->as_register();
-      Register index = noreg;
-      if (to_addr->index()->is_register()) {
-        index = to_addr->index()->as_register();
-      }
-      if (base == from_lo || index == from_lo) {
-        assert(base != from_hi, "can't be");
-        assert(index == noreg || (index != base && index != from_hi), "can't handle this");
-        __ movl(as_Address_hi(to_addr), from_hi);
-        if (patch != NULL) {
-          patching_epilog(patch, lir_patch_high, base, info);
-          patch = new PatchingStub(_masm, PatchingStub::access_field_id);
-          patch_code = lir_patch_low;
-        }
-        __ movl(as_Address_lo(to_addr), from_lo);
+
+      if(src.type() == T_INT) {
+        Register from = src->as_register();
+        //TODO: Storing integer to a long address for CopyArrayLength, CopyArrayOffset, and NewObject size
+        //Fix this by treating HeapEvent::src (and dst) as long or int based on HeapEventType
+        __ movq(as_Address_lo(to_addr), 0);
+        __ movl(as_Address_lo(to_addr), from);
       } else {
-        assert(index == noreg || (index != base && index != from_lo), "can't handle this");
-        __ movl(as_Address_lo(to_addr), from_lo);
-        if (patch != NULL) {
-          patching_epilog(patch, lir_patch_low, base, info);
-          patch = new PatchingStub(_masm, PatchingStub::access_field_id);
-          patch_code = lir_patch_high;
+        Register from_lo = src->as_register_lo();
+        Register from_hi = src->as_register_hi();
+  #ifdef _LP64
+        __ movptr(as_Address_lo(to_addr), from_lo);
+  #else
+        Register base = to_addr->base()->as_register();
+        Register index = noreg;
+        if (to_addr->index()->is_register()) {
+          index = to_addr->index()->as_register();
         }
-        __ movl(as_Address_hi(to_addr), from_hi);
+        if (base == from_lo || index == from_lo) {
+          assert(base != from_hi, "can't be");
+          assert(index == noreg || (index != base && index != from_hi), "can't handle this");
+          __ movl(as_Address_hi(to_addr), from_hi);
+          if (patch != NULL) {
+            patching_epilog(patch, lir_patch_high, base, info);
+            patch = new PatchingStub(_masm, PatchingStub::access_field_id);
+            patch_code = lir_patch_low;
+          }
+          __ movl(as_Address_lo(to_addr), from_lo);
+        } else {
+          assert(index == noreg || (index != base && index != from_lo), "can't handle this");
+          __ movl(as_Address_lo(to_addr), from_lo);
+          if (patch != NULL) {
+            patching_epilog(patch, lir_patch_low, base, info);
+            patch = new PatchingStub(_masm, PatchingStub::access_field_id);
+            patch_code = lir_patch_high;
+          }
+          __ movl(as_Address_hi(to_addr), from_hi);
+        }
+  #endif // _LP64
       }
-#endif // _LP64
       break;
     }
 

@@ -95,7 +95,7 @@ pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
 Universe::HeapEvent Universe::heap_events[1+Universe::max_heap_events] = {};
 uint64_t* Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
 bool Universe::enable_heap_event_logging = true;
-bool Universe::enable_heap_graph_verify = true && Universe::enable_heap_event_logging;
+bool Universe::enable_heap_graph_verify = false && Universe::enable_heap_event_logging;
 bool Universe::heap_event_stub_in_C1_LIR = true && Universe::enable_heap_event_logging;
 bool Universe::enable_heap_event_logging_in_interpreter = true && Universe::enable_heap_event_logging;
 
@@ -753,7 +753,7 @@ void Universe::unlock_mutex_heap_event() {
 }
 
 int Universe::print_heap_event_counter(JavaThread* thread) {
-  // printf("Universe::heap_event_counter %d\n", (int)*Universe::heap_event_counter_ptr);
+  printf("Universe::heap_event_counter %d\n", (int)*Universe::heap_event_counter_ptr);
   // if (*Universe::heap_event_counter_ptr >= Universe::max_heap_events) 
   //   Universe::heap_event_counter_ptr = 0; 
   return 0; 

@@ -94,10 +94,10 @@ pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
 Universe::HeapEvent Universe::heap_events[1+Universe::max_heap_events] = {};
 uint64_t* Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
 bool Universe::enable_heap_event_logging = true;
-bool Universe::enable_heap_graph_verify = false && Universe::enable_heap_event_logging;
+bool Universe::enable_heap_graph_verify = true && Universe::enable_heap_event_logging;
 bool Universe::heap_event_stub_in_C1_LIR = true && Universe::enable_heap_event_logging;
 bool Universe::enable_heap_event_logging_in_interpreter = true && Universe::enable_heap_event_logging;
-bool Universe::enable_transfer_events = true;
+bool Universe::enable_transfer_events = false ;
 sem_t Universe::cuda_semaphore;
 
 #include<vector>
@@ -824,7 +824,6 @@ void Universe::verify_heap_graph() {
     HeapEvent event = heap_events_sorted_with_id[i];
     if (event.heap_event_type == Universe::CopyObject) {
       oop obj_src = oop((oopDesc*)(void*)event.address.src);
-      // printf("774: copyobj dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
       if (obj_src->klass()->is_instance_klass()) {
         InstanceKlass* ik = (InstanceKlass*)obj_src->klass();
         do {
@@ -837,65 +836,101 @@ void Universe::verify_heap_graph() {
             Symbol* signature = ik->field_signature(f);
             
             if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
-              int idx;
-              uint64_t curr_src = event.address.src;
-              bool field_set_later = false;
-              idx = has_heap_event(heap_events_start, event.address.dst + ik->field_offset(f), 0, Universe::max_heap_events - 1);
-              if (idx != -1) {
-                HeapEvent dst_field_set_event = heap_events_start[idx];
-                //Go to first event with same dst.
-                while (idx >= 0 && dst_field_set_event.address.dst == heap_events_start[idx-1].address.dst) {
-                  idx--;
-                }
-                //Find the event with id less than copy_object event id
-                for (; idx < Universe::max_heap_events && dst_field_set_event.address.dst == heap_events_start[idx].address.dst; idx++) {
-                  if (heap_events_start[idx].id > event.id) {
-                    field_set_later = true;
-                    break;
-                  }
-                }
+              uint64_t dst_obj_field_offset = event.address.dst + ik->field_offset(f);
+              uint64_t src_obj_field_offset = event.address.src + ik->field_offset(f);
 
-                if (field_set_later) {
-                  // printf("field_set_later: dst_obj 0x%lx dst_field 0x%lx src 0x%lx\n", event.address.dst, dst_field_set_event.address.dst, dst_field_set_event.address.src);
+              int idx = -1;
+              HeapEvent final_event1 = {HeapEventType::None,0,0,0};
+              uint64_t final_event1_src_id = 0;
+              HeapEvent final_event2 = {HeapEventType::None,0,0,0};
+              uint64_t final_event2_src_id = 0;
+              
+              if (idx == -1) {
+                idx = has_heap_event(heap_events_start, src_obj_field_offset, 0, heap_events_size - 1);
+                if (idx != -1) {
+                  HeapEvent src_field_set_event = heap_events_start[idx];
+                  //Go to first event with same dst.
+                  while (idx > 0 && src_obj_field_offset == heap_events_start[idx-1].address.dst) {
+                    // printf("950: event {id %ld dst 0x%lx src 0x%lx} heap_events_start[idx-1] {id %ld dst 0x%lx src 0x%lx} i %d\n", event.id, event.address.dst, src_field_set_event.address.src, heap_events_start[idx-1].id, heap_events_start[idx-1].address.dst, heap_events_start[idx-1].address.src, i);
+                    idx--;
+                  }
+                  
+                  src_field_set_event = heap_events_start[idx];
+                
+                  //Find the event with id less than copy_object event id
+                  for (; idx < (int)heap_events_size && src_obj_field_offset == heap_events_start[idx].address.dst; idx++) {
+                    if (heap_events_start[idx].id < event.id && src_field_set_event.id < heap_events_start[idx].id)
+                      src_field_set_event = heap_events_start[idx];
+                  }
+                  if (src_field_set_event.id < event.id) {
+                    // if (offsets.address.src == 0 && offsets.address.dst == 0 && length_event.address.src == 10)
+                    // if (can_print) printf("850: event.id %ld dst 0x%lx src 0x%lx} src_field_set_event {id %ld dst 0x%lx src 0x%lx} i %d\n", event.id, event.address.dst, event.address.src, src_field_set_event.id, src_field_set_event.address.dst, src_field_set_event.address.src, i);
+                    final_event1 = Universe::HeapEvent{Universe::FieldSet, src_field_set_event.address.src, dst_obj_field_offset, event.id};
+                    final_event1_src_id = src_field_set_event.id;
+                  } else {
+                    idx = -1;
+                  }
                 }
               }
 
-              if (!field_set_later) {
-                do {
-                  idx = has_heap_event(sorted_field_set_events, curr_src + ik->field_offset(f), 0, sorted_field_set_events_size - 1);
-                  if (idx != -1) {
-                    HeapEvent src_field_set_event = sorted_field_set_events[idx];
-                    uint64_t dst_obj_field_offset = event.address.dst + ik->field_offset(f);
-                    // printf("813: dst 0x%lx src 0x%lx dst_obj_field_offset 0x%lx\n", event.address.dst, src_field_set_event.address.src, dst_obj_field_offset);
-                    flattened_heap_events[flattened_heap_events_size++] = Universe::HeapEvent{Universe::FieldSet, src_field_set_event.address.src, dst_obj_field_offset, event.id};
-                    break;
+              if (true || idx == -1) {
+                int ii = has_heap_event(copy_object_events, (uint64_t)(void*)obj_src, 0, copy_object_events_size - 1);
+                if (ii != -1) {
+                  //Go to first event with same dst.
+                  while (ii > 0 && copy_object_events[ii-1].address.dst == (uint64_t)(void*)obj_src) {
+                    ii--;
                   }
-                
-                  idx = has_heap_event(heap_events_start, curr_src + ik->field_offset(f), 0, Universe::max_heap_events - 1);
-                  if (idx != -1) {
-                    HeapEvent src_field_set_event = heap_events_start[idx];
-                    //Go to first event with same dst.
-                    while (idx > 0 && src_field_set_event.address.dst == heap_events_start[idx-1].address.dst) {
-                      idx--;
+                  HeapEvent src_copy_event = copy_object_events[ii];
+                  bool found = false;
+                  for (; copy_object_events[ii].address.dst == (uint64_t)(void*)obj_src; ii++) {
+                    if (copy_object_events[ii].id < event.id) {
+                      src_copy_event = copy_object_events[ii];
+                      found = true;
                     }
-                    src_field_set_event = heap_events_start[idx];
-                    //Find the event with id less than copy_object event id
-                    for (; idx < Universe::max_heap_events && src_field_set_event.address.dst == heap_events_start[idx].address.dst; idx++) {
-                      if (heap_events_start[idx].id < event.id && src_field_set_event.id < heap_events_start[idx].id)
-                        src_field_set_event = heap_events_start[idx];
+                  }
+                  if (found) {
+                    idx = has_heap_event_with_id(flattened_heap_events, src_copy_event.id, 0, flattened_heap_events_size - 1);
+                    // if (can_print) printf("1008: event {id %ld dst 0x%lx src 0x%lx} dst_elem_addr 0x%lx src_copy_event {id %ld src 0x%lx dst 0x%lx} obj_src %p idx %d i %d\n", event.id, event.address.dst, event.address.src, dst_elem_addr, src_copy_event.id, src_copy_event.address.src, src_copy_event.address.dst, (void*)obj_src, idx, i);
+                    if (idx != -1) {
+                      while (idx > 0 && src_copy_event.id == flattened_heap_events[idx-1].id) {
+                        idx--;
+                      }
+                      HeapEvent src_field_set_event = flattened_heap_events[idx];
+                      for (; idx < (int)flattened_heap_events_size && src_copy_event.id == flattened_heap_events[idx].id; idx++) {
+                        if (flattened_heap_events[idx].address.dst == src_obj_field_offset) {
+                          src_field_set_event = flattened_heap_events[idx];
+                        }
+                      }
+                      // if (can_print) printf("1022: event {id %ld dst 0x%lx src 0x%lx} dst_elem_addr 0x%lx src_field_set_event {id %ld src 0x%lx dst 0x%lx} src_elem_addr 0x%lx i %d\n", event.id, event.address.dst, event.address.src, dst_elem_addr, src_field_set_event.id, src_field_set_event.address.src, src_field_set_event.address.dst, src_elem_addr, i);
+                      if (src_field_set_event.address.dst == src_obj_field_offset) {
+                        // if (can_print) printf("1024: event {id %ld dst 0x%lx src 0x%lx} src_field_set_event {id %ld dst 0x%lx src 0x%lx} i %d\n", event.id, event.address.dst, event.address.src, src_field_set_event.id, src_field_set_event.address.dst, src_field_set_event.address.src, i);
+                        final_event2 = Universe::HeapEvent{Universe::FieldSet, src_field_set_event.address.src, dst_obj_field_offset, event.id};
+                        final_event2_src_id = src_field_set_event.id;
+                      } else {
+                        idx = -1;
+                      }
                     }
-                    uint64_t dst_obj_field_offset = event.address.dst + ik->field_offset(f);
-                    // printf("850: dst 0x%lx src 0x%lx dst_obj_field_offset 0x%lx\n", event.address.dst, src_field_set_event.address.src, dst_obj_field_offset);
-                    flattened_heap_events[flattened_heap_events_size++] = Universe::HeapEvent{Universe::FieldSet, src_field_set_event.address.src, dst_obj_field_offset, event.id};
-                    break;
+                  } else {
+                    idx = -1;
                   }
-                  
-                  if (idx == -1) {
-                    int i = has_heap_event(copy_object_events, curr_src, 0, copy_object_events_size - 1);
-                    if (i == -1) break;
-                    curr_src = copy_object_events[i].address.src;
-                  }
-                } while(idx == -1);
+                }
+              }
+              
+              if (final_event2.heap_event_type != HeapEventType::None || final_event1.heap_event_type != HeapEventType::None) {
+                if (final_event2_src_id > final_event1_src_id)
+                  flattened_heap_events[flattened_heap_events_size++] = final_event2;
+                else if (final_event1.heap_event_type != HeapEventType::None)
+                  flattened_heap_events[flattened_heap_events_size++] = final_event1;
+              }
+
+              if (final_event2.heap_event_type == HeapEventType::None && final_event1.heap_event_type == HeapEventType::None) {
+                idx = has_heap_event(sorted_field_set_events, src_obj_field_offset, 0, sorted_field_set_events_size - 1);
+                if (idx != -1) {
+                  HeapEvent src_field_set_event = sorted_field_set_events[idx];
+                  // if (offsets.address.src == 0 && offsets.address.dst == 0 && length_event.address.src == 10)
+                  // if (can_print) printf("813: dst 0x%lx src 0x%lx dst_obj_field_offset 0x%lx i %d\n", event.address.dst, src_field_set_event.address.src, dst_elem_addr, i);
+                  flattened_heap_events[flattened_heap_events_size++] = Universe::HeapEvent{Universe::FieldSet, src_field_set_event.address.src, dst_obj_field_offset, event.id};
+                }
               }
             }
           }

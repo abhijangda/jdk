@@ -231,7 +231,7 @@ class Universe: AllStatic {
   static void transfer_events_to_gpu();
   static sem_t cuda_semaphore;
   static inline void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3)
-  {  
+  {
     if (!Universe::enable_heap_event_logging) return;
     // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
     if (Universe::enable_heap_graph_verify)

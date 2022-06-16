@@ -1162,7 +1162,7 @@ void TemplateTable::aastore() {
 
   // Store a NULL
   if (Universe::enable_heap_event_logging_in_interpreter) {
-    __ append_heap_event(Universe::FieldSet, element_address, 0, false);
+    __ append_heap_event(Universe::FieldSet, element_address, RegisterOrConstant((intptr_t)0), false);
   }
   do_oop_store(_masm, element_address, noreg, IS_ARRAY);
 

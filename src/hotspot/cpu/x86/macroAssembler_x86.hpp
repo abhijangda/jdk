@@ -358,12 +358,12 @@ class MacroAssembler: public Assembler {
   // Used for storing NULL. All other oop constants should be
   // stored using routines that take a jobject.
   void store_heap_oop_null(Address dst);
-  void append_heap_event(Universe::HeapEventType heap_event_type, Address dst_or_new_obj, Register src_or_obj_size, bool preserve_flags = false);
-  void append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, Register src_or_obj_size, Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, Register temp3, bool preserve_temp3, Register temp4, bool preserve_temp4, bool preserve_flags);
-  void append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, int32_t src_or_obj_size, 
-                                       Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, Register temp3, bool preserve_temp3, 
-                                       Register temp4, bool preserve_temp4, bool preserve_flags);
-  void append_heap_event(Universe::HeapEventType heap_event_type, Address dst, int32_t src, bool preserve_flags = false);
+  void append_heap_event(Universe::HeapEventType heap_event_type, Address dst_or_new_obj, RegisterOrConstant src_or_obj_size, bool preserve_flags = false);
+  void append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, RegisterOrConstant src_or_obj_size, Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, Register temp3, bool preserve_temp3, Register temp4, bool preserve_temp4, bool preserve_flags);
+  // void append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, int32_t src_or_obj_size, 
+  //                                      Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, Register temp3, bool preserve_temp3, 
+  //                                      Register temp4, bool preserve_temp4, bool preserve_flags);
+  // void append_heap_event(Universe::HeapEventType heap_event_type, Address dst, int32_t src, bool preserve_flags = false);
   void append_copy_array(Register dst_array, Register src_array, Register src_offset, Register dst_offset, Register count, 
                          Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, Register temp3, bool preserve_temp3, 
                          Register temp4, bool preserve_temp4, bool preserve_flags);

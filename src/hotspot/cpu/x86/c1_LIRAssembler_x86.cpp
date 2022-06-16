@@ -1067,8 +1067,9 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
         Register from = src->as_register();
         //TODO: Storing integer to a long address for CopyArrayLength, CopyArrayOffset, and NewObject size
         //Fix this by treating HeapEvent::src (and dst) as long or int based on HeapEventType
-        if (Universe::enable_heap_graph_verify)
+        if (Universe::enable_heap_graph_verify) {
           __ movq(as_Address_lo(to_addr), 0);
+        }
 
         __ movl(as_Address_lo(to_addr), from);
       } else {
@@ -2005,7 +2006,7 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
     assert(newval != addr, "new value and addr must be in different registers");
 
     if ( op->code() == lir_cas_obj) {
-      // if (!Universe::heap_event_stub_in_C1_LIR)
+      __ append_fieldset_event(Address(addr, 0), newval);
 #ifdef _LP64
       if (UseCompressedOops) {
         __ encode_heap_oop(cmpval);

@@ -773,7 +773,7 @@ void LIR_Assembler::const2mem(LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmi
             __ movl(as_Address_lo(addr), rscratch1);
           } else {
             if (!Universe::heap_event_stub_in_C1_LIR) {
-              __ append_heap_event(Universe::HeapEventType::FieldSet, as_Address(addr), rscratch1, r10, true, r11, true, r9, true, r8, true, false);
+              __ append_heap_event(Universe::HeapEventType::FieldSet, as_Address(addr), rscratch1, r10, true, r11, true, r9, true, false);
             }
             null_check_here = code_offset();
             __ movptr(as_Address_lo(addr), rscratch1);
@@ -1659,7 +1659,7 @@ void LIR_Assembler::emit_alloc_obj(LIR_OpAllocObj* op) {
                      *op->stub()->entry());
   if (!Universe::heap_event_stub_in_C1_LIR) {
     Register temp_regs[] = {r8, r9, r10, r11, r12, r13, r14, r15};
-    Register final_temp_regs[4] = {noreg, noreg, noreg, noreg};
+    Register final_temp_regs[3] = {noreg, noreg, noreg};
     int n_final_temp_regs = 0;
     if (Universe::enable_heap_event_logging) {
       for (size_t i = 0; i < sizeof(temp_regs)/sizeof(Register); i++) {
@@ -1676,7 +1676,7 @@ void LIR_Assembler::emit_alloc_obj(LIR_OpAllocObj* op) {
       if (n_final_temp_regs < 4) {printf("n_final_temp_regs %d != 4\n", n_final_temp_regs);}
     }
   // printf("op->tmp1()->as_register() %s op->tmp2()->as_register() %s op->obj()->as_register() %s final_temp_regs[0] %s final_temp_regs[1] %s\n", op->tmp1()->as_register()->name(), op->tmp2()->as_register()->name(), op->obj()->as_register()->name(), final_temp_regs[0]->name(), final_temp_regs[1]->name());
-    __ append_heap_event(Universe::NewObject, Address(op->obj()->as_register(), 0), op->object_size(), final_temp_regs[3], true, final_temp_regs[2], true, final_temp_regs[0], true, final_temp_regs[1], true, false);
+    __ append_heap_event(Universe::NewObject, Address(op->obj()->as_register(), 0), op->object_size(),  final_temp_regs[2], true, final_temp_regs[0], true, final_temp_regs[1], true, false);
   }
   __ bind(*op->stub()->continuation());
 }

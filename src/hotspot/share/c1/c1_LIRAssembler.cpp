@@ -789,13 +789,6 @@ void LIR_Assembler::move_op(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       assert(patch_code == lir_patch_none && info == NULL, "no patching and info allowed here");
       reg2stack(src, dest, type, pop_fpu_stack);
     } else if (dest->is_address()) {
-      //TODO: Can also be when src is address and dst is address
-      if (!Universe::heap_event_stub_in_C1_LIR && (is_reference_type(type) || is_reference_type(src->type()))) {
-        LIR_Address* dst_to_addr = dest->as_address_ptr();
-        Address dst_addr = as_Address(dst_to_addr);
-        Register oop = src->as_register();
-        _masm->append_heap_event(Universe::FieldSet, dst_addr, oop);
-      }
       reg2mem(src, dest, type, patch_code, info, pop_fpu_stack, wide);
     } else {
       ShouldNotReachHere();

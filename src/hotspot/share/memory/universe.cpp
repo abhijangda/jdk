@@ -746,23 +746,14 @@ void Universe::verify_heap_graph_for_copy_array() {
 }
 
 void Universe::lock_mutex_heap_event() {
-  // if (!Universe::enable_heap_graph_verify)
-  //   return;
-  // printf("try-lock %ld\n", gettid());
   pthread_mutex_lock(&Universe::mutex_heap_event);
-  // printf("locked %ld\n", gettid());
 }
 
 void Universe::unlock_mutex_heap_event() {
-  // if (!Universe::enable_heap_graph_verify)
-  //   return;
-  // printf("unlock %ld\n", gettid());
   pthread_mutex_unlock(&Universe::mutex_heap_event);
 }
 
 void Universe::print_heap_event_counter() {
-  // printf("Universe::heap_event_counter %d\n", (int)*Universe::heap_event_counter_ptr);
-  // if (*Universe::heap_event_counter_ptr >= Universe::max_heap_events) 
   *Universe::heap_event_counter_ptr = 0; 
 }
 
@@ -772,9 +763,9 @@ void Universe::verify_heap_graph() {
 
   size_t heap_events_size = *Universe::heap_event_counter_ptr;
   *Universe::heap_event_counter_ptr = 0;
-  if (Universe::enable_tranfer_events)
+  if (Universe::enable_transfer_events)
     Universe::transfer_events_to_gpu();
-    
+
   if (!Universe::enable_heap_graph_verify)
     return;
 

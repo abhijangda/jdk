@@ -4828,29 +4828,33 @@ void MacroAssembler::append_copy_array(Register dst_array, Register src_array, R
     pop(temp4);
 }
 
-void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Register dst_or_new_obj, RegisterOrConstant src_or_obj_size, 
-                                       Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2,
-                                       bool preserve_flags)
-{
-  append_heap_event(event_type, RegisterOrAddress(dst_or_new_obj), src_or_obj_size, temp1, preserve_temp1, temp2, preserve_temp2, noreg, false, preserve_flags);
+void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size, 
+                                         Register tmp1, bool preserve_tmp1, 
+                                         Register tmp2, bool preserve_tmp2,
+                                         bool preserve_flags) {
+  append_heap_event(Universe::NewObject, RegisterOrAddress(obj), size, 
+                    tmp1, preserve_tmp1, tmp2, preserve_tmp2, 
+                    noreg, false, preserve_flags);
 }
 
-void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, RegisterOrConstant src_or_obj_size, 
-                                       Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, Register temp3, bool preserve_temp3,
-                                       bool preserve_flags)
-{
-  append_heap_event(event_type, RegisterOrAddress(dst_or_new_obj), src_or_obj_size, temp1, preserve_temp1, temp2, preserve_temp2, temp3, preserve_temp3, preserve_flags);
+void MacroAssembler::append_fieldset_event(Address field, RegisterOrConstant val, 
+                                           Register tmp1, bool preserve_tmp1, 
+                                           Register tmp2, bool preserve_tmp2, 
+                                           Register tmp3, bool preserve_tmp3,
+                                           bool preserve_flags) {
+  append_heap_event(Universe::FieldSet, RegisterOrAddress(field), val, 
+                    tmp1, preserve_tmp1, tmp2, preserve_tmp2, 
+                    tmp3, preserve_tmp3, preserve_flags);
 }
 
-void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Register dst_or_new_obj, RegisterOrConstant src_or_obj_size, 
-                                       bool preserve_flags)
-{
-  append_heap_event(event_type, dst_or_new_obj, src_or_obj_size, r9, true, r8, false, noreg, false, preserve_flags);
+void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size, bool preserve_flags) {
+  append_heap_event(Universe::NewObject, obj, size, 
+                    r9, true, r8, false, noreg, false, preserve_flags);
 }
 
-void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, RegisterOrConstant src_or_obj_size, bool preserve_flags)
-{
-  append_heap_event(event_type, dst_or_new_obj, src_or_obj_size, r10, true, r9, true, r8, true, preserve_flags);
+void MacroAssembler::append_fieldset_event(Address field, RegisterOrConstant val, bool preserve_flags) {
+  append_heap_event(Universe::FieldSet, field, val, 
+                    r10, true, r9, true, r8, true, preserve_flags);
 }
 
 void MacroAssembler::store_heap_oop(Address dst, Register src, Register tmp1,

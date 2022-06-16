@@ -734,7 +734,7 @@ void init_lock () {
 }
 
 void Universe::transfer_events_to_gpu() {
-  printf("Transfering Events to GPU *Universe::heap_event_counter_ptr %ld\n", *Universe::heap_event_counter_ptr);
+  printf("Transferring Events to GPU *Universe::heap_event_counter_ptr %ld\n", *Universe::heap_event_counter_ptr);
   sem_post(&cuda_semaphore);
   *Universe::heap_event_counter_ptr = 0;
 }

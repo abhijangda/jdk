@@ -772,6 +772,9 @@ void Universe::verify_heap_graph() {
 
   size_t heap_events_size = *Universe::heap_event_counter_ptr;
   *Universe::heap_event_counter_ptr = 0;
+  if (Universe::enable_tranfer_events)
+    Universe::transfer_events_to_gpu();
+    
   if (!Universe::enable_heap_graph_verify)
     return;
 

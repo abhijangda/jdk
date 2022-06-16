@@ -326,6 +326,29 @@ class Address {
   friend class LIR_Assembler; // base/index/scale/disp
 };
 
+// A union type for code which has to assemble both register and
+// address operands, when the distinction cannot be made
+// statically.
+class RegisterOrAddress {
+ private:
+  Register _r;
+  Address _a;
+
+ public:
+  RegisterOrAddress(): _r(noreg), _a() {}
+  RegisterOrAddress(Register r): _r(r), _a() {}
+  RegisterOrAddress(Address a): _r(noreg), _a(a) {}
+
+  Register as_register() const { assert(is_register(),""); return _r; }
+  Address as_address() const { assert(is_address(),""); return _a; }
+
+  Register register_or_noreg() const { return _r; }
+  Address address_or_noaddress() const  { return _a; }
+
+  bool is_register() const { return _r != noreg; }
+  bool is_address () const { return _r == noreg; }
+};
+
 //
 // AddressLiteral has been split out from Address because operands of this type
 // need to be treated specially on 32bit vs. 64bit platforms. By splitting it out

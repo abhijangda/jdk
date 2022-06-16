@@ -4683,19 +4683,20 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
 }
 
 
-void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, RegisterOrConstant src_or_obj_size, 
+void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, RegisterOrAddress dst_or_new_obj, RegisterOrConstant src_or_obj_size, 
                                        Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, Register temp3, bool preserve_temp3, 
                                        bool preserve_flags)
 {
   //TODO: Use Temporary Registers of the Assembler instead of new registers.
   if (!Universe::enable_heap_event_logging) return;
-  if (dst_or_new_obj.base() == noreg || dst_or_new_obj.base() == rsp || dst_or_new_obj.base() == rbp)
-    return; //No need to add event if it is on the stack
   if (src_or_obj_size.is_register())
     assert(src_or_obj_size.as_register() != temp1 && src_or_obj_size.as_register() != temp2 && src_or_obj_size.as_register() != temp3, "");
-
-  assert(dst_or_new_obj.base() != temp1 && dst_or_new_obj.base() != temp2 && dst_or_new_obj.base() != temp3, "");
-  assert(dst_or_new_obj.index() != temp1 && dst_or_new_obj.index() != temp2 &&dst_or_new_obj.index() != temp3, "");
+  if (dst_or_new_obj.is_address()) {
+    if (dst_or_new_obj.as_address().base() == noreg || dst_or_new_obj.as_address().base() == rsp || dst_or_new_obj.as_address().base() == rbp)
+      return; //No need to add event if it is on the stack
+    assert(dst_or_new_obj.as_address().base() != temp1 && dst_or_new_obj.as_address().base() != temp2 && dst_or_new_obj.as_address().base() != temp3, "");
+    assert(dst_or_new_obj.as_address().index() != temp1 && dst_or_new_obj.as_address().index() != temp2 &&dst_or_new_obj.as_address().index() != temp3, "");
+  }
   
   if (preserve_temp1)
     push(temp1);
@@ -4703,23 +4704,28 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
     push(temp2);
   if (preserve_temp3)
     push(temp3);
-  if (preserve_flags) pushf(); //TODO: Use lahf/sahf
+  if (preserve_flags) 
+    pushf(); //TODO: Use lahf/sahf
 
   gen_lock_heap_event_mutex();
   mov64(temp1, (uint64_t)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type, 0);
   movq(temp3, Address(temp1, 0));
-  incrementq(temp3); //TODO: Using lea will not affect flag
+  leaq(temp3, Address(temp3, 1));
   movq(Address(temp1, 0), temp3);
   shlq(temp3, 5);
-  addq(temp1, temp3);
+  leaq(temp1, Address(temp1, temp3, Address::times_1));
   
   movq(Address(temp1, 0), (uint64_t)event_type);
   if (src_or_obj_size.is_register())
     movq(Address(temp1, 8), src_or_obj_size.as_register());
   else
     movq(Address(temp1, 8), src_or_obj_size.as_constant());
-  leaq(temp2, dst_or_new_obj);
-  movq(Address(temp1, 16), temp2);
+  if (dst_or_new_obj.is_register()) {
+    movq(Address(temp1, 16), dst_or_new_obj.as_register());
+  } else {
+    leaq(temp2, dst_or_new_obj.as_address());
+    movq(Address(temp1, 16), temp2);
+  }
   subq(temp3, Universe::max_heap_events*sizeof(Universe::HeapEvent));
   Label not_equal;
   jcc(Assembler::Condition::notZero, not_equal);
@@ -4733,7 +4739,8 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   
   gen_unlock_heap_event_mutex();
 
-  if (preserve_flags) popf();
+  if (preserve_flags) 
+    popf();
   if (preserve_temp3)
     pop(temp3);
   if (preserve_temp2)
@@ -4888,7 +4895,7 @@ void MacroAssembler::append_copy_array(Register dst_array, Register src_array, R
 //     pop(dst_or_new_obj.index());
 // }
 
-void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Address dst_or_new_obj, RegisterOrConstant src_or_obj_size, bool preserve_flags)
+void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, RegisterOrAddress dst_or_new_obj, RegisterOrConstant src_or_obj_size, bool preserve_flags)
 {
   append_heap_event(event_type, dst_or_new_obj, src_or_obj_size, r11, true, r10, true, r9, true, preserve_flags);
 }

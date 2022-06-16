@@ -4717,7 +4717,7 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   AddressLiteral heap_events_addr_literal((address)&Universe::heap_events[1], relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
   gen_lock_heap_event_mutex();
-  movl(temp3, as_Address(heap_event_counter_addr));
+  movq(temp3, as_Address(heap_event_counter_addr));
   movq(temp2, temp3);
   shlq(temp2, 5);
   // imulq(temp2, temp3, sizeof(Universe::HeapEvent));
@@ -4728,8 +4728,8 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   movq(Address(temp2, 16), temp4);
   pop(temp4);
   movq(Address(temp2, 8), temp4);
-  incrementl(temp3); //TODO: Using lea will not affect flags
-  movl(as_Address(heap_event_counter_addr), temp3);
+  incrementq(temp3); //TODO: Using lea will not affect flags
+  movq(as_Address(heap_event_counter_addr), temp3);
   //TODO: Use Addressingmode: movq(Address(temp2, temp3, Address::ScaleFactor::times_1, 16), 1);
   subq(temp3, Universe::max_heap_events);
   Label not_equal;
@@ -4790,7 +4790,7 @@ void MacroAssembler::append_copy_array(Register dst_array, Register src_array, R
   popaq();
   bind(not_equal);
   
-  movl(temp3, as_Address(heap_event_counter_addr));
+  movq(temp3, as_Address(heap_event_counter_addr));
   movq(temp2, temp3);
   shlq(temp2, 5);
   // imulq(temp2, temp3, sizeof(Universe::HeapEvent));
@@ -4815,7 +4815,7 @@ void MacroAssembler::append_copy_array(Register dst_array, Register src_array, R
   movq(Address(temp2, 16), count);
 
   addq(temp3, 3); //TODO: Using lea will not affect flags
-  movl(as_Address(heap_event_counter_addr), temp3);
+  movq(as_Address(heap_event_counter_addr), temp3);
   //TODO: Use Addressingmode: movq(Address(temp2, temp3, Address::ScaleFactor::times_1, 16), 1);
   subq(temp3, Universe::max_heap_events);
   Label not_equal2;

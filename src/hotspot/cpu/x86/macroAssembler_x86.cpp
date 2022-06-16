@@ -4717,21 +4717,19 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Addre
   AddressLiteral heap_events_addr_literal((address)&Universe::heap_events[1], relocInfo::relocType::external_word_type);
   //TODO: Doing malloc instead of static variable can remove creating AddressLiteral with any relocInfo
   gen_lock_heap_event_mutex();
-  movq(temp3, as_Address(heap_event_counter_addr));
-  movq(temp2, temp3);
-  shlq(temp2, 5);
-  // imulq(temp2, temp3, sizeof(Universe::HeapEvent));
-  mov64(temp1, (uint64_t)&Universe::heap_events[1], relocInfo::relocType::external_word_type, 0);
-  addq(temp2, temp1);
-  
-  movq(Address(temp2, 0), (uint64_t)event_type);
-  movq(Address(temp2, 16), temp4);
-  pop(temp4);
-  movq(Address(temp2, 8), temp4);
-  incrementq(temp3); //TODO: Using lea will not affect flags
+  mov64(temp1, (uint64_t)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type, 0);
+  movq(temp3, Address(temp1, 0));
+  incrementq(temp3); //TODO: Using lea will not affect flag
   movq(as_Address(heap_event_counter_addr), temp3);
+  shlq(temp3, 5);
+  addq(temp1, temp3);
+  
+  movq(Address(temp1, 0), (uint64_t)event_type);
+  movq(Address(temp1, 16), temp4);
+  pop(temp4);
+  movq(Address(temp1, 8), temp4);
   //TODO: Use Addressingmode: movq(Address(temp2, temp3, Address::ScaleFactor::times_1, 16), 1);
-  subq(temp3, Universe::max_heap_events);
+  subq(temp3, Universe::max_heap_events*sizeof(Universe::HeapEvent));
   Label not_equal;
   jcc(Assembler::Condition::notZero, not_equal);
   pushaq();

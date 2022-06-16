@@ -647,7 +647,8 @@ class AllObjects : public ObjectClosure {
               num_src_not_correct++;
               if (num_src_not_correct < 100) {
                 printf("(%p,%d) %s[%d] : 0x%lx != %p\n", (void*)obj, array->length(), oak->name()->as_C_string(buf2,1024), i, sorted_field_set_events[idx].address.src, (void*)elem);
-                printf("elem klass %s\n", get_oop_klass_name(elem, buf2));
+                if (elem != 0)
+                  printf("elem klass %s\n", get_oop_klass_name(elem, buf2));
                 // printf("sorted_field_set_events[idx].id %ld\n", sorted_field_set_events[idx].id);
               }
             }

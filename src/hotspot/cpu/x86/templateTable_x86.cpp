@@ -1151,7 +1151,7 @@ void TemplateTable::aastore() {
   __ movl(rcx, at_tos_p1()); // index
   // Now store using the appropriate barrier
   if (Universe::enable_heap_event_logging_in_interpreter) {
-    __ append_fieldset_event(element_address, rax, r11, false, r10, false, r9, false, false); 
+    __ append_fieldset_event(element_address, rax, r11, false, r10, false, false); 
   }
   do_oop_store(_masm, element_address, rax, IS_ARRAY);
   __ jmp(done);
@@ -3140,7 +3140,7 @@ void TemplateTable::putfield_or_static_helper(int byte_no, bool is_static, Rewri
     __ pop(atos);
     if (!is_static) pop_and_check_object(obj);
     if (Universe::enable_heap_event_logging_in_interpreter)
-      __ append_fieldset_event(field, rax, r11, false, r10, false, r9, false, true);
+      __ append_fieldset_event(field, rax, r11, false, r10, false, true);
     // Store into the field
     do_oop_store(_masm, field, rax);
     if (!is_static && rc == may_rewrite) {
@@ -3379,7 +3379,7 @@ void TemplateTable::fast_storefield_helper(Address field, Register rax) {
   switch (bytecode()) {
   case Bytecodes::_fast_aputfield:
     if (Universe::enable_heap_event_logging_in_interpreter) {
-      __ append_fieldset_event(field, rax, r11, false, r10, false, r9, false, false);
+      __ append_fieldset_event(field, rax, r11, false, r10, false, false);
     }
     do_oop_store(_masm, field, rax);
     break;

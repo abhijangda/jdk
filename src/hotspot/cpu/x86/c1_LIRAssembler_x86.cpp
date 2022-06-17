@@ -968,9 +968,13 @@ void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
     Register reg = counter->as_register_lo();
     __ subq(reg, max_events->as_jlong());
     Label not_equal;
-    __ jcc(Assembler::Condition::notZero, not_equal);
+    __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();
-    __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    if (Universe::enable_heap_graph_verify) {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    } else {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    }
     __ popaq();
     AddressLiteral heap_event_counter_addr((address)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type);
     __ movq(__ as_Address(heap_event_counter_addr), 0);

@@ -1869,20 +1869,7 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
       #endif
     }
 
-    if (Universe::enable_heap_graph_verify) {
-      call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::verify_heap_graph), (ValueType*)voidType, NULL);
-    } else {
-      __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events*sizeof(Universe::HeapEvent))); 
-      // __ sub(counter, LIR_OprFact::longConst(Universe::max_heap_events*sizeof(Universe::HeapEvent)), counter);
-      // __ cmp(LIR_Condition::lir_cond_notEqual, counter, LIR_OprFact::longConst(0));
-      // __ branch(LIR_Condition::lir_cond_notEqual, pass_through->label()); 
-      // __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
-      // __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
-      // call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::print_heap_event_counter), (ValueType*)voidType, NULL);
-      // __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
-      // __ branch_destination(pass_through->label());
-      // __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
-    }
+    __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events*sizeof(Universe::HeapEvent)));
   }
 
   if (Universe::enable_heap_graph_verify)
@@ -1903,30 +1890,15 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::lock_mutex_heap_event), (ValueType*)voidType, NULL);
   
   if (true) {
-    if (Universe::enable_heap_graph_verify) {
-      call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::verify_heap_graph_for_copy_array), (ValueType*)voidType, NULL);
-    } else {
-      //TODO: combine this block with next block's statement
-      __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
-      LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
-      __ load(heap_event_counter_addr, counter);
-      __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events - 2));
-      __ load(heap_event_counter_addr, counter);
-      __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events - 1));
-      // LabelObj* l = new LabelObj();
-      // __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
-      // LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
-      // __ load(heap_event_counter_addr, counter);
-      // __ cmp(LIR_Condition::lir_cond_greaterEqual, counter, LIR_OprFact::longConst(Universe::max_heap_events));
-      // __ branch(LIR_Condition::lir_cond_greaterEqual, l->label()); 
-      // // call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::print_heap_event_counter), (ValueType*)voidType, NULL);
-      // __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
-      // __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
-      // __ branch_destination(l->label());
-    }
-
+    //TODO: combine this block with next block's statement
     __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
     LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
+    __ load(heap_event_counter_addr, counter);
+    __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events - 2));
+    // __ load(heap_event_counter_addr, counter);
+    // __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events - 1));
+
+    __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
     __ load(heap_event_counter_addr, counter);
     __ add(counter, LIR_OprFact::longConst(1L), counter);
     __ move(counter, heap_events_idx);
@@ -1955,18 +1927,7 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     __ store(count, heap_events_addr_src);
     __ store(count, heap_events_addr_dst);
 
-    if (Universe::enable_heap_graph_verify) {
-      call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::verify_heap_graph), (ValueType*)voidType, NULL);
-    } else {
-      __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events));
-      // __ sub(heap_events_idx, LIR_OprFact::longConst(Universe::max_heap_events*sizeof(Universe::HeapEvent)), counter);
-      // __ cmp(LIR_Condition::lir_cond_notEqual, heap_events_idx, LIR_OprFact::longConst(0));
-      // __ branch(LIR_Condition::lir_cond_notEqual, pass_through->label()); 
-      // // call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::print_heap_event_counter), (ValueType*)voidType, NULL);
-      // __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
-      // __ move(LIR_OprFact::longConst(0), heap_event_counter_addr);
-      // __ branch_destination(pass_through->label());
-    }
+    __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events));
   }
 
   if (Universe::enable_heap_graph_verify)

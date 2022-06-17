@@ -365,17 +365,16 @@ class MacroAssembler: public Assembler {
   void append_fieldset_event(Address field, RegisterOrConstant val, 
                              Register tmp1, bool preserve_tmp1, 
                              Register tmp2, bool preserve_tmp2, 
-                             Register tmp3, bool preserve_tmp3,
                              bool preserve_flags = false);
   void append_newobj_event(Register obj, RegisterOrConstant size, bool preserve_flags = false);
   void append_fieldset_event(Address field, RegisterOrConstant val, bool preserve_flags = false);
-  void append_heap_event(Universe::HeapEventType event_type, RegisterOrAddress dst_or_new_obj, RegisterOrConstant src_or_obj_size, Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, Register temp3, bool preserve_temp3, bool preserve_flags);
-  // void append_copyarray_event(Register dst_array, Register src_array, 
-  //                             Register src_off, Register dst_off, Register count, 
-  //                             Register tmp1, bool preserve_tmp1, 
-  //                             Register tmp2, bool preserve_tmp2, 
-  //                             Register tmp3, bool preserve_tmp3, 
-  //                             bool preserve_flags);
+  void append_heap_event(Universe::HeapEventType event_type, RegisterOrAddress dst_or_new_obj, RegisterOrConstant src_or_obj_size, Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, bool preserve_flags);
+  void append_copyarray_event(Register dst_array, Register src_array, 
+                              Register src_off, Register dst_off, Register count, 
+                              Register tmp1, bool preserve_tmp1, 
+                              Register tmp2, bool preserve_tmp2, 
+                              Register tmp3, bool preserve_tmp3, 
+                              bool preserve_flags);
 
   Register register_for_event_counter(Register event_src);
   void gen_lock_heap_event_mutex();

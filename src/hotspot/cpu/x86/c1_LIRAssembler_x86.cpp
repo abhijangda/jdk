@@ -2006,7 +2006,6 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
     assert(newval != addr, "new value and addr must be in different registers");
 
     if ( op->code() == lir_cas_obj) {
-      __ append_fieldset_event(Address(addr, 0), newval);
 #ifdef _LP64
       if (UseCompressedOops) {
         __ encode_heap_oop(cmpval);

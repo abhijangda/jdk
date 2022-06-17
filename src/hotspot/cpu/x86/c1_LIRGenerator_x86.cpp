@@ -739,6 +739,7 @@ LIR_Opr LIRGenerator::atomic_cmpxchg(BasicType type, LIR_Opr addr, LIRItem& cmp_
     cmp_value.load_item_force(FrameMap::rax_oop_opr);
     new_value.load_item();
     __ cas_obj(addr->as_address_ptr()->base(), cmp_value.result(), new_value.result(), ill, ill);
+    append_heap_event(Universe::FieldSet, addr->as_address_ptr(), new_value.result());
   } else if (type == T_INT) {
     cmp_value.load_item_force(FrameMap::rax_opr);
     new_value.load_item();
@@ -763,7 +764,6 @@ LIR_Opr LIRGenerator::atomic_xchg(BasicType type, LIR_Opr addr, LIRItem& value) 
   // Because we want a 2-arg form of xchg and xadd
   __ move(value.result(), result);
   assert(type == T_INT || is_oop LP64_ONLY( || type == T_LONG ), "unexpected type");
-  printf("765:");
   __ xchg(addr, result, result, LIR_OprFact::illegalOpr);
   return result;
 }

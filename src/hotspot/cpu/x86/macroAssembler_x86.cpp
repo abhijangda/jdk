@@ -4688,11 +4688,10 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
 {
   if (!Universe::enable_heap_event_logging) return;
   if (src_or_obj_size.is_register())
-    assert(src_or_obj_size.as_register() != temp1 && src_or_obj_size.as_register() != temp2 && src_or_obj_size.as_register() != temp3, "");
+    assert(src_or_obj_size.as_register() != temp1 && src_or_obj_size.as_register() != temp2, "");
   if (dst_or_new_obj.is_address()) {
     if (dst_or_new_obj.as_address().base() == noreg || dst_or_new_obj.as_address().base() == rsp || dst_or_new_obj.as_address().base() == rbp)
       return; //No need to add event if it is on the stack
-    assert(temp3 != noreg, "");
     assert(dst_or_new_obj.as_address().base() != temp1 && dst_or_new_obj.as_address().base() != temp2 && dst_or_new_obj.as_address().base() != temp2, "");
     assert(dst_or_new_obj.as_address().index() != temp1 && dst_or_new_obj.as_address().index() != temp2 &&dst_or_new_obj.as_address().index() != temp2, "");
   }

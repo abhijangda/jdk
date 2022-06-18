@@ -976,8 +976,8 @@ void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
       __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
     }
     __ popaq();
-    AddressLiteral heap_event_counter_addr((address)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type);
-    __ movq(__ as_Address(heap_event_counter_addr), 0);
+    // AddressLiteral heap_event_counter_addr((address)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type);
+    // __ movq(__ as_Address(heap_event_counter_addr), 0);
     __ bind(not_equal);
   }
 }

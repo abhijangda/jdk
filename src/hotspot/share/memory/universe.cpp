@@ -103,37 +103,237 @@ sem_t Universe::cuda_semaphore;
 #include<vector>
 #include<limits>
 #include<unordered_map>
+#include<set>
 #include<algorithm>
 
+#include <sys/mman.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <string.h>
+#define gettid() syscall(SYS_gettid)
+#include "runtime/interfaceSupport.inline.hpp"
+
+class MmapHeap {
+  const int PAGE_SIZE;
+  uint8_t* alloc_ptr;
+  size_t curr_ptr;
+  const size_t ALLOC_SIZE;
+  const size_t LARGE_OBJ_SIZE;
+
+  struct ListNode {
+    ListNode* next;
+    size_t size;
+  };
+
+  ListNode* free_list;
+
+  public:
+  MmapHeap() : PAGE_SIZE(getpagesize()), ALLOC_SIZE(256*1024*PAGE_SIZE), LARGE_OBJ_SIZE(1024*PAGE_SIZE) {
+    alloc_ptr = (uint8_t*)mmap(NULL, ALLOC_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, 0, 0);
+    assert(alloc_ptr != NULL, "");
+    curr_ptr = 0;
+    free_list = NULL;
+  };
+
+  size_t remaining_size_in_curr_alloc() const {
+    return ALLOC_SIZE - curr_ptr;
+  }
+
+  bool is_power_of_2(size_t x) const {
+      return (x != 0) && ((x & (x - 1)) == 0);
+  }
+
+  uint32_t next_power_of_2(uint32_t v) const {
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+
+    return v;
+  }
+
+  uint64_t next_power_of_2(uint64_t v) const {
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v |= v >> 32;
+    v++;
+
+    return v;
+  }
+
+  size_t adjust_size(size_t sz) const {
+    sz = std::max(sz, sizeof(ListNode));
+    if (!is_power_of_2(sz)) {
+      sz = next_power_of_2(sz);
+    }
+
+    return sz;
+  }
+
+  size_t multiple_of_page_size(size_t sz) const {
+    if (sz % PAGE_SIZE == 0) return sz;
+    return ((sz + PAGE_SIZE - 1)/PAGE_SIZE)*PAGE_SIZE;
+  }
+
+  void* malloc(size_t sz) {
+    sz = adjust_size(sz);
+
+    if (sz >= LARGE_OBJ_SIZE) {
+      sz = multiple_of_page_size(sz);
+      void* ptr = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+      assert(ptr != NULL, "");
+      if (ptr == MAP_FAILED) {
+        perror("mmap failed");
+      }
+      return ptr;
+    }
+
+    if (free_list != NULL) {
+      ListNode* ptr = (ListNode*)free_list;
+      ListNode* prev = NULL;
+      while (ptr != NULL) {
+        if (sz <= ptr->size) {
+          if (prev) {
+            prev->next = ptr->next;
+          } else {
+            free_list = ptr->next;
+          }
+
+          break;
+        }
+        prev = ptr;
+        ptr = ptr->next;
+      }
+      
+      if (ptr != NULL) {
+        if (ptr->size < sz)
+          printf("ptr %p ptr->size %ld sz %ld\n", ptr, ptr->size, sz);
+        return (void*)ptr;
+      }
+    }
+    
+    if (remaining_size_in_curr_alloc() >= sz) {
+      void* ptr = (void*)(alloc_ptr + curr_ptr);
+      curr_ptr += sz;
+      assert(curr_ptr <= ALLOC_SIZE, "%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
+      return ptr;
+    }
+    
+    alloc_ptr = (uint8_t*)mmap(NULL, ALLOC_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+    assert(alloc_ptr != NULL, "");
+    curr_ptr = sz;
+    if (curr_ptr > ALLOC_SIZE) {
+      printf("%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
+    }
+    return (void*)alloc_ptr;
+  }
+
+  void free(void* p, size_t sz) {
+    sz = adjust_size(sz);
+    if (sz >= LARGE_OBJ_SIZE) {
+      sz = multiple_of_page_size(sz);
+      munmap(p, sz);
+      return;
+    } 
+    ListNode* new_head = (ListNode*)p;
+    new_head->next = free_list;
+    new_head->size = sz;
+    free_list = new_head;
+  }
+};
+
+static MmapHeap* mmap_heap = nullptr;
+
 template <class T>
-struct Mallocator
-{
+struct STLAllocator {
   typedef T value_type;
- 
-  Mallocator () = default;
-  template <class U> constexpr Mallocator (const Mallocator <U>&) noexcept {}
- 
-  T* allocate(std::size_t n) {
-    return static_cast<T*>(os::malloc(n*sizeof(T), MEMFLAGS::mtInternal));
+
+  STLAllocator() {}
+
+  template <class U> constexpr STLAllocator (const STLAllocator <U>& src) noexcept {}
+
+  T* allocate(size_t n) {
+    //os::malloc in works in DEBUG but not in PRODUCT build.
+    return (T*)mmap_heap->malloc(n*sizeof(T));
   }
  
   void deallocate(T* p, std::size_t n) noexcept {
-    os::free(p);
+    mmap_heap->free(p, n * sizeof(T));
   }
- 
-private:
 };
- 
+
 template <class T, class U>
-bool operator==(const Mallocator <T>&, const Mallocator <U>&) { return true; }
+bool operator==(const STLAllocator <T>&, const STLAllocator <U>&) { return true; }
 template <class T, class U>
-bool operator!=(const Mallocator <T>&, const Mallocator <U>&) { return false; }
+bool operator!=(const STLAllocator <T>&, const STLAllocator <U>&) { return false; }
 
 template <typename K, typename V>
-using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, Mallocator<std::pair<const K, V>>>;
+using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, STLAllocator<std::pair<const K, V>>>;
+template <typename K>
+using set = std::set<K, std::less<K>, STLAllocator<const K>>;
 
-typedef std::unordered_map<uint64_t, Universe::HeapEvent> HeapHashTable;
-typedef std::vector<Universe::HeapEvent, Mallocator<Universe::HeapEvent>> SortedHeapEvents;
+template<typename T, uint64_t MAX_SIZE>
+class MmapArray {
+  T* _buf;
+  uint64_t _length;
+
+  bool check_length(uint64_t l) const {
+    if (l >= MAX_SIZE) {
+      printf("check_length failed: %ld >= %ld\n", l, MAX_SIZE);
+      return false;
+    }
+    return true;
+  }
+  
+  bool check_bounds(uint64_t i) const {
+    if (i >= _length || i < 0) {
+      printf("%ld outside array bounds [0, %ld]\n", i, _length);
+      return false;
+    }
+
+    return true;
+  }
+  
+  public:
+  MmapArray() {
+    _buf = (T*)mmap(NULL, MAX_SIZE*sizeof(T), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+    _length = 0;
+  }
+
+  void append(T x) {
+    check_length(_length+1);
+    _buf[_length++] = x;
+  }
+
+  T& at(uint64_t i) {
+    check_bounds(i);
+    return _buf[i];
+  }  
+};
+
+class ObjectNode {
+  oop         _obj;
+  size_t      _size;
+  uint64_t    _id;
+  set<ObjectNode> _fields;
+  
+  public:
+    static unordered_map<oopDesc*, ObjectNode> oop_to_obj_node;
+    ObjectNode() : _obj(NULL), _size(0), _id(0) {}
+    ObjectNode(oop obj, size_t size, uint64_t id) : _obj(obj), _size(size), _id(id) {}
+    ~ObjectNode() {}
+    size_t size() const {return _size;}
+};
+
+unordered_map<oopDesc*, ObjectNode> ObjectNode::oop_to_obj_node;
 
 Universe::HeapEvent* sorted_field_set_events = NULL;
 size_t sorted_field_set_events_size = 0;
@@ -361,7 +561,9 @@ class AllObjects : public ObjectClosure {
       // printf("is_instance %d\n", obj->is_instance());
       if (((uint64_t)(void*)obj) == 0xbaadbabebaadbabe)
         return;
+      
       Klass* klass = obj->klass_or_null();
+
       //        klass->id() != InstanceMirrorKlassID && 
           // klass->id() != InstanceRefKlassID && 
           // klass->id() != InstanceClassLoaderKlassID &&
@@ -378,8 +580,9 @@ class AllObjects : public ObjectClosure {
         obj->klass()->name()->as_C_string(buf, 1024);
 
         num_oops++;
-        int idx = has_heap_event(sorted_new_object_events, (uint64_t)(void*)obj, 0, sorted_new_object_events_size - 1);
-        if (idx != -1) {
+        //has_heap_event(sorted_new_object_events, (uint64_t)(void*)obj, 0, sorted_new_object_events_size - 1);
+        auto oop_obj_node_pair = ObjectNode::oop_to_obj_node.find(obj);
+        if (oop_obj_node_pair != ObjectNode::oop_to_obj_node.end()) {
           num_found++;
         } else {
           num_not_found++;
@@ -394,17 +597,17 @@ class AllObjects : public ObjectClosure {
           }
         }
 
-        if (idx != -1) {
+        if (oop_obj_node_pair != ObjectNode::oop_to_obj_node.end()) {
           if (klass->is_instance_klass()) {
-            if (obj->size() != sorted_new_object_events[idx].address.src) {
-              printf("%s: obj->size() %ld != %ld\n", buf, obj->size(), sorted_new_object_events[idx].address.src);
+            if (obj->size() != oop_obj_node_pair->second.size()) {
+              printf("%s: obj->size() %ld != %ld\n", buf, obj->size(), oop_obj_node_pair->second.size());
               num_src_not_correct++;
             }
           } else if (klass->id() == ObjArrayKlassID) {
             ObjArrayKlass* oak = (ObjArrayKlass*)klass;
             objArrayOop array = (objArrayOop)obj;
-            if ((size_t)array->length() != sorted_new_object_events[idx].address.src) {
-              printf("%s: array->length() %d != %ld\n", buf, array->length(), sorted_new_object_events[idx].address.src);
+            if ((size_t)array->length() != oop_obj_node_pair->second.size()) {
+              printf("%s: array->length() %d != %ld\n", buf, array->length(), oop_obj_node_pair->second.size());
               num_src_not_correct++;
             }
           }
@@ -696,8 +899,6 @@ class AllObjects : public ObjectClosure {
     }
 };
 
-static char buf[sizeof(HeapHashTable)];
-
 int HeapEventComparer(Universe::HeapEvent* a, Universe::HeapEvent* b) {
     if (a->address.dst < b->address.dst) return -1;
     if (a->address.dst == b->address.dst) return 0;
@@ -717,17 +918,13 @@ int HeapEventComparerWithID(const void* a, const void* b) {
   return 1;
 }
 
-#include <sys/mman.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <string.h>
-#define gettid() syscall(SYS_gettid)
-#include "runtime/interfaceSupport.inline.hpp"
 pthread_spinlock_t spin_lock_heap_event;
 
 __attribute__((constructor))
 void init_lock () {
+  static char mmap_heap_buf[sizeof(MmapHeap)];
+  mmap_heap = new (mmap_heap_buf) MmapHeap();
+
   if ( pthread_spin_init ( &spin_lock_heap_event, 0 ) != 0 ) {
     exit ( 1 );
   }
@@ -769,6 +966,8 @@ void Universe::verify_heap_graph() {
   if (!Universe::enable_heap_graph_verify)
     return;
 
+  printf("heap_events_size %ld\n", heap_events_size);
+
   static HeapEvent* flattened_heap_events;
   size_t flattened_heap_events_size = 0;
   static int num_events_created = 0;
@@ -788,7 +987,6 @@ void Universe::verify_heap_graph() {
     heap_events_sorted_with_id = (Universe::HeapEvent*)mmap (NULL, Universe::max_heap_events*sizeof(HeapEvent), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
   }
   
-  memset(is_heap_event_in_heap, 0, SORTED_FIELD_SET_EVENTS_MAX_SIZE*sizeof(char));
   // if (sorted_field_set_events == NULL) {abort();}
   checking++;
   // printf("checking %d %ld tid %ld\n", checking++, Universe::heap_event_counter, gettid()); 
@@ -813,7 +1011,6 @@ void Universe::verify_heap_graph() {
 
   qsort(copy_array_events, copy_array_events_size, sizeof(HeapEvent), HeapEventComparerWithID);
   
-  printf("heap_events_size %ld\n", heap_events_size);
 
   for (auto i = 0U; i < heap_events_size; i++) {
     HeapEvent event = heap_events_sorted_with_id[i];
@@ -842,7 +1039,7 @@ void Universe::verify_heap_graph() {
               
               if (idx == -1) {
                 idx = has_heap_event(heap_events_start, src_obj_field_offset, 0, heap_events_size - 1);
-                if (idx != -1) {
+                if (idx != -1) {  
                   HeapEvent src_field_set_event = heap_events_start[idx];
                   //Go to first event with same dst.
                   while (idx > 0 && src_obj_field_offset == heap_events_start[idx-1].address.dst) {
@@ -1130,6 +1327,14 @@ void Universe::verify_heap_graph() {
         if (latest_event.id > sorted_new_object_events[idx].id)
           sorted_new_object_events[idx] = latest_event;
       }
+
+      oopDesc* obj = (oopDesc*)latest_event.address.dst;
+      if (ObjectNode::oop_to_obj_node.find(obj) != ObjectNode::oop_to_obj_node.end()) {
+        printf("Found %p in oop_to_obj_node\n", obj);
+      }
+
+      ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, latest_event.address.src, latest_event.id));
+      
     } else if (latest_event.heap_event_type == Universe::FieldSet || latest_event.heap_event_type == Universe::OopStoreAt) {
       int idx = has_heap_event(sorted_field_set_events, latest_event.address.dst, 0, orig_len);
       if (idx == -1) {
@@ -1139,7 +1344,7 @@ void Universe::verify_heap_graph() {
         if (latest_event.id > sorted_field_set_events[idx].id)
           sorted_field_set_events[idx] = latest_event;
       }
-    } else if (latest_event.heap_event_type != CopyArrayLength && latest_event.heap_event_type != CopyArrayOffsets) {
+    } else if (false && latest_event.heap_event_type != CopyArrayLength && latest_event.heap_event_type != CopyArrayOffsets) {
       printf("invalid event type %ld at event_iter %ld\n", latest_event.heap_event_type, event_iter);
       // ShouldNotReachHere();
     }
@@ -1147,7 +1352,7 @@ void Universe::verify_heap_graph() {
     if (latest_event.heap_event_type == OopStoreAt)
       printf("latest_event.heap_event_type == OopStoreAt %ld\n", latest_event.heap_event_type);
   }
-  
+
   printf("total events %ld zero_event_types %d\n", sorted_field_set_events_size, zero_event_types);
   
   // sorted_field_set_events.sort(HeapEventComparer);

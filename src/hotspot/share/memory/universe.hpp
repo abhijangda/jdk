@@ -199,7 +199,7 @@ class Universe: AllStatic {
   None = 0,
   FieldSet = 1L<<0,
   NewObject = 1L<<1,
-  OopStoreAt = 1L << 2,
+  NewArray = 1L << 2,
   ArrayElemSet = 1L << 3,
   CopyObject = 1L << 4,
   CopyArray = 1L << 5,

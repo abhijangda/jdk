@@ -4695,7 +4695,8 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     assert(dst_or_new_obj.as_address().base() != temp1 && dst_or_new_obj.as_address().base() != temp2 && dst_or_new_obj.as_address().base() != temp2, "");
     assert(dst_or_new_obj.as_address().index() != temp1 && dst_or_new_obj.as_address().index() != temp2 &&dst_or_new_obj.as_address().index() != temp2, "");
   }
-  
+  Register temp3 = r14;
+  push(r14);
   if (preserve_temp1)
     push(temp1);
   if (preserve_temp2)
@@ -4710,7 +4711,6 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
   movq(Address(temp1, 0), temp2);
   shlq(temp2, 5);
   leaq(temp1, Address(temp1, temp2, Address::times_1));
-  subq(temp2, Universe::max_heap_events*sizeof(Universe::HeapEvent));
 
   movq(Address(temp1, 0), (uint64_t)event_type);
   if (src_or_obj_size.is_register())
@@ -4720,9 +4720,10 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
   if (dst_or_new_obj.is_register()) {
     movq(Address(temp1, 16), dst_or_new_obj.as_register());
   } else {
-    leaq(temp2, dst_or_new_obj.as_address());
-    movq(Address(temp1, 16), temp2);
+    leaq(temp3, dst_or_new_obj.as_address());
+    movq(Address(temp1, 16), temp3);
   }
+  subq(temp2, Universe::max_heap_events*sizeof(Universe::HeapEvent));
   Label not_equal;
   jcc(Assembler::Condition::notEqual, not_equal);
   pushaq();
@@ -4741,6 +4742,7 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     pop(temp2);
   if (preserve_temp1)
     pop(temp1);
+  pop(r14);
 }
 
 void MacroAssembler::append_copyarray_event(Register dst_array, Register src_array, 

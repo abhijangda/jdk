@@ -218,7 +218,7 @@ class Universe: AllStatic {
     uint64_t id;
   //}
   };
-  static const int LOG_MAX_EVENT_COUNTER = 20;
+  static const int LOG_MAX_EVENT_COUNTER = 24;
   static const int max_heap_events = 1L << LOG_MAX_EVENT_COUNTER;
   static uint64_t *heap_event_counter_ptr;
   static HeapEvent heap_events[1+max_heap_events];
@@ -230,8 +230,7 @@ class Universe: AllStatic {
   static bool enable_heap_event_logging_in_interpreter;
   static void transfer_events_to_gpu();
   static sem_t cuda_semaphore;
-  static inline void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3)
-  {
+  static inline void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3) {
     if (!Universe::enable_heap_event_logging) return;
     // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
     if (Universe::enable_heap_graph_verify)

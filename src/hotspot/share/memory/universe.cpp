@@ -93,7 +93,7 @@
 pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
 Universe::HeapEvent Universe::heap_events[1+Universe::max_heap_events] = {};
 uint64_t* Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
-bool Universe::enable_heap_event_logging = true;
+bool Universe::enable_heap_event_logging = false;
 bool Universe::enable_heap_graph_verify = true && Universe::enable_heap_event_logging;
 bool Universe::heap_event_stub_in_C1_LIR = true && Universe::enable_heap_event_logging;
 bool Universe::enable_heap_event_logging_in_interpreter = true && Universe::enable_heap_event_logging;
@@ -115,269 +115,270 @@ sem_t Universe::cuda_semaphore;
 #define gettid() syscall(SYS_gettid)
 #include "runtime/interfaceSupport.inline.hpp"
 
-class MmapHeap {
-  const int PAGE_SIZE;
-  uint8_t* alloc_ptr;
-  size_t curr_ptr;
-  const size_t ALLOC_SIZE;
-  const size_t LARGE_OBJ_SIZE;
+// class MmapHeap {
+//   const int PAGE_SIZE;
+//   uint8_t* alloc_ptr;
+//   size_t curr_ptr;
+//   const size_t ALLOC_SIZE;
+//   const size_t LARGE_OBJ_SIZE;
 
-  struct ListNode {
-    ListNode* next;
-    size_t size;
-  };
+//   struct ListNode {
+//     ListNode* next;
+//     size_t size;
+//   };
 
-  ListNode* free_list;
+//   ListNode* free_list;
 
-  public:
-  MmapHeap() : PAGE_SIZE(getpagesize()), ALLOC_SIZE(256*1024*PAGE_SIZE), LARGE_OBJ_SIZE(1024*PAGE_SIZE) {
-    alloc_ptr = (uint8_t*)_mmap(ALLOC_SIZE);
-    curr_ptr = 0;
-    free_list = NULL;
-  };
+//   public:
+//   MmapHeap() : PAGE_SIZE(getpagesize()), ALLOC_SIZE(256*1024*PAGE_SIZE), LARGE_OBJ_SIZE(1024*PAGE_SIZE) {
+//     alloc_ptr = (uint8_t*)_mmap(ALLOC_SIZE);
+//     curr_ptr = 0;
+//     free_list = NULL;
+//   };
 
-  size_t remaining_size_in_curr_alloc() const {
-    return ALLOC_SIZE - curr_ptr;
-  }
+//   size_t remaining_size_in_curr_alloc() const {
+//     return ALLOC_SIZE - curr_ptr;
+//   }
 
-  bool is_power_of_2(size_t x) const {
-      return (x != 0) && ((x & (x - 1)) == 0);
-  }
+//   bool is_power_of_2(size_t x) const {
+//       return (x != 0) && ((x & (x - 1)) == 0);
+//   }
 
-  uint32_t next_power_of_2(uint32_t v) const {
-    v--;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v++;
+//   uint32_t next_power_of_2(uint32_t v) const {
+//     v--;
+//     v |= v >> 1;
+//     v |= v >> 2;
+//     v |= v >> 4;
+//     v |= v >> 8;
+//     v |= v >> 16;
+//     v++;
 
-    return v;
-  }
+//     return v;
+//   }
 
-  uint64_t next_power_of_2(uint64_t v) const {
-    v--;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v |= v >> 32;
-    v++;
+//   uint64_t next_power_of_2(uint64_t v) const {
+//     v--;
+//     v |= v >> 1;
+//     v |= v >> 2;
+//     v |= v >> 4;
+//     v |= v >> 8;
+//     v |= v >> 16;
+//     v |= v >> 32;
+//     v++;
 
-    return v;
-  }
+//     return v;
+//   }
 
-  size_t adjust_size(size_t sz) const {
-    sz = std::max(sz, sizeof(ListNode));
-    if (!is_power_of_2(sz)) {
-      sz = next_power_of_2(sz);
-    }
+//   size_t adjust_size(size_t sz) const {
+//     sz = std::max(sz, sizeof(ListNode));
+//     if (!is_power_of_2(sz)) {
+//       sz = next_power_of_2(sz);
+//     }
 
-    return sz;
-  }
+//     return sz;
+//   }
 
-  size_t multiple_of_page_size(size_t sz) const {
-    return ((sz + PAGE_SIZE - 1)/PAGE_SIZE)*PAGE_SIZE;
-  }
+//   size_t multiple_of_page_size(size_t sz) const {
+//     return ((sz + PAGE_SIZE - 1)/PAGE_SIZE)*PAGE_SIZE;
+//   }
 
-  void* _mmap(size_t sz) {
-    void* ptr = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-    assert(ptr != NULL, "");
-    if (ptr == MAP_FAILED) {
-      perror("mmap failed");
-    }
+//   void* _mmap(size_t sz) {
+//     void* ptr = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+//     assert(ptr != NULL, "");
+//     if (ptr == MAP_FAILED) {
+//       perror("mmap failed");
+//     }
     
-    return ptr;
-  }
-  void* malloc(size_t sz) {
-    if (sz >= LARGE_OBJ_SIZE) {
-      printf("sz %ld multiple_of_page_size(sz) %ld\n", sz, multiple_of_page_size(sz));
-      sz = multiple_of_page_size(sz);
-      return _mmap(sz);
-    }
-    sz = adjust_size(sz);
-    if (free_list != NULL) {
-      ListNode* ptr = (ListNode*)free_list;
-      ListNode* prev = NULL;
-      while (ptr != NULL) {
-        if (sz <= ptr->size) {
-          if (prev) {
-            prev->next = ptr->next;
-          } else {
-            free_list = ptr->next;
-          }
+//     return ptr;
+//   }
+//   void* malloc(size_t sz) {
+//     return _mmap(sz);
+//     if (sz >= LARGE_OBJ_SIZE) {
+//       printf("sz %ld multiple_of_page_size(sz) %ld\n", sz, multiple_of_page_size(sz));
+//       sz = multiple_of_page_size(sz);
+//       return _mmap(sz);
+//     }
+//     sz = adjust_size(sz);
+//     if (free_list != NULL) {
+//       ListNode* ptr = (ListNode*)free_list;
+//       ListNode* prev = NULL;
+//       while (ptr != NULL) {
+//         if (sz <= ptr->size) {
+//           if (prev) {
+//             prev->next = ptr->next;
+//           } else {
+//             free_list = ptr->next;
+//           }
 
-          break;
-        }
-        prev = ptr;
-        ptr = ptr->next;
-      }
+//           break;
+//         }
+//         prev = ptr;
+//         ptr = ptr->next;
+//       }
       
-      if (ptr != NULL) {
-        if (ptr->size < sz)
-          printf("ptr %p ptr->size %ld sz %ld\n", ptr, ptr->size, sz);
-        return (void*)ptr;
-      }
-    }
+//       if (ptr != NULL) {
+//         if (ptr->size < sz)
+//           printf("ptr %p ptr->size %ld sz %ld\n", ptr, ptr->size, sz);
+//         return (void*)ptr;
+//       }
+//     }
     
-    if (remaining_size_in_curr_alloc() >= sz) {
-      void* ptr = (void*)(alloc_ptr + curr_ptr);
-      curr_ptr += sz;
-      assert(curr_ptr <= ALLOC_SIZE, "%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
-      return ptr;
-    }
+//     if (remaining_size_in_curr_alloc() >= sz) {
+//       void* ptr = (void*)(alloc_ptr + curr_ptr);
+//       curr_ptr += sz;
+//       assert(curr_ptr <= ALLOC_SIZE, "%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
+//       return ptr;
+//     }
     
-    alloc_ptr = (uint8_t*)_mmap(ALLOC_SIZE);
-    curr_ptr = sz;
-    if (curr_ptr > ALLOC_SIZE) {
-      printf("%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
-    }
-    return (void*)alloc_ptr;
-  }
+//     alloc_ptr = (uint8_t*)_mmap(ALLOC_SIZE);
+//     curr_ptr = sz;
+//     if (curr_ptr > ALLOC_SIZE) {
+//       printf("%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
+//     }
+//     return (void*)alloc_ptr;
+//   }
 
-  void free(void* p, size_t sz) {
-    if (sz >= LARGE_OBJ_SIZE) {
-      sz = multiple_of_page_size(sz);
-      munmap(p, sz);
-      return;
-    } 
-    sz = adjust_size(sz);
-    ListNode* new_head = (ListNode*)p;
-    new_head->next = free_list;
-    new_head->size = sz;
-    free_list = new_head;
-  }
-};
+//   void free(void* p, size_t sz) {
+//     // if (sz >= LARGE_OBJ_SIZE) {
+//     //   sz = multiple_of_page_size(sz);
+//     //   munmap(p, sz);
+//     //   return;
+//     // } 
+//     // sz = adjust_size(sz);
+//     // ListNode* new_head = (ListNode*)p;
+//     // new_head->next = free_list;
+//     // new_head->size = sz;
+//     // free_list = new_head;
+//   }
+// };
 
-static MmapHeap* mmap_heap = nullptr;
+// static MmapHeap* mmap_heap = nullptr;
 
-template <class T>
-struct STLAllocator {
-  typedef T value_type;
+// template <class T>
+// struct STLAllocator {
+//   typedef T value_type;
 
-  STLAllocator() {}
+//   STLAllocator() {}
 
-  template <class U> constexpr STLAllocator (const STLAllocator <U>& src) noexcept {}
+//   template <class U> constexpr STLAllocator (const STLAllocator <U>& src) noexcept {}
 
-  T* allocate(size_t n) {
-    //os::malloc in works in DEBUG but not in PRODUCT build.
-    return (T*)mmap_heap->malloc(n*sizeof(T));
-  }
+//   T* allocate(size_t n) {
+//     //os::malloc in works in DEBUG but not in PRODUCT build.
+//     return (T*)mmap_heap->malloc(n*sizeof(T));
+//   }
  
-  void deallocate(T* p, size_t n) noexcept {
-    mmap_heap->free(p, n * sizeof(T));
-  }
-};
+//   void deallocate(T* p, size_t n) noexcept {
+//     mmap_heap->free(p, n * sizeof(T));
+//   }
+// };
 
-template <class T, class U>
-bool operator==(const STLAllocator <T>&, const STLAllocator <U>&) { return true; }
-template <class T, class U>
-bool operator!=(const STLAllocator <T>&, const STLAllocator <U>&) { return false; }
+// template <class T, class U>
+// bool operator==(const STLAllocator <T>&, const STLAllocator <U>&) { return true; }
+// template <class T, class U>
+// bool operator!=(const STLAllocator <T>&, const STLAllocator <U>&) { return false; }
 
-template <typename K, typename V>
-using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, STLAllocator<std::pair<const K, V>>>;
-template <typename K>
-using set = std::set<K, std::less<K>, STLAllocator<const K>>;
-template <typename K, typename V>
-using map = std::map<K, V, std::less<K>, STLAllocator<std::pair<const K, V>>>;
+// template <typename K, typename V>
+// using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, STLAllocator<std::pair<const K, V>>>;
+// template <typename K>
+// using set = std::set<K, std::less<K>, STLAllocator<const K>>;
+// template <typename K, typename V>
+// using map = std::map<K, V, std::less<K>, STLAllocator<std::pair<const K, V>>>;
 
-template<typename T, uint64_t MAX_SIZE>
-class MmapArray {
-  T* _buf;
-  uint64_t _length;
+// template<typename T, uint64_t MAX_SIZE>
+// class MmapArray {
+//   T* _buf;
+//   uint64_t _length;
 
-  bool check_length(uint64_t l) const {
-    if (l >= MAX_SIZE) {
-      printf("check_length failed: %ld >= %ld\n", l, MAX_SIZE);
-      return false;
-    }
-    return true;
-  }
+//   bool check_length(uint64_t l) const {
+//     if (l >= MAX_SIZE) {
+//       printf("check_length failed: %ld >= %ld\n", l, MAX_SIZE);
+//       return false;
+//     }
+//     return true;
+//   }
   
-  bool check_bounds(uint64_t i) const {
-    if (i >= _length || i < 0) {
-      printf("%ld outside array bounds [0, %ld]\n", i, _length);
-      return false;
-    }
+//   bool check_bounds(uint64_t i) const {
+//     if (i >= _length || i < 0) {
+//       printf("%ld outside array bounds [0, %ld]\n", i, _length);
+//       return false;
+//     }
 
-    return true;
-  }
+//     return true;
+//   }
   
-  public:
-  MmapArray() {
-    _buf = (T*)mmap(NULL, MAX_SIZE*sizeof(T), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-    _length = 0;
-  }
+//   public:
+//   MmapArray() {
+//     _buf = (T*)mmap(NULL, MAX_SIZE*sizeof(T), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+//     _length = 0;
+//   }
 
-  void append(T x) {
-    check_length(_length+1);
-    _buf[_length++] = x;
-  }
+//   void append(T x) {
+//     check_length(_length+1);
+//     _buf[_length++] = x;
+//   }
 
-  T& at(uint64_t i) {
-    check_bounds(i);
-    return _buf[i];
-  }  
-};
+//   T& at(uint64_t i) {
+//     check_bounds(i);
+//     return _buf[i];
+//   }  
+// };
 
-class FieldEdge {
-  oop   _obj;
-  void* _address;
-  uint64_t    _id;
+// class FieldEdge {
+//   oop   _obj;
+//   void* _address;
+//   uint64_t    _id;
 
-  public:
-    FieldEdge() : _obj(NULL), _address(NULL), _id(0) {}
-    FieldEdge(oop obj, void* address, uint64_t id) : _obj(obj), _address(address), _id(id) {}
-    uint64_t id() const {return _id;}
-    void* address() const {return _address;}
-    oop val() const {return _obj;}
-};
+//   public:
+//     FieldEdge() : _obj(NULL), _address(NULL), _id(0) {}
+//     FieldEdge(oop obj, void* address, uint64_t id) : _obj(obj), _address(address), _id(id) {}
+//     uint64_t id() const {return _id;}
+//     void* address() const {return _address;}
+//     oop val() const {return _obj;}
+// };
 
-class ObjectNode {
-  oop         _obj;
-  size_t      _size;
-  Universe::HeapEventType _type;
-  uint64_t    _id;
-  unordered_map<void*, FieldEdge> _fields;
+// class ObjectNode {
+//   oop         _obj;
+//   size_t      _size;
+//   Universe::HeapEventType _type;
+//   uint64_t    _id;
+//   unordered_map<void*, FieldEdge> _fields;
   
-  public:
-    static map<oopDesc*, ObjectNode> oop_to_obj_node;
-    ObjectNode() : _obj(NULL), _size(0), _type(Universe::None), _id(0) {}
-    ObjectNode(oop obj, size_t size, Universe::HeapEventType type, uint64_t id) : _obj(obj), _size(size), _type(type), _id(id) {
-      assert(_type != Universe::None, "");
-    }
-    ~ObjectNode() {}
-    //Size of all instance oops are multiple of heap words
-    size_t size() const {return _size;}
-    Universe::HeapEventType type() const {return _type;}
-    void* end() const {
-      if (_type == Universe::NewObject) {
-        instanceOopDesc* iobj = (instanceOopDesc*)(oopDesc*)_obj;
-        return (void*)((char*)iobj + iobj->base_offset_in_bytes() + size()*HeapWordSize);
-      } else if (_type == Universe::NewArray) {
-        return (void*)((char*)((objArrayOopDesc*)(oopDesc*)_obj)->base() + size() * sizeof(oop));
-      } else {
-        assert(false, "");
-        return NULL;
-      }
-    }
+//   public:
+//     // static map<oopDesc*, ObjectNode> oop_to_obj_node;
+//     ObjectNode() : _obj(NULL), _size(0), _type(Universe::None), _id(0) {}
+//     ObjectNode(oop obj, size_t size, Universe::HeapEventType type, uint64_t id) : _obj(obj), _size(size), _type(type), _id(id) {
+//       assert(_type != Universe::None, "");
+//     }
+//     ~ObjectNode() {}
+//     //Size of all instance oops are multiple of heap words
+//     size_t size() const {return _size;}
+//     Universe::HeapEventType type() const {return _type;}
+//     void* end() const {
+//       if (_type == Universe::NewObject) {
+//         instanceOopDesc* iobj = (instanceOopDesc*)(oopDesc*)_obj;
+//         return (void*)((char*)iobj + iobj->base_offset_in_bytes() + size()*HeapWordSize);
+//       } else if (_type == Universe::NewArray) {
+//         return (void*)((char*)((objArrayOopDesc*)(oopDesc*)_obj)->base() + size() * sizeof(oop));
+//       } else {
+//         assert(false, "");
+//         return NULL;
+//       }
+//     }
 
-    const unordered_map<void*, FieldEdge>& fields() const {return _fields;}
-    void add_field(FieldEdge field) {
-      auto field_iter = fields().find(field.address());
-      if (field_iter == fields().end()) {
-        _fields.emplace(field.address(), field);
-      } else {
-        if (field_iter->second.id() < field.id()) {
-          _fields[field.address()] = field;
-        }
-      }
-    }
-};
+//     const unordered_map<void*, FieldEdge>& fields() const {return _fields;}
+//     void add_field(FieldEdge field) {
+//       auto field_iter = fields().find(field.address());
+//       if (field_iter == fields().end()) {
+//         _fields.emplace(field.address(), field);
+//       } else {
+//         if (field_iter->second.id() < field.id()) {
+//           _fields[field.address()] = field;
+//         }
+//       }
+//     }
+// };
 
-map<oopDesc*, ObjectNode> ObjectNode::oop_to_obj_node;
+// map<oopDesc*, ObjectNode> ObjectNode::oop_to_obj_node;
 
 Universe::HeapEvent* sorted_field_set_events = NULL;
 ssize_t sorted_field_set_events_size = 0;
@@ -528,7 +529,7 @@ int InstanceKlassPointerComparer(const void* a, const void* b) {
   if (aik == bik) return 0;
   return 1;
 }
-
+#if 0
 class AllObjects : public ObjectClosure {
   public:
     const bool print_not_found = false;
@@ -548,18 +549,11 @@ class AllObjects : public ObjectClosure {
       if (((uint64_t)(void*)obj) == 0xbaadbabebaadbabe)
         return;
       Klass* klass = obj->klass_or_null();
-
       //        klass->id() != InstanceMirrorKlassID && 
           // klass->id() != InstanceRefKlassID && 
           // klass->id() != InstanceClassLoaderKlassID &&
       if (klass && ((uint64_t)(void*)klass) != 0xbaadbabebaadbabe && 
           klass->is_klass()) {
-          
-        first_klass_addr = min(first_klass_addr, (uint64_t)klass);
-        last_klass_addr = max(last_klass_addr, (uint64_t)klass);
-        
-        first_oop_addr = min(first_oop_addr, (uint64_t)(void*)obj);
-        last_oop_addr = max(last_oop_addr, (uint64_t)(void*)obj); 
 
         char buf[1024];
         obj->klass()->name()->as_C_string(buf, 1024);
@@ -589,7 +583,6 @@ class AllObjects : public ObjectClosure {
               num_src_not_correct++;
             }
           } else if (klass->id() == ObjArrayKlassID) {
-            ObjArrayKlass* oak = (ObjArrayKlass*)klass;
             objArrayOop array = (objArrayOop)obj;
             if ((size_t)array->length() != oop_obj_node_pair->second.size()) {
               printf("%s: array->length() %d != %ld\n", buf, array->length(), oop_obj_node_pair->second.size());
@@ -597,7 +590,7 @@ class AllObjects : public ObjectClosure {
             }
           }
         }
-
+        return;
         if (oop_obj_node_pair != ObjectNode::oop_to_obj_node.end() && klass->is_instance_klass()) {
           InstanceKlass* ik = (InstanceKlass*)klass;
           bool iks_static_fields_checked_changed = false;
@@ -885,6 +878,7 @@ class AllObjects : public ObjectClosure {
       }
     }
 };
+#endif 
 
 int HeapEventComparer(Universe::HeapEvent* a, Universe::HeapEvent* b) {
     if (a->address.dst < b->address.dst) return -1;
@@ -909,8 +903,8 @@ pthread_spinlock_t spin_lock_heap_event;
 
 __attribute__((constructor))
 void init_lock () {
-  static char mmap_heap_buf[sizeof(MmapHeap)];
-  mmap_heap = new (mmap_heap_buf) MmapHeap();
+  // static char mmap_heap_buf[sizeof(MmapHeap)];
+  // mmap_heap = new (mmap_heap_buf) MmapHeap();
 
   if ( pthread_spin_init ( &spin_lock_heap_event, 0 ) != 0 ) {
     exit ( 1 );
@@ -952,7 +946,7 @@ void Universe::verify_heap_graph() {
 
   if (!Universe::enable_heap_graph_verify)
     return;
-
+  return;
   printf("heap_events_size %ld\n", heap_events_size);
 
   static HeapEvent* flattened_heap_events;
@@ -990,8 +984,9 @@ void Universe::verify_heap_graph() {
   HeapEvent* heap_events_start = &Universe::heap_events[1];
   for (auto i = 0U; i < heap_events_size; i++) {
     heap_events_start[i].id = num_events_created++;
-    heap_events_sorted_with_id[i] = heap_events_start[i];
+    // heap_events_sorted_with_id[i] = heap_events_start[i];
   }
+  #if 0
   qsort(heap_events_start, heap_events_size, sizeof(HeapEvent), HeapEventComparerV);
 
   for (auto i = 0U; i < heap_events_size; i++) {
@@ -1009,6 +1004,7 @@ void Universe::verify_heap_graph() {
   for (auto i = 0U; i < heap_events_size; i++) {
     HeapEvent event = heap_events_sorted_with_id[i];
     if (event.heap_event_type == Universe::CopyObject) {
+      continue;
       oop obj_src = oop((oopDesc*)(void*)event.address.src);
       if (obj_src->klass()->is_instance_klass()) {
         InstanceKlass* ik = (InstanceKlass*)obj_src->klass();
@@ -1124,6 +1120,7 @@ void Universe::verify_heap_graph() {
         } while(ik && ik->is_klass());
       }
     } else if (event.heap_event_type == Universe::CopyArray) {
+      continue;
       objArrayOop obj_src = objArrayOop((objArrayOopDesc*)event.address.src);
       objArrayOop obj_dst = objArrayOop((objArrayOopDesc*)event.address.dst);
       if (!obj_src->klass()->is_objArray_klass()) continue;
@@ -1291,52 +1288,55 @@ void Universe::verify_heap_graph() {
       flattened_heap_events[flattened_heap_events_size++] = event;
     }
   }
-  qsort(flattened_heap_events, flattened_heap_events_size, sizeof(HeapEvent), HeapEventComparerV);
+  // qsort(flattened_heap_events, flattened_heap_events_size, sizeof(HeapEvent), HeapEventComparerV);
+  #endif
 
   printf("flattened_heap_events_size %ld\n", flattened_heap_events_size);
-  heap_events_start = flattened_heap_events;
+  // heap_events_start = flattened_heap_events;
   int orig_len = sorted_field_set_events_size - 1;
   int new_objects_orig_len = sorted_new_object_events_size - 1;
 
   int max_prints=0;
   int zero_event_types = 0;
   //Update heap hash table
-  for (uint64_t event_iter = 0; event_iter < flattened_heap_events_size; event_iter++) {
+
+  for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
     HeapEvent latest_event = heap_events_start[event_iter];
-    while (event_iter < flattened_heap_events_size - 1 && heap_events_start[event_iter].address.dst == heap_events_start[event_iter+1].address.dst) {
-      if (latest_event.id < heap_events_start[event_iter].id) {
-        latest_event = heap_events_start[event_iter];
-      }
-      event_iter++;
-    }
-    if (latest_event.id < heap_events_start[event_iter].id && heap_events_start[event_iter].address.dst == latest_event.address.dst) {
-      latest_event = heap_events_start[event_iter];
-    }
+    // while (event_iter < flattened_heap_events_size - 1 && heap_events_start[event_iter].address.dst == heap_events_start[event_iter+1].address.dst) {
+    //   if (latest_event.id < heap_events_start[event_iter].id) {
+    //     latest_event = heap_events_start[event_iter];
+    //   }
+    //   event_iter++;
+    // }
+    // if (latest_event.id < heap_events_start[event_iter].id && heap_events_start[event_iter].address.dst == latest_event.address.dst) {
+    //   latest_event = heap_events_start[event_iter];
+    // }
     if (latest_event.heap_event_type == Universe::NewObject) {
-      int idx = (new_objects_orig_len <= 0) ? -1 : has_heap_event(sorted_new_object_events, latest_event.address.dst, 0, new_objects_orig_len);
-      if (idx == -1) {
-        // if((max_prints++) < 100) printf("Inserting: dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
-        sorted_new_object_events[sorted_new_object_events_size++] = latest_event;
-      } else {
-        assert (idx <= new_objects_orig_len, "");
-        if (latest_event.id > sorted_new_object_events[idx].id)
-          sorted_new_object_events[idx] = latest_event;
-      }
+      // int idx = (new_objects_orig_len <= 0) ? -1 : has_heap_event(sorted_new_object_events, latest_event.address.dst, 0, new_objects_orig_len);
+      // if (idx == -1) {
+      //   // if((max_prints++) < 100) printf("Inserting: dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
+      //   sorted_new_object_events[sorted_new_object_events_size++] = latest_event;
+      // } else {
+      //   assert (idx <= new_objects_orig_len, "");
+      //   if (latest_event.id > sorted_new_object_events[idx].id)
+      //     sorted_new_object_events[idx] = latest_event;
+      // }
 
       oopDesc* obj = (oopDesc*)latest_event.address.dst;
-      if (ObjectNode::oop_to_obj_node.find(obj) != ObjectNode::oop_to_obj_node.end()) {
-        printf("Found %p in oop_to_obj_node\n", obj);
-      }
+      // if (ObjectNode::oop_to_obj_node.find(obj) != ObjectNode::oop_to_obj_node.end()) {
+      //   printf("Found %p in oop_to_obj_node\n", obj);
+      // }
 
-      Universe::HeapEventType obj_type = None;
-      // if (obj->klass()->is_objArray_klass())
-      //   obj_type = Universe::NewArray;
-      // else if (obj->klass()->is_instance_klass() || obj->klass()->is_typeArray_klass())
-        obj_type = Universe::NewObject;
+      // Universe::HeapEventType obj_type = None;
+      // // if (obj->klass()->is_objArray_klass())
+      // //   obj_type = Universe::NewArray;
+      // // else if (obj->klass()->is_instance_klass() || obj->klass()->is_typeArray_klass())
+      //   obj_type = Universe::NewObject;
       
-      ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, latest_event.address.src, obj_type, latest_event.id));
+      // ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, latest_event.address.src, obj_type, latest_event.id));
       
     } else if (latest_event.heap_event_type == Universe::FieldSet) {
+      continue;
       int idx = (orig_len <= 0) ? -1 : has_heap_event(sorted_field_set_events, latest_event.address.dst, 0, orig_len);
 
       // oopDesc* field = (oopDesc*)latest_event.address.dst;
@@ -1374,18 +1374,18 @@ void Universe::verify_heap_graph() {
   printf("total events %ld zero_event_types %d\n", sorted_field_set_events_size, zero_event_types);
   
   // sorted_field_set_events.sort(HeapEventComparer);
-  qsort(sorted_field_set_events, sorted_field_set_events_size, sizeof(HeapEvent), HeapEventComparerV);
-  qsort(sorted_new_object_events, sorted_new_object_events_size, sizeof(HeapEvent), HeapEventComparerV);
+  // qsort(sorted_field_set_events, sorted_field_set_events_size, sizeof(HeapEvent), HeapEventComparerV);
+  // qsort(sorted_new_object_events, sorted_new_object_events_size, sizeof(HeapEvent), HeapEventComparerV);
   // max_prints = 0;
   // for (int i = 0; i < Universe::max_heap_events && max_prints < 100; i++) {
   //     if((max_prints++) < 100) printf("After sort: dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
   // }
   // sorted_new_heap_events.clear();
-  AllObjects all_objects;
-  Universe::heap()->object_iterate(&all_objects);
+  // AllObjects all_objects;
+  // Universe::heap()->object_iterate(&all_objects);
   
-  printf("valid? %d num_heap_events %ld {NewObject: %ld, FieldSet: %ld} num_found %d {NewObject: %d, FieldSet:%d} num_not_found %d num_src_not_correct %d\n", (int)all_objects.valid, sorted_field_set_events_size + sorted_new_object_events_size, 
-  sorted_new_object_events_size, sorted_field_set_events_size, all_objects.num_found, all_objects.num_oops, all_objects.num_fields, all_objects.num_not_found, all_objects.num_src_not_correct);
+  // printf("valid? %d num_heap_events %ld {NewObject: %ld, FieldSet: %ld} num_found %d {NewObject: %d, FieldSet:%d} num_not_found %d num_src_not_correct %d\n", (int)all_objects.valid, sorted_field_set_events_size + sorted_new_object_events_size, 
+  // sorted_new_object_events_size, sorted_field_set_events_size, all_objects.num_found, all_objects.num_oops, all_objects.num_fields, all_objects.num_not_found, all_objects.num_src_not_correct);
 
   // if (!all_objects.valid) abort();
   

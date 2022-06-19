@@ -383,13 +383,7 @@ class ObjectNode {
 
 map<oopDesc*, ObjectNode> ObjectNode::oop_to_obj_node;
 
-Universe::HeapEvent* sorted_field_set_events = NULL;
-ssize_t sorted_field_set_events_size = 0;
 const size_t SORTED_FIELD_SET_EVENTS_MAX_SIZE = 1L << 30;
-
-Universe::HeapEvent* sorted_new_object_events = NULL;
-ssize_t sorted_new_object_events_size = 0;
-
 const size_t SORTED_NEW_OBJECT_EVENTS_MAX_SIZE = 1L << 30;
 
 static uint8_t* is_heap_event_in_heap = NULL;
@@ -997,15 +991,11 @@ void Universe::verify_heap_graph() {
   static HeapEvent* copy_array_events;
   size_t copy_array_events_size = 0;
   static HeapEvent* heap_events_sorted_with_id;
-  if (sorted_field_set_events == NULL) {
-    sorted_field_set_events = (Universe::HeapEvent*)mmap ( NULL, SORTED_FIELD_SET_EVENTS_MAX_SIZE*sizeof(HeapEvent), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
-    assert(sorted_field_set_events != MAP_FAILED, "");
+  if (is_heap_event_in_heap == NULL) {
     is_heap_event_in_heap = (uint8_t*)mmap ( NULL, SORTED_FIELD_SET_EVENTS_MAX_SIZE*sizeof(uint8_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
     assert(is_heap_event_in_heap != MAP_FAILED, "");
     iks_static_fields_checked = (InstanceKlass**)mmap ( NULL, SORTED_FIELD_SET_EVENTS_MAX_SIZE*sizeof(InstanceKlass*), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
     assert(iks_static_fields_checked != MAP_FAILED, "");
-    sorted_new_object_events = (Universe::HeapEvent*)mmap (NULL, SORTED_NEW_OBJECT_EVENTS_MAX_SIZE*sizeof(HeapEvent), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
-    assert(sorted_new_object_events != MAP_FAILED, "");
     flattened_heap_events = (Universe::HeapEvent*)mmap (NULL, SORTED_NEW_OBJECT_EVENTS_MAX_SIZE*sizeof(HeapEvent), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
     assert(flattened_heap_events != MAP_FAILED, "");
     copy_object_events = (Universe::HeapEvent*)mmap (NULL, Universe::max_heap_events*sizeof(HeapEvent), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
@@ -1298,35 +1288,7 @@ void Universe::verify_heap_graph() {
                 flattened_heap_events[flattened_heap_events_size++] = Universe::HeapEvent{Universe::FieldSet, (uint64_t)(oopDesc*)field_edge->second.val(), dst_elem_addr, event.id};
               }
             }
-
-          // if (final_event2.heap_event_type == HeapEventType::None && final_event1.heap_event_type == HeapEventType::None && sorted_field_set_events_size > 0) {
-          //   idx = has_heap_event(sorted_field_set_events, src_elem_addr, 0, sorted_field_set_events_size - 1);
-          //   if (idx != -1) {
-          //     HeapEvent src_field_set_event = sorted_field_set_events[idx];
-          //     // if (offsets.address.src == 0 && offsets.address.dst == 0 && length_event.address.src == 10)
-          //     // if (can_print) printf("813: dst 0x%lx src 0x%lx dst_obj_field_offset 0x%lx i %d\n", event.address.dst, src_field_set_event.address.src, dst_elem_addr, i);
-          //     flattened_heap_events[flattened_heap_events_size++] = Universe::HeapEvent{Universe::FieldSet, src_field_set_event.address.src, dst_elem_addr, event.id};
-          //   }
-          // }
-          // b[b1:b2] = a[a1:a2]
-          //   c[c1:c2] = b[b11:b12] //b11 > b1 and b12 < b2
-          //   c1 -> b11 & c2 -> b12 (b12-b11 = a2 - a1)
-          //   b11 > b1 & b12 < b2 
-          //   b1 -> a1 & b2 -> a2 (a2-a1 = b2-b1)
-          //   c1 -?-> a1?
-          //   c[c1:c2] = a[a1+b11-b1:a2+b12-b2]
-
-          // if (idx == -1) {
-          //   int ii = has_heap_event(copy_object_events, (uint64_t)curr_src, 0, copy_object_events_size - 1);
-          //   if (ii == -1) break;
-          //   curr_src = objArrayOop((void*)copy_object_events[ii].address.src);
-          //   // int i3 = has_heap_event_with_id(copy_array_events, (uint64_t)curr_src, 0, copy_array_events_size - 1);
-          //   // if (i3 == -1) break;
-          //   // src_array_index = copy_array_events[i3+1].address.src + src_array_index - copy_array_events[i3+1].address.dst;
-          //   // if (offsets.address.src == 0 && offsets.address.dst == 0 && length_event.address.src == 10)
-          //   printf("955: curr_src %p i %d ii %d\n", curr_src, i, ii);
-          // }
-        } //while (idx == -1 && round < 100);
+        } 
       }
     } else {
       flattened_heap_events[flattened_heap_events_size++] = event;
@@ -1336,9 +1298,6 @@ void Universe::verify_heap_graph() {
 
   printf("flattened_heap_events_size %ld\n", flattened_heap_events_size);
   heap_events_start = flattened_heap_events;
-  int orig_len = sorted_field_set_events_size - 1;
-  int new_objects_orig_len = sorted_new_object_events_size - 1;
-
   int max_prints=0;
   int zero_event_types = 0;
   //Update heap hash table
@@ -1355,16 +1314,6 @@ void Universe::verify_heap_graph() {
       latest_event = heap_events_start[event_iter];
     }
     if (latest_event.heap_event_type == Universe::NewObject) {
-      int idx = (new_objects_orig_len <= 0) ? -1 : has_heap_event(sorted_new_object_events, latest_event.address.dst, 0, new_objects_orig_len);
-      if (idx == -1) {
-        // if((max_prints++) < 100) printf("Inserting: dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
-        sorted_new_object_events[sorted_new_object_events_size++] = latest_event;
-      } else {
-        assert (idx <= new_objects_orig_len, "");
-        if (latest_event.id > sorted_new_object_events[idx].id)
-          sorted_new_object_events[idx] = latest_event;
-      }
-
       oopDesc* obj = (oopDesc*)latest_event.address.dst;
       if (ObjectNode::oop_to_obj_node.find(obj) == ObjectNode::oop_to_obj_node.end()) {
         Universe::HeapEventType obj_type = None;
@@ -1377,8 +1326,6 @@ void Universe::verify_heap_graph() {
       }
       
     } else if (latest_event.heap_event_type == Universe::FieldSet) {
-      int idx = (orig_len <= 0) ? -1 : has_heap_event(sorted_field_set_events, latest_event.address.dst, 0, orig_len);
-
       oopDesc* field = (oopDesc*)latest_event.address.dst;
       auto next_obj_iter = ObjectNode::oop_to_obj_node.lower_bound(field);
       oopDesc* obj = NULL;
@@ -1395,116 +1342,28 @@ void Universe::verify_heap_graph() {
       } else {
         ObjectNode::oop_to_obj_node[obj].add_field(FieldEdge((oopDesc*)latest_event.address.src, (void*)field, latest_event.id));
       }
-      
-      if (idx == -1) {
-        // if((max_prints++) < 100) printf("Inserting: dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
-        sorted_field_set_events[sorted_field_set_events_size++] = latest_event;
-      } else {
-        if (!(idx <= orig_len)) {
-          printf("idx %d orig_len %d\n", idx, orig_len);
-        }
-        if (latest_event.id > sorted_field_set_events[idx].id)
-          sorted_field_set_events[idx] = latest_event;
-      }
     } else if (false && latest_event.heap_event_type != CopyArrayLength && latest_event.heap_event_type != CopyArrayOffsets) {
       printf("invalid event type %ld at event_iter %ld\n", latest_event.heap_event_type, event_iter);
       // ShouldNotReachHere();
     }
   } 
-  printf("total events %ld zero_event_types %d\n", sorted_field_set_events_size, zero_event_types);
   
-  qsort(sorted_field_set_events, sorted_field_set_events_size, sizeof(HeapEvent), HeapEventComparerV);
-  qsort(sorted_new_object_events, sorted_new_object_events_size, sizeof(HeapEvent), HeapEventComparerV);
-  // max_prints = 0;
-  // for (int i = 0; i < Universe::max_heap_events && max_prints < 100; i++) {
-  //     if((max_prints++) < 100) printf("After sort: dst 0x%lx src 0x%lx\n", event.address.dst, event.address.src);
-  // }
-  // sorted_new_heap_events.clear();
   AllObjects all_objects;
   Universe::heap()->object_iterate(&all_objects);
   
-  printf("valid? %d num_heap_events %ld {NewObject: %ld, FieldSet: %ld} num_found %d {NewObject: %d, FieldSet:%d} num_not_found %d num_src_not_correct %d\n", (int)all_objects.valid, sorted_field_set_events_size + sorted_new_object_events_size, 
-  sorted_new_object_events_size, sorted_field_set_events_size, all_objects.num_found, all_objects.num_oops, all_objects.num_fields, all_objects.num_not_found, all_objects.num_src_not_correct);
+  size_t num_objects = ObjectNode::oop_to_obj_node.size();
+  size_t num_fields = 0;
+  for (auto& it : ObjectNode::oop_to_obj_node) {
+    num_fields += it.second.fields().size();
+  }
+  printf("valid? %d num_heap_events %ld {Object: %ld, FieldSet: %ld} num_found %d {NewObject: %d, FieldSet:%d} num_not_found %d num_src_not_correct %d\n", (int)all_objects.valid, num_objects + num_fields, 
+  num_objects, num_fields, all_objects.num_found, all_objects.num_oops, all_objects.num_fields, all_objects.num_not_found, all_objects.num_src_not_correct);
 
   // if (!all_objects.valid) abort();
   
   // if (all_objects.num_src_not_correct > 0) abort();
   // max_prints = 0;
   // if (checking > 5) abort();
-  return;
-
-  HeapWord* volatile* top_addrs = Universe::heap()->top_addr();
-  printf("top_addrs %p %p\n", top_addrs[0], top_addrs[1]);
-  printf("first_klass_addr 0x%lx last_klass_addr 0x%lx\n", first_klass_addr, last_klass_addr);
-  printf("first_oop_addr 0x%lx last_oop_addr 0x%lx\n", first_oop_addr, last_oop_addr);
-  // abort();
-  
-  int events_with_src_null = 0;
-  int events_with_src_not_null = 0;
-  int heap_event_2 = 0;
-  int heap_event_1 = 0;
-  int num_minus_2 = 0;
-
-  for (uint32_t i = 0; i < sorted_field_set_events_size; i++) {
-    if (is_heap_event_in_heap[i] == 0) {
-      HeapEvent event = sorted_field_set_events[i];
-      if (event.heap_event_type == Universe::NewObject || event.heap_event_type == Universe::FieldSet) continue;
-      if (event.address.src == 0x0) {
-        events_with_src_null++;
-      } else {
-        events_with_src_not_null++;
-        if (event.heap_event_type == 2) {
-          heap_event_2++;
-          continue;
-        }
-        else {
-          heap_event_1++;
-        }
-
-        if (event.address.src == 0xfffffffffffffffe) {
-          num_minus_2++;
-        }
-        continue;
-      }
-      if (max_prints < 20) {
-        // oop obj = oop((oopDesc*)(void*)event.address.src);
-        char buf2[1024]={0};
-        // get_oop_klass_name(obj, buf2);
-        int obj_index = -1;
-        has_heap_event(sorted_new_object_events, event.address.dst, 0, sorted_new_object_events_size - 1, &obj_index);
-        printf("at %d: heap_event_type %ld dst 0x%lx src 0x%lx obj_index %d\n", i, (uint64_t)event.heap_event_type, event.address.dst, event.address.src, obj_index);
-        if (obj_index != -1) {
-          char buf[1024];
-          oop obj = oop((oopDesc*)sorted_new_object_events[obj_index].address.dst);
-          // if (obj->klass()->id() == ObjArrayKlassID) {
-          get_oop_klass_name(obj, buf);
-          HeapWord* static_start1 = ((InstanceMirrorKlass*)obj->klass()->java_mirror()->klass())->start_of_static_fields(obj);
-          int count1 = java_lang_Class::static_oop_field_count(obj);
-          HeapWord* static_start2 = ((InstanceMirrorKlass*)obj->klass()->java_mirror()->klass())->start_of_static_fields(obj->klass()->java_mirror());
-          int count2 = java_lang_Class::static_oop_field_count(obj->klass()->java_mirror());
-          printf("[%d] %p, size %ld: %s.xxx = %s obj->klass()->id() %d, static_start1 %p count1 %d static_start2 %p count2 %d\n", obj_index, (void*)obj, obj->size(), buf, buf2, obj->klass()->id(), static_start1, count1, static_start2, count2);
-          // }
-        }
-        // if (event.address.dst != 0x0) {
-        //   oop obj = (oop)(void*)(event.address.dst - 0xc0);
-        //   if (oopDesc::is_oop(obj)) {
-        //     char buf[1024];
-        //     printf("dst: %s\n", get_oop_klass_name(obj, buf));
-        //   }
-        // }
-        max_prints++;
-      }
-    }
-  }
-
-  printf("events_with_src_null %d events_with_src_not_null %d heap_event_2 %d heap_event_1 %d num_minus_2 %d\n", events_with_src_null, events_with_src_not_null, heap_event_2, heap_event_1, num_minus_2);
-  //   //  else {
-  //   //   HeapEvent event = sorted_field_set_events[i];
-  //   //   printf("1 at %d: dst 0x%lx src 0x%lx\n", i, event.address.dst, event.address.src);
-  //   // }
-  // }
-  // abort();
-  // if (max_prints >= 100)  abort();
 }
 
 // Known objects

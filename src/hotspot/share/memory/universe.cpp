@@ -601,6 +601,7 @@ class AllObjects : public ObjectClosure {
           
           if (ik->id() == InstanceMirrorKlassID) {
             oop ikoop = ik->java_mirror();
+            auto ikoop_iter = ObjectNode::oop_to_obj_node.find(ikoop);
             InstanceMirrorKlass* imk = (InstanceMirrorKlass*)ikoop->klass();
             HeapWord* obj_static_start = imk->start_of_static_fields(obj);
             HeapWord* p = obj_static_start;
@@ -611,18 +612,43 @@ class AllObjects : public ObjectClosure {
             // char hex_obj[1024];
             // sprintf(hex_obj, "%p", obj);
             // if (strstr(hex_obj, "018d8"))
+            
             if (num_statics > 0  && num_statics < 100 && !found_p) {
               for (;p < end; p++) {
                 num_statics_checked++;
                 // uint64_t val = (uint64_t);
+                
                 uint64_t fd_address = (uint64_t)p;
                 uint64_t val = *((uint64_t*)fd_address);
+                // int idx = has_heap_event(sorted_field_set_events, fd_address, 0, sorted_field_set_events_size - 1);
+                // bool found = idx != -1;
+                // num_fields++;
+                // if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else 
+                // {if (val != 0) num_not_found++;}
+                auto field_edge = obj_node.fields().find((void*)fd_address); 
+                bool found = field_edge != obj_node.fields().end();
                 
-                int idx = has_heap_event(sorted_field_set_events, fd_address, 0, sorted_field_set_events_size - 1);
-                bool found = idx != -1;
-                num_fields++;
-                if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else 
-                {if (val != 0) num_not_found++;}
+                if (found) {
+                  // field_src = (uint64_t)field_edge->second.val();
+                  num_found++;
+                } else {
+                  if(val != 0) num_not_found++;
+                }
+
+                // auto next_obj_iter = ObjectNode::oop_to_obj_node.lower_bound((oopDesc*)fd_address);
+                // oopDesc* obj1 = NULL;
+                // if (next_obj_iter != ObjectNode::oop_to_obj_node.end() && next_obj_iter->first == (oopDesc*)fd_address) {
+                //   obj1 = next_obj_iter->first;
+                // } else {
+                //   auto obj_iter = --next_obj_iter;
+                //   if (obj_iter->first <= (oopDesc*)fd_address && (oopDesc*)fd_address < obj_iter->second.end()) {
+                //     obj1 = obj_iter->first;
+                //   }
+                // }
+                // //TODO: Also check the value.
+                // if (obj1 != obj) {
+                //   printf("obj %p %ld %d, ikoop %p obj %p field 0x%lx\n", obj1, obj1->size(), obj1->klass()->id(), ikoop, obj, fd_address);
+                // }
               }
               
               iks_static_fields_checked[iks_static_fields_checked_size++] = (InstanceKlass*)obj_static_start;
@@ -657,7 +683,7 @@ class AllObjects : public ObjectClosure {
 
                 if (found) {
                   // field_src = sorted_field_set_events[idx_in_field_set_events].address.src; 
-                  field_src = (uint64_t)field_edge->second.val();
+                  field_src = (uint64_t)(oopDesc*)field_edge->second.val();
                   num_found++;
                 }
 
@@ -709,6 +735,7 @@ class AllObjects : public ObjectClosure {
             oop ikoop = ik->java_mirror();
             InstanceMirrorKlass* imk = (InstanceMirrorKlass*)ikoop->klass();
             // printf("imk->fields %d static_fields %d %d ik->fields %d %s\n", imk->java_fields_count(), java_lang_Class::static_oop_field_count(obj), java_lang_Class::static_oop_field_count(ikoop), ik->java_fields_count(), buf);
+            auto ikoop_iter = ObjectNode::oop_to_obj_node.find(ikoop);
 
             if (java_lang_Class::static_oop_field_count(ikoop) > 0) {
               HeapWord* static_start = imk->start_of_static_fields(ikoop);
@@ -746,11 +773,41 @@ class AllObjects : public ObjectClosure {
                   // uint64_t val = (uint64_t);
                   uint64_t fd_address = (uint64_t)p;
                   uint64_t val = *((uint64_t*)fd_address);
+                  
+                  // auto next_obj_iter = ObjectNode::oop_to_obj_node.lower_bound((oopDesc*)fd_address);
+                  // oopDesc* obj1 = NULL;
+                  // if (next_obj_iter != ObjectNode::oop_to_obj_node.end() && next_obj_iter->first == (oopDesc*)fd_address) {
+                  //   obj1 = next_obj_iter->first;
+                  // } else {
+                  //   auto obj_iter = --next_obj_iter;
+                  //   if (obj_iter->first <= (oopDesc*)fd_address && (oopDesc*)fd_address < obj_iter->second.end()) {
+                  //     obj1 = obj_iter->first;
+                  //   }
+                  // }
+                  // //TODO: Also check the value.
+                  // if (obj1 != obj) {
+                  //   printf("obj %p %ld %d, ikoop %p obj %p field 0x%lx\n", obj1, obj1->size(), obj1->klass()->id(), ikoop, obj, fd_address);
+                  // }
+
                   // if (val == 0) continue;
-                  int idx = has_heap_event(sorted_field_set_events, fd_address, 0, sorted_field_set_events_size - 1);
-                  bool found = idx != -1;
+                  // int idx = has_heap_event(sorted_field_set_events, fd_address, 0, sorted_field_set_events_size - 1);
+                  // bool found = idx != -1;
+                  bool found = ikoop_iter != ObjectNode::oop_to_obj_node.end();
+                  if (found) {
+                    auto field_edge = ikoop_iter->second.fields().find((void*)fd_address); 
+                    found = field_edge != ikoop_iter->second.fields().end();
+                  }
+                  
+                  if (found) {
+                    // field_src = (uint64_t)field_edge->second.val();
+                    num_found++;
+                  } else {
+                    if(val != 0) num_not_found++;
+                  }
+
                   num_fields++;
-                  if (found) {num_found++; is_heap_event_in_heap[idx] = 1;} else if (val != 0)
+
+                  if (found) {num_found++;} else if (val != 0)
                   {
                     if (num_not_found < 100) { 
                       Symbol* name = ik->field_name(f);
@@ -780,31 +837,6 @@ class AllObjects : public ObjectClosure {
           // valid = valid && field_printer.valid;
           if (iks_static_fields_checked_changed)
             qsort(iks_static_fields_checked, iks_static_fields_checked_size, sizeof(InstanceKlass*), InstanceKlassPointerComparer);
-          
-          if (false) {
-            for (JavaFieldStream fs(((InstanceKlass*)obj->klass())); !fs.done(); fs.next()) {
-              char buf2[1024];
-              fieldDescriptor& fd = fs.field_descriptor();
-              fd.name()->as_C_string(buf2, 1024);
-
-              if (strstr(buf2, "name")) {
-                oop name_oop = obj->obj_field(fd.offset());
-                if (((void*)name_oop != nullptr)) {
-                  Symbol* content = java_lang_String::as_symbol_or_null(name_oop);
-                  if(content) {content->as_C_string(buf2, 1024);
-                  printf("content %s\n", buf2);
-                  }
-                  break;
-                }
-              }
-            }
-          }
-          // num_found += field_printer.num_found;
-          // num_not_found += field_printer.num_not_found;
-          // if (!field_printer.valid) {
-          //   printf("%s\n", buf);
-          // }
-          // foundPuppy = true;
         } else if(klass->id() == ObjArrayKlassID) {
           ObjArrayKlass* oak = (ObjArrayKlass*)klass;
           objArrayOop array = (objArrayOop)obj; // length
@@ -840,7 +872,7 @@ class AllObjects : public ObjectClosure {
               char buf2[1024];
               num_src_not_correct++;
               if (num_src_not_correct < 100) {
-                printf("(%p,%d) %s[%d] : %p != %p\n", (void*)obj, array->length(), oak->name()->as_C_string(buf2,1024), i, field_edge->second.val(), (void*)elem);
+                printf("(%p,%d) %s[%d] : %p != %p\n", (void*)obj, array->length(), oak->name()->as_C_string(buf2,1024), i, (oopDesc*)field_edge->second.val(), (void*)elem);
                 if (elem != 0)
                   printf("elem klass %s\n", get_oop_klass_name(elem, buf2));
                 // printf("sorted_field_set_events[idx].id %ld\n", sorted_field_set_events[idx].id);
@@ -1113,10 +1145,10 @@ void Universe::verify_heap_graph() {
               }
 
               if (final_event2.heap_event_type == HeapEventType::None && final_event1.heap_event_type == HeapEventType::None && ObjectNode::oop_to_obj_node.count(obj_src) > 0) {
-                auto src_obj_fields = ObjectNode::oop_to_obj_node[obj_src].fields();
+                auto& src_obj_fields = ObjectNode::oop_to_obj_node[obj_src].fields();
                 auto field_edge = src_obj_fields.find((void*)src_obj_field_offset);
                 if (field_edge != src_obj_fields.end()) {
-                  flattened_heap_events[flattened_heap_events_size++] = Universe::HeapEvent{Universe::FieldSet, (uint64_t)field_edge->second.val(), dst_obj_field_offset, event.id};
+                  flattened_heap_events[flattened_heap_events_size++] = Universe::HeapEvent{Universe::FieldSet, (uint64_t)(oopDesc*)field_edge->second.val(), dst_obj_field_offset, event.id};
                 }
               }
             }
@@ -1133,7 +1165,7 @@ void Universe::verify_heap_graph() {
       HeapEvent length_event = copy_array_events[idx+2];
       oop first_src_elem = obj_src->length() > 0? obj_src->obj_at(0) : NULL;
       char buf[1024];
-
+      // if (length_event.address.src > 0) printf("length_event.address.src %ld\n", length_event.address.src);
       for (uint i = 0; i < length_event.address.src; i++) {
         bool can_print = true;// obj_dst->length() >= 3000 && obj_dst->length() <= 4000 && i < 100 && Universe::checking > 5 && first_src_elem != NULL && strstr(get_oop_klass_name(first_src_elem, buf), "PyInteger") != NULL;
         // if (can_print)
@@ -1260,10 +1292,10 @@ void Universe::verify_heap_graph() {
           }
 
           if (final_event2.heap_event_type == HeapEventType::None && final_event1.heap_event_type == HeapEventType::None && ObjectNode::oop_to_obj_node.count(obj_src) > 0) {
-              auto src_obj_fields = ObjectNode::oop_to_obj_node[obj_src].fields();
+              auto& src_obj_fields = ObjectNode::oop_to_obj_node[obj_src].fields();
               auto field_edge = src_obj_fields.find((void*)src_elem_addr);
               if (field_edge != src_obj_fields.end()) {
-                flattened_heap_events[flattened_heap_events_size++] = Universe::HeapEvent{Universe::FieldSet, (uint64_t)field_edge->second.val(), dst_elem_addr, event.id};
+                flattened_heap_events[flattened_heap_events_size++] = Universe::HeapEvent{Universe::FieldSet, (uint64_t)(oopDesc*)field_edge->second.val(), dst_elem_addr, event.id};
               }
             }
 
@@ -1359,7 +1391,7 @@ void Universe::verify_heap_graph() {
         }
       }
       if (obj == NULL) {
-        //static field
+        printf("field %p\n", field);
       } else {
         ObjectNode::oop_to_obj_node[obj].add_field(FieldEdge((oopDesc*)latest_event.address.src, (void*)field, latest_event.id));
       }

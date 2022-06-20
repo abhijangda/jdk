@@ -675,6 +675,9 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
     new_obj_oop = Universe::heap()->obj_allocate(klass, size, CHECK_NULL);
     event_size = size;
   }
+  
+  //TODO: Below events can be combined in one function call.
+  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, event_size, (uint64_t)(void*)new_obj_oop});
 
   if (obj->klass()->is_instance_klass()) {
     Universe::add_heap_event(Universe::HeapEvent{Universe::CopyObject, (uint64_t)(void*)obj(), (uint64_t)(void*)new_obj_oop});
@@ -695,8 +698,6 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
     new_obj_oop = InstanceKlass::register_finalizer(instanceOop(new_obj()), CHECK_NULL);
     new_obj = Handle(THREAD, new_obj_oop);
   }
-
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, event_size, (uint64_t)(void*)new_obj_oop});
 
   return JNIHandles::make_local(THREAD, new_obj());
 JVM_END

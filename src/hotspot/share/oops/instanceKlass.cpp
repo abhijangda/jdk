@@ -1428,7 +1428,7 @@ instanceOop InstanceKlass::allocate_instance(TRAPS) {
   //Convert size in bits to bytes
   Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, size, (uint64_t)((void*)i)}); 
 
-  // printf("1429: new_instance oop %p\n", (void*)i);
+  // printf("1429: new_instance oop %p %ld\n", (void*)i, size);
   return i;
 }
 

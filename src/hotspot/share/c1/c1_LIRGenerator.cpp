@@ -1895,8 +1895,8 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
     __ load(heap_event_counter_addr, counter);
     __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events - 2));
-    // __ load(heap_event_counter_addr, counter);
-    // __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events - 1));
+    __ load(heap_event_counter_addr, counter);
+    __ transfer_events(counter, LIR_OprFact::longConst(Universe::max_heap_events - 1));
 
     __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
     __ load(heap_event_counter_addr, counter);

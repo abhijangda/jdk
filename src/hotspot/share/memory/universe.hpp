@@ -221,7 +221,7 @@ class Universe: AllStatic {
   static const int LOG_MAX_EVENT_COUNTER = 24;
   static const int max_heap_events = 1L << LOG_MAX_EVENT_COUNTER;
   static uint64_t *heap_event_counter_ptr;
-  static HeapEvent heap_events[1+max_heap_events];
+  static HeapEvent heap_events[128+max_heap_events];
   static pthread_mutex_t mutex_heap_event;
   static bool enable_heap_event_logging;
   static bool enable_heap_graph_verify;

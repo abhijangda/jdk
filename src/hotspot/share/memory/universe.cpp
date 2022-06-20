@@ -91,7 +91,7 @@
 #include "oops/instanceMirrorKlass.inline.hpp"
 
 pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
-Universe::HeapEvent Universe::heap_events[1+Universe::max_heap_events] = {};
+Universe::HeapEvent Universe::heap_events[128+Universe::max_heap_events] = {};
 uint64_t* Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
 bool Universe::enable_heap_event_logging = true;
 bool Universe::enable_heap_graph_verify = true && Universe::enable_heap_event_logging;
@@ -105,6 +105,7 @@ sem_t Universe::cuda_semaphore;
 #include<unordered_map>
 #include<map>
 #include<set>
+#include<unordered_set>
 #include<algorithm>
 
 #include <sys/mman.h>
@@ -284,6 +285,8 @@ template <typename K, typename V>
 using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, STLAllocator<std::pair<const K, V>>>;
 template <typename K>
 using set = std::set<K, std::less<K>, STLAllocator<const K>>;
+template <typename K>
+using unordered_set = std::unordered_set<K, std::hash<K>, std::equal_to<K>, STLAllocator<const K>>;
 template <typename K, typename V>
 using map = std::map<K, V, std::less<K>, STLAllocator<std::pair<const K, V>>>;
 
@@ -375,126 +378,12 @@ class ObjectNode {
 };
 
 map<oopDesc*, ObjectNode> ObjectNode::oop_to_obj_node;
-
-const size_t SORTED_FIELD_SET_EVENTS_MAX_SIZE = 1L << 30;
-const size_t SORTED_NEW_OBJECT_EVENTS_MAX_SIZE = 1L << 30;
-
-static uint8_t* is_heap_event_in_heap = NULL;
-static InstanceKlass** iks_static_fields_checked = NULL;
-static size_t iks_static_fields_checked_size = 0;
 uint32_t Universe::checking = 0;
-uint64_t first_klass_addr = 1L << 63;
-uint64_t last_klass_addr = 0;
-uint64_t first_oop_addr = 1L << 63;
-uint64_t last_oop_addr = 0;
 
 template<typename T>
 static T min(T a1, T a2) { return (a1 < a2) ? a1 : a2;}
 template<typename T>
 static T max(T a1, T a2) { return (a1 > a2) ? a1 : a2;}
-
-
-int has_heap_event(Universe::HeapEvent* sorted_events, uint64_t dst_address, int start, int end, int* floor_idx = NULL) {
-  int l = start;
-  int r = end;
-  int m;
-  if (floor_idx) {
-    if (dst_address <= sorted_events[end - 1].address.dst)
-      *floor_idx = 0;
-  }
-  while (l <= r) {
-      int m = l + (r - l) / 2;
-      // printf("m %d l %d r %d _len %d\n", m, l, r, sorted_field_set_events.length());
-      // Check if x is present at mid
-      if (sorted_events[m].address.dst == dst_address) {
-        if (floor_idx)
-          *floor_idx = m;
-        return m;
-      }
-
-      // If x greater, ignore left half
-      if (sorted_events[m].address.dst < dst_address) {
-        if (floor_idx)
-          *floor_idx = m;
-        l = m + 1;
-      }
-      // If x is smaller, ignore right half
-      else
-          r = m - 1;
-  }
-
-  // if we reach here, then element was
-  // not present
-  return -1;
-}
-
-
-int has_heap_event_with_id(Universe::HeapEvent* sorted_events, uint64_t id, int start, int end) {
-  int l = start;
-  int r = end;
-  int m;
-  
-  while (l <= r) {
-      int m = l + (r - l) / 2;
-      // printf("m %d l %d r %d _len %d\n", m, l, r, sorted_field_set_events.length());
-      // Check if x is present at mid
-      if (sorted_events[m].id == id) {
-        return m;
-      }
-
-      // If x greater, ignore left half
-      if (sorted_events[m].id < id) {
-        l = m + 1;
-      }
-      // If x is smaller, ignore right half
-      else
-          r = m - 1;
-  }
-
-  // if we reach here, then element was
-  // not present
-  return -1;
-}
-
-template<typename T>
-int binary_search(T* arr, int start, int end, T x) {
-  // for (int i = 0; i < sorted_field_set_events.length(); i++) {
-  //   // printf("141: 0x%lx\n", sorted_field_set_events.at(i).address.dst);
-  //   if (sorted_field_set_events.at(i).address.dst == dst_address) {
-  //     return true;
-  //   }
-  // }
-
-  // if (checking > 15)
-  // for (int i = 0; i < sorted_field_set_events.length(); i++) {
-  //   // printf("141: 0x%lx\n", sorted_field_set_events.at(i).address.dst);
-  //   printf("0x%lx\n", sorted_field_set_events.at(i).address.dst);
-  // }
-
-  // return false;
-  int l = start;
-  int r = end;
-  int m;
-  while (l <= r) {
-      int m = l + (r - l) / 2;
-      // printf("m %d l %d r %d _len %d\n", m, l, r, sorted_field_set_events.length());
-      // Check if x is present at mid
-      if (arr[m] == x)
-          return m;
-
-      // If x greater, ignore left half
-      if (arr[m] < x) {
-        l = m + 1;
-      }
-      // If x is smaller, ignore right half
-      else
-          r = m - 1;
-  }
-
-  // if we reach here, then element was
-  // not present
-  return -1;
-}
 
 static char* get_oop_klass_name(oop obj_, char buf[]) 
 {
@@ -530,7 +419,8 @@ class AllObjects : public ObjectClosure {
     int num_statics_checked;
     int num_oops;
     int num_fields;
-    
+    unordered_set<HeapWord*> static_fields_checked;
+
     AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0), num_src_not_correct(0), num_statics_checked(0), num_oops(0), num_fields(0) {}
     
     virtual void do_object(oop obj) {
@@ -579,7 +469,6 @@ class AllObjects : public ObjectClosure {
         const ObjectNode& obj_node = oop_obj_node_pair->second;
         if(klass->is_instance_klass()) {
           InstanceKlass* ik = (InstanceKlass*)klass;
-          bool iks_static_fields_checked_changed = false;
           
           if (ik->id() == InstanceMirrorKlassID) {
             oop ikoop = ik->java_mirror();
@@ -589,9 +478,8 @@ class AllObjects : public ObjectClosure {
             HeapWord* p = obj_static_start;
             int num_statics = java_lang_Class::static_oop_field_count(obj);
             HeapWord* end = p + num_statics;
-            bool found_p = binary_search(iks_static_fields_checked, 0, iks_static_fields_checked_size - 1, (InstanceKlass*)obj_static_start) != -1;
             
-            if (num_statics > 0  && num_statics < 100 && !found_p) {
+            if (num_statics > 0  && num_statics < 100 && static_fields_checked.count(obj_static_start) == 0) {
               for (;p < end; p++) {
                 num_statics_checked++;
                 
@@ -607,8 +495,7 @@ class AllObjects : public ObjectClosure {
                 }
               }
               
-              iks_static_fields_checked[iks_static_fields_checked_size++] = (InstanceKlass*)obj_static_start;
-              iks_static_fields_checked_changed = true;
+              static_fields_checked.insert(obj_static_start);
             }
           }
 
@@ -671,8 +558,7 @@ class AllObjects : public ObjectClosure {
             if (java_lang_Class::static_oop_field_count(ikoop) > 0) {
               HeapWord* static_start = imk->start_of_static_fields(ikoop);
               HeapWord* p = static_start;
-              bool has_p_checked = binary_search(iks_static_fields_checked, 0, iks_static_fields_checked_size - 1, (InstanceKlass*)static_start) != -1;
-              if (!has_p_checked) {
+              if (static_fields_checked.count(static_start) == 0) {
                 int static_field_to_field_index[ik->java_fields_count()];
                 int static_field_number = 0;
                 for(int f = 0; f < ik->java_fields_count(); f++) {
@@ -736,15 +622,11 @@ class AllObjects : public ObjectClosure {
                   //TODO: Lazy.... Static value will probably be right.
                 }
 
-                iks_static_fields_checked[iks_static_fields_checked_size++] = (InstanceKlass*)static_start; //Set ik not imk so that same array can serve purpose for statics from obj and static from imk
-                iks_static_fields_checked_changed = true;
+                static_fields_checked.insert(static_start);
               }
             }
             ik = ik->superklass();
           } while (ik && ik->is_klass());
-          
-          if (iks_static_fields_checked_changed)
-            qsort(iks_static_fields_checked, iks_static_fields_checked_size, sizeof(InstanceKlass*), InstanceKlassPointerComparer);
         } else if(klass->id() == ObjArrayKlassID) {
           ObjArrayKlass* oak = (ObjArrayKlass*)klass;
           objArrayOop array = (objArrayOop)obj; // length
@@ -860,26 +742,9 @@ void Universe::verify_heap_graph() {
     return;
   
   printf("heap_events_size %ld\n", heap_events_size);
-
-  static HeapEvent* flattened_heap_events;
-  size_t flattened_heap_events_size = 0;
-  static int num_events_created = 0;
-  static HeapEvent* copy_object_events;
-  size_t copy_object_events_size = 0;
-  static HeapEvent* copy_array_events;
-  size_t copy_array_events_size = 0;
-  static HeapEvent* heap_events_sorted_with_id;
-  if (is_heap_event_in_heap == NULL) {
-    is_heap_event_in_heap = (uint8_t*)mmap ( NULL, SORTED_FIELD_SET_EVENTS_MAX_SIZE*sizeof(uint8_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
-    assert(is_heap_event_in_heap != MAP_FAILED, "");
-    iks_static_fields_checked = (InstanceKlass**)mmap ( NULL, SORTED_FIELD_SET_EVENTS_MAX_SIZE*sizeof(InstanceKlass*), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0 );
-    assert(iks_static_fields_checked != MAP_FAILED, "");
-  }
-  
-  // if (sorted_field_set_events == NULL) {abort();}
+  size_t num_events_created = 0;
   checking++;
   // printf("checking %d %ld tid %ld\n", checking++, Universe::heap_event_counter, gettid()); 
-  iks_static_fields_checked_size = 0;
   HeapEvent* heap_events_start = &Universe::heap_events[1];
   for (auto i = 0U; i < heap_events_size; i++) {
     heap_events_start[i].id = num_events_created++;

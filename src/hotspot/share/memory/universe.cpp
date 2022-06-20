@@ -117,6 +117,7 @@ sem_t Universe::cuda_semaphore;
 #include "runtime/interfaceSupport.inline.hpp"
 
 class MmapHeap {
+  //PAGE_SIZE is 4096
   const int PAGE_SIZE;
   uint8_t* alloc_ptr;
   size_t curr_ptr;
@@ -127,14 +128,20 @@ class MmapHeap {
     ListNode* next;
     size_t size;
   };
-
-  ListNode* free_list;
+  
+  // 2^3 = 8
+  const int LOG_MIN_SMALL_OBJ_SIZE = 3; 
+  // 2^22 = 4*1024*1024
+  const int LOG_MAX_SMALL_OBJ_SIZE = 22;
+  // free_list for small objects
+  ListNode* free_lists[22];
 
   public:
-  MmapHeap() : PAGE_SIZE(getpagesize()), ALLOC_SIZE(256*1024*PAGE_SIZE), LARGE_OBJ_SIZE(1024*PAGE_SIZE) {
+  MmapHeap() : PAGE_SIZE(getpagesize()), ALLOC_SIZE(256*1024*PAGE_SIZE), LARGE_OBJ_SIZE(4*1024*1024) {
     alloc_ptr = NULL;
     curr_ptr = 0;
-    free_list = NULL;
+    for (int i = 0; i < LOG_MAX_SMALL_OBJ_SIZE; i++)
+      free_lists[i] = NULL;
   };
 
   size_t remaining_size_in_curr_alloc() const {
@@ -143,6 +150,11 @@ class MmapHeap {
 
   bool is_power_of_2(size_t x) const {
       return (x != 0) && ((x & (x - 1)) == 0);
+  }
+
+  int32_t ilog2(uint64_t x)
+  {
+    return sizeof(uint64_t) * 8 - __builtin_clz(x) - 1;
   }
 
   uint32_t next_power_of_2(uint32_t v) const {
@@ -201,16 +213,20 @@ class MmapHeap {
     if (alloc_ptr == NULL) {
       alloc_ptr = (uint8_t*)_mmap(ALLOC_SIZE);
     }
+    
     sz = adjust_size(sz);
-    if (free_list != NULL) {
-      ListNode* ptr = (ListNode*)free_list;
+
+    int log_size = ilog2(sz);
+    if (log_size < LOG_MAX_SMALL_OBJ_SIZE && free_lists[log_size] != NULL) {
+      ListNode* ptr = free_lists[log_size];
       ListNode* prev = NULL;
+      //TODO: No need of ListNode::size
       while (ptr != NULL) {
         if (sz <= ptr->size) {
           if (prev) {
             prev->next = ptr->next;
           } else {
-            free_list = ptr->next;
+            free_lists[log_size] = ptr->next;
           }
 
           break;
@@ -249,10 +265,13 @@ class MmapHeap {
     }
 
     sz = adjust_size(sz);
-    ListNode* new_head = (ListNode*)p;
-    new_head->next = free_list;
-    new_head->size = sz;
-    free_list = new_head;
+    int log_size = ilog2(sz);
+    if (log_size < LOG_MAX_SMALL_OBJ_SIZE) {
+      ListNode* new_head = (ListNode*)free_lists[log_size];
+      new_head->next = free_lists[log_size];
+      new_head->size = sz;
+      free_lists[log_size] = new_head;
+    }
   }
 };
 

@@ -1016,7 +1016,7 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   LIR_Opr dst_pos_result = new_register(dst_pos.result().type());
   LIR_Opr length_result = new_register(length.result().type());
 
-  if ((expected_type == NULL || is_reference_type(expected_type->element_type()->basic_type())) && Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+  if ((expected_type == NULL || is_reference_type(expected_type->element_type()->basic_type())) && InstrumentHeapEvents) {
     __ move(src.result(), src_result);
     __ move(dst.result(), dst_result);
     __ move(src_pos.result(), src_pos_result);
@@ -1058,7 +1058,7 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
 
   __ arraycopy(src.result(), src_pos.result(), dst.result(), dst_pos.result(), length.result(), tmp, expected_type, flags, info); // does add_safepoint
   
-  if ((expected_type == NULL || is_reference_type(expected_type->element_type()->basic_type())) && Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+  if ((expected_type == NULL || is_reference_type(expected_type->element_type()->basic_type())) && InstrumentHeapEvents) {
     append_copy_array(dst_result, src_result, dst_pos_result, src_pos_result, length_result);
   }
 }
@@ -1317,7 +1317,7 @@ void LIRGenerator::do_NewInstance(NewInstance* x) {
   LIR_Opr result = rlock_result(x);
   __ move(reg, result);
 
-  if (instance_size != LIR_OprFact::illegalOpr && Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+  if (instance_size != LIR_OprFact::illegalOpr && InstrumentHeapEvents) {
     append_heap_event(Universe::NewObject, result, instance_size);
   }
 }
@@ -1337,7 +1337,7 @@ void LIRGenerator::do_NewTypeArray(NewTypeArray* x) {
   LIR_Opr klass_reg = FrameMap::rdx_metadata_opr;
   LIR_Opr len = length.result();
   LIR_Opr len2 = new_register(len.type());
-  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+  if (InstrumentHeapEvents) {
     __ move(len, len2);
   }
 
@@ -1350,7 +1350,7 @@ void LIRGenerator::do_NewTypeArray(NewTypeArray* x) {
 
   LIR_Opr result = rlock_result(x);
   __ move(reg, result);
-  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+  if (InstrumentHeapEvents) {
     //TODO: this is also executed for slow path and add_heap_event function is also called in stubs
     append_heap_event(Universe::NewObject, result, len2);
   }
@@ -1378,7 +1378,7 @@ void LIRGenerator::do_NewObjectArray(NewObjectArray* x) {
   length.load_item_force(FrameMap::rbx_opr);
   LIR_Opr len = length.result();
   LIR_Opr len2 = new_register(len.type());
-  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+  if (InstrumentHeapEvents) {
     __ move(len, len2);
   }
   
@@ -1392,7 +1392,7 @@ void LIRGenerator::do_NewObjectArray(NewObjectArray* x) {
 
   LIR_Opr result = rlock_result(x);
   __ move(reg, result);
-  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging) {
+  if (InstrumentHeapEvents) {
     //TODO: this is also executed for slow path and add_heap_event function is also called in stubs
     append_heap_event(Universe::NewObject, result, len2);
   }

@@ -32,7 +32,8 @@
 #include "utilities/growableArray.hpp"
 
 #include <pthread.h>
-#include<semaphore.h>
+#include <semaphore.h>
+#include <sys/mman.h>
 
 // Universe is a name space holding known system classes and objects in the VM.
 //
@@ -218,32 +219,29 @@ class Universe: AllStatic {
     uint64_t id;
   //}
   };
-  static const int LOG_MAX_EVENT_COUNTER = 24;
-  static const int max_heap_events = 1L << LOG_MAX_EVENT_COUNTER;
+
   static uint64_t *heap_event_counter_ptr;
-  static HeapEvent heap_events[128+max_heap_events];
+  static HeapEvent* heap_events;
   static pthread_mutex_t mutex_heap_event;
-  static bool enable_heap_event_logging;
-  static bool enable_heap_graph_verify;
   static bool heap_event_stub_in_C1_LIR;
   static bool enable_transfer_events;
   static bool enable_heap_event_logging_in_interpreter;
   static void transfer_events_to_gpu();
   static sem_t cuda_semaphore;
   static inline void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3) {
-    if (!Universe::enable_heap_event_logging) return;
+    if (!InstrumentHeapEvents) return;
     // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
-    if (Universe::enable_heap_graph_verify)
+    if (CheckHeapEventGraphWithHeap)
       Universe::lock_mutex_heap_event();
     // Universe::heap_event_counter++;
     // if (event.address.src == 0x0) {
     //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
     // }
-    if (*Universe::heap_event_counter_ptr + 3 > Universe::max_heap_events) {
-      if (Universe::enable_transfer_events)
-        Universe::transfer_events_to_gpu();
-      else
+    if (*Universe::heap_event_counter_ptr + 3 > MaxHeapEvents) {
+      if (CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
+      else
+        Universe::transfer_events_to_gpu();
     }
     uint64_t v = *Universe::heap_event_counter_ptr;
     (&Universe::heap_events[1])[v] = event1;
@@ -253,22 +251,22 @@ class Universe: AllStatic {
     // if (event.heap_event_type == 0) {
     //   printf("new object at %ld\n");
     // }
-    if (*Universe::heap_event_counter_ptr == Universe::max_heap_events) {
-      if (Universe::enable_transfer_events)
-        Universe::transfer_events_to_gpu();
-      else
+    if (*Universe::heap_event_counter_ptr == MaxHeapEvents) {
+      if (CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
+      else
+        Universe::transfer_events_to_gpu();
       
     }
-    if (Universe::enable_heap_graph_verify)
+    if (CheckHeapEventGraphWithHeap)
       Universe::unlock_mutex_heap_event();
   }
   
   static inline void add_heap_event(Universe::HeapEvent event)
   {  
-    if (!Universe::enable_heap_event_logging) return;
+    if (!InstrumentHeapEvents) return;
     // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
-    if (Universe::enable_heap_graph_verify)
+    if (CheckHeapEventGraphWithHeap)
       Universe::lock_mutex_heap_event();
     // Universe::heap_event_counter++;
     // if (event.address.src == 0x0) {
@@ -280,14 +278,14 @@ class Universe: AllStatic {
     // if (event.heap_event_type == 0) {
     //   printf("new object at %ld\n");
     // }
-    if (*Universe::heap_event_counter_ptr == Universe::max_heap_events) {
-      if (Universe::enable_transfer_events)
-        Universe::transfer_events_to_gpu();
-      else
+    if (*Universe::heap_event_counter_ptr == MaxHeapEvents) {
+      if (CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
+      else
+        Universe::transfer_events_to_gpu();
       
     }
-    if (Universe::enable_heap_graph_verify)
+    if (CheckHeapEventGraphWithHeap)
       Universe::unlock_mutex_heap_event();
   }
   static void lock_mutex_heap_event();
@@ -295,6 +293,16 @@ class Universe: AllStatic {
   static void print_heap_event_counter();
   static void verify_heap_graph();
   static void verify_heap_graph_for_copy_array();
+  static void* mmap(size_t sz) {
+    void* ptr = ::mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+    assert(ptr != NULL, "");
+    if (ptr == MAP_FAILED) {
+      perror("mmap failed");
+    }
+    
+    return ptr;
+  }
+
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;
 
   // Known classes in the VM

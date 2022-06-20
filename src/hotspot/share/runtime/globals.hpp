@@ -2048,8 +2048,17 @@ const intx ObjectAlignmentInBytes = 8;
              "Mark all threads after a safepoint, and clear on a modify "   \
              "fence. Add cleanliness checks.")                              \
                                                                             \
-  develop(bool, TraceOptimizedUpcallStubs, false,                              \
-                "Trace optimized upcall stub generation")                      \
+  develop(bool, TraceOptimizedUpcallStubs, false,                           \
+                "Trace optimized upcall stub generation")                   \
+                                                                            \
+  product(uint64_t, MaxHeapEvents, 1L << 24,                                \
+               "Max Heap Events within each batch of transfer")             \
+                                                                            \
+  product(bool, InstrumentHeapEvents, true,                                 \
+               "Instrument heap events")                                    \
+                                                                            \
+  product(bool, CheckHeapEventGraphWithHeap, true,                          \
+               "Max Heap Events within each batch of transfer")             \
 
 // end of RUNTIME_FLAGS
 

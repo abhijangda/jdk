@@ -50,25 +50,6 @@
 #include "services/memTracker.hpp"
 #include "utilities/macros.hpp"
 
-#include <cuda.h>
-#include <pthread.h>
-#include <semaphore.h>
-
-extern int* h_heap_events;
-extern CUdeviceptr d_heap_events;
-
-#define checkCudaErrors(err)  __checkCudaErrors ((err), __FILE__, __LINE__)
-
-void __checkCudaErrors( CUresult err, const char *file, const int line )
-{
-  if( CUDA_SUCCESS != err) {
-    fprintf(stderr,
-            "CUDA Driver API error = %04d from file <%s>, line %i.\n",
-            err, file, line );
-    exit(-1);
-  }
-}
-
 // Initialization done by VM thread in vm_init_globals()
 void check_ThreadShadow();
 void eventlog_init();
@@ -124,28 +105,6 @@ void vm_init_globals() {
   perfMemory_init();
   SuspendibleThreadSet_init();
 }
-
-void* cumemcpy_func(void* arg)
-{
-  CUdevice   device;
-  CUcontext  context;
-  CUstream   stream;
-
-  checkCudaErrors(cuInit(0));
-  checkCudaErrors(cuDeviceGet(&device, 0));
-  checkCudaErrors(cuCtxCreate(&context, 0, device));
-  checkCudaErrors(cuStreamCreate(&stream, CU_STREAM_NON_BLOCKING));
-  checkCudaErrors(cuMemAlloc(&d_heap_events, Universe::max_heap_events * sizeof(Universe::HeapEvent)));
-  checkCudaErrors(cuMemAllocHost((void**)&h_heap_events, Universe::max_heap_events * sizeof(Universe::HeapEvent)));
-
-  while(true) {
-    sem_wait(&Universe::cuda_semaphore);
-
-    checkCudaErrors(cuMemcpyHtoDAsync(d_heap_events, h_heap_events, Universe::max_heap_events * sizeof(Universe::HeapEvent), stream));
-  }
-}
-
-pthread_t cumemcpy_tid;
 
 jint init_globals() {
   management_init();
@@ -203,11 +162,6 @@ jint init_globals() {
   if (PrintFlagsFinal || PrintFlagsRanges) {
     JVMFlag::printFlags(tty, false, PrintFlagsRanges);
   }
-  
-  sem_init(&Universe::cuda_semaphore, 0, 0);
-  int error = pthread_create(&cumemcpy_tid, NULL, &cumemcpy_func, NULL);
-  if (error != 0)
-    printf("CUDA Thread can't be created : [%s]\n", strerror(error));
 
   return JNI_OK;
 }

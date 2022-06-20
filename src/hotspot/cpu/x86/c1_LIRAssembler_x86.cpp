@@ -961,7 +961,7 @@ void LIR_Assembler::reg2stack(LIR_Opr src, LIR_Opr dest, BasicType type, bool po
 }
 
 void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
-  if (Universe::enable_heap_event_logging && Universe::heap_event_stub_in_C1_LIR) {
+  if (InstrumentHeapEvents) {
     assert(counter->is_cpu_register(), "");
     assert(max_events->is_constant(), "");
     
@@ -970,7 +970,7 @@ void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
     Label not_equal;
     __ jcc(Assembler::Condition::notEqual, not_equal);
     __ pushaq();
-    if (Universe::enable_heap_graph_verify) {
+    if (CheckHeapEventGraphWithHeap) {
       __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
     } else {
       __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
@@ -1071,7 +1071,7 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
         Register from = src->as_register();
         //TODO: Storing integer to a long address for CopyArrayLength, CopyArrayOffset, and NewObject size
         //Fix this by treating HeapEvent::src (and dst) as long or int based on HeapEventType
-        if (Universe::enable_heap_graph_verify) {
+        if (CheckHeapEventGraphWithHeap) {
           __ movq(as_Address_lo(to_addr), 0);
         }
 

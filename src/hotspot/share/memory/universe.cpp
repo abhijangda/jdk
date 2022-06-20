@@ -91,12 +91,10 @@
 #include "oops/instanceMirrorKlass.inline.hpp"
 
 pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
-Universe::HeapEvent Universe::heap_events[128+Universe::max_heap_events] = {};
-uint64_t* Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
-bool Universe::enable_heap_event_logging = true;
-bool Universe::enable_heap_graph_verify = true && Universe::enable_heap_event_logging;
-bool Universe::heap_event_stub_in_C1_LIR = true && Universe::enable_heap_event_logging;
-bool Universe::enable_heap_event_logging_in_interpreter = true && Universe::enable_heap_event_logging;
+Universe::HeapEvent* Universe::heap_events = nullptr;
+uint64_t* Universe::heap_event_counter_ptr = nullptr;
+bool Universe::heap_event_stub_in_C1_LIR = true && InstrumentHeapEvents;
+bool Universe::enable_heap_event_logging_in_interpreter = true && InstrumentHeapEvents;
 bool Universe::enable_transfer_events = false ;
 sem_t Universe::cuda_semaphore;
 
@@ -195,23 +193,14 @@ class MmapHeap {
     return ((sz + PAGE_SIZE - 1)/PAGE_SIZE)*PAGE_SIZE;
   }
 
-  void* _mmap(size_t sz) {
-    void* ptr = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-    assert(ptr != NULL, "");
-    if (ptr == MAP_FAILED) {
-      perror("mmap failed");
-    }
-    
-    return ptr;
-  }
   void* malloc(size_t sz) {
     if (sz >= LARGE_OBJ_SIZE) {
       printf("sz %ld multiple_of_page_size(sz) %ld\n", sz, multiple_of_page_size(sz));
       sz = multiple_of_page_size(sz);
-      return _mmap(sz);
+      return Universe::mmap(sz);
     }
     if (alloc_ptr == NULL) {
-      alloc_ptr = (uint8_t*)_mmap(ALLOC_SIZE);
+      alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
     }
     
     sz = adjust_size(sz);
@@ -249,7 +238,7 @@ class MmapHeap {
       return ptr;
     }
     
-    alloc_ptr = (uint8_t*)_mmap(ALLOC_SIZE);
+    alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
     curr_ptr = sz;
     if (curr_ptr > ALLOC_SIZE) {
       printf("%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
@@ -552,7 +541,7 @@ class AllObjects : public ObjectClosure {
                   num_not_found++;
                 }
                 if (found && field_src != (uint64_t)(void*)val) {
-                  // sorted_field_set_events[idx_in_field_set_events].id != Universe::checking*Universe::max_heap_events - 1) {
+                  // sorted_field_set_events[idx_in_field_set_events].id != Universe::checking*MaxHeapEvents - 1) {
                   //Ignore the last event because elem value might not have been updated to address.src
 
                   num_src_not_correct++;
@@ -695,43 +684,14 @@ class AllObjects : public ObjectClosure {
     }
 };
 
-
-int HeapEventComparer(Universe::HeapEvent* a, Universe::HeapEvent* b) {
-    if (a->address.dst < b->address.dst) return -1;
-    if (a->address.dst == b->address.dst) return 0;
-    return 1;
-}
-
-int HeapEventComparerV(const void* a, const void* b) {
-    return HeapEventComparer((Universe::HeapEvent*)a, (Universe::HeapEvent*)b);
-}
-
-int HeapEventComparerWithID(const void* a, const void* b) {
-  Universe::HeapEvent* event1 = (Universe::HeapEvent*)a;
-  Universe::HeapEvent* event2 = (Universe::HeapEvent*)b;
-
-  if (event1->id < event2->id) return -1;
-  if (event1->id == event2->id) return 0;
-  return 1;
-}
-
-pthread_spinlock_t spin_lock_heap_event;
-
-__attribute__((constructor))
-void init_lock () {
-  if ( pthread_spin_init ( &spin_lock_heap_event, 0 ) != 0 ) {
-    exit ( 1 );
-  }
-}
-
 void Universe::transfer_events_to_gpu() {
   printf("Transferring Events to GPU *Universe::heap_event_counter_ptr %ld\n", *Universe::heap_event_counter_ptr);
-  sem_post(&cuda_semaphore);
+  // sem_post(&cuda_semaphore);
   *Universe::heap_event_counter_ptr = 0;
 }
 
 void Universe::verify_heap_graph_for_copy_array() {
-  if ((*Universe::heap_event_counter_ptr) + 3 > Universe::max_heap_events) {
+  if ((*Universe::heap_event_counter_ptr) + 3 > MaxHeapEvents) {
     Universe::verify_heap_graph();
   }
 }
@@ -749,7 +709,7 @@ void Universe::print_heap_event_counter() {
 }
 
 void Universe::verify_heap_graph() {
-  if (*Universe::heap_event_counter_ptr < Universe::max_heap_events)
+  if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
     return;
 
   size_t heap_events_size = *Universe::heap_event_counter_ptr;
@@ -757,7 +717,7 @@ void Universe::verify_heap_graph() {
   if (Universe::enable_transfer_events)
     Universe::transfer_events_to_gpu();
 
-  if (!Universe::enable_heap_graph_verify)
+  if (!CheckHeapEventGraphWithHeap)
     return;
   
   printf("heap_events_size %ld\n", heap_events_size);
@@ -889,6 +849,47 @@ void Universe::verify_heap_graph() {
   printf("valid? %d num_heap_events %ld {Object: %ld, FieldSet: %ld} num_found %d {NewObject: %d, FieldSet:%d} num_not_found %d num_src_not_correct %d\n", (int)all_objects.valid, num_objects + num_fields, 
   num_objects, num_fields, all_objects.num_found, all_objects.num_oops, all_objects.num_fields, all_objects.num_not_found, all_objects.num_src_not_correct);
 }
+
+#include <cuda.h>
+#include <pthread.h>
+#include <semaphore.h>
+
+extern int* h_heap_events;
+extern CUdeviceptr d_heap_events;
+
+#define checkCudaErrors(err)  __checkCudaErrors ((err), __FILE__, __LINE__)
+
+void __checkCudaErrors( CUresult err, const char *file, const int line )
+{
+  if( CUDA_SUCCESS != err) {
+    fprintf(stderr,
+            "CUDA Driver API error = %04d from file <%s>, line %i.\n",
+            err, file, line );
+    exit(-1);
+  }
+}
+
+void* cumemcpy_func(void* arg)
+{
+  CUdevice   device;
+  CUcontext  context;
+  CUstream   stream;
+
+  checkCudaErrors(cuInit(0));
+  checkCudaErrors(cuDeviceGet(&device, 0));
+  checkCudaErrors(cuCtxCreate(&context, 0, device));
+  checkCudaErrors(cuStreamCreate(&stream, CU_STREAM_NON_BLOCKING));
+  checkCudaErrors(cuMemAlloc(&d_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent)));
+  checkCudaErrors(cuMemAllocHost((void**)&h_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent)));
+
+  while(true) {
+    sem_wait(&Universe::cuda_semaphore);
+
+    checkCudaErrors(cuMemcpyHtoDAsync(d_heap_events, h_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent), stream));
+  }
+}
+
+pthread_t cumemcpy_tid;
 
 // Known objects
 Klass* Universe::_typeArrayKlassObjs[T_LONG+1]        = { NULL /*, NULL...*/ };
@@ -1137,6 +1138,16 @@ void Universe::genesis(TRAPS) {
         _the_empty_klass_array          = MetadataFactory::new_array<Klass*>(null_cld, 0, CHECK);
         _the_empty_instance_klass_array = MetadataFactory::new_array<InstanceKlass*>(null_cld, 0, CHECK);
       }
+    }
+
+    if (InstrumentHeapEvents) {
+      Universe::heap_events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents*2)*sizeof(Universe::HeapEvent));
+      Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
+        
+      sem_init(&Universe::cuda_semaphore, 0, 0);
+      int error = pthread_create(&cumemcpy_tid, NULL, &cumemcpy_func, NULL);
+      if (error != 0)
+        printf("CUDA Thread can't be created : [%s]\n", strerror(error));
     }
 
     vmSymbols::initialize();

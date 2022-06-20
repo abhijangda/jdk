@@ -161,7 +161,7 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
 
   bool reference_type = (is_reference_type(value.type()) ||  is_reference_type(access.type()));
 
-  if (Universe::heap_event_stub_in_C1_LIR && Universe::enable_heap_event_logging && reference_type) {
+  if (Universe::heap_event_stub_in_C1_LIR && InstrumentHeapEvents && reference_type) {
     gen->append_heap_event(Universe::FieldSet, access.resolved_addr(), value);
   }
 

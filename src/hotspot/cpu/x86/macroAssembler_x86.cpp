@@ -4663,7 +4663,7 @@ void unlock_heap_event()
 
 void MacroAssembler::gen_lock_heap_event_mutex()
 {
-  if (!Universe::enable_heap_graph_verify)
+  if (!CheckHeapEventGraphWithHeap)
     return;
   pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, lock_heap_event)));
@@ -4675,7 +4675,7 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
   //TODO: Do not push scratch registers
   //REGISTER_DECLARATION(Register, rscratch1, r10);  // volatile
   //REGISTER_DECLARATION(Register, rscratch2, r11);  // volatile
-  if (!Universe::enable_heap_graph_verify)
+  if (!CheckHeapEventGraphWithHeap)
     return;
   pushaq();
   call(RuntimeAddress(CAST_FROM_FN_PTR(address, unlock_heap_event)));
@@ -4686,7 +4686,7 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
 void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, RegisterOrAddress dst_or_new_obj, RegisterOrConstant src_or_obj_size, 
                                        Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, bool preserve_flags)
 {
-  if (!Universe::enable_heap_event_logging) return;
+  if (!InstrumentHeapEvents) return;
   if (src_or_obj_size.is_register())
     assert(src_or_obj_size.as_register() != temp1 && src_or_obj_size.as_register() != temp2, "");
   if (dst_or_new_obj.is_address()) {
@@ -4723,14 +4723,16 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     leaq(temp3, dst_or_new_obj.as_address());
     movq(Address(temp1, 16), temp3);
   }
-  subq(temp2, Universe::max_heap_events*sizeof(Universe::HeapEvent));
+  subq(temp2, MaxHeapEvents*sizeof(Universe::HeapEvent));
   Label not_equal;
   jcc(Assembler::Condition::notEqual, not_equal);
   pushaq();
-  if (Universe::enable_transfer_events)
-    call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-  else
+  
+  if (CheckHeapEventGraphWithHeap)
     call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+  else 
+    call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    
   popaq();
   bind(not_equal);
   
@@ -4751,7 +4753,7 @@ void MacroAssembler::append_copyarray_event(Register dst_array, Register src_arr
                                             Register tmp2, bool preserve_tmp2, 
                                             Register tmp3, bool preserve_tmp3, 
                                             bool preserve_flags) {
-  if (!Universe::enable_heap_event_logging) return;
+  if (!InstrumentHeapEvents) return;
   
   if (preserve_tmp1)
     push(tmp1);
@@ -4769,7 +4771,7 @@ void MacroAssembler::append_copyarray_event(Register dst_array, Register src_arr
   mov64(tmp1, (uint64_t)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type, 0);
   movq(tmp3, as_Address(heap_event_counter_addr));
   movq(tmp2, tmp3);
-  subq(tmp2, Universe::max_heap_events - 3);
+  subq(tmp2, MaxHeapEvents - 3);
   Label less_equal;
   jcc(Assembler::Condition::lessEqual, less_equal);
   pushaq();
@@ -4802,7 +4804,7 @@ void MacroAssembler::append_copyarray_event(Register dst_array, Register src_arr
   movq(Address(tmp2, i + 8), count);
   movq(Address(tmp2, i + 16), count);
 
-  subq(tmp3, Universe::max_heap_events);
+  subq(tmp3, MaxHeapEvents);
   Label not_equal;
   jcc(Assembler::Condition::notZero, not_equal);
   pushaq();

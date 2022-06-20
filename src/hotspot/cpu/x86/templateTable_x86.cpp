@@ -3984,7 +3984,7 @@ void TemplateTable::_new() {
 #endif // _LP64
 
   if (UseTLAB) {
-    if (Universe::enable_heap_event_logging) {
+    if (InstrumentHeapEvents) {
       __ movq(r11, rdx); //rdx is instance size in bits
       __ shrq(r11, 3);
     }
@@ -4003,7 +4003,7 @@ void TemplateTable::_new() {
     // Allocation in the shared Eden, if allowed.
     //
     // rdx: instance size in bytes
-    if (Universe::enable_heap_event_logging) {
+    if (InstrumentHeapEvents) {
       __ movq(r11, rdx);
       __ shrq(r11, 3); //rdx is instance size in bits
     }

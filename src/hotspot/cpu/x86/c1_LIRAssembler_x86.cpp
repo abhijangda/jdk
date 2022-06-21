@@ -968,7 +968,7 @@ void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
     Register reg = counter->as_register_lo();
     __ subq(reg, max_events->as_jlong());
     Label not_equal;
-    __ jcc(Assembler::Condition::notEqual, not_equal);
+    __ jcc(Assembler::Condition::below, not_equal);
     __ pushaq();
     if (CheckHeapEventGraphWithHeap) {
       __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));

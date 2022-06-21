@@ -2054,11 +2054,14 @@ const intx ObjectAlignmentInBytes = 8;
   product(uint64_t, MaxHeapEvents, 1L << 24,                                \
                "Max Heap Events within each batch of transfer")             \
                                                                             \
-  product(bool, InstrumentHeapEvents, true,                                 \
+  product(bool, InstrumentHeapEvents, false,                                 \
                "Instrument heap events")                                    \
                                                                             \
-  product(bool, CheckHeapEventGraphWithHeap, true,                          \
+  product(bool, CheckHeapEventGraphWithHeap, false,                          \
                "Max Heap Events within each batch of transfer")             \
+                                                                            \
+  product(bool, OffloadGCToGPU, false,                                       \
+                "Transfer heap events to GPU and run GC on GPU")            \
 
 // end of RUNTIME_FLAGS
 

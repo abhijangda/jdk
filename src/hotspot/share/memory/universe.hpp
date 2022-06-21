@@ -251,7 +251,7 @@ class Universe: AllStatic {
     // if (event.heap_event_type == 0) {
     //   printf("new object at %ld\n");
     // }
-    if (*Universe::heap_event_counter_ptr == MaxHeapEvents) {
+    if (*Universe::heap_event_counter_ptr >= MaxHeapEvents) {
       if (CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
       else
@@ -278,7 +278,7 @@ class Universe: AllStatic {
     // if (event.heap_event_type == 0) {
     //   printf("new object at %ld\n");
     // }
-    if (*Universe::heap_event_counter_ptr == MaxHeapEvents) {
+    if (*Universe::heap_event_counter_ptr >= MaxHeapEvents) {
       if (CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
       else

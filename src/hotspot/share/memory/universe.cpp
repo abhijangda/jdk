@@ -95,7 +95,7 @@ Universe::HeapEvent* Universe::heap_events = nullptr;
 uint64_t* Universe::heap_event_counter_ptr = nullptr;
 bool Universe::heap_event_stub_in_C1_LIR = true && InstrumentHeapEvents;
 bool Universe::enable_heap_event_logging_in_interpreter = true && InstrumentHeapEvents;
-bool Universe::enable_transfer_events = false ;
+bool Universe::enable_transfer_events = false;
 sem_t Universe::cuda_semaphore;
 
 #include<vector>
@@ -113,6 +113,16 @@ sem_t Universe::cuda_semaphore;
 #include <string.h>
 #define gettid() syscall(SYS_gettid)
 #include "runtime/interfaceSupport.inline.hpp"
+
+pthread_spinlock_t spin_lock_heap_event;
+
+__attribute__((constructor))
+void init_lock () {
+  if ( pthread_spin_init ( &spin_lock_heap_event, 0 ) != 0 ) {
+    exit ( 1 );
+  }
+}
+
 
 class MmapHeap {
   //PAGE_SIZE is 4096
@@ -697,11 +707,13 @@ void Universe::verify_heap_graph_for_copy_array() {
 }
 
 void Universe::lock_mutex_heap_event() {
-  pthread_mutex_lock(&Universe::mutex_heap_event);
+  // pthread_mutex_lock(&Universe::mutex_heap_event);
+  pthread_spin_lock(&spin_lock_heap_event);
 }
 
 void Universe::unlock_mutex_heap_event() {
-  pthread_mutex_unlock(&Universe::mutex_heap_event);
+  // pthread_mutex_unlock(&Universe::mutex_heap_event);
+  pthread_spin_unlock(&spin_lock_heap_event);
 }
 
 void Universe::print_heap_event_counter() {

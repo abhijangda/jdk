@@ -1150,10 +1150,9 @@ void TemplateTable::aastore() {
   __ movptr(rax, at_tos());
   __ movl(rcx, at_tos_p1()); // index
   // Now store using the appropriate barrier
-  if (Universe::enable_heap_event_logging_in_interpreter) {
-    __ append_fieldset_event(element_address, rax, r11, false, r10, false, false); 
-  }
+  __ append_fieldset_event(element_address, rax, r11, false, r10, false, false); 
   do_oop_store(_masm, element_address, rax, IS_ARRAY);
+
   __ jmp(done);
 
   // Have a NULL in rax, rdx=array, ecx=index.  Store NULL at ary[idx]
@@ -1161,9 +1160,7 @@ void TemplateTable::aastore() {
   __ profile_null_seen(rbx);
 
   // Store a NULL
-  if (Universe::enable_heap_event_logging_in_interpreter) {
-    __ append_fieldset_event(element_address, RegisterOrConstant((intptr_t)0), false);
-  }
+  __ append_fieldset_event(element_address, RegisterOrConstant((intptr_t)0), false);
   do_oop_store(_masm, element_address, noreg, IS_ARRAY);
 
   // Pop stack arguments
@@ -3139,8 +3136,7 @@ void TemplateTable::putfield_or_static_helper(int byte_no, bool is_static, Rewri
   {
     __ pop(atos);
     if (!is_static) pop_and_check_object(obj);
-    if (Universe::enable_heap_event_logging_in_interpreter)
-      __ append_fieldset_event(field, rax, r11, false, r10, false, true);
+    __ append_fieldset_event(field, rax, r11, false, r10, false, true);
     // Store into the field
     do_oop_store(_masm, field, rax);
     if (!is_static && rc == may_rewrite) {
@@ -3378,9 +3374,7 @@ void TemplateTable::fast_storefield_helper(Address field, Register rax) {
   // access field
   switch (bytecode()) {
   case Bytecodes::_fast_aputfield:
-    if (Universe::enable_heap_event_logging_in_interpreter) {
-      __ append_fieldset_event(field, rax, r11, false, r10, false, false);
-    }
+    __ append_fieldset_event(field, rax, r11, false, r10, false, false);
     do_oop_store(_masm, field, rax);
     break;
   case Bytecodes::_fast_lputfield:
@@ -3989,9 +3983,7 @@ void TemplateTable::_new() {
       __ shrq(r11, 3);
     }
     __ tlab_allocate(thread, rax, rdx, 0, rcx, rbx, slow_case);
-    if (Universe::enable_heap_event_logging_in_interpreter) {
-      __ append_newobj_event(rax, r11, r12, true, r10, true, true);
-    }
+    __ append_newobj_event(rax, r11, r12, true, r10, true, true);
     if (ZeroTLAB) {
       // the fields have been already cleared
       __ jmp(initialize_header);
@@ -4008,9 +4000,7 @@ void TemplateTable::_new() {
       __ shrq(r11, 3); //rdx is instance size in bits
     }
     __ eden_allocate(thread, rax, rdx, 0, rbx, slow_case);
-    if (Universe::enable_heap_event_logging_in_interpreter) {
-      __ append_newobj_event(rax, r11, r12, true, r10, true, true);
-    }
+    __ append_newobj_event(rax, r11, r12, true, r10, true, true);
   }
 
   // If UseTLAB or allow_shared_alloc are true, the object is created above and

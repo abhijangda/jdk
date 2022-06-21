@@ -93,8 +93,6 @@
 pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
 Universe::HeapEvent* Universe::heap_events = nullptr;
 uint64_t* Universe::heap_event_counter_ptr = nullptr;
-bool Universe::heap_event_stub_in_C1_LIR = true && InstrumentHeapEvents;
-bool Universe::enable_heap_event_logging_in_interpreter = true && InstrumentHeapEvents;
 bool Universe::enable_transfer_events = false;
 sem_t Universe::cuda_semaphore;
 

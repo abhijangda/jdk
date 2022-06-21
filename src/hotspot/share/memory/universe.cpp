@@ -410,13 +410,21 @@ static char* get_oop_klass_name(oop obj_, char buf[])
   return buf;
 }
 
-BasicType signature_to_field_type(char* signature) {
+BasicType signature_to_type(char* signature) {
   if (signature[0] == 'L')
     return T_OBJECT;
   if (signature[0] == '[')
     return T_ARRAY;
   
   return T_BOOLEAN; //Does not matter for this purpose yet.
+}
+
+bool is_field_of_reference_type(InstanceKlass* ik, int field) {
+  char signature[1024];
+  ik->field_signature(field)->as_C_string(signature, 1024);
+
+  return signature_to_type(signature) == T_OBJECT || 
+         signature_to_type(signature) == T_ARRAY;
 }
 
 int InstanceKlassPointerComparer(const void* a, const void* b) {
@@ -430,8 +438,13 @@ int InstanceKlassPointerComparer(const void* a, const void* b) {
 class AllObjects : public ObjectClosure {
   public:
     const bool print_not_found = false;
+    const void* INVALID_PTR = (void*)0xbaadbabebaadbabe;
+    const oop INVALID_OOP = oop((oopDesc*)INVALID_PTR);
+    bool _check_objects;
+    bool _check_object_fields;
+    bool _check_array_elements;
+    bool _check_static_fields;
     bool valid;
-    bool foundPuppy;
     int num_found, num_not_found;
     int num_src_not_correct;
     int num_statics_checked;
@@ -439,208 +452,196 @@ class AllObjects : public ObjectClosure {
     int num_fields;
     unordered_set<HeapWord*> static_fields_checked;
 
-    AllObjects() : valid(true), foundPuppy(false), num_found(0), num_not_found(0), num_src_not_correct(0), num_statics_checked(0), num_oops(0), num_fields(0) {}
+    AllObjects(bool check_objects, bool check_object_fields, bool check_array_elements, bool check_static_fields) : 
+      _check_objects(check_objects), _check_object_fields(check_object_fields), _check_array_elements(check_array_elements),  _check_static_fields(check_static_fields), valid(true), num_found(0), num_not_found(0), num_src_not_correct(0), num_statics_checked(0), num_oops(0), num_fields(0) {
+      if (_check_object_fields) _check_objects = true;
+      if (_check_array_elements) _check_objects = true;
+    }
     
     virtual void do_object(oop obj) {
-      if (((uint64_t)(void*)obj) == 0xbaadbabebaadbabe)
-        return;
+      if (obj == INVALID_OOP) return;
       Klass* klass = obj->klass_or_null();
-      if (klass && ((uint64_t)(void*)klass) != 0xbaadbabebaadbabe && 
-          klass->is_klass()) {
-
-        char buf[1024];
-        obj->klass()->name()->as_C_string(buf, 1024);
-
-        num_oops++;
-        //has_heap_event(sorted_new_object_events, (uint64_t)(void*)obj, 0, sorted_new_object_events_size - 1);
+      if (klass && klass != INVALID_PTR && klass->is_klass()) {
         auto oop_obj_node_pair = ObjectNode::oop_to_obj_node.find(obj);
-        if (oop_obj_node_pair != ObjectNode::oop_to_obj_node.end()) {
-          num_found++;
-        } else {
-          num_not_found++;
-          if (print_not_found) { 
-            printf("%p not found for %s: ik->id() %d\n", (void*)obj, buf, klass->id());
-            const char* java_lang_String_str = "java/lang/String";
-            if (strstr(buf, java_lang_String_str) && strlen(buf) == strlen(java_lang_String_str)) {
-              int len;
-              char* str = java_lang_String::as_utf8_string(obj, len);
-              printf("str %s\n", str);
-            }
-          }
-        }
-
-        if (oop_obj_node_pair != ObjectNode::oop_to_obj_node.end()) {
-          if (klass->is_instance_klass()) {
-            if (obj->size() != oop_obj_node_pair->second.size()) {
-              printf("%s: obj->size() %ld != %ld\n", buf, obj->size(), oop_obj_node_pair->second.size());
-              num_src_not_correct++;
-            }
-          } else if (klass->id() == ObjArrayKlassID) {
-            objArrayOop array = (objArrayOop)obj;
-            if ((size_t)array->length() != oop_obj_node_pair->second.size()) {
-              printf("%s: array->length() %d != %ld\n", buf, array->length(), oop_obj_node_pair->second.size());
-              num_src_not_correct++;
-            }
-          }
-        }
-        if (oop_obj_node_pair == ObjectNode::oop_to_obj_node.end()) return;
-        const ObjectNode& obj_node = oop_obj_node_pair->second;
-        if(klass->is_instance_klass()) {
-          InstanceKlass* ik = (InstanceKlass*)klass;
-          
-          if (ik->id() == InstanceMirrorKlassID) {
-            oop ikoop = ik->java_mirror();
-            auto ikoop_iter = ObjectNode::oop_to_obj_node.find(ikoop);
-            InstanceMirrorKlass* imk = (InstanceMirrorKlass*)ikoop->klass();
-            HeapWord* obj_static_start = imk->start_of_static_fields(obj);
-            HeapWord* p = obj_static_start;
-            int num_statics = java_lang_Class::static_oop_field_count(obj);
-            HeapWord* end = p + num_statics;
-            
-            if (num_statics > 0  && num_statics < 100 && static_fields_checked.count(obj_static_start) == 0) {
-              for (;p < end; p++) {
-                num_statics_checked++;
-                
-                uint64_t fd_address = (uint64_t)p;
-                uint64_t val = *((uint64_t*)fd_address);
-                auto field_edge = obj_node.fields().find((void*)fd_address); 
-                bool found = field_edge != obj_node.fields().end();
-                
-                if (found) {
-                  num_found++;
-                } else {
-                  if(val != 0) num_not_found++;
-                }
+        //Check obj is in HeapEventGraph and see if the size in HeapEventGraph matches with 
+        //object size
+        if (_check_objects) {
+          if (oop_obj_node_pair != ObjectNode::oop_to_obj_node.end()) {
+            num_found++;
+            if (klass->is_instance_klass()) {
+              if (obj->size() != oop_obj_node_pair->second.size()) {
+                char class_name[1024];
+                get_oop_klass_name(obj, class_name);
+                printf("Size mismatch for obj '%p' of class '%s': '%ld' != '%ld'\n", (oopDesc*)obj, class_name, obj->size(), oop_obj_node_pair->second.size());
+                num_src_not_correct++;
               }
-              
-              static_fields_checked.insert(obj_static_start);
+            } else if (klass->id() == ObjArrayKlassID) {
+              objArrayOop array = (objArrayOop)obj;
+              if ((size_t)array->length() != oop_obj_node_pair->second.size()) {
+                printf("Array length mismatch for '%p': %d != %ld\n", (oopDesc*)obj, array->length(), oop_obj_node_pair->second.size());
+                num_src_not_correct++;
+              }
+            }
+          } else {
+            num_not_found++;
+            if (num_not_found < 100) {
+              char class_name[1024];
+              get_oop_klass_name(obj, class_name);
+              printf("Not found: object '%p' with class '%s'\n", (void*)obj, class_name);
             }
           }
+        }
 
+        if (oop_obj_node_pair == ObjectNode::oop_to_obj_node.end()) return;
+        
+        const ObjectNode& obj_node = oop_obj_node_pair->second;
+
+        //If this oop is a MirrorOop of a klass then check static fields
+        if (_check_static_fields && obj->klass()->id() == InstanceMirrorKlassID) {          
+          oop ikoop                  = ((InstanceKlass*)obj->klass())->java_mirror();
+          auto ikoop_iter            = ObjectNode::oop_to_obj_node.find(ikoop);
+          InstanceMirrorKlass* imk   = (InstanceMirrorKlass*)ikoop->klass();
+          HeapWord* obj_static_start = imk->start_of_static_fields(obj);
+          HeapWord* tmp              = obj_static_start;
+          int num_statics            = java_lang_Class::static_oop_field_count(obj);
+          HeapWord* end              = obj_static_start + num_statics;
+          
+          if (num_statics > 0  && num_statics < 100 && static_fields_checked.count(obj_static_start) == 0) {
+            for (; tmp < end; tmp++) {              
+              uint64_t val = *((uint64_t*)tmp);
+              auto field_edge = obj_node.fields().find((void*)tmp); 
+              bool found = field_edge != obj_node.fields().end();
+              
+              if (found) {
+                num_found++;
+              } else {
+                if(val != 0) 
+                  num_not_found++;
+              }
+            }
+            
+            static_fields_checked.insert(obj_static_start);
+          }
+        }
+
+        if(_check_object_fields && klass->is_instance_klass()) {
+          InstanceKlass* ik = (InstanceKlass*)klass;
           do {
             char buf2[1024];
             char buf3[1024];
 
             for(int f = 0; f < ik->java_fields_count(); f++) {
+              //Only go through non static and reference fields here.
               if (AccessFlags(ik->field_access_flags(f)).is_static()) continue;
-              Symbol* name = ik->field_name(f);
-              Symbol* signature = ik->field_signature(f);
               
-              if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
-                  signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) { //TODO: One function to check is_reference
-                uint64_t fd_address;
-                oop val;
-                fd_address = ((uint64_t)(void*)obj) + ik->field_offset(f);
-                val = obj->obj_field(ik->field_offset(f));
-                num_fields++;
-                auto field_edge = obj_node.fields().find((void*)fd_address); 
+              if (is_field_of_reference_type(ik, f)) {
+                void* field_addr = (void*)(((uint64_t)(void*)obj) + ik->field_offset(f));
+                oop actual_val = obj->obj_field(ik->field_offset(f));
+                auto field_edge = obj_node.fields().find(field_addr); 
                 bool found = field_edge != obj_node.fields().end();
-                get_oop_klass_name(obj, buf3);
-                uint64_t field_src = 0;
 
                 if (found) {
-                  field_src = (uint64_t)(oopDesc*)field_edge->second.val();
                   num_found++;
-                }
-
-                if (!found && !(val == 0 || ((uint64_t)(void*)val) == 0xbaadbabebaadbabe))
-                {
-                  if (num_not_found < 100) { 
-                    printf("468: Not found: (%p) %s.%s:%s : 0x%lx -> %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), fd_address, (void*)val);
-                  }
-                  num_not_found++;
-                }
-                if (found && field_src != (uint64_t)(void*)val) {
-                  // sorted_field_set_events[idx_in_field_set_events].id != Universe::checking*MaxHeapEvents - 1) {
-                  //Ignore the last event because elem value might not have been updated to address.src
-
-                  num_src_not_correct++;
-                  if (num_src_not_correct < 100) {
-                    printf("479: (%p) %s.%s:%s : [0x%lx] 0x%lx != %p\n", (void*)obj, buf3, name->as_C_string(buf, 1024), signature->as_C_string(buf2,1024), fd_address, field_src, (void*)val);
-                    if (strstr(buf3, "MemberName")) {
-                      if (strstr(buf, "name")) {
-                        int len;
-                        char* str = java_lang_String::as_utf8_string(val, len);
-                        printf("str %s\n", str);
-                      }
+                  if (found && field_edge->second.val() != actual_val) {
+                    num_src_not_correct++;
+                    if (num_src_not_correct < 100) {
+                      char field_name[1024];
+                      ik->field_name(f)->as_C_string(field_name, 1024);
+                      char class_name[1024];
+                      get_oop_klass_name(obj, class_name);
+                      printf("Field '%s' of oop '%p' of class '%s' not correct '%p' != '%p'\n", 
+                             field_name, (oopDesc*)obj, class_name, (oopDesc*)field_edge->second.val(), (oopDesc*)actual_val);
                     }
+                  }
+                } else {
+                  if (actual_val != NULL && actual_val != INVALID_OOP) {
+                    char field_name[1024];
+                    ik->field_name(f)->as_C_string(field_name, 1024);
+                    char class_name[1024];
+                    get_oop_klass_name(obj, class_name);
+                    if (num_not_found < 100) { 
+                      printf("Field '%s' not found in oop '%p' of class '%s'\n", field_name, (oopDesc*)obj, class_name);
+                    }
+                    num_not_found++;
                   }
                 }
               }
             }
             
-            oop ikoop = ik->java_mirror();
-            InstanceMirrorKlass* imk = (InstanceMirrorKlass*)ikoop->klass();
-            auto ikoop_iter = ObjectNode::oop_to_obj_node.find(ikoop);
+            if (_check_static_fields) {
+              oop ikoop = ik->java_mirror();
+              InstanceMirrorKlass* imk = (InstanceMirrorKlass*)ikoop->klass();
+              auto ikoop_iter = ObjectNode::oop_to_obj_node.find(ikoop);
 
-            if (java_lang_Class::static_oop_field_count(ikoop) > 0) {
-              HeapWord* static_start = imk->start_of_static_fields(ikoop);
-              HeapWord* p = static_start;
-              if (static_fields_checked.count(static_start) == 0) {
-                int static_field_to_field_index[ik->java_fields_count()];
-                int static_field_number = 0;
-                for(int f = 0; f < ik->java_fields_count(); f++) {
-                  if (AccessFlags(ik->field_access_flags(f)).is_static()) {
-                    Symbol* name = ik->field_name(f);
-                    Symbol* signature = ik->field_signature(f);
-                    char buf2[1024];
-
-                    if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
-                        signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
-                      static_field_to_field_index[static_field_number++] = f;
-                    }
-                  }
-                }
-
-                HeapWord* end = p + java_lang_Class::static_oop_field_count(ikoop);
-                if (static_field_number != java_lang_Class::static_oop_field_count(ikoop)) {
-                  printf("not eq static_field_number %d %d\n", static_field_number, java_lang_Class::static_oop_field_count(ikoop));
-                }
-                
-                for (int i = 0; p < end; p++, i++) {
-                  int f = static_field_to_field_index[i];
-                  if (!AccessFlags(ik->field_access_flags(f)).is_static()) printf("not static %d\n", i);
-                  
-                  num_statics_checked++;
-                  uint64_t fd_address = (uint64_t)p;
-                  uint64_t val = *((uint64_t*)fd_address);
-                  
-                  bool found = ikoop_iter != ObjectNode::oop_to_obj_node.end();
-                  if (found) {
-                    auto field_edge = ikoop_iter->second.fields().find((void*)fd_address); 
-                    found = field_edge != ikoop_iter->second.fields().end();
-                  }
-                  
-                  if (found) {
-                    // field_src = (uint64_t)field_edge->second.val();
-                    num_found++;
-                  } else {
-                    if(val != 0) num_not_found++;
-                  }
-
-                  num_fields++;
-
-                  if (found) {num_found++;} else if (val != 0)
-                  {
-                    if (num_not_found < 100) { 
+              if (java_lang_Class::static_oop_field_count(ikoop) > 0) {
+                HeapWord* static_start = imk->start_of_static_fields(ikoop);
+                HeapWord* p = static_start;
+                if (static_fields_checked.count(static_start) == 0) {
+                  int static_field_to_field_index[ik->java_fields_count()];
+                  int static_field_number = 0;
+                  for(int f = 0; f < ik->java_fields_count(); f++) {
+                    if (AccessFlags(ik->field_access_flags(f)).is_static()) {
                       Symbol* name = ik->field_name(f);
                       Symbol* signature = ik->field_signature(f);
                       char buf2[1024];
-                      char buf[1024];
-                      char buf3[1024];
-                      
-                      if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
-                          signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
-                        printf("%p: %s.%s : %s 0x%lx\n", p, ik->name()->as_C_string(buf3, 1024), name->as_C_string(buf, 1024), buf2, val);
+
+                      if (signature_to_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
+                          signature_to_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
+                        static_field_to_field_index[static_field_number++] = f;
                       }
                     }
-                    num_not_found++;
                   }
 
-                  //TODO: Lazy.... Static value will probably be right.
-                }
+                  HeapWord* end = p + java_lang_Class::static_oop_field_count(ikoop);
+                  if (static_field_number != java_lang_Class::static_oop_field_count(ikoop)) {
+                    printf("not eq static_field_number %d %d\n", static_field_number, java_lang_Class::static_oop_field_count(ikoop));
+                  }
+                  
+                  for (int i = 0; p < end; p++, i++) {
+                    int f = static_field_to_field_index[i];
+                    if (!AccessFlags(ik->field_access_flags(f)).is_static()) printf("not static %d\n", i);
+                    
+                    num_statics_checked++;
+                    uint64_t fd_address = (uint64_t)p;
+                    uint64_t val = *((uint64_t*)fd_address);
+                    
+                    bool found = ikoop_iter != ObjectNode::oop_to_obj_node.end();
+                    if (found) {
+                      auto field_edge = ikoop_iter->second.fields().find((void*)fd_address); 
+                      found = field_edge != ikoop_iter->second.fields().end();
+                    }
+                    
+                    if (found) {
+                      // field_src = (uint64_t)field_edge->second.val();
+                      num_found++;
+                    } else {
+                      if(val != 0) num_not_found++;
+                    }
 
-                static_fields_checked.insert(static_start);
+                    num_fields++;
+
+                    if (found) {num_found++;} else if (val != 0)
+                    {
+                      if (num_not_found < 100) { 
+                        Symbol* name = ik->field_name(f);
+                        Symbol* signature = ik->field_signature(f);
+                        char buf2[1024];
+                        char buf[1024];
+                        char buf3[1024];
+                        
+                        if (signature_to_type(signature->as_C_string(buf2,1024)) == T_OBJECT || 
+                            signature_to_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
+                          printf("%p: %s.%s : %s 0x%lx\n", p, ik->name()->as_C_string(buf3, 1024), name->as_C_string(buf, 1024), buf2, val);
+                        }
+                      }
+                      num_not_found++;
+                    }
+
+                    //TODO: Lazy.... Static value will probably be right.
+                  }
+
+                  static_fields_checked.insert(static_start);
+                }
               }
             }
             ik = ik->superklass();
@@ -771,7 +772,7 @@ void Universe::verify_heap_graph() {
         }
       }
       if (obj == NULL) {
-        printf("field %p\n", field);
+        printf("Obj is NULL %p\n", field);
       } else {
         ObjectNode::oop_to_obj_node[obj].update_or_add_field(FieldEdge((oopDesc*)event.address.src, (void*)field, event.id));
       }
@@ -793,7 +794,7 @@ void Universe::verify_heap_graph() {
             Symbol* name = ik->field_name(f);
             Symbol* signature = ik->field_signature(f);
             
-            if (signature_to_field_type(signature->as_C_string(buf2,1024)) == T_OBJECT || signature_to_field_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
+            if (signature_to_type(signature->as_C_string(buf2,1024)) == T_OBJECT || signature_to_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
               uint64_t dst_obj_field_offset = event.address.dst + ik->field_offset(f);
               uint64_t src_obj_field_offset = event.address.src + ik->field_offset(f);
 
@@ -850,7 +851,7 @@ void Universe::verify_heap_graph() {
     }
   } 
   
-  AllObjects all_objects;
+  AllObjects all_objects(true, true, true, true);
   Universe::heap()->object_iterate(&all_objects);
   
   size_t num_objects = ObjectNode::oop_to_obj_node.size();

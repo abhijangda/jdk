@@ -219,7 +219,6 @@ class Universe: AllStatic {
     uint64_t id;
   //}
   };
-
   static uint64_t *heap_event_counter_ptr;
   static HeapEvent* heap_events;
   static pthread_mutex_t mutex_heap_event;
@@ -259,9 +258,8 @@ class Universe: AllStatic {
     if (CheckHeapEventGraphWithHeap)
       Universe::unlock_mutex_heap_event();
   }
-  
-  static inline void add_heap_event(Universe::HeapEvent event)
-  {  
+
+  static inline void add_heap_event(Universe::HeapEvent event) {  
     if (!InstrumentHeapEvents) return;
     // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
     if (CheckHeapEventGraphWithHeap)
@@ -286,6 +284,7 @@ class Universe: AllStatic {
     if (CheckHeapEventGraphWithHeap)
       Universe::unlock_mutex_heap_event();
   }
+
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();
   static void print_heap_event_counter();

@@ -30,6 +30,7 @@
 #include "gc/shared/gcThreadLocalData.hpp"
 #include "gc/shared/threadLocalAllocBuffer.hpp"
 #include "memory/allocation.hpp"
+#include "memory/universe.hpp"
 #include "oops/oop.hpp"
 #include "oops/oopHandle.hpp"
 #include "runtime/frame.hpp"

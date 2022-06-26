@@ -709,6 +709,73 @@ void Universe::print_heap_event_counter() {
   *Universe::heap_event_counter_ptr = 0; 
 }
 
+void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3) {
+  JavaThread* cur_thread = JavaThread::current();
+  HeapEvent* heap_events = (cur_thread->heap_events) ? cur_thread->heap_events : Universe::heap_events;
+  uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
+  if (!InstrumentHeapEvents) return;
+  // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
+  if (CheckHeapEventGraphWithHeap)
+    Universe::lock_mutex_heap_event();
+  // Universe::heap_event_counter++;
+  // if (event.address.src == 0x0) {
+  //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
+  // }
+  if (*heap_event_counter_ptr + 3 > MaxHeapEvents) {
+    if (CheckHeapEventGraphWithHeap)
+      Universe::verify_heap_graph();
+    else
+      Universe::transfer_events_to_gpu();
+  }
+  uint64_t v = *heap_event_counter_ptr;
+  (&heap_events[1])[v] = event1;
+  (&heap_events[1])[1+v] = event2;
+  (&heap_events[1])[2+v] = event3;
+  *heap_event_counter_ptr = v + 3;
+  // if (event.heap_event_type == 0) {
+  //   printf("new object at %ld\n");
+  // }
+  if (*heap_event_counter_ptr >= MaxHeapEvents) {
+    if (CheckHeapEventGraphWithHeap)
+      Universe::verify_heap_graph();
+    else
+      Universe::transfer_events_to_gpu();
+    
+  }
+  if (CheckHeapEventGraphWithHeap)
+    Universe::unlock_mutex_heap_event();
+}
+
+void Universe::add_heap_event(Universe::HeapEvent event) {
+  if (!InstrumentHeapEvents) return;
+  JavaThread* cur_thread = JavaThread::current();
+  HeapEvent* heap_events = (cur_thread->heap_events) ? cur_thread->heap_events : Universe::heap_events;
+  uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
+  // if (!cur_thread->heap_events) return;
+  // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
+  if (CheckHeapEventGraphWithHeap)
+    Universe::lock_mutex_heap_event();
+  // Universe::heap_event_counter++;
+  // if (event.address.src == 0x0) {
+  //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
+  // }
+  uint64_t v = *heap_event_counter_ptr;
+  (&heap_events[1])[v] = event;
+  *heap_event_counter_ptr = v + 1;
+  // if (event.heap_event_type == 0) {
+  //   printf("new object at %ld\n");
+  // }
+  if (*heap_event_counter_ptr >= MaxHeapEvents) {
+    if (CheckHeapEventGraphWithHeap)
+      Universe::verify_heap_graph();
+    else
+      Universe::transfer_events_to_gpu();
+    
+  }
+  if (CheckHeapEventGraphWithHeap)
+    Universe::unlock_mutex_heap_event();
+}
+
 void Universe::verify_heap_graph() {
   if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
     return;
@@ -1124,7 +1191,7 @@ void Universe::genesis(TRAPS) {
   if (InstrumentHeapEvents) {
     Universe::heap_events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents)*sizeof(Universe::HeapEvent));
     Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
-      
+    printf("Universe::heap_events %p\n", Universe::heap_events);
     sem_init(&Universe::cuda_semaphore, 0, 0);
     int error = pthread_create(&cumemcpy_tid, NULL, &cumemcpy_func, NULL);
     if (error != 0)

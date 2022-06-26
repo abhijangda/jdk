@@ -4725,7 +4725,7 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
   }
   subq(temp2, MaxHeapEvents*sizeof(Universe::HeapEvent));
   Label not_equal;
-  jcc(Assembler::Condition::below, not_equal);
+  jcc(Assembler::Condition::less, not_equal);
   pushaq();
   
   if (CheckHeapEventGraphWithHeap)

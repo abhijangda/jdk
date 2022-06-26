@@ -1912,6 +1912,7 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, 0, T_LONG);
     LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, 8, T_LONG);
     LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 16, T_LONG);
+
     __ store(LIR_OprFact::longConst(Universe::CopyArray), heap_events_addr_type);
     __ leal(new LIR_Address(src_array, 0, T_LONG), tmp);
     __ store(tmp, heap_events_addr_src);
@@ -1922,7 +1923,7 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     __ store(LIR_OprFact::longConst(Universe::CopyArrayOffsets), heap_events_addr_type);
     __ store(src_offset, heap_events_addr_src);
     __ store(dst_offset, heap_events_addr_dst);
-      
+
     __ add(heap_event_counter_addr_reg, LIR_OprFact::longConst(sizeof(Universe::HeapEvent)), heap_event_counter_addr_reg);
     __ store(LIR_OprFact::longConst(Universe::CopyArrayLength), heap_events_addr_type);
     __ store(count, heap_events_addr_src);

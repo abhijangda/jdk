@@ -1075,6 +1075,7 @@ JavaThread::JavaThread() :
 
   _SleepEvent(ParkEvent::Allocate(this))
 {
+  heap_events = Universe::heap_events;
   set_jni_functions(jni_functions());
 
 #if INCLUDE_JVMCI
@@ -1093,7 +1094,6 @@ JavaThread::JavaThread() :
 
   pd_initialize();
   assert(deferred_card_mark().is_empty(), "Default MemRegion ctor");
-  heap_events = Universe::heap_events;
 }
 
 JavaThread::JavaThread(bool is_attaching_via_jni) : JavaThread() {

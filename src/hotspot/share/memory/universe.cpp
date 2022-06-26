@@ -711,7 +711,7 @@ void Universe::print_heap_event_counter() {
 
 void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3) {
   JavaThread* cur_thread = JavaThread::current();
-  HeapEvent* heap_events = (cur_thread->heap_events) ? cur_thread->heap_events : Universe::heap_events;
+  HeapEvent* heap_events = cur_thread->heap_events ? cur_thread->heap_events : Universe::heap_events;
   uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   if (!InstrumentHeapEvents) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
@@ -749,7 +749,8 @@ void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent e
 void Universe::add_heap_event(Universe::HeapEvent event) {
   if (!InstrumentHeapEvents) return;
   JavaThread* cur_thread = JavaThread::current();
-  HeapEvent* heap_events = (cur_thread->heap_events) ? cur_thread->heap_events : Universe::heap_events;
+  // printf("cur_thread %p heap_events %p\n", cur_thread, cur_thread->heap_events);
+  HeapEvent* heap_events = cur_thread->heap_events ? cur_thread->heap_events : Universe::heap_events;
   uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   // if (!cur_thread->heap_events) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
@@ -1191,7 +1192,9 @@ void Universe::genesis(TRAPS) {
   if (InstrumentHeapEvents) {
     Universe::heap_events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents)*sizeof(Universe::HeapEvent));
     Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
-    printf("Universe::heap_events %p\n", Universe::heap_events);
+    JavaThread* cur_thread = JavaThread::current();
+    cur_thread->heap_events = heap_events;
+    printf("Universe::heap_events %p cur_thread %p\n", Universe::heap_events, cur_thread);
     sem_init(&Universe::cuda_semaphore, 0, 0);
     int error = pthread_create(&cumemcpy_tid, NULL, &cumemcpy_func, NULL);
     if (error != 0)

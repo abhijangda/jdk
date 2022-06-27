@@ -1075,7 +1075,8 @@ JavaThread::JavaThread() :
 
   _SleepEvent(ParkEvent::Allocate(this))
 {
-  heap_events = Universe::heap_events;
+  heap_events = &Universe::heap_events[Universe::inc_heap_event()*(128+MaxHeapEvents)];
+  printf("1079: cur_thread %p heap_events %p\n", this, heap_events);
   set_jni_functions(jni_functions());
 
 #if INCLUDE_JVMCI

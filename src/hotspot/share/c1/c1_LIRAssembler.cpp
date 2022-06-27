@@ -588,6 +588,11 @@ void LIR_Assembler::emit_op1(LIR_Op1* op) {
     case lir_transfer_events:
       transfer_events(op->in_opr(), op->result_opr());
       break;
+    
+    case lir_inc_heap_event_cntr:
+      inc_heap_event_cntr(op->in_opr(), op->result_opr());
+      break;
+
       
     default:
       Unimplemented();

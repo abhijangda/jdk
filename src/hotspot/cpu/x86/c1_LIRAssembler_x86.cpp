@@ -982,6 +982,20 @@ void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
   }
 }
 
+void LIR_Assembler::inc_heap_event_cntr(LIR_Opr addr, LIR_Opr counter) {
+  if (InstrumentHeapEvents) {
+    assert(counter->is_cpu_register(), "");
+    assert(addr->is_address(), "");
+    
+    Register counter_reg = counter->as_register_lo();
+    LIR_Address* src = addr->as_address_ptr();
+
+    __ movq(counter_reg, as_Address(src));
+    __ leaq(counter_reg, Address(counter_reg, 1));
+    __ movq(as_Address(src), counter_reg);
+  }
+}
+
 void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_PatchCode patch_code, CodeEmitInfo* info, bool pop_fpu_stack, bool wide) {
   LIR_Address* to_addr = dest->as_address_ptr();
   PatchingStub* patch = NULL;
@@ -1071,7 +1085,7 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
         Register from = src->as_register();
         //TODO: Storing integer to a long address for CopyArrayLength, CopyArrayOffset, and NewObject size
         //Fix this by treating HeapEvent::src (and dst) as long or int based on HeapEventType
-        if (CheckHeapEventGraphWithHeap) {
+        if (true || CheckHeapEventGraphWithHeap) {
           __ movq(as_Address_lo(to_addr), 0);
         }
 

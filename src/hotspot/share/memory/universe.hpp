@@ -220,6 +220,8 @@ class Universe: AllStatic {
   //}
   };
   static uint64_t *heap_event_counter_ptr;
+  static const uint64_t GPU_GC_MAX_THREADS = 50;
+  static uint64_t thread_index;
   static HeapEvent* heap_events;
   static pthread_mutex_t mutex_heap_event;
   static bool enable_transfer_events;
@@ -227,7 +229,7 @@ class Universe: AllStatic {
   static sem_t cuda_semaphore;
   static void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3);
   static void add_heap_event(Universe::HeapEvent event);
-
+  static uint64_t inc_heap_event();
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();
   static void print_heap_event_counter();

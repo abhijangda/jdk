@@ -4686,6 +4686,7 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
 void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, RegisterOrAddress dst_or_new_obj, RegisterOrConstant src_or_obj_size, 
                                        Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, bool preserve_flags)
 {
+return;
   if (!InstrumentHeapEvents) return;
   if (src_or_obj_size.is_register())
     assert(src_or_obj_size.as_register() != temp1 && src_or_obj_size.as_register() != temp2, "");

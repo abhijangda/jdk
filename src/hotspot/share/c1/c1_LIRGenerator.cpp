@@ -1804,7 +1804,6 @@ LIR_Opr LIRGenerator::access_atomic_add_at(DecoratorSet decorators, BasicType ty
 void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr dst_or_new_obj, LIR_Opr src_or_obj_size) {
   if (!InstrumentHeapEvents)
     return;
-  if (event_type == Universe::NewObject) return;
   LIR_Opr heap_event_counter_addr_reg = new_pointer_register();
   LIR_Opr heap_events_addr_reg = heap_event_counter_addr_reg;
   LIR_Opr counter = new_pointer_register();
@@ -1815,20 +1814,18 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
     call_runtime(&signature, new LIR_OprList(), CAST_FROM_FN_PTR(address, Universe::lock_mutex_heap_event), (ValueType*)voidType, NULL);
   
   if (true) {
-    __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
+    // __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
 
-    // JavaThread* cur_thread = JavaThread::current();
-    // size_t heap_events_offset = (uint8_t*)&cur_thread->heap_events - (uint8_t*)cur_thread;
-    // __ leal(new LIR_Address(getThreadPointer(), 0, T_LONG), counter);
-    // __ load(new LIR_Address(heap_event_counter_addr_reg, heap_events_offset, T_LONG), heap_event_counter_addr_reg);
+    JavaThread* cur_thread = JavaThread::current();
+    size_t heap_events_offset = (uint8_t*)&cur_thread->heap_events - (uint8_t*)cur_thread;
+    __ move(getThreadPointer(), counter);
+    __ load(new LIR_Address(counter, heap_events_offset, T_LONG), heap_event_counter_addr_reg);
 
     LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
     __ load(heap_event_counter_addr, counter);
-    // __ move(LIR_OprFact::longConst(0), counter);
     __ add(counter, LIR_OprFact::longConst(1L), counter);
     __ store(counter, heap_event_counter_addr);
     
-    // __ inc_heap_event_cntr(LIR_OprFact::address(new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG)), counter);
     __ shift_left(counter, 5, counter); //HeapEvent size is 1<<5
     __ leal(new LIR_Address(heap_event_counter_addr_reg, counter, 0, T_LONG), heap_events_addr_reg);
     
@@ -1886,7 +1883,6 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
 }
 
 void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_Opr dst_offset, LIR_Opr src_offset, LIR_Opr count) {
-  return;
   if (!InstrumentHeapEvents)
     return;
     
@@ -1914,7 +1910,6 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     __ load(heap_event_counter_addr, counter);
     __ transfer_events(counter, LIR_OprFact::longConst(MaxHeapEvents - 1));
 
-    __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
     __ load(heap_event_counter_addr, counter);
     __ add(counter, LIR_OprFact::longConst(1L), counter);
     __ move(counter, heap_events_idx);

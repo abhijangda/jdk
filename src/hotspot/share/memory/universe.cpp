@@ -91,11 +91,9 @@
 #include "oops/instanceMirrorKlass.inline.hpp"
 
 pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
-Universe::HeapEvent* Universe::heap_events = nullptr;
-uint64_t* Universe::heap_event_counter_ptr = nullptr;
+LinkedListImpl<Universe::HeapEvent*> Universe::all_heap_events;
 bool Universe::enable_transfer_events = false;
 sem_t Universe::cuda_semaphore;
-uint64_t Universe::thread_index = 0;
 
 #include<vector>
 #include<limits>
@@ -679,14 +677,15 @@ class CheckGraph : public ObjectClosure {
 };
 
 void Universe::transfer_events_to_gpu() {
-  printf("Transferring Events to GPU *Universe::heap_event_counter_ptr %ld\n", *Universe::heap_event_counter_ptr);
-  // sem_post(&cuda_semaphore);
+  sem_post(&cuda_semaphore);
   JavaThread* cur_thread = JavaThread::current();
+  printf("Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)cur_thread->heap_events);
   *(uint64_t*)cur_thread->heap_events = 0;
 }
 
 void Universe::verify_heap_graph_for_copy_array() {
-  if ((*Universe::heap_event_counter_ptr) + 3 > MaxHeapEvents) {
+  JavaThread* cur_thread = JavaThread::current();
+  if (*(uint64_t*)cur_thread->heap_events + 3 > MaxHeapEvents) {
     Universe::verify_heap_graph();
   }
 }
@@ -708,25 +707,13 @@ void Universe::unlock_mutex_heap_event() {
 }
 
 void Universe::print_heap_event_counter() {
-  *Universe::heap_event_counter_ptr = 0; 
-}
-
-uint64_t Universe::inc_heap_event() {
-  static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
-  pthread_mutex_lock(&lock);
-  uint64_t v = thread_index;
-  printf("index %ld\n", v);
-  thread_index += 1;
-  pthread_mutex_unlock(&lock);
-
-  return v;
+  // *Universe::heap_event_counter_ptr = 0; 
 }
 
 void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3) {
-  return;
   JavaThread* cur_thread = JavaThread::current();
-  HeapEvent* heap_events = cur_thread->heap_events ? cur_thread->heap_events : Universe::heap_events;
+  assert(cur_thread->heap_events, "");
+  HeapEvent* heap_events = cur_thread->heap_events;
   uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   if (!InstrumentHeapEvents) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
@@ -762,10 +749,10 @@ void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent e
 }
 
 void Universe::add_heap_event(Universe::HeapEvent event) {
-  return;
   if (!InstrumentHeapEvents) return;
   JavaThread* cur_thread = JavaThread::current();
-  HeapEvent* heap_events = cur_thread->heap_events ? cur_thread->heap_events : Universe::heap_events;
+  assert(cur_thread->heap_events, "");
+  HeapEvent* heap_events = cur_thread->heap_events;
   uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   // if (!cur_thread->heap_events) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
@@ -793,6 +780,17 @@ void Universe::add_heap_event(Universe::HeapEvent event) {
     Universe::unlock_mutex_heap_event();
 }
 
+Universe::HeapEvent* Universe::alloc_heap_events() {
+ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+  pthread_mutex_lock(&lock);
+  HeapEvent* events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents)*sizeof(Universe::HeapEvent));
+  all_heap_events.add(events);
+  pthread_mutex_unlock(&lock);
+
+  return events;
+}
+
 void Universe::verify_heap_graph() {
   // if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
   //   return;
@@ -812,11 +810,12 @@ void Universe::verify_heap_graph() {
   //Update heap hash table
   unordered_set<uint64_t> event_threads;
 
-  for (uint thread = 0; thread < thread_index; thread++) {
-    HeapEvent* thread_events = &Universe::heap_events[thread*(128+MaxHeapEvents)];
-    size_t heap_events_size = *(uint64_t*)thread_events;
-    printf("thread %d heap_events_size %ld\n", thread, heap_events_size);
-    HeapEvent* heap_events_start = &thread_events[1];
+  for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
+       !heap_events_iter.is_empty(); heap_events_iter.next()) {
+    auto th_heap_events = *heap_events_iter;
+    const size_t heap_events_size = *(const uint64_t*)th_heap_events;
+    printf("heap_events_size %ld\n", heap_events_size);
+    const HeapEvent* heap_events_start = &th_heap_events[1];
 
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
@@ -837,12 +836,12 @@ void Universe::verify_heap_graph() {
     }
   }
 
-  for (uint thread = 0; thread < thread_index; thread++) {
-    HeapEvent* thread_events = &Universe::heap_events[thread*(128+MaxHeapEvents)];
-    size_t heap_events_size = *(uint64_t*)thread_events;
-    printf("thread %d heap_events_size %ld 0x%lx\n", thread, heap_events_size, heap_events_size);
-    *(uint64_t*)thread_events = 0;
-    HeapEvent* heap_events_start = &thread_events[1];
+  for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
+       !heap_events_iter.is_empty(); heap_events_iter.next()) {
+    auto th_heap_events = *heap_events_iter;
+    const size_t heap_events_size = *(const uint64_t*)th_heap_events;
+    *(uint64_t*)th_heap_events = 0;
+    HeapEvent* heap_events_start = &th_heap_events[1];
 
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
@@ -955,6 +954,7 @@ void Universe::verify_heap_graph() {
       }
     } 
   }
+
   printf("event_threads.size() %ld\n", event_threads.size());
   CheckGraph check_graph(true, true, true, true);
   Universe::heap()->object_iterate(&check_graph);
@@ -1235,11 +1235,10 @@ void Universe::genesis(TRAPS) {
   HandleMark   hm(THREAD);
 
   if (InstrumentHeapEvents) {
-    Universe::heap_events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents)*GPU_GC_MAX_THREADS*sizeof(Universe::HeapEvent));
-    Universe::heap_event_counter_ptr = (uint64_t*)&Universe::heap_events[0].heap_event_type;
+    HeapEvent* th0_heap_events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents)*sizeof(Universe::HeapEvent));
+    all_heap_events.add(th0_heap_events);
     JavaThread* cur_thread = JavaThread::current();
-    cur_thread->heap_events = heap_events;
-    printf("Universe::heap_events %p cur_thread %p\n", Universe::heap_events, cur_thread);
+    cur_thread->heap_events = th0_heap_events;
     sem_init(&Universe::cuda_semaphore, 0, 0);
     int error = pthread_create(&cumemcpy_tid, NULL, &cumemcpy_func, NULL);
     if (error != 0)

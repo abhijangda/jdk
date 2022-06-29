@@ -739,7 +739,8 @@ LIR_Opr LIRGenerator::atomic_cmpxchg(BasicType type, LIR_Opr addr, LIRItem& cmp_
     cmp_value.load_item_force(FrameMap::rax_oop_opr);
     new_value.load_item();
     __ cas_obj(addr->as_address_ptr()->base(), cmp_value.result(), new_value.result(), ill, ill);
-    append_heap_event(Universe::FieldSet, addr->as_address_ptr(), new_value.result());
+    if (CheckHeapEventGraphWithHeap)
+      append_heap_event(Universe::FieldSet, addr->as_address_ptr(), new_value.result());
   } else if (type == T_INT) {
     cmp_value.load_item_force(FrameMap::rax_opr);
     new_value.load_item();

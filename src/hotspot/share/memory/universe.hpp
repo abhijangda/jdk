@@ -29,7 +29,7 @@
 #include "oops/array.hpp"
 #include "oops/oopHandle.hpp"
 #include "runtime/handles.hpp"
-#include "utilities/growableArray.hpp"
+#include "utilities/linkedlist.hpp"
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -219,20 +219,17 @@ class Universe: AllStatic {
     uint64_t id;
   //}
   };
-  static uint64_t *heap_event_counter_ptr;
-  static const uint64_t GPU_GC_MAX_THREADS = 50;
-  static uint64_t thread_index;
-  static HeapEvent* heap_events;
+  static LinkedListImpl<HeapEvent*> all_heap_events;
   static pthread_mutex_t mutex_heap_event;
   static bool enable_transfer_events;
   static void transfer_events_to_gpu();
   static sem_t cuda_semaphore;
   static void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3);
   static void add_heap_event(Universe::HeapEvent event);
-  static uint64_t inc_heap_event();
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();
   static void print_heap_event_counter();
+  static HeapEvent* alloc_heap_events();
   static void verify_heap_graph();
   static void verify_heap_graph_for_copy_array();
   static void* mmap(size_t sz) {

@@ -446,6 +446,8 @@ template <class E> class LinkedListIterator : public StackObj {
     _p = _p->next();
     return e;
   }
+
+  const E& operator*() {return *_p->peek();}
 };
 
 #endif // SHARE_UTILITIES_LINKEDLIST_HPP

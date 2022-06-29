@@ -4686,7 +4686,6 @@ void MacroAssembler::gen_unlock_heap_event_mutex()
 void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, RegisterOrAddress dst_or_new_obj, RegisterOrConstant src_or_obj_size, 
                                        Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, bool preserve_flags)
 {
-return;
   if (!InstrumentHeapEvents) return;
   if (src_or_obj_size.is_register())
     assert(src_or_obj_size.as_register() != temp1 && src_or_obj_size.as_register() != temp2, "");
@@ -4699,7 +4698,6 @@ return;
   
   JavaThread* cur_thread = JavaThread::current();
   size_t heap_events_offset = (uint8_t*)&cur_thread->heap_events - (uint8_t*)cur_thread;
-  printf("heap_events_offset %ld\n", heap_events_offset);
   Register temp3 = r14;
   push(r14);
   if (preserve_temp1)
@@ -4760,7 +4758,10 @@ void MacroAssembler::append_copyarray_event(Register dst_array, Register src_arr
                                             Register tmp3, bool preserve_tmp3, 
                                             bool preserve_flags) {
   if (!InstrumentHeapEvents) return;
+
+  ShouldNotReachHere();
   
+  #if 0
   if (preserve_tmp1)
     push(tmp1);
   if (preserve_tmp2)
@@ -4827,6 +4828,7 @@ void MacroAssembler::append_copyarray_event(Register dst_array, Register src_arr
     pop(tmp2);
   if (preserve_tmp1)
     pop(tmp1);
+  #endif
 }
 
 void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size, 

@@ -1025,6 +1025,7 @@ class JavaThread: public Thread {
 
  public:
   Universe::HeapEvent* heap_events;
+  
   // Constructor
   JavaThread();                            // delegating constructor
   JavaThread(bool is_attaching_via_jni);   // for main thread and JNI attached threads

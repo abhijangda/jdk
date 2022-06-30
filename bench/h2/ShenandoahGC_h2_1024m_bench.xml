@@ -1,139 +1,151 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <benchmark>
   <gc>ShenandoahGC</gc>
-  <avg-5-run>2632ms</avg-5-run>
+  <avg-5-run>2751ms</avg-5-run>
   <results>
     <result>
       <event>0</event>
-      <concurrent-reset>0.192ms</concurrent-reset>
-      <pause-init-mark>0.345ms</pause-init-mark>
-      <concurrent-mark-roots>0.333ms</concurrent-mark-roots>
-      <concurrent-mark>59.848ms</concurrent-mark>
-      <pause-final-mark>0.254ms</pause-final-mark>
-      <concurrent-thread-roots>0.378ms</concurrent-thread-roots>
-      <concurrent-weak-ref>0.155ms</concurrent-weak-ref>
-      <concurrent-weak-roots>0.359ms</concurrent-weak-roots>
-      <concurrent-cleanup>0.138ms</concurrent-cleanup>
+      <concurrent-reset>0.286ms</concurrent-reset>
+      <pause-init-mark>0.139ms</pause-init-mark>
+      <concurrent-mark-roots>0.361ms</concurrent-mark-roots>
+      <concurrent-mark>62.781ms</concurrent-mark>
+      <pause-final-mark>0.210ms</pause-final-mark>
+      <concurrent-thread-roots>0.383ms</concurrent-thread-roots>
+      <concurrent-weak-ref>0.065ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.397ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.133ms</concurrent-cleanup>
+      <total>64.755</total>
     </result>
     <result>
       <event>1</event>
-      <concurrent-reset>0.672ms</concurrent-reset>
-      <pause-init-mark>0.099ms</pause-init-mark>
-      <concurrent-mark-roots>0.390ms</concurrent-mark-roots>
-      <concurrent-mark>78.909ms</concurrent-mark>
-      <pause-final-mark>0.226ms</pause-final-mark>
-      <concurrent-thread-roots>0.227ms</concurrent-thread-roots>
-      <concurrent-weak-ref>0.103ms</concurrent-weak-ref>
-      <concurrent-weak-roots>0.199ms</concurrent-weak-roots>
-      <concurrent-cleanup>0.116ms</concurrent-cleanup>
+      <concurrent-reset>0.722ms</concurrent-reset>
+      <pause-init-mark>0.042ms</pause-init-mark>
+      <concurrent-mark-roots>0.287ms</concurrent-mark-roots>
+      <concurrent-mark>75.032ms</concurrent-mark>
+      <pause-final-mark>0.321ms</pause-final-mark>
+      <concurrent-thread-roots>0.294ms</concurrent-thread-roots>
+      <concurrent-weak-ref>0.033ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.327ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.132ms</concurrent-cleanup>
+      <total>77.19</total>
     </result>
     <result>
       <event>2</event>
-      <concurrent-reset>0.581ms</concurrent-reset>
-      <pause-init-mark>0.056ms</pause-init-mark>
-      <concurrent-mark-roots>0.629ms</concurrent-mark-roots>
-      <concurrent-mark>124.297ms</concurrent-mark>
-      <pause-final-mark>0.243ms</pause-final-mark>
-      <concurrent-thread-roots>0.446ms</concurrent-thread-roots>
-      <concurrent-weak-ref>0.045ms</concurrent-weak-ref>
-      <concurrent-weak-roots>0.337ms</concurrent-weak-roots>
-      <concurrent-cleanup>0.133ms</concurrent-cleanup>
+      <concurrent-reset>0.562ms</concurrent-reset>
+      <pause-init-mark>0.058ms</pause-init-mark>
+      <concurrent-mark-roots>0.547ms</concurrent-mark-roots>
+      <concurrent-mark>160.894ms</concurrent-mark>
+      <pause-final-mark>0.198ms</pause-final-mark>
+      <concurrent-thread-roots>0.467ms</concurrent-thread-roots>
+      <concurrent-weak-ref>0.035ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.378ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.124ms</concurrent-cleanup>
+      <total>163.263</total>
     </result>
     <result>
       <event>3</event>
-      <concurrent-reset>0.699ms</concurrent-reset>
-      <pause-init-mark>0.048ms</pause-init-mark>
-      <concurrent-mark-roots>0.629ms</concurrent-mark-roots>
-      <concurrent-mark>134.980ms</concurrent-mark>
-      <pause-final-mark>0.185ms</pause-final-mark>
-      <concurrent-thread-roots>0.570ms</concurrent-thread-roots>
-      <concurrent-weak-ref>0.040ms</concurrent-weak-ref>
-      <concurrent-weak-roots>0.383ms</concurrent-weak-roots>
-      <concurrent-cleanup>0.133ms</concurrent-cleanup>
+      <concurrent-reset>0.667ms</concurrent-reset>
+      <pause-init-mark>0.044ms</pause-init-mark>
+      <concurrent-mark-roots>0.684ms</concurrent-mark-roots>
+      <concurrent-mark>185.874ms</concurrent-mark>
+      <pause-final-mark>0.195ms</pause-final-mark>
+      <concurrent-thread-roots>0.598ms</concurrent-thread-roots>
+      <concurrent-weak-ref>0.106ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.541ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.144ms</concurrent-cleanup>
+      <total>188.853</total>
     </result>
     <result>
       <event>4</event>
-      <concurrent-reset>0.475ms</concurrent-reset>
-      <pause-init-mark>0.052ms</pause-init-mark>
-      <concurrent-mark-roots>0.548ms</concurrent-mark-roots>
-      <concurrent-mark>136.263ms</concurrent-mark>
-      <pause-final-mark>0.131ms</pause-final-mark>
+      <concurrent-reset>0.426ms</concurrent-reset>
+      <pause-init-mark>0.057ms</pause-init-mark>
+      <concurrent-mark-roots>0.434ms</concurrent-mark-roots>
+      <concurrent-mark>125.660ms</concurrent-mark>
+      <pause-final-mark>0.143ms</pause-final-mark>
       <concurrent-thread-roots></concurrent-thread-roots>
-      <concurrent-weak-ref>0.039ms</concurrent-weak-ref>
-      <concurrent-weak-roots>0.343ms</concurrent-weak-roots>
-      <concurrent-cleanup>0.146ms</concurrent-cleanup>
+      <concurrent-weak-ref>0.034ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.203ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.132ms</concurrent-cleanup>
+      <total>127.089</total>
     </result>
     <result>
       <event>5</event>
-      <concurrent-reset>0.531ms</concurrent-reset>
-      <pause-init-mark>0.043ms</pause-init-mark>
-      <concurrent-mark-roots>0.424ms</concurrent-mark-roots>
-      <concurrent-mark>123.173ms</concurrent-mark>
-      <pause-final-mark>0.264ms</pause-final-mark>
+      <concurrent-reset>0.449ms</concurrent-reset>
+      <pause-init-mark>0.042ms</pause-init-mark>
+      <concurrent-mark-roots>0.579ms</concurrent-mark-roots>
+      <concurrent-mark>143.892ms</concurrent-mark>
+      <pause-final-mark>0.269ms</pause-final-mark>
       <concurrent-thread-roots></concurrent-thread-roots>
-      <concurrent-weak-ref>0.160ms</concurrent-weak-ref>
-      <concurrent-weak-roots>0.275ms</concurrent-weak-roots>
-      <concurrent-cleanup>0.155ms</concurrent-cleanup>
+      <concurrent-weak-ref>0.113ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.316ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.162ms</concurrent-cleanup>
+      <total>145.822</total>
     </result>
     <result>
       <event>6</event>
-      <concurrent-reset>0.342ms</concurrent-reset>
+      <concurrent-reset>0.530ms</concurrent-reset>
       <pause-init-mark>0.043ms</pause-init-mark>
-      <concurrent-mark-roots>0.170ms</concurrent-mark-roots>
-      <concurrent-mark>129.041ms</concurrent-mark>
-      <pause-final-mark>0.193ms</pause-final-mark>
-      <concurrent-thread-roots>0.196ms</concurrent-thread-roots>
-      <concurrent-weak-ref>0.198ms</concurrent-weak-ref>
-      <concurrent-weak-roots>0.420ms</concurrent-weak-roots>
-      <concurrent-cleanup>0.116ms</concurrent-cleanup>
+      <concurrent-mark-roots>0.148ms</concurrent-mark-roots>
+      <concurrent-mark>148.456ms</concurrent-mark>
+      <pause-final-mark>0.436ms</pause-final-mark>
+      <concurrent-thread-roots>0.146ms</concurrent-thread-roots>
+      <concurrent-weak-ref>0.194ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.284ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.142ms</concurrent-cleanup>
+      <total>150.379</total>
     </result>
     <result>
       <event>7</event>
-      <concurrent-reset>0.443ms</concurrent-reset>
-      <pause-init-mark>0.058ms</pause-init-mark>
-      <concurrent-mark-roots>0.266ms</concurrent-mark-roots>
-      <concurrent-mark>255.731ms</concurrent-mark>
-      <pause-final-mark>0.193ms</pause-final-mark>
-      <concurrent-thread-roots>0.225ms</concurrent-thread-roots>
-      <concurrent-weak-ref>0.109ms</concurrent-weak-ref>
-      <concurrent-weak-roots>0.469ms</concurrent-weak-roots>
-      <concurrent-cleanup>0.126ms</concurrent-cleanup>
+      <concurrent-reset>0.473ms</concurrent-reset>
+      <pause-init-mark>0.049ms</pause-init-mark>
+      <concurrent-mark-roots>0.299ms</concurrent-mark-roots>
+      <concurrent-mark>202.044ms</concurrent-mark>
+      <pause-final-mark>0.252ms</pause-final-mark>
+      <concurrent-thread-roots>0.292ms</concurrent-thread-roots>
+      <concurrent-weak-ref>0.035ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.470ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.127ms</concurrent-cleanup>
+      <total>204.041</total>
     </result>
     <result>
       <event>8</event>
-      <concurrent-reset>0.659ms</concurrent-reset>
-      <pause-init-mark>0.042ms</pause-init-mark>
-      <concurrent-mark-roots>0.216ms</concurrent-mark-roots>
-      <concurrent-mark>181.628ms</concurrent-mark>
-      <pause-final-mark>0.191ms</pause-final-mark>
-      <concurrent-thread-roots>0.282ms</concurrent-thread-roots>
-      <concurrent-weak-ref>0.024ms</concurrent-weak-ref>
-      <concurrent-weak-roots>0.528ms</concurrent-weak-roots>
-      <concurrent-cleanup>0.118ms</concurrent-cleanup>
+      <concurrent-reset>0.625ms</concurrent-reset>
+      <pause-init-mark>0.123ms</pause-init-mark>
+      <concurrent-mark-roots>0.241ms</concurrent-mark-roots>
+      <concurrent-mark>162.783ms</concurrent-mark>
+      <pause-final-mark>0.241ms</pause-final-mark>
+      <concurrent-thread-roots>0.268ms</concurrent-thread-roots>
+      <concurrent-weak-ref>0.032ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.459ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.119ms</concurrent-cleanup>
+      <total>164.891</total>
     </result>
     <result>
       <event>9</event>
-      <concurrent-reset>0.676ms</concurrent-reset>
-      <pause-init-mark>0.046ms</pause-init-mark>
-      <concurrent-mark-roots>0.260ms</concurrent-mark-roots>
-      <concurrent-mark>152.541ms</concurrent-mark>
-      <pause-final-mark>0.234ms</pause-final-mark>
-      <concurrent-thread-roots>0.197ms</concurrent-thread-roots>
-      <concurrent-weak-ref>0.052ms</concurrent-weak-ref>
-      <concurrent-weak-roots>0.306ms</concurrent-weak-roots>
-      <concurrent-cleanup>0.129ms</concurrent-cleanup>
+      <concurrent-reset>0.669ms</concurrent-reset>
+      <pause-init-mark>0.042ms</pause-init-mark>
+      <concurrent-mark-roots>0.290ms</concurrent-mark-roots>
+      <concurrent-mark>143.624ms</concurrent-mark>
+      <pause-final-mark>0.180ms</pause-final-mark>
+      <concurrent-thread-roots>0.198ms</concurrent-thread-roots>
+      <concurrent-weak-ref>0.033ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.284ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.125ms</concurrent-cleanup>
+      <total>145.445</total>
     </result>
     <result>
       <event>10</event>
-      <concurrent-reset>0.720ms</concurrent-reset>
-      <pause-init-mark>0.033ms</pause-init-mark>
-      <concurrent-mark-roots>0.223ms</concurrent-mark-roots>
-      <concurrent-mark>68.687ms</concurrent-mark>
-      <pause-final-mark></pause-final-mark>
+      <concurrent-reset>0.731ms</concurrent-reset>
+      <pause-init-mark>0.036ms</pause-init-mark>
+      <concurrent-mark-roots>0.267ms</concurrent-mark-roots>
+      <concurrent-mark>164.753ms</concurrent-mark>
+      <pause-final-mark>0.204ms</pause-final-mark>
       <concurrent-thread-roots></concurrent-thread-roots>
-      <concurrent-weak-ref></concurrent-weak-ref>
-      <concurrent-weak-roots></concurrent-weak-roots>
-      <concurrent-cleanup></concurrent-cleanup>
+      <concurrent-weak-ref>0.116ms</concurrent-weak-ref>
+      <concurrent-weak-roots>0.374ms</concurrent-weak-roots>
+      <concurrent-cleanup>0.117ms</concurrent-cleanup>
+      <total>166.598</total>
     </result>
   </results>
+  <total-gc>1598.32ms</total-gc>
 </benchmark>

@@ -1,145 +1,146 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <benchmark>
   <gc>SerialGC</gc>
-  <avg-5-run>1704ms</avg-5-run>
+  <avg-5-run>1687ms</avg-5-run>
   <results>
     <result>
       <pause>young</pause>
       <event>0</event>
-      <total>23.754ms</total>
+      <total>24.325ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>1</event>
-      <total>33.487ms</total>
+      <total>32.235ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>2</event>
-      <total>31.074ms</total>
+      <total>26.978ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>3</event>
-      <total>28.508ms</total>
+      <total>26.740ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>4</event>
-      <total>28.071ms</total>
+      <total>26.877ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>5</event>
-      <total>32.386ms</total>
+      <total>32.046ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>6</event>
-      <total>29.892ms</total>
+      <total>28.707ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>7</event>
-      <total>31.363ms</total>
+      <total>28.281ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>8</event>
-      <total>38.227ms</total>
+      <total>48.595ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>9</event>
-      <total>10.955ms</total>
+      <total>24.245ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>10</event>
-      <total>3.434ms</total>
+      <total>14.339ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>11</event>
-      <total>5.589ms</total>
+      <total>3.807ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>12</event>
-      <total>2.474ms</total>
+      <total>4.582ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>13</event>
-      <total>9.810ms</total>
+      <total>10.637ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>14</event>
-      <total>6.739ms</total>
+      <total>7.177ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>16</event>
-      <total>0.299ms</total>
+      <total>0.301ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>17</event>
-      <total>21.468ms</total>
+      <total>19.819ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>18</event>
-      <total>15.228ms</total>
+      <total>14.909ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>19</event>
-      <total>0.213ms</total>
+      <total>0.238ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>20</event>
-      <total>14.689ms</total>
+      <total>7.642ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>21</event>
-      <total>28.198ms</total>
+      <total>29.923ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>23</event>
-      <total>17.605ms</total>
+      <total>16.367ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>24</event>
-      <total>11.021ms</total>
+      <total>12.936ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>25</event>
-      <total>15.633ms</total>
+      <total>15.620ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>15</event>
-      <mark>84.131ms</mark>
-      <new-addresses>32.767ms</new-addresses>
-      <adjust-pointers>53.316ms</adjust-pointers>
+      <mark>81.271ms</mark>
+      <new-addresses>30.211ms</new-addresses>
+      <adjust-pointers>53.812ms</adjust-pointers>
       <move-objects>0.006ms</move-objects>
-      <total>174.129ms</total>
+      <total>169.233ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>22</event>
-      <mark>89.443ms</mark>
-      <new-addresses>53.654ms</new-addresses>
-      <adjust-pointers>62.673ms</adjust-pointers>
-      <move-objects>4.022ms</move-objects>
-      <total>213.675ms</total>
+      <mark>97.862ms</mark>
+      <new-addresses>61.916ms</new-addresses>
+      <adjust-pointers>67.321ms</adjust-pointers>
+      <move-objects>6.369ms</move-objects>
+      <total>237.575ms</total>
     </result>
   </results>
+  <total-gc>864.134ms</total-gc>
 </benchmark>

@@ -1,309 +1,305 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <benchmark>
   <gc>SerialGC</gc>
-  <avg-5-run>3233ms</avg-5-run>
+  <avg-5-run>3358ms</avg-5-run>
   <results>
     <result>
       <pause>young</pause>
       <event>0</event>
-      <total>26.412ms</total>
+      <total>23.735ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>1</event>
-      <total>34.367ms</total>
+      <total>32.993ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>2</event>
-      <total>31.350ms</total>
+      <total>30.118ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>3</event>
-      <total>28.595ms</total>
+      <total>30.629ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>4</event>
-      <total>26.907ms</total>
+      <total>27.106ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>5</event>
-      <total>34.749ms</total>
+      <total>33.051ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>6</event>
-      <total>28.859ms</total>
+      <total>27.726ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>7</event>
-      <total>26.931ms</total>
+      <total>28.350ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>8</event>
-      <total>36.427ms</total>
+      <total>37.503ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>9</event>
-      <total>10.332ms</total>
+      <total>13.247ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>10</event>
-      <total>0.057ms</total>
+      <total>0.050ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>12</event>
-      <total>0.063ms</total>
+      <total>0.076ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>14</event>
-      <total>0.045ms</total>
+      <total>0.058ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>16</event>
-      <total>0.042ms</total>
+      <total>0.046ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>18</event>
-      <total>0.032ms</total>
+      <total>0.038ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>20</event>
-      <total>0.032ms</total>
+      <total>0.041ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>22</event>
-      <total>0.032ms</total>
+      <total>0.038ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>24</event>
-      <total>0.036ms</total>
-    </result>
-    <result>
-      <pause>young</pause>
-      <event>30</event>
-      <total>0.065ms</total>
+      <total>0.041ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>11</event>
-      <mark>76.459ms</mark>
-      <new-addresses>38.821ms</new-addresses>
-      <adjust-pointers>47.756ms</adjust-pointers>
-      <move-objects>2.914ms</move-objects>
-      <total>169.785ms</total>
+      <mark>79.638ms</mark>
+      <new-addresses>38.849ms</new-addresses>
+      <adjust-pointers>49.044ms</adjust-pointers>
+      <move-objects>2.044ms</move-objects>
+      <total>173.397ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>13</event>
-      <mark>108.003ms</mark>
-      <new-addresses>41.672ms</new-addresses>
-      <adjust-pointers>46.588ms</adjust-pointers>
-      <move-objects>0.865ms</move-objects>
-      <total>200.837ms</total>
+      <mark>81.697ms</mark>
+      <new-addresses>39.117ms</new-addresses>
+      <adjust-pointers>48.342ms</adjust-pointers>
+      <move-objects>1.175ms</move-objects>
+      <total>174.074ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>15</event>
-      <mark>81.461ms</mark>
-      <new-addresses>39.501ms</new-addresses>
-      <adjust-pointers>48.363ms</adjust-pointers>
-      <move-objects>1.344ms</move-objects>
-      <total>174.427ms</total>
+      <mark>92.530ms</mark>
+      <new-addresses>39.104ms</new-addresses>
+      <adjust-pointers>50.700ms</adjust-pointers>
+      <move-objects>0.708ms</move-objects>
+      <total>187.442ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>17</event>
-      <mark>81.169ms</mark>
-      <new-addresses>38.036ms</new-addresses>
-      <adjust-pointers>56.036ms</adjust-pointers>
-      <move-objects>31.384ms</move-objects>
-      <total>210.373ms</total>
+      <mark>82.801ms</mark>
+      <new-addresses>39.681ms</new-addresses>
+      <adjust-pointers>57.000ms</adjust-pointers>
+      <move-objects>32.208ms</move-objects>
+      <total>215.633ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>19</event>
-      <mark>80.736ms</mark>
-      <new-addresses>39.996ms</new-addresses>
-      <adjust-pointers>50.437ms</adjust-pointers>
+      <mark>82.681ms</mark>
+      <new-addresses>40.908ms</new-addresses>
+      <adjust-pointers>51.819ms</adjust-pointers>
       <move-objects>0.005ms</move-objects>
-      <total>174.873ms</total>
+      <total>179.228ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>21</event>
-      <mark>80.434ms</mark>
-      <new-addresses>40.603ms</new-addresses>
-      <adjust-pointers>50.466ms</adjust-pointers>
-      <move-objects>0.005ms</move-objects>
-      <total>175.210ms</total>
+      <mark>82.786ms</mark>
+      <new-addresses>41.723ms</new-addresses>
+      <adjust-pointers>51.067ms</adjust-pointers>
+      <move-objects>0.004ms</move-objects>
+      <total>179.367ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>23</event>
-      <mark>80.751ms</mark>
-      <new-addresses>40.326ms</new-addresses>
-      <adjust-pointers>50.491ms</adjust-pointers>
-      <move-objects>0.004ms</move-objects>
-      <total>175.383ms</total>
+      <mark>82.280ms</mark>
+      <new-addresses>41.125ms</new-addresses>
+      <adjust-pointers>51.337ms</adjust-pointers>
+      <move-objects>0.005ms</move-objects>
+      <total>178.751ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>25</event>
-      <mark>110.193ms</mark>
-      <new-addresses>40.917ms</new-addresses>
-      <adjust-pointers>65.347ms</adjust-pointers>
-      <move-objects>7.564ms</move-objects>
-      <total>229.062ms</total>
+      <mark>112.040ms</mark>
+      <new-addresses>43.103ms</new-addresses>
+      <adjust-pointers>67.687ms</adjust-pointers>
+      <move-objects>7.802ms</move-objects>
+      <total>235.556ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>26</event>
-      <mark>107.780ms</mark>
-      <new-addresses>41.998ms</new-addresses>
-      <adjust-pointers>62.978ms</adjust-pointers>
+      <mark>110.925ms</mark>
+      <new-addresses>44.067ms</new-addresses>
+      <adjust-pointers>64.472ms</adjust-pointers>
       <move-objects>0.005ms</move-objects>
-      <total>217.565ms</total>
+      <total>224.328ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>27</event>
-      <mark>108.415ms</mark>
-      <new-addresses>40.526ms</new-addresses>
-      <adjust-pointers>62.482ms</adjust-pointers>
+      <mark>111.701ms</mark>
+      <new-addresses>44.930ms</new-addresses>
+      <adjust-pointers>64.241ms</adjust-pointers>
       <move-objects>0.006ms</move-objects>
-      <total>216.299ms</total>
+      <total>225.754ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>28</event>
-      <mark>111.024ms</mark>
-      <new-addresses>40.029ms</new-addresses>
-      <adjust-pointers>70.131ms</adjust-pointers>
-      <move-objects>0.005ms</move-objects>
-      <total>226.005ms</total>
+      <mark>111.333ms</mark>
+      <new-addresses>42.546ms</new-addresses>
+      <adjust-pointers>64.513ms</adjust-pointers>
+      <move-objects>0.004ms</move-objects>
+      <total>223.250ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>29</event>
-      <mark>89.329ms</mark>
-      <new-addresses>40.487ms</new-addresses>
-      <adjust-pointers>66.669ms</adjust-pointers>
-      <move-objects>30.131ms</move-objects>
-      <total>230.357ms</total>
+      <mark>91.802ms</mark>
+      <new-addresses>43.515ms</new-addresses>
+      <adjust-pointers>67.271ms</adjust-pointers>
+      <move-objects>30.630ms</move-objects>
+      <total>237.090ms</total>
+    </result>
+    <result>
+      <pause>full</pause>
+      <event>30</event>
+      <mark>98.711ms</mark>
+      <new-addresses>45.629ms</new-addresses>
+      <adjust-pointers>66.149ms</adjust-pointers>
+      <move-objects>4.222ms</move-objects>
+      <total>218.481ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>31</event>
-      <mark>98.970ms</mark>
-      <new-addresses>41.788ms</new-addresses>
-      <adjust-pointers>67.553ms</adjust-pointers>
-      <move-objects>3.010ms</move-objects>
-      <total>214.939ms</total>
+      <mark>98.511ms</mark>
+      <new-addresses>47.225ms</new-addresses>
+      <adjust-pointers>68.297ms</adjust-pointers>
+      <move-objects>2.127ms</move-objects>
+      <total>219.946ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>32</event>
-      <mark>97.832ms</mark>
-      <new-addresses>43.059ms</new-addresses>
-      <adjust-pointers>69.329ms</adjust-pointers>
-      <move-objects>2.640ms</move-objects>
-      <total>216.479ms</total>
+      <mark>98.552ms</mark>
+      <new-addresses>47.174ms</new-addresses>
+      <adjust-pointers>67.521ms</adjust-pointers>
+      <move-objects>1.779ms</move-objects>
+      <total>218.766ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>33</event>
-      <mark>94.368ms</mark>
-      <new-addresses>43.405ms</new-addresses>
-      <adjust-pointers>66.633ms</adjust-pointers>
-      <move-objects>1.684ms</move-objects>
-      <total>211.518ms</total>
+      <mark>89.740ms</mark>
+      <new-addresses>43.592ms</new-addresses>
+      <adjust-pointers>70.042ms</adjust-pointers>
+      <move-objects>31.089ms</move-objects>
+      <total>238.487ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>34</event>
-      <mark>85.326ms</mark>
-      <new-addresses>42.316ms</new-addresses>
-      <adjust-pointers>63.591ms</adjust-pointers>
-      <move-objects>3.055ms</move-objects>
-      <total>197.896ms</total>
+      <mark>100.698ms</mark>
+      <new-addresses>45.507ms</new-addresses>
+      <adjust-pointers>64.924ms</adjust-pointers>
+      <move-objects>2.125ms</move-objects>
+      <total>217.265ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>35</event>
-      <mark>85.921ms</mark>
-      <new-addresses>33.283ms</new-addresses>
-      <adjust-pointers>60.043ms</adjust-pointers>
-      <move-objects>0.132ms</move-objects>
-      <total>183.099ms</total>
+      <mark>173.369ms</mark>
+      <new-addresses>49.734ms</new-addresses>
+      <adjust-pointers>69.955ms</adjust-pointers>
+      <move-objects>2.534ms</move-objects>
+      <total>300.729ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>36</event>
-      <mark>115.337ms</mark>
-      <new-addresses>47.087ms</new-addresses>
-      <adjust-pointers>64.049ms</adjust-pointers>
-      <move-objects>2.116ms</move-objects>
-      <total>233.438ms</total>
+      <mark>94.113ms</mark>
+      <new-addresses>46.542ms</new-addresses>
+      <adjust-pointers>67.719ms</adjust-pointers>
+      <move-objects>1.845ms</move-objects>
+      <total>214.187ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>37</event>
-      <mark>95.411ms</mark>
-      <new-addresses>48.403ms</new-addresses>
-      <adjust-pointers>66.870ms</adjust-pointers>
-      <move-objects>2.546ms</move-objects>
-      <total>217.303ms</total>
+      <mark>98.514ms</mark>
+      <new-addresses>47.183ms</new-addresses>
+      <adjust-pointers>75.987ms</adjust-pointers>
+      <move-objects>36.756ms</move-objects>
+      <total>262.374ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>38</event>
-      <mark>93.481ms</mark>
-      <new-addresses>45.235ms</new-addresses>
-      <adjust-pointers>74.467ms</adjust-pointers>
-      <move-objects>34.344ms</move-objects>
-      <total>251.428ms</total>
+      <mark>98.191ms</mark>
+      <new-addresses>48.540ms</new-addresses>
+      <adjust-pointers>68.919ms</adjust-pointers>
+      <move-objects>0.005ms</move-objects>
+      <total>219.455ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>39</event>
-      <mark>97.613ms</mark>
-      <new-addresses>47.675ms</new-addresses>
-      <adjust-pointers>67.367ms</adjust-pointers>
-      <move-objects>2.551ms</move-objects>
-      <total>219.020ms</total>
+      <mark>99.192ms</mark>
+      <new-addresses>48.587ms</new-addresses>
+      <adjust-pointers>68.551ms</adjust-pointers>
+      <move-objects>0.006ms</move-objects>
+      <total>220.114ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>40</event>
-      <mark>100.566ms</mark>
-      <new-addresses>51.634ms</new-addresses>
-      <adjust-pointers>67.635ms</adjust-pointers>
-      <move-objects>0.006ms</move-objects>
-      <total>223.556ms</total>
-    </result>
-    <result>
-      <pause>full</pause>
-      <event>41</event>
-      <mark>112.321ms</mark>
-      <new-addresses>47.860ms</new-addresses>
-      <adjust-pointers>66.672ms</adjust-pointers>
-      <move-objects>0.005ms</move-objects>
-      <total>230.582ms</total>
+      <mark>90.008ms</mark>
+      <new-addresses>49.274ms</new-addresses>
+      <adjust-pointers>62.692ms</adjust-pointers>
+      <move-objects>0.241ms</move-objects>
+      <total>206.030ms</total>
     </result>
   </results>
+  <total-gc>5254.55ms</total-gc>
 </benchmark>

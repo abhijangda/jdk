@@ -1,97 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <benchmark>
   <gc>ParallelGC</gc>
-  <avg-5-run>4296ms</avg-5-run>
+  <avg-5-run>4373ms</avg-5-run>
   <results>
     <result>
       <pause>young</pause>
       <event>0</event>
-      <total>3.385ms</total>
+      <total>3.798ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>1</event>
-      <total>2.217ms</total>
+      <total>3.030ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>3</event>
-      <total>0.204ms</total>
+      <total>1.039ms</total>
+    </result>
+    <result>
+      <pause>young</pause>
+      <event>4</event>
+      <total>1.232ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>5</event>
-      <total>1.005ms</total>
+      <total>1.545ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>6</event>
-      <total>1.878ms</total>
+      <total>1.511ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>7</event>
-      <total>1.739ms</total>
+      <total>1.417ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>8</event>
-      <total>1.603ms</total>
+      <total>1.534ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>9</event>
-      <total>2.007ms</total>
+      <total>3.103ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>10</event>
-      <total>3.939ms</total>
+      <total>4.048ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>11</event>
-      <total>6.951ms</total>
+      <total>5.683ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>12</event>
-      <total>3.038ms</total>
+      <total>3.687ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>13</event>
-      <total>3.321ms</total>
+      <total>0.414ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>14</event>
-      <total>0.654ms</total>
+      <total>0.384ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>15</event>
-      <total>0.749ms</total>
+      <total>0.369ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>2</event>
-      <mark>2.987ms</mark>
-      <summary>0.005ms</summary>
-      <adjust-roots>1.585ms</adjust-roots>
-      <compaction-phase>3.490ms</compaction-phase>
-      <post-compaction>0.162ms</post-compaction>
-      <total>8.306ms</total>
-    </result>
-    <result>
-      <pause>full</pause>
-      <event>4</event>
-      <mark>3.722ms</mark>
-      <summary>0.004ms</summary>
-      <adjust-roots>1.353ms</adjust-roots>
-      <compaction-phase>2.946ms</compaction-phase>
-      <post-compaction>0.033ms</post-compaction>
-      <total>8.139ms</total>
+      <mark>5.161ms</mark>
+      <summary>0.007ms</summary>
+      <adjust-roots>1.687ms</adjust-roots>
+      <compaction-phase>4.654ms</compaction-phase>
+      <post-compaction>0.381ms</post-compaction>
+      <total>12.008ms</total>
     </result>
   </results>
+  <total-gc>44.802ms</total-gc>
 </benchmark>

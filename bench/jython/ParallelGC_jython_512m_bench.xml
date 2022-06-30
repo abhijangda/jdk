@@ -1,137 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <benchmark>
   <gc>ParallelGC</gc>
-  <avg-5-run>4242ms</avg-5-run>
+  <avg-5-run>4290ms</avg-5-run>
   <results>
     <result>
       <pause>young</pause>
       <event>0</event>
-      <total>3.794ms</total>
+      <total>3.968ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>1</event>
-      <total>2.794ms</total>
+      <total>2.475ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>3</event>
-      <total>0.315ms</total>
+      <total>1.029ms</total>
+    </result>
+    <result>
+      <pause>young</pause>
+      <event>4</event>
+      <total>1.367ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>5</event>
-      <total>1.062ms</total>
+      <total>1.660ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>6</event>
-      <total>1.622ms</total>
+      <total>1.468ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>7</event>
-      <total>1.410ms</total>
+      <total>1.638ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>8</event>
-      <total>1.329ms</total>
+      <total>1.489ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>9</event>
-      <total>1.326ms</total>
+      <total>3.370ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>10</event>
-      <total>1.691ms</total>
+      <total>4.200ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>11</event>
-      <total>1.520ms</total>
+      <total>6.446ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>12</event>
-      <total>2.363ms</total>
+      <total>5.464ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>13</event>
-      <total>4.382ms</total>
+      <total>0.790ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>14</event>
-      <total>2.849ms</total>
+      <total>0.481ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>15</event>
-      <total>5.237ms</total>
+      <total>1.062ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>16</event>
-      <total>3.307ms</total>
+      <total>0.826ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>17</event>
-      <total>0.394ms</total>
+      <total>0.593ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>18</event>
-      <total>0.534ms</total>
+      <total>0.561ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>19</event>
-      <total>0.364ms</total>
-    </result>
-    <result>
-      <pause>young</pause>
-      <event>20</event>
-      <total>0.469ms</total>
-    </result>
-    <result>
-      <pause>young</pause>
-      <event>21</event>
-      <total>0.430ms</total>
-    </result>
-    <result>
-      <pause>young</pause>
-      <event>22</event>
-      <total>0.520ms</total>
-    </result>
-    <result>
-      <pause>young</pause>
-      <event>23</event>
-      <total>0.526ms</total>
+      <total>0.486ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>2</event>
-      <mark>3.238ms</mark>
-      <summary>0.006ms</summary>
-      <adjust-roots>1.743ms</adjust-roots>
-      <compaction-phase>4.166ms</compaction-phase>
-      <post-compaction>0.183ms</post-compaction>
-      <total>9.431ms</total>
-    </result>
-    <result>
-      <pause>full</pause>
-      <event>4</event>
-      <mark>4.616ms</mark>
-      <summary>0.004ms</summary>
-      <adjust-roots>1.867ms</adjust-roots>
-      <compaction-phase>4.526ms</compaction-phase>
-      <post-compaction>0.036ms</post-compaction>
-      <total>11.158ms</total>
+      <mark>4.342ms</mark>
+      <summary>0.005ms</summary>
+      <adjust-roots>1.572ms</adjust-roots>
+      <compaction-phase>3.671ms</compaction-phase>
+      <post-compaction>0.455ms</post-compaction>
+      <total>10.124ms</total>
     </result>
   </results>
+  <total-gc>49.497ms</total-gc>
 </benchmark>

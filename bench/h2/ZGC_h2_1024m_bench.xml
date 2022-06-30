@@ -1,151 +1,164 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <benchmark>
   <gc>ZGC</gc>
-  <avg-5-run>2233ms</avg-5-run>
+  <avg-5-run>2158ms</avg-5-run>
   <results>
     <result>
       <event>0</event>
-      <mark-start>0.008ms</mark-start>
-      <mark-end>0.010ms</mark-end>
-      <concurrent-mark>29.123ms</concurrent-mark>
+      <mark-start>0.006ms</mark-start>
+      <mark-end>0.008ms</mark-end>
+      <concurrent-mark>27.524ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>1.488ms</concurrent-non-strong-ref>
+      <concurrent-non-strong-ref>1.020ms</concurrent-non-strong-ref>
       <concurrent-reset-reloc>0.000ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>5.218ms</concurrent-select-reloc>
-      <pause-relocate-start>0.008ms</pause-relocate-start>
-      <concurrent-relocate>11.420ms</concurrent-relocate>
+      <concurrent-select-reloc>6.017ms</concurrent-select-reloc>
+      <pause-relocate-start>0.007ms</pause-relocate-start>
+      <concurrent-relocate>12.125ms</concurrent-relocate>
+      <total>46.708ms</total>
     </result>
     <result>
       <event>1</event>
       <mark-start>0.006ms</mark-start>
-      <mark-end>0.011ms</mark-end>
-      <concurrent-mark>82.000ms</concurrent-mark>
+      <mark-end>0.010ms</mark-end>
+      <concurrent-mark>124.266ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>1.504ms</concurrent-non-strong-ref>
-      <concurrent-reset-reloc>0.003ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>4.204ms</concurrent-select-reloc>
-      <pause-relocate-start>0.013ms</pause-relocate-start>
-      <concurrent-relocate>30.156ms</concurrent-relocate>
+      <concurrent-non-strong-ref>2.045ms</concurrent-non-strong-ref>
+      <concurrent-reset-reloc>0.008ms</concurrent-reset-reloc>
+      <concurrent-select-reloc>5.206ms</concurrent-select-reloc>
+      <pause-relocate-start>0.017ms</pause-relocate-start>
+      <concurrent-relocate>45.833ms</concurrent-relocate>
+      <total>177.392ms</total>
     </result>
     <result>
       <event>2</event>
       <mark-start>0.006ms</mark-start>
       <mark-end>0.009ms</mark-end>
-      <concurrent-mark>148.022ms</concurrent-mark>
+      <concurrent-mark>156.666ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>1.141ms</concurrent-non-strong-ref>
+      <concurrent-non-strong-ref>1.080ms</concurrent-non-strong-ref>
       <concurrent-reset-reloc>0.007ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>4.251ms</concurrent-select-reloc>
-      <pause-relocate-start>0.008ms</pause-relocate-start>
-      <concurrent-relocate>38.902ms</concurrent-relocate>
+      <concurrent-select-reloc>1.724ms</concurrent-select-reloc>
+      <pause-relocate-start>0.006ms</pause-relocate-start>
+      <concurrent-relocate>21.760ms</concurrent-relocate>
+      <total>181.259ms</total>
     </result>
     <result>
       <event>3</event>
-      <mark-start>0.015ms</mark-start>
-      <mark-end>0.009ms</mark-end>
-      <concurrent-mark>183.748ms</concurrent-mark>
+      <mark-start>0.005ms</mark-start>
+      <mark-end>0.008ms</mark-end>
+      <concurrent-mark>135.337ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>1.599ms</concurrent-non-strong-ref>
-      <concurrent-reset-reloc>0.010ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>2.642ms</concurrent-select-reloc>
-      <pause-relocate-start>0.017ms</pause-relocate-start>
-      <concurrent-relocate>17.794ms</concurrent-relocate>
+      <concurrent-non-strong-ref>1.630ms</concurrent-non-strong-ref>
+      <concurrent-reset-reloc>0.006ms</concurrent-reset-reloc>
+      <concurrent-select-reloc>1.926ms</concurrent-select-reloc>
+      <pause-relocate-start>0.006ms</pause-relocate-start>
+      <concurrent-relocate>29.497ms</concurrent-relocate>
+      <total>168.416ms</total>
     </result>
     <result>
       <event>4</event>
-      <mark-start>0.007ms</mark-start>
+      <mark-start>0.008ms</mark-start>
       <mark-end>0.009ms</mark-end>
-      <concurrent-mark>161.202ms</concurrent-mark>
-      <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>1.283ms</concurrent-non-strong-ref>
+      <concurrent-mark>191.359ms</concurrent-mark>
+      <concurrent-mark-free>0.000ms</concurrent-mark-free>
+      <concurrent-non-strong-ref>2.014ms</concurrent-non-strong-ref>
       <concurrent-reset-reloc>0.008ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>4.363ms</concurrent-select-reloc>
-      <pause-relocate-start>0.024ms</pause-relocate-start>
-      <concurrent-relocate>29.935ms</concurrent-relocate>
+      <concurrent-select-reloc>3.012ms</concurrent-select-reloc>
+      <pause-relocate-start>0.005ms</pause-relocate-start>
+      <concurrent-relocate>32.667ms</concurrent-relocate>
+      <total>229.082ms</total>
     </result>
     <result>
       <event>5</event>
-      <mark-start>0.006ms</mark-start>
-      <mark-end>0.010ms</mark-end>
-      <concurrent-mark>215.319ms</concurrent-mark>
+      <mark-start>0.005ms</mark-start>
+      <mark-end>0.009ms</mark-end>
+      <concurrent-mark>200.316ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>0.813ms</concurrent-non-strong-ref>
-      <concurrent-reset-reloc>0.006ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>2.471ms</concurrent-select-reloc>
+      <concurrent-non-strong-ref>2.959ms</concurrent-non-strong-ref>
+      <concurrent-reset-reloc>0.008ms</concurrent-reset-reloc>
+      <concurrent-select-reloc>1.941ms</concurrent-select-reloc>
       <pause-relocate-start>0.006ms</pause-relocate-start>
-      <concurrent-relocate>0.916ms</concurrent-relocate>
+      <concurrent-relocate>1.997ms</concurrent-relocate>
+      <total>207.242ms</total>
     </result>
     <result>
       <event>6</event>
-      <mark-start>0.005ms</mark-start>
-      <mark-end>0.011ms</mark-end>
-      <concurrent-mark>171.392ms</concurrent-mark>
+      <mark-start>0.006ms</mark-start>
+      <mark-end>0.015ms</mark-end>
+      <concurrent-mark>225.722ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>0.905ms</concurrent-non-strong-ref>
-      <concurrent-reset-reloc>0.001ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>2.547ms</concurrent-select-reloc>
-      <pause-relocate-start>0.004ms</pause-relocate-start>
-      <concurrent-relocate>7.506ms</concurrent-relocate>
+      <concurrent-non-strong-ref>1.802ms</concurrent-non-strong-ref>
+      <concurrent-reset-reloc>0.002ms</concurrent-reset-reloc>
+      <concurrent-select-reloc>2.155ms</concurrent-select-reloc>
+      <pause-relocate-start>0.006ms</pause-relocate-start>
+      <concurrent-relocate>7.414ms</concurrent-relocate>
+      <total>237.123ms</total>
     </result>
     <result>
       <event>7</event>
-      <mark-start>0.007ms</mark-start>
+      <mark-start>0.006ms</mark-start>
       <mark-end>0.009ms</mark-end>
-      <concurrent-mark>222.082ms</concurrent-mark>
+      <concurrent-mark>211.202ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>1.189ms</concurrent-non-strong-ref>
-      <concurrent-reset-reloc>0.006ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>2.612ms</concurrent-select-reloc>
-      <pause-relocate-start>0.006ms</pause-relocate-start>
-      <concurrent-relocate>8.771ms</concurrent-relocate>
+      <concurrent-non-strong-ref>0.826ms</concurrent-non-strong-ref>
+      <concurrent-reset-reloc>0.002ms</concurrent-reset-reloc>
+      <concurrent-select-reloc>1.463ms</concurrent-select-reloc>
+      <pause-relocate-start>0.004ms</pause-relocate-start>
+      <concurrent-relocate>3.208ms</concurrent-relocate>
+      <total>216.721ms</total>
     </result>
     <result>
       <event>8</event>
-      <mark-start>0.006ms</mark-start>
-      <mark-end>0.009ms</mark-end>
-      <concurrent-mark>218.928ms</concurrent-mark>
+      <mark-start>0.004ms</mark-start>
+      <mark-end>0.010ms</mark-end>
+      <concurrent-mark>321.358ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>1.242ms</concurrent-non-strong-ref>
-      <concurrent-reset-reloc>0.001ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>2.495ms</concurrent-select-reloc>
-      <pause-relocate-start>0.006ms</pause-relocate-start>
-      <concurrent-relocate>8.478ms</concurrent-relocate>
+      <concurrent-non-strong-ref>0.862ms</concurrent-non-strong-ref>
+      <concurrent-reset-reloc>0.002ms</concurrent-reset-reloc>
+      <concurrent-select-reloc>1.726ms</concurrent-select-reloc>
+      <pause-relocate-start>0.005ms</pause-relocate-start>
+      <concurrent-relocate>6.677ms</concurrent-relocate>
+      <total>330.645ms</total>
     </result>
     <result>
       <event>9</event>
       <mark-start>0.006ms</mark-start>
-      <mark-end>0.010ms</mark-end>
-      <concurrent-mark>166.216ms</concurrent-mark>
+      <mark-end>0.011ms</mark-end>
+      <concurrent-mark>364.954ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>1.055ms</concurrent-non-strong-ref>
-      <concurrent-reset-reloc>0.006ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>1.125ms</concurrent-select-reloc>
-      <pause-relocate-start>0.006ms</pause-relocate-start>
-      <concurrent-relocate>2.030ms</concurrent-relocate>
+      <concurrent-non-strong-ref>2.073ms</concurrent-non-strong-ref>
+      <concurrent-reset-reloc>0.009ms</concurrent-reset-reloc>
+      <concurrent-select-reloc>2.761ms</concurrent-select-reloc>
+      <pause-relocate-start>0.008ms</pause-relocate-start>
+      <concurrent-relocate>2.856ms</concurrent-relocate>
+      <total>372.679ms</total>
     </result>
     <result>
       <event>10</event>
       <mark-start>0.007ms</mark-start>
-      <mark-end>0.009ms</mark-end>
-      <concurrent-mark>267.737ms</concurrent-mark>
+      <mark-end>0.012ms</mark-end>
+      <concurrent-mark>318.033ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>2.200ms</concurrent-non-strong-ref>
-      <concurrent-reset-reloc>0.004ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>1.234ms</concurrent-select-reloc>
-      <pause-relocate-start>0.006ms</pause-relocate-start>
-      <concurrent-relocate>2.640ms</concurrent-relocate>
+      <concurrent-non-strong-ref>2.321ms</concurrent-non-strong-ref>
+      <concurrent-reset-reloc>0.002ms</concurrent-reset-reloc>
+      <concurrent-select-reloc>2.214ms</concurrent-select-reloc>
+      <pause-relocate-start>0.009ms</pause-relocate-start>
+      <concurrent-relocate>1.211ms</concurrent-relocate>
+      <total>323.81ms</total>
     </result>
     <result>
       <event>11</event>
-      <mark-start>0.005ms</mark-start>
+      <mark-start>0.006ms</mark-start>
       <mark-end>0.009ms</mark-end>
-      <concurrent-mark>238.484ms</concurrent-mark>
+      <concurrent-mark>229.087ms</concurrent-mark>
       <concurrent-mark-free>0.001ms</concurrent-mark-free>
-      <concurrent-non-strong-ref>2.603ms</concurrent-non-strong-ref>
-      <concurrent-reset-reloc>0.004ms</concurrent-reset-reloc>
-      <concurrent-select-reloc>1.539ms</concurrent-select-reloc>
+      <concurrent-non-strong-ref>1.639ms</concurrent-non-strong-ref>
+      <concurrent-reset-reloc>0.002ms</concurrent-reset-reloc>
+      <concurrent-select-reloc>1.162ms</concurrent-select-reloc>
       <pause-relocate-start>0.006ms</pause-relocate-start>
-      <concurrent-relocate>4.757ms</concurrent-relocate>
+      <concurrent-relocate>1.691ms</concurrent-relocate>
+      <total>233.603ms</total>
     </result>
   </results>
+  <total-gc>2724.68ms</total-gc>
 </benchmark>

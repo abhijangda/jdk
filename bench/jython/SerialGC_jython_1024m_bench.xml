@@ -1,166 +1,167 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <benchmark>
   <gc>SerialGC</gc>
-  <avg-5-run>4237ms</avg-5-run>
+  <avg-5-run>4170ms</avg-5-run>
   <results>
     <result>
       <pause>young</pause>
       <event>0</event>
-      <total>7.980ms</total>
+      <total>8.351ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>2</event>
-      <total>3.084ms</total>
+      <total>3.489ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>3</event>
-      <total>4.703ms</total>
+      <total>3.355ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>4</event>
-      <total>3.229ms</total>
+      <total>3.894ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>5</event>
-      <total>3.780ms</total>
+      <total>2.498ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>6</event>
-      <total>3.493ms</total>
+      <total>3.535ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>7</event>
-      <total>4.558ms</total>
+      <total>4.385ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>8</event>
-      <total>6.789ms</total>
+      <total>10.913ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>9</event>
-      <total>9.354ms</total>
+      <total>9.029ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>10</event>
-      <total>10.379ms</total>
+      <total>10.590ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>11</event>
-      <total>7.679ms</total>
+      <total>8.247ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>12</event>
-      <total>10.384ms</total>
+      <total>12.378ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>13</event>
-      <total>12.154ms</total>
+      <total>12.270ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>14</event>
-      <total>5.316ms</total>
+      <total>5.527ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>15</event>
-      <total>2.610ms</total>
+      <total>2.870ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>16</event>
-      <total>2.731ms</total>
+      <total>2.894ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>17</event>
-      <total>2.705ms</total>
+      <total>2.895ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>18</event>
-      <total>3.313ms</total>
+      <total>3.425ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>19</event>
-      <total>3.180ms</total>
+      <total>3.176ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>20</event>
-      <total>3.592ms</total>
+      <total>3.346ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>21</event>
-      <total>2.685ms</total>
+      <total>3.027ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>22</event>
-      <total>3.180ms</total>
+      <total>3.372ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>23</event>
-      <total>3.273ms</total>
+      <total>3.396ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>24</event>
-      <total>3.207ms</total>
+      <total>3.125ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>25</event>
-      <total>3.406ms</total>
+      <total>3.384ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>26</event>
-      <total>2.911ms</total>
+      <total>3.157ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>27</event>
-      <total>3.725ms</total>
+      <total>3.525ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>28</event>
-      <total>4.629ms</total>
+      <total>4.860ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>29</event>
-      <total>0.600ms</total>
+      <total>0.578ms</total>
     </result>
     <result>
       <pause>young</pause>
       <event>30</event>
-      <total>0.469ms</total>
+      <total>0.577ms</total>
     </result>
     <result>
       <pause>full</pause>
       <event>1</event>
-      <mark>7.153ms</mark>
-      <new-addresses>2.829ms</new-addresses>
-      <adjust-pointers>3.717ms</adjust-pointers>
-      <move-objects>2.310ms</move-objects>
-      <total>16.887ms</total>
+      <mark>6.207ms</mark>
+      <new-addresses>2.631ms</new-addresses>
+      <adjust-pointers>2.597ms</adjust-pointers>
+      <move-objects>1.935ms</move-objects>
+      <total>14.006ms</total>
     </result>
   </results>
+  <total-gc>160.074ms</total-gc>
 </benchmark>

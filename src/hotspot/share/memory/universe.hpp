@@ -29,7 +29,7 @@
 #include "oops/array.hpp"
 #include "oops/oopHandle.hpp"
 #include "runtime/handles.hpp"
-#include "utilities/growableArray.hpp"
+#include "utilities/linkedlist.hpp"
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -219,75 +219,17 @@ class Universe: AllStatic {
     uint64_t id;
   //}
   };
-  static uint64_t *heap_event_counter_ptr;
-  static HeapEvent* heap_events;
+  static LinkedListImpl<HeapEvent*> all_heap_events;
   static pthread_mutex_t mutex_heap_event;
   static bool enable_transfer_events;
   static void transfer_events_to_gpu();
   static sem_t cuda_semaphore;
-  static inline void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3) {
-    if (!InstrumentHeapEvents) return;
-    // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
-    if (CheckHeapEventGraphWithHeap)
-      Universe::lock_mutex_heap_event();
-    // Universe::heap_event_counter++;
-    // if (event.address.src == 0x0) {
-    //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
-    // }
-    if (*Universe::heap_event_counter_ptr + 3 > MaxHeapEvents) {
-      if (CheckHeapEventGraphWithHeap)
-        Universe::verify_heap_graph();
-      else
-        Universe::transfer_events_to_gpu();
-    }
-    uint64_t v = *Universe::heap_event_counter_ptr;
-    (&Universe::heap_events[1])[v] = event1;
-    (&Universe::heap_events[1])[1+v] = event2;
-    (&Universe::heap_events[1])[2+v] = event3;
-    *Universe::heap_event_counter_ptr = v + 3;
-    // if (event.heap_event_type == 0) {
-    //   printf("new object at %ld\n");
-    // }
-    if (*Universe::heap_event_counter_ptr >= MaxHeapEvents) {
-      if (CheckHeapEventGraphWithHeap)
-        Universe::verify_heap_graph();
-      else
-        Universe::transfer_events_to_gpu();
-      
-    }
-    if (CheckHeapEventGraphWithHeap)
-      Universe::unlock_mutex_heap_event();
-  }
-
-  static inline void add_heap_event(Universe::HeapEvent event) {  
-    if (!InstrumentHeapEvents) return;
-    // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
-    if (CheckHeapEventGraphWithHeap)
-      Universe::lock_mutex_heap_event();
-    // Universe::heap_event_counter++;
-    // if (event.address.src == 0x0) {
-    //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
-    // }
-    uint64_t v = *Universe::heap_event_counter_ptr;
-    (&Universe::heap_events[1])[v] = event;
-    *Universe::heap_event_counter_ptr = v + 1;
-    // if (event.heap_event_type == 0) {
-    //   printf("new object at %ld\n");
-    // }
-    if (*Universe::heap_event_counter_ptr >= MaxHeapEvents) {
-      if (CheckHeapEventGraphWithHeap)
-        Universe::verify_heap_graph();
-      else
-        Universe::transfer_events_to_gpu();
-      
-    }
-    if (CheckHeapEventGraphWithHeap)
-      Universe::unlock_mutex_heap_event();
-  }
-
+  static void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3);
+  static void add_heap_event(Universe::HeapEvent event);
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();
   static void print_heap_event_counter();
+  static HeapEvent* alloc_heap_events();
   static void verify_heap_graph();
   static void verify_heap_graph_for_copy_array();
   static void* mmap(size_t sz) {

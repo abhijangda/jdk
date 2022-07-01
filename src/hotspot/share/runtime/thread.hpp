@@ -1024,6 +1024,8 @@ class JavaThread: public Thread {
   inline StackWatermarks* stack_watermarks() { return &_stack_watermarks; }
 
  public:
+  Universe::HeapEvent* heap_events;
+  
   // Constructor
   JavaThread();                            // delegating constructor
   JavaThread(bool is_attaching_via_jni);   // for main thread and JNI attached threads

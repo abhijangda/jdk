@@ -4695,6 +4695,9 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     assert(dst_or_new_obj.as_address().base() != temp1 && dst_or_new_obj.as_address().base() != temp2 && dst_or_new_obj.as_address().base() != temp2, "");
     assert(dst_or_new_obj.as_address().index() != temp1 && dst_or_new_obj.as_address().index() != temp2 &&dst_or_new_obj.as_address().index() != temp2, "");
   }
+  
+  JavaThread* cur_thread = JavaThread::current();
+  size_t heap_events_offset = (uint8_t*)&cur_thread->heap_events - (uint8_t*)cur_thread;
   Register temp3 = r14;
   push(r14);
   if (preserve_temp1)
@@ -4705,13 +4708,14 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     pushf(); 
 
   gen_lock_heap_event_mutex();
-  mov64(temp1, (uint64_t)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type, 0);
+  movq(temp1, Address(r15_thread, heap_events_offset, Address::times_1));
+  // mov64(temp1, (uint64_t)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type, 0);
   movq(temp2, Address(temp1, 0));
   leaq(temp2, Address(temp2, 1));
   movq(Address(temp1, 0), temp2);
   shlq(temp2, 5);
   leaq(temp1, Address(temp1, temp2, Address::times_1));
-
+  
   movq(Address(temp1, 0), (uint64_t)event_type);
   if (src_or_obj_size.is_register())
     movq(Address(temp1, 8), src_or_obj_size.as_register());
@@ -4754,7 +4758,10 @@ void MacroAssembler::append_copyarray_event(Register dst_array, Register src_arr
                                             Register tmp3, bool preserve_tmp3, 
                                             bool preserve_flags) {
   if (!InstrumentHeapEvents) return;
+
+  ShouldNotReachHere();
   
+  #if 0
   if (preserve_tmp1)
     push(tmp1);
   if (preserve_tmp2)
@@ -4821,6 +4828,7 @@ void MacroAssembler::append_copyarray_event(Register dst_array, Register src_arr
     pop(tmp2);
   if (preserve_tmp1)
     pop(tmp1);
+  #endif
 }
 
 void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size, 

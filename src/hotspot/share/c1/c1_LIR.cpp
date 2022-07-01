@@ -497,6 +497,17 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
       break;
     }
 
+    case lir_inc_heap_event_cntr:
+    {
+      assert(op->as_Op1() != NULL, "must be");
+      LIR_Op1* op1 = (LIR_Op1*)op;
+
+      if (op1->_info)                  do_info(op1->_info);
+      assert (op1->_opr->is_valid(), "");
+      do_input(op1->_opr);
+      break;
+    }
+
 // LIR_OpConvert;
     case lir_convert:        // input and result always valid, info always invalid
     {

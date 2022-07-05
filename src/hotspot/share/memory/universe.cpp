@@ -784,8 +784,16 @@ Universe::HeapEvent* Universe::alloc_heap_events() {
  static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
   pthread_mutex_lock(&lock);
-  HeapEvent* events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents)*sizeof(Universe::HeapEvent));
-  all_heap_events.add(events);
+  // HeapEvent* events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents)*sizeof(Universe::HeapEvent));
+  // all_heap_events.add(events);
+  HeapEvent* events;
+  if (all_heap_events.head())
+    events = *all_heap_events.head()->data();
+  else {
+    HeapEvent* events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents)*sizeof(Universe::HeapEvent));
+    all_heap_events.add(events);
+  }
+
   pthread_mutex_unlock(&lock);
 
   return events;

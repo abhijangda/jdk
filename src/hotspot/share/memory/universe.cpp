@@ -711,9 +711,9 @@ void Universe::print_heap_event_counter() {
 }
 
 void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3) {
-  JavaThread* cur_thread = JavaThread::current();
-  assert(cur_thread->heap_events, "");
-  HeapEvent* heap_events = cur_thread->heap_events;
+  // JavaThread* cur_thread = JavaThread::current();
+  // assert(cur_thread->heap_events, "");
+  HeapEvent* heap_events = Universe::alloc_heap_events();//cur_thread->heap_events;
   uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   if (!InstrumentHeapEvents) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
@@ -750,9 +750,9 @@ void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent e
 
 void Universe::add_heap_event(Universe::HeapEvent event) {
   if (!InstrumentHeapEvents) return;
-  JavaThread* cur_thread = JavaThread::current();
-  assert(cur_thread->heap_events, "");
-  HeapEvent* heap_events = cur_thread->heap_events;
+  // JavaThread* cur_thread = JavaThread::current();
+  // assert(cur_thread->heap_events, "");
+  HeapEvent* heap_events = Universe::alloc_heap_events();//cur_thread->heap_events;
   uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   // if (!cur_thread->heap_events) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));

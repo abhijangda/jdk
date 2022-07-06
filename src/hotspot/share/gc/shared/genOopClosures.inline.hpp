@@ -59,7 +59,7 @@ inline void FastScanClosure<Derived>::do_oop_work(T* p) {
       oop new_obj = obj->is_forwarded() ? obj->forwardee()
                                         : _young_gen->copy_to_survivor_space(obj);
       RawAccess<IS_NOT_NULL>::oop_store(p, new_obj);
-
+      Universe::add_heap_event(Universe::HeapEvent{Universe::MoveObject, (uint64_t)(void*)obj, (uint64_t)(void*)new_obj});
       static_cast<Derived*>(this)->barrier(p);
     }
   }

@@ -671,13 +671,15 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
     new_obj_oop = Universe::heap()->array_allocate(klass, size, length,
                                                    /* do_zero */ true, CHECK_NULL);
     event_size = length;
+    if (obj->klass()->id() == ObjArrayKlassID)
+      Universe::add_heap_event(Universe::HeapEvent{Universe::NewArray, event_size, (uint64_t)(void*) new_obj_oop});
+    else
+      Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, event_size, (uint64_t)(void*) new_obj_oop});  
   } else {
     new_obj_oop = Universe::heap()->obj_allocate(klass, size, CHECK_NULL);
     event_size = size;
+    Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, event_size, (uint64_t)(void*) new_obj_oop});
   }
-  
-  //TODO: Below events can be combined in one function call.
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, event_size, (uint64_t)(void*)new_obj_oop});
 
   if (obj->klass()->is_instance_klass()) {
     Universe::add_heap_event(Universe::HeapEvent{Universe::CopyObject, (uint64_t)(void*)obj(), (uint64_t)(void*)new_obj_oop});

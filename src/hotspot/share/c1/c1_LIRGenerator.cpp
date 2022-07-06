@@ -1862,7 +1862,7 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
         __ store(orig_addr->base(), heap_events_addr_dst);
         #endif
       }
-    } else if (event_type == Universe::NewObject) {
+    } else if (event_type == Universe::NewObject || event_type == Universe::NewArray) {
       LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, 8, T_LONG); //Object size is in Integer and not Long
       LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 16, T_LONG);
       __ store(src_or_obj_size, heap_events_addr_src);

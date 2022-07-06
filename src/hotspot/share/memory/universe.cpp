@@ -435,8 +435,8 @@ int InstanceKlassPointerComparer(const void* a, const void* b) {
 class CheckGraph : public ObjectClosure {
   public:
   const bool print_not_found = false;
-  const void* INVALID_PTR = (void*)0xbaadbabebaadbabe;
-  const oop INVALID_OOP = oop((oopDesc*)INVALID_PTR);
+  static const void* INVALID_PTR;
+  static const oop INVALID_OOP;
   bool _check_objects;
   bool _check_object_fields;
   bool _check_array_elements;
@@ -449,8 +449,19 @@ class CheckGraph : public ObjectClosure {
   int num_fields;
   unordered_set<HeapWord*> static_fields_checked;
 
-  CheckGraph(bool check_objects, bool check_object_fields, bool check_array_elements, bool check_static_fields) : 
-    _check_objects(check_objects), _check_object_fields(check_object_fields), _check_array_elements(check_array_elements),  _check_static_fields(check_static_fields), valid(true), num_found(0), num_not_found(0), num_src_not_correct(0), num_statics_checked(0), num_oops(0), num_fields(0) {
+  CheckGraph(bool check_objects, bool check_object_fields, bool check_array_elements, bool check_static_fields) {
+    _check_objects = check_objects;
+    _check_object_fields = check_object_fields;
+    _check_array_elements = check_array_elements;
+    _check_static_fields = check_static_fields; 
+    valid = true;
+    num_found = 0;
+    num_not_found = 0;
+    num_src_not_correct = 0;
+    num_statics_checked = 0;
+    num_oops = 0;
+    num_fields = 0;
+
     if (_check_object_fields) _check_objects = true;
     if (_check_array_elements) _check_objects = true;
   }
@@ -676,6 +687,9 @@ class CheckGraph : public ObjectClosure {
   }
 };
 
+const void* CheckGraph::INVALID_PTR = (void*)0xbaadbabebaadbabe;
+const oop CheckGraph::INVALID_OOP = oop((oopDesc*)INVALID_PTR);
+
 void Universe::transfer_events_to_gpu() {
   sem_post(&cuda_semaphore);
   JavaThread* cur_thread = JavaThread::current();
@@ -817,54 +831,58 @@ void Universe::verify_heap_graph() {
   int zero_event_types = 0;
   //Update heap hash table
   unordered_set<uint64_t> event_threads;
+  printf("Check Shadow Graph\n");
 
   for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
        !heap_events_iter.is_empty(); heap_events_iter.next()) {
     auto th_heap_events = *heap_events_iter;
     const size_t heap_events_size = *(const uint64_t*)th_heap_events;
-    printf("heap_events_size %ld\n", heap_events_size);
     const HeapEvent* heap_events_start = &th_heap_events[1];
+    printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, alloc_heap_events());
 
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
-      event_threads.insert(event.id);
+      // event_threads.insert(event.id);
 
-      if (event.heap_event_type == Universe::NewObject) {
+      if (event.heap_event_type == Universe::NewObject || 
+          event.heap_event_type == Universe::NewArray) {
         oopDesc* obj = (oopDesc*)event.address.dst;
-        if (ObjectNode::oop_to_obj_node.find(obj) == ObjectNode::oop_to_obj_node.end()) {
-          Universe::HeapEventType obj_type = None;
-          if (obj->klass()->is_objArray_klass())
-            obj_type = Universe::NewArray;
-          else if (obj->klass()->is_instance_klass() || obj->klass()->is_typeArray_klass())
-            obj_type = Universe::NewObject;
-          
-          ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.address.src, obj_type, event.id));
+        if (ObjectNode::oop_to_obj_node.find(obj) == ObjectNode::oop_to_obj_node.end()) {          
+          ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.address.src,
+                                                   event.heap_event_type, event.id));
+          if (obj != NULL && obj != CheckGraph::INVALID_OOP && obj->klass() && obj->klass() != CheckGraph::INVALID_PTR) {
+            if (event.heap_event_type == Universe::NewArray) {
+              if (!obj->klass()->is_objArray_klass())
+                printf("not array klass event %ld oop %p\n", event.heap_event_type, obj);
+            } 
+            
+            if (event.heap_event_type == Universe::NewObject) {
+              if (!obj->klass()->is_instance_klass() && !obj->klass()->is_typeArray_klass())
+                printf("not obj klass event %ld oop %p klassid %d\n", event.heap_event_type, obj, obj->klass()->id());
+            }
+          }
         }
       }
     }
   }
-
+  
   for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
        !heap_events_iter.is_empty(); heap_events_iter.next()) {
     auto th_heap_events = *heap_events_iter;
     const size_t heap_events_size = *(const uint64_t*)th_heap_events;
     *(uint64_t*)th_heap_events = 0;
     HeapEvent* heap_events_start = &th_heap_events[1];
-
+    
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
       event_threads.insert(event.id);
 
-      if (event.heap_event_type == Universe::NewObject) {
+      if (event.heap_event_type == Universe::NewObject || 
+          event.heap_event_type == Universe::NewArray) {
         oopDesc* obj = (oopDesc*)event.address.dst;
         if (ObjectNode::oop_to_obj_node.find(obj) == ObjectNode::oop_to_obj_node.end()) {
-          Universe::HeapEventType obj_type = None;
-          if (obj->klass()->is_objArray_klass())
-            obj_type = Universe::NewArray;
-          else if (obj->klass()->is_instance_klass() || obj->klass()->is_typeArray_klass())
-            obj_type = Universe::NewObject;
-          
-          ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.address.src, obj_type, event.id));
+          ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.address.src,
+                                                   event.heap_event_type, event.id));
         }
       } else if (event.heap_event_type == Universe::FieldSet) {
         oopDesc* field = (oopDesc*)event.address.dst;
@@ -951,7 +969,8 @@ void Universe::verify_heap_graph() {
             int src_array_index = offsets.address.src + i;
             int dst_array_index = offsets.address.dst + i;
             uint64_t src_elem_addr = ((uint64_t)obj_src->base()) + src_array_index * sizeof(oop);
-            uint64_t dst_elem_addr = ((uint64_t)obj_dst->base()) + dst_array_index * sizeof(oop);
+            uint64_t dst_elem_addr = ((uint64_t)
+            obj_dst->base()) + dst_array_index * sizeof(oop);
             
             auto src_elem_iter = obj_src_node_iter->second.fields().find((void*)src_elem_addr);
             if (src_elem_iter != obj_src_node_iter->second.fields().end()) {

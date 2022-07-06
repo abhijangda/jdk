@@ -4839,6 +4839,14 @@ void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size,
                     tmp1, preserve_tmp1, tmp2, preserve_tmp2, preserve_flags);
 }
 
+void MacroAssembler::append_newarray_event(Register obj, RegisterOrConstant size, 
+                                         Register tmp1, bool preserve_tmp1, 
+                                         Register tmp2, bool preserve_tmp2,
+                                         bool preserve_flags) {
+  append_heap_event(Universe::NewArray, RegisterOrAddress(obj), size, 
+                    tmp1, preserve_tmp1, tmp2, preserve_tmp2, preserve_flags);
+}
+
 void MacroAssembler::append_fieldset_event(Address field, RegisterOrConstant val, 
                                            Register tmp1, bool preserve_tmp1, 
                                            Register tmp2, bool preserve_tmp2, 

@@ -1395,7 +1395,7 @@ void LIRGenerator::do_NewObjectArray(NewObjectArray* x) {
   __ move(reg, result);
   if (InstrumentHeapEvents) {
     //TODO: this is also executed for slow path and add_heap_event function is also called in stubs
-    append_heap_event(Universe::NewObject, result, len2);
+    append_heap_event(Universe::NewArray, result, len2);
   }
 }
 

@@ -234,12 +234,10 @@ public:
     //TODO: Assuming T is Oop and not a NarrowOop
     // if (true) {
     //   uint64_t dst = ((uint64_t)(void*)base) + offset;
-    //   char hex_dst[1024];
-    //   sprintf(hex_dst, "0x%lx", dst);
-    //   if (strstr(hex_dst, "03f6e0")) {
+    //   if (Universe::checking == 1) {
     //     char buf[1024];
     //     base->klass()->name()->as_C_string(buf, 1024);
-    //     printf("0x%lx: oop %p offset 0x%lx src %p oop-class %s oop-class-id %d\n", dst, (void*)base, offset, (void*)value, buf, base->klass()->id());
+    //     printf("0x%lx: oop %p offset 0x%lx (%p) src %p oop-class %s oop-class-id %d\n", dst, (void*)base, offset, (char*)base + offset, (void*)value, buf, base->klass()->id());
     //   }
     // }
     Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)value, ((uint64_t)(void*)base) + offset});

@@ -607,6 +607,13 @@ void DefNewGeneration::collect(bool   full,
 
   _string_dedup_requests.flush();
 
+  if (InstrumentHeapEvents) {
+    MemRegion mr = eden()->used_region();
+    Universe::add_heap_event(Universe::HeapEvent{Universe::ClearContiguousSpace, (uint64_t)mr.start(), (uint64_t)mr.end()});
+
+    mr = from()->used_region();
+    Universe::add_heap_event(Universe::HeapEvent{Universe::ClearContiguousSpace, (uint64_t)mr.start(), (uint64_t)mr.end()});
+  }
   if (!_promotion_failed) {
     // Swap the survivor spaces.
     eden()->clear(SpaceDecorator::Mangle);
@@ -733,12 +740,13 @@ oop DefNewGeneration::copy_to_survivor_space(oop old) {
     age_table()->add(obj, s);
   }
 
-  // Done, insert forward pointer to obj in this header
-  old->forward_to(obj);
-
   if (InstrumentHeapEvents) {
+    // printf("%p -> %p\n", old, obj);
     Universe::add_heap_event(Universe::HeapEvent{Universe::MoveObject, (uint64_t)(void*)old, (uint64_t)(void*)obj});
   }
+
+  // Done, insert forward pointer to obj in this header
+  old->forward_to(obj);
   
   if (SerialStringDedup::is_candidate_from_evacuation(obj, new_obj_is_tenured)) {
     // Record old; request adds a new weak reference, which reference

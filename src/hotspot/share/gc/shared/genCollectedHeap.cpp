@@ -532,6 +532,14 @@ void GenCollectedHeap::do_collection(bool           full,
   bool prepared_for_verification = false;
   bool do_full_collection = false;
 
+  if (InstrumentHeapEvents) {
+    //Before collection transfer all the events
+    if(CheckHeapEventGraphWithHeap)
+      Universe::verify_heap_graph();
+    else
+      Universe::transfer_events_to_gpu();
+  }
+
   if (do_young_collection) {
     GCIdMark gc_id_mark;
     GCTraceCPUTime tcpu;
@@ -573,6 +581,14 @@ void GenCollectedHeap::do_collection(bool           full,
       MemoryService::track_memory_usage();
 
       gc_epilogue(complete);
+    }
+    
+    if (InstrumentHeapEvents) {
+      //Before collection transfer all the events
+      if(CheckHeapEventGraphWithHeap)
+        Universe::verify_heap_graph();
+      else
+        Universe::transfer_events_to_gpu();
     }
 
     print_heap_after_gc();

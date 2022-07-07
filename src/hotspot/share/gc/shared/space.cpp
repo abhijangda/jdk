@@ -547,7 +547,8 @@ void CompactibleSpace::compact() {
 
       // size and destination
       size_t size = cast_to_oop(cur_obj)->size();
-      Universe::add_heap_event(Universe::HeapEvent{Universe::MoveObject, (uint64_t)(void*)cast_to_oop(cur_obj), (uint64_t)(void*)cast_to_oop(cur_obj)->forwardee()});
+      if (InstrumentHeapEvents)
+        Universe::add_heap_event(Universe::HeapEvent{Universe::MoveObject, (uint64_t)(void*)cast_to_oop(cur_obj), (uint64_t)(void*)cast_to_oop(cur_obj)->forwardee()});
       // printf("550: cur_obj %p forwardee %p\n", (void*)cast_to_oop(cur_obj), (void*)cast_to_oop(cur_obj)->forwardee());
       HeapWord* compaction_top = cast_from_oop<HeapWord*>(cast_to_oop(cur_obj)->forwardee());
 

@@ -876,6 +876,8 @@ oopDesc* oop_for_field(Map& oop_map, oopDesc* field) {
   return obj;
 }
 
+bool Universe::is_verify_cause_full_gc = false;
+
 void Universe::verify_heap_graph() {
   // if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
   //   return;
@@ -894,7 +896,7 @@ void Universe::verify_heap_graph() {
   int zero_event_types = 0;
   //Update heap hash table
   unordered_set<uint64_t> event_threads;
-  printf("Check Shadow Graph\n");
+  printf("Check Shadow Graph is_verify_cause_full_gc %d\n", is_verify_cause_full_gc);
 
   map<oopDesc*, oopDesc*> old_to_new_objects;
 
@@ -1068,19 +1070,40 @@ void Universe::verify_heap_graph() {
       } else if (event.heap_event_type == ClearContiguousSpace) {
         uint64_t start = event.address.src;
         uint64_t end = event.address.dst;
-        vector<oopDesc*> oops_to_clear;
+        oopDesc* first = (oopDesc*)start;
+        oopDesc* last = (oopDesc*)end;
+        if (first == last) {
+          ObjectNode::oop_to_obj_node.erase(first);
+        } else {
+          auto first_obj_iter = ObjectNode::oop_to_obj_node.lower_bound(first);
+          auto last_obj_iter = ObjectNode::oop_to_obj_node.lower_bound(last);
 
-        for (auto& it : ObjectNode::oop_to_obj_node) {
-          if (it.first >= (void*)end)
-            break;
-          
-          if ((void*)start <= it.first && it.first < (void*)end) {
-            oops_to_clear.push_back(it.first);
+          if (first_obj_iter != ObjectNode::oop_to_obj_node.end() && 
+            first_obj_iter->first < first) 
+            first_obj_iter++;
+          if (last_obj_iter != ObjectNode::oop_to_obj_node.end() && 
+              last_obj_iter->first < last) last_obj_iter++;
+
+
+          // if (first_obj_iter == ObjectNode::oop_to_obj_node.end())
+          //   printf("first %p not found\n", first);
+          // if (last_obj_iter == ObjectNode::oop_to_obj_node.end())
+          //   printf("last %p not found\n", last);
+
+          //   printf("first %p last %p first_obj_iter->first %p last_obj_iter->first %p\n", first, last, first_obj_iter->first, last_obj_iter->first);
+          // for (auto& it : ObjectNode::oop_to_obj_node) {
+          //   if (it.first >= (void*)end) {
+          //     last = it.first;
+          //     break;
+          //   }
+          //   if (!first && it.first >= (void*)start) {
+          //     first = it.first;
+          //   }
+          // }
+
+          if (first && last) {
+            ObjectNode::oop_to_obj_node.erase(first_obj_iter, last_obj_iter);
           }
-        }
-
-        for (auto obj : oops_to_clear) {
-          ObjectNode::oop_to_obj_node.erase(obj);
         }
       }
     } 
@@ -1092,11 +1115,10 @@ void Universe::verify_heap_graph() {
       obj_node.second.update_field_vals(old_to_new_objects);
     }
   }
-
   printf("event_threads.size() %ld\n", event_threads.size());
   CheckGraph check_graph(true, true, true, true);
   Universe::heap()->object_iterate(&check_graph);
-  
+
   size_t num_objects = ObjectNode::oop_to_obj_node.size();
   size_t num_fields = 0;
   for (auto& it : ObjectNode::oop_to_obj_node) {
@@ -1105,6 +1127,10 @@ void Universe::verify_heap_graph() {
   printf("Total Events '%ld' {Object: %ld, FieldSet: %ld} ; Events-Found '%d' Events-Notfound '%d' Events-Wrong '%d'\n", 
   num_objects + num_fields, num_objects, num_fields, 
   check_graph.num_found, check_graph.num_not_found, check_graph.num_src_not_correct);
+
+  // if (Universe::is_verify_cause_full_gc) abort();
+
+  Universe::is_verify_cause_full_gc = false;
 }
 
 #include <cuda.h>

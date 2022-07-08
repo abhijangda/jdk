@@ -210,10 +210,10 @@ class Universe: AllStatic {
   ClearContiguousSpace = 1L << 9,
   LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
  };
-
- struct HeapEvent {
-  HeapEventType heap_event_type; //0 for new object and 1 for field assignment
-  // union {
+  static bool is_verify_cause_full_gc;
+  struct HeapEvent {
+    HeapEventType heap_event_type; //0 for new object and 1 for field assignment
+    // union {
     struct {
       uint64_t src;
       uint64_t dst;

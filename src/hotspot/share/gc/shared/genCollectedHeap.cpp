@@ -634,8 +634,8 @@ void GenCollectedHeap::do_collection(bool           full,
     _young_gen->compute_new_size();
 
     if (InstrumentHeapEvents) {
-      Universe::is_verify_cause_full_gc = true;
       //Before collection transfer all the events
+      Universe::is_verify_cause_full_gc = true;
       if(CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
       else

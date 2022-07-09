@@ -588,7 +588,7 @@ void DefNewGeneration::collect(bool   full,
 
   // "evacuate followers".
   evacuate_followers.do_void();
-
+  Universe::is_verify_cause_full_gc = true;
   FastKeepAliveClosure keep_alive(this, &scan_weak_ref);
   ReferenceProcessor* rp = ref_processor();
   ReferenceProcessorPhaseTimes pt(_gc_timer, rp->max_num_queues());
@@ -597,7 +597,8 @@ void DefNewGeneration::collect(bool   full,
   gc_tracer.report_gc_reference_stats(stats);
   gc_tracer.report_tenuring_threshold(tenuring_threshold());
   pt.print_all_references();
-
+  Universe::is_verify_cause_full_gc = false;
+  
   assert(heap->no_allocs_since_save_marks(), "save marks have not been newly set.");
 
   WeakProcessor::weak_oops_do(&is_alive, &keep_alive);

@@ -610,12 +610,12 @@ class CheckGraph : public ObjectClosure {
                   char class_name[1024];
                   get_oop_klass_name(obj, class_name);
                   if (num_not_found < 100) { 
-                    printf("Field '%s' not found in oop '%p' of class '%s'\n", field_name, (oopDesc*)obj, class_name);
+                    printf("Field '%s' ('%d':'%p') not found in oop '%p' of class '%s'\n", field_name, ik->field_offset(f), ((char*)obj + ik->field_offset(f)), (oopDesc*)obj, class_name);
                   }
                   if (num_not_found < 5) {
-                    // for (auto it = obj_node.fields().begin(); it != obj_node.fields().end(); it++) {
-                    //   printf("off %d obj_off %ld\n", ik->field_offset(f), it->first);
-                    // } 
+                    for (auto it = obj_node.fields().begin(); it != obj_node.fields().end(); it++) {
+                      printf("off %d obj_off %ld\n", ik->field_offset(f), it->first);
+                    } 
                   }
                   num_not_found++;
                 }
@@ -956,6 +956,7 @@ void Universe::verify_heap_graph() {
           if (next_obj_iter != ObjectNode::oop_to_obj_node.end() && next_obj_iter->first == field) {
             obj = next_obj_iter->first;
           } else {
+            printf("Obj is NULL for %p\n", field);
             auto obj_iter = --next_obj_iter;
             if (obj_iter->first != NULL || obj_iter->first != CheckGraph::INVALID_OOP)
               printf("start %p end %ld %ld\n", obj_iter->first, obj_iter->second.size(), obj_iter->first->size());
@@ -963,7 +964,6 @@ void Universe::verify_heap_graph() {
               obj = obj_iter->first;
             }
           }
-          printf("Obj is NULL for %p\n", field);
         } else {
           ObjectNode::oop_to_obj_node[obj].update_or_add_field((void*)field, (oopDesc*)event.address.src, 
                                                                event.id);
@@ -1083,23 +1083,6 @@ void Universe::verify_heap_graph() {
             first_obj_iter++;
           if (last_obj_iter != ObjectNode::oop_to_obj_node.end() && 
               last_obj_iter->first < last) last_obj_iter++;
-
-
-          // if (first_obj_iter == ObjectNode::oop_to_obj_node.end())
-          //   printf("first %p not found\n", first);
-          // if (last_obj_iter == ObjectNode::oop_to_obj_node.end())
-          //   printf("last %p not found\n", last);
-
-          //   printf("first %p last %p first_obj_iter->first %p last_obj_iter->first %p\n", first, last, first_obj_iter->first, last_obj_iter->first);
-          // for (auto& it : ObjectNode::oop_to_obj_node) {
-          //   if (it.first >= (void*)end) {
-          //     last = it.first;
-          //     break;
-          //   }
-          //   if (!first && it.first >= (void*)start) {
-          //     first = it.first;
-          //   }
-          // }
 
           if (first && last) {
             ObjectNode::oop_to_obj_node.erase(first_obj_iter, last_obj_iter);

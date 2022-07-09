@@ -315,7 +315,11 @@ public:
     verify_oop_decorators<store_mo_decorators>();
     typedef typename AccessInternal::OopOrNarrowOop<T>::type OopType;
     OopType oop_value = value;
-    // printf("256: src %p\n", (void*)addr);
+    if (Universe::is_verify_cause_full_gc) {
+      // printf("%p at %p\n", (void*)addr, value);
+      // Universe::print_heap_event_counter();
+      //Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)addr, (uint64_t)value});
+    }
     AccessInternal::store<decorators | INTERNAL_VALUE_IS_OOP>(addr, oop_value);
   }
 

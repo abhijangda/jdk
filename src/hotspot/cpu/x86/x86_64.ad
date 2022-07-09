@@ -6054,6 +6054,23 @@ instruct storeL(memory mem, rRegL src)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
+instruct transferEvents(memory mem, rRegL src)
+%{
+  match(Set mem (TransferEvents mem src));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $src\t# long" %}
+  ins_encode %{
+    __ subq($src$$Register, MaxHeapEvents);
+    Label not_equal;
+    __ jcc(Assembler::Condition::less, not_equal);
+    __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    //__ movq($mem$$Address, 0);
+    __ bind(not_equal);     
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
 // Store Pointer
 instruct storeP(memory mem, any_RegP src)
 %{

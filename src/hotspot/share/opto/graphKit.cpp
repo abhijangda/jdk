@@ -1136,6 +1136,57 @@ bool GraphKit::compute_stack_effects(int& inputs, int& depth) {
 
 
 
+void GraphKit::lock_unlock_heap_event(bool lock) {
+  // create input type (domain)
+  const Type **fields = TypeTuple::fields(0);
+  const TypeTuple *domain = TypeTuple::make(TypeFunc::Parms+0, fields);
+
+  // create result type (range)
+  fields = TypeTuple::fields(0);
+  const TypeTuple *range = TypeTuple::make(TypeFunc::Parms+0, fields);
+  auto tf = TypeFunc::make(domain, range);
+  if (lock)
+    make_runtime_call(RC_NO_LEAF, tf, (address)Universe::lock_mutex_heap_event, "lock_mutex_heap_event", NULL);
+  else
+    make_runtime_call(RC_NO_LEAF, tf, (address)Universe::unlock_mutex_heap_event, "unlock_mutex_heap_event", NULL);
+}
+
+void GraphKit::append_heap_event(Node* obj) {
+  uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
+  lock_unlock_heap_event(true);
+  Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
+  int adr_type = Compile::AliasIdxRaw;
+  Node* ctrl = control();
+  Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
+                         LoadNode::DependsOnlyOnTest, false, false, false, true);
+  Node* n = new AddLNode(cnt, _gvn.longcon(1));
+  Node* incr = _gvn.transform(n);
+  
+  Node* st = store_to_memory(ctrl, node_cntr_addr, incr, T_LONG, adr_type, MemNode::unordered, 
+                             false, false, false, true);
+  // Node* idx = _gvn.transform(new LShiftLNode(incr, _gvn.longcon(5)));
+  // Node* addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
+  // store_to_memory(ctrl, addr, _gvn.longcon(Universe::NewObject), T_LONG, adr_type, MemNode::unordered, 
+  //                 false, false, false, true);
+  
+  //TODO: Copied from store_to_memory and create make_transfer method
+  {
+    int adr_idx = Compile::AliasIdxRaw;
+    const TypePtr* adr_type = NULL;
+    debug_only(adr_type = C->get_adr_type(adr_idx));
+    Node *mem = memory(adr_idx);
+    Node* st;
+    Node* node_cntr_addr2 = makecon(TypeRawPtr::make((address)ptr_event_ctr));
+    st = new TransferEventsNode(ctrl, mem, node_cntr_addr2, adr_type, incr);
+    st = _gvn.transform(st);
+    set_memory(st, adr_idx);
+    if (mem->req() > MemNode::Address && node_cntr_addr2 == mem->in(MemNode::Address))
+      record_for_igvn(st);
+  }
+  lock_unlock_heap_event(false);
+}
+
+
 //------------------------------basic_plus_adr---------------------------------
 Node* GraphKit::basic_plus_adr(Node* base, Node* ptr, Node* offset) {
   // short-circuit a common case

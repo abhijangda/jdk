@@ -306,7 +306,9 @@ class GraphKit : public Phase {
   }
   Node* basic_plus_adr(Node* base, Node* ptr, Node* offset);
 
-
+  void append_heap_event(Node* obj);
+  void lock_unlock_heap_event(bool lock);
+  
   // Some convenient shortcuts for common nodes
   Node* IfTrue(IfNode* iff)                   { return _gvn.transform(new IfTrueNode(iff));      }
   Node* IfFalse(IfNode* iff)                  { return _gvn.transform(new IfFalseNode(iff));     }

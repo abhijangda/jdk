@@ -159,6 +159,7 @@ class SafePointScalarObjectNode;
 class StartNode;
 class State;
 class StoreNode;
+class TransferEventsNode;
 class SubNode;
 class SubTypeCheckNode;
 class Type;

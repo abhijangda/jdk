@@ -700,6 +700,22 @@ public:
 #endif
 };
 
+class TransferEventsNode : public StoreLNode {
+public:
+  TransferEventsNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val)
+    : StoreLNode(c, mem, adr, at, val, MemOrd::unordered)
+    {}
+  virtual int Opcode() const;
+  virtual BasicType memory_type() const { return T_LONG; }
+  
+#ifndef PRODUCT
+  virtual void dump_spec(outputStream *st) const {
+    StoreNode::dump_spec(st);
+    st->print(" TransferEvents");
+  }
+#endif
+};
+
 //------------------------------StoreFNode-------------------------------------
 // Store float to memory
 class StoreFNode : public StoreNode {

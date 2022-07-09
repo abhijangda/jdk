@@ -758,6 +758,12 @@ void Universe::unlock_mutex_heap_event() {
 
 void Universe::print_heap_event_counter() {
   // *Universe::heap_event_counter_ptr = 0; 
+  HeapEvent* heap_events = Universe::alloc_heap_events();
+  uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
+
+  printf("ctr %ld\n", *heap_event_counter_ptr);
+
+  *heap_event_counter_ptr = 0;
 }
 
 void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3) {

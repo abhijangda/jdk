@@ -306,7 +306,7 @@ class GraphKit : public Phase {
   }
   Node* basic_plus_adr(Node* base, Node* ptr, Node* offset);
 
-  void append_heap_event(Node* obj);
+  void append_heap_event(Universe::HeapEventType event_type, Node* obj, Node* size);
   void lock_unlock_heap_event(bool lock);
   
   // Some convenient shortcuts for common nodes

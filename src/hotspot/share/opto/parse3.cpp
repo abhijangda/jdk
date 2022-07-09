@@ -280,6 +280,7 @@ void Parse::do_anewarray() {
   const TypeKlassPtr* array_klass_type = TypeKlassPtr::make(array_klass);
   Node* count_val = pop();
   Node* obj = new_array(makecon(array_klass_type), count_val, 1);
+  append_heap_event(Universe::NewArray, obj, count_val);
   push(obj);
 }
 
@@ -290,6 +291,7 @@ void Parse::do_newarray(BasicType elem_type) {
   Node*   count_val = pop();
   const TypeKlassPtr* array_klass = TypeKlassPtr::make(ciTypeArrayKlass::make(elem_type));
   Node*   obj = new_array(makecon(array_klass), count_val, 1);
+  append_heap_event(Universe::NewObject, obj, count_val);
   // Push resultant oop onto stack
   push(obj);
 }

@@ -276,8 +276,6 @@ void Parse::do_new() {
   if (C->eliminate_boxing() && klass->is_box_klass()) {
     C->set_has_boxed_value(true);
   }
-
-  append_heap_event(obj);
 }
 
 #ifndef PRODUCT

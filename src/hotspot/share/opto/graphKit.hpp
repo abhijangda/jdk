@@ -307,8 +307,9 @@ class GraphKit : public Phase {
   Node* basic_plus_adr(Node* base, Node* ptr, Node* offset);
 
   void append_heap_event(Universe::HeapEventType event_type, Node* obj, Node* size);
+  void append_copy_array(Node* dst_array, Node* src_array, Node* dst_offset, Node* src_offset, Node* count);
   void lock_unlock_heap_event(bool lock);
-  
+  Node* make_transfer_event(Node* ctrl, Node* mem_adr, Node* cntr, uint64_t maxval);
   // Some convenient shortcuts for common nodes
   Node* IfTrue(IfNode* iff)                   { return _gvn.transform(new IfTrueNode(iff));      }
   Node* IfFalse(IfNode* iff)                  { return _gvn.transform(new IfFalseNode(iff));     }

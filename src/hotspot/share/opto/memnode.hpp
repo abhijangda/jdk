@@ -701,13 +701,15 @@ public:
 };
 
 class TransferEventsNode : public StoreLNode {
+private:
+  uint64_t _max_val;
 public:
-  TransferEventsNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val)
-    : StoreLNode(c, mem, adr, at, val, MemOrd::unordered)
+  TransferEventsNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, uint64_t max_val)
+    : StoreLNode(c, mem, adr, at, val, MemOrd::unordered), _max_val(max_val)
     {}
   virtual int Opcode() const;
   virtual BasicType memory_type() const { return T_LONG; }
-  
+  uint64_t max_val() const {return _max_val;}
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const {
     StoreNode::dump_spec(st);

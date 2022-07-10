@@ -1848,7 +1848,7 @@ void ArchDesc::declareClasses(FILE *fp) {
     }
     if ( instr->num_post_match_opnds() != 0
          || instr->is_chain_of_constant(_globalNames) ) {
-      fprintf(fp,"  friend MachNode *State::MachNodeGenerator(int opcode);\n");
+      fprintf(fp,"  friend MachNode *State::MachNodeGenerator(int opcode, Node* orig_node);\n");
     }
     if ( instr->rematerialize(_globalNames, get_registers()) ) {
       fprintf(fp,"  // Rematerialize %s\n", instr->_ident);
@@ -2035,7 +2035,7 @@ void ArchDesc::defineStateClass(FILE *fp) {
   fprintf(fp,"\n");
   fprintf(fp,"  // Methods created by ADLC and invoked by Reduce\n");
   fprintf(fp,"  MachOper *MachOperGenerator(int opcode);\n");
-  fprintf(fp,"  MachNode *MachNodeGenerator(int opcode);\n");
+  fprintf(fp,"  MachNode *MachNodeGenerator(int opcode, Node* orig_node);\n");
   fprintf(fp,"\n");
   fprintf(fp,"  // Assign a state to a node, definition of method produced by ADLC\n");
   fprintf(fp,"  bool DFA( int opcode, const Node *ideal );\n");

@@ -3867,6 +3867,9 @@ void ArchDesc::buildMachNode(FILE *fp_cpp, InstructForm *inst, const char *inden
 
   // Create the MachNode object
   fprintf(fp_cpp, "%s %sNode *node = new %sNode();\n",indent, opClass,opClass);
+  if (strstr(inst->_ident, "transferEvent")) {
+    fprintf(fp_cpp, "%s node->set_orig_node(orig_node);\n",indent);
+  }
 
   if ( (inst->num_post_match_opnds() != 0) ) {
     // Instruction that contains operands which are not in match rule.
@@ -4075,7 +4078,7 @@ void ArchDesc::buildMachNodeGenerator(FILE *fp_cpp) {
           "// that invokes 'new' on the corresponding class constructor.\n");
   fprintf(fp_cpp, "\n");
   fprintf(fp_cpp, "MachNode *State::MachNodeGenerator");
-  fprintf(fp_cpp, "(int opcode)");
+  fprintf(fp_cpp, "(int opcode, Node* orig_node)");
   fprintf(fp_cpp, "{\n");
   fprintf(fp_cpp, "  switch(opcode) {\n");
 

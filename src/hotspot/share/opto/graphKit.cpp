@@ -1155,7 +1155,8 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   if (!InstrumentHeapEvents) return;
 
   uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
-  lock_unlock_heap_event(true);
+  if (CheckHeapEventGraphWithHeap)
+    lock_unlock_heap_event(true);
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
   int adr_type = Compile::AliasIdxRaw;
   Node* ctrl = control();
@@ -1206,22 +1207,72 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   store_to_memory(ctrl, dst_addr, new_obj_or_field, T_ADDRESS, adr_type, MemNode::unordered, 
                   false, false, false, true);
 
-  //TODO: Copied from store_to_memory and create make_transfer method
-  if (true) {
-    int adr_idx = Compile::AliasIdxRaw;
-    const TypePtr* adr_type = NULL;
-    debug_only(adr_type = C->get_adr_type(adr_idx));
-    Node *mem = memory(adr_idx);
-    Node* st;
-    st = new TransferEventsNode(ctrl, mem, node_cntr_addr, adr_type, idx);
-    st = _gvn.transform(st);
-    set_memory(st, adr_idx);
-    if (mem->req() > MemNode::Address && node_cntr_addr == mem->in(MemNode::Address))
-      record_for_igvn(st);
-  }
-  lock_unlock_heap_event(false);
+  make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
+  if (CheckHeapEventGraphWithHeap)
+    lock_unlock_heap_event(false);
 }
 
+void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_offset, Node* src_offset, Node* count) {
+  if (!InstrumentHeapEvents)
+    return;
+  
+  if (CheckHeapEventGraphWithHeap)
+    lock_unlock_heap_event(true);
+  
+  #if 0
+  uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
+  Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
+  int adr_type = Compile::AliasIdxRaw;
+  Node* ctrl = control();
+  Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
+                         LoadNode::DependsOnlyOnTest, false, false, false, true);
+  {
+  int adr_idx = Compile::AliasIdxRaw;
+  const TypePtr* adr_type = NULL;
+  debug_only(adr_type = C->get_adr_type(adr_idx));
+  Node *mem = memory(adr_idx);
+  Node* st;
+  st = new TransferEventsNode(ctrl, mem, node_cntr_addr, adr_type, idx, MaxHeapEvents - 2);
+  st = _gvn.transform(st);
+  set_memory(st, adr_idx);
+  if (mem->req() > MemNode::Address && node_cntr_addr == mem->in(MemNode::Address))
+    record_for_igvn(st);
+  }
+
+  cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
+                   LoadNode::DependsOnlyOnTest, false, false, false, true);
+
+  {
+  
+  }
+
+  cnt = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
+                   LoadNode::DependsOnlyOnTest, false, false, false, true);
+  
+  cnt = _gvn.transform(new AddLNode(cnt, _gvn.longcon(1)));
+  Node* idx = cnt;
+  cnt = _gvn.transform(new AddLNode(cnt, _gvn.longcon(2)));
+  store_to_memory(ctrl, node_cntr_addr, cnt, T_LONG, adr_type, MemNode::unordered, 
+                  false, false, false, true);
+  #endif 
+
+  if (CheckHeapEventGraphWithHeap)
+    lock_unlock_heap_event(false);
+}
+
+Node* GraphKit::make_transfer_event(Node* ctrl, Node* mem_adr, Node* cntr, uint64_t maxval) {
+  int adr_idx = Compile::AliasIdxRaw;
+  const TypePtr* adr_type = NULL;
+  debug_only(adr_type = C->get_adr_type(adr_idx));
+  Node *mem = memory(adr_idx);
+  Node* st;
+  st = new TransferEventsNode(ctrl, mem, mem_adr, adr_type, cntr, maxval);
+  st = _gvn.transform(st);
+  set_memory(st, adr_idx);
+  if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))
+    record_for_igvn(st);
+  return st;
+}
 
 //------------------------------basic_plus_adr---------------------------------
 Node* GraphKit::basic_plus_adr(Node* base, Node* ptr, Node* offset) {

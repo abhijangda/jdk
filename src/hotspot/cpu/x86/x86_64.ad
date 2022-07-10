@@ -6061,7 +6061,8 @@ instruct transferEvents(memory mem, rRegL src)
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# long" %}
   ins_encode %{
-    __ subq($src$$Register, MaxHeapEvents*sizeof(Universe::HeapEvent));
+    uint64_t maxval = ((TransferEventsNode*)orig_node())->max_val();
+    __ subq($src$$Register, maxval);
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));

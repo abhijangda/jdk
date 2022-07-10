@@ -1715,6 +1715,9 @@ Node* PhaseStringOpts::allocate_byte_array(GraphKit& kit, IdealKit* ideal, Node*
     kit.jvms()->set_should_reexecute(true);
     byte_array = kit.new_array(__ makecon(TypeKlassPtr::make(ciTypeArrayKlass::make(T_BYTE))),
                                length, 1);
+    if (InstrumentHeapEvents) {
+      kit.append_heap_event(Universe::NewObject, byte_array, length);
+    }
   }
 
   // Mark the allocation so that zeroing is skipped since the code

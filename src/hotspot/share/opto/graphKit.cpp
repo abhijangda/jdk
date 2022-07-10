@@ -1173,9 +1173,22 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* obj, 
 
   idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(8)));
   Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
-
-  // store_to_memory(ctrl, src_addr, size, T_LONG, adr_type, MemNode::unordered, 
-  //                 false, false, false, true);
+  const char* size_string = NodeClassNames[size->Opcode()];
+  // printf("%s\n", NodeClassNames[size->Opcode()]);
+  if (size->Opcode() == Op_ConL) {
+    //TODO: Can create a NewObjectSizeInBits event
+    Node* size_in_bytes = _gvn.transform(new RShiftLNode(size, _gvn.intcon(3)));
+    store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
+                  false, false, false, true);
+  } else if (size_string[strlen(size_string) - 1] == 'I') {
+    Node* size_in_bytes = ConvI2L(size);
+    store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
+                  false, false, false, true);
+  } else {
+    Node* size_in_bytes = ConvI2L(size);
+    store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
+                  false, false, false, true);
+  }
 
   idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(8)));
   Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
@@ -4072,6 +4085,18 @@ Node* GraphKit::new_array(Node* klass_node,     // array klass (maybe variable)
   Node* javaoop = set_output_for_allocation(alloc, ary_type, deoptimize_on_exception);
 
   array_ideal_length(alloc, ary_type, true);
+  // const TypeKlassPtr* tk = _gvn.type(klass_node)->is_klassptr();
+  // printf("tk->klass() %d %d\n", tk->klass()->is_type_array_klass(), tk->klass()->is_obj_array_klass());
+  // if (tk->klass()->is_type_array_klass()) {
+  //   append_heap_event(Universe::NewObject, javaoop, length);
+  // } else if (tk->klass()->is_obj_array_klass()) {
+  //   append_heap_event(Universe::NewArray, javaoop, length);
+  // } else {
+  //   //This case is called in LibraryCallKit::inline_string_toBytesU()
+  //   Universe::print_heap_event_counter();
+  //   printf("4095\n");
+  // }
+
   return javaoop;
 }
 

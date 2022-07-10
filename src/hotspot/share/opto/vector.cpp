@@ -367,7 +367,13 @@ Node* PhaseVector::expand_vbox_alloc_node(VectorBoxAllocateNode* vbox_alloc,
   // Generate array allocation for the field which holds the values.
   const TypeKlassPtr* array_klass = TypeKlassPtr::make(ciTypeArrayKlass::make(bt));
   Node* arr = kit.new_array(kit.makecon(array_klass), kit.intcon(num_elem), 1);
-
+  if (InstrumentHeapEvents) {
+    if (!is_reference_type(bt)) {
+      kit.append_heap_event(Universe::NewObject, arr, kit.intcon(num_elem));
+    } else {
+      kit.append_heap_event(Universe::NewArray, arr, kit.intcon(num_elem));
+    }
+  }
   // Store the vector value into the array.
   // (The store should be captured by InitializeNode and turned into initialized store later.)
   Node* arr_adr = kit.array_element_address(arr, kit.intcon(0), bt);

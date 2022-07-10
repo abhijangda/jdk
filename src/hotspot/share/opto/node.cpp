@@ -582,6 +582,8 @@ Node *Node::clone() const {
   return n;                     // Return the clone
 }
 
+const char* Node::node_name() const {return NodeClassNames[Opcode()];}
+
 //---------------------------setup_is_top--------------------------------------
 // Call this when changing the top node, to reassert the invariants
 // required by Node::is_top.  See Compile::set_cached_top_node.

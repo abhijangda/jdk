@@ -524,10 +524,13 @@ class CheckGraph : public ObjectClosure {
           }
         } else {
           num_not_found++;
-          if (num_not_found < 100) {
+          if (num_not_found < 0) {
             char class_name[1024];
             get_oop_klass_name(obj, class_name);
             printf("Not found: object '%p' with class '%s'\n", (void*)obj, class_name);
+            if (obj->klass()->is_array_klass()) {
+              printf("length: %d\n", ((arrayOop)obj)->length());
+            }
           }
         }
       }
@@ -883,7 +886,7 @@ void Universe::verify_heap_graph() {
     const size_t heap_events_size = *(const uint64_t*)th_heap_events;
     const HeapEvent* heap_events_start = &th_heap_events[1];
     printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, alloc_heap_events());
-
+    
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
       // event_threads.insert(event.id);
@@ -1036,7 +1039,7 @@ void Universe::verify_heap_graph() {
       }
     } 
   }
-
+  
   printf("event_threads.size() %ld\n", event_threads.size());
   CheckGraph check_graph(true, false, false, false);
   Universe::heap()->object_iterate(&check_graph);

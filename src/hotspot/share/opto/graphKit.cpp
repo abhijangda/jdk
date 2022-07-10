@@ -1152,6 +1152,8 @@ void GraphKit::lock_unlock_heap_event(bool lock) {
 }
 
 void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* obj, Node* size) {
+  if (!InstrumentHeapEvents) return;
+
   uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
   lock_unlock_heap_event(true);
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
@@ -1175,7 +1177,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* obj, 
   Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
   const char* size_string = NodeClassNames[size->Opcode()];
   // printf("%s\n", NodeClassNames[size->Opcode()]);
-  if (size->Opcode() == Op_ConL) {
+  if (size->Opcode() == Op_ConL || size_string[strlen(size_string) - 1] == 'L') {
     //TODO: Can create a NewObjectSizeInBits event
     Node* size_in_bytes = _gvn.transform(new RShiftLNode(size, _gvn.intcon(3)));
     store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
@@ -1185,6 +1187,9 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* obj, 
     store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
                   false, false, false, true);
   } else {
+    // printf("%s\n", size->node_name());
+    // const Type* ttt = size->Value(&_gvn);
+    // printf("base %d bt %d\n", ttt->base(), ttt->basic_type());
     Node* size_in_bytes = ConvI2L(size);
     store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
                   false, false, false, true);

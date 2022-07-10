@@ -1146,9 +1146,9 @@ void GraphKit::lock_unlock_heap_event(bool lock) {
   const TypeTuple *range = TypeTuple::make(TypeFunc::Parms+0, fields);
   auto tf = TypeFunc::make(domain, range);
   if (lock)
-    make_runtime_call(RC_NO_LEAF, tf, (address)Universe::lock_mutex_heap_event, "lock_mutex_heap_event", NULL);
+    make_runtime_call(RC_LEAF, tf, (address)Universe::lock_mutex_heap_event, "lock_mutex_heap_event", NULL);
   else
-    make_runtime_call(RC_NO_LEAF, tf, (address)Universe::unlock_mutex_heap_event, "unlock_mutex_heap_event", NULL);
+    make_runtime_call(RC_LEAF, tf, (address)Universe::unlock_mutex_heap_event, "unlock_mutex_heap_event", NULL);
 }
 
 void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* obj, Node* size) {
@@ -1203,11 +1203,10 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* obj, 
     debug_only(adr_type = C->get_adr_type(adr_idx));
     Node *mem = memory(adr_idx);
     Node* st;
-    Node* node_cntr_addr2 = makecon(TypeRawPtr::make((address)ptr_event_ctr));
-    st = new TransferEventsNode(ctrl, mem, node_cntr_addr2, adr_type, idx);
+    st = new TransferEventsNode(ctrl, mem, node_cntr_addr, adr_type, idx);
     st = _gvn.transform(st);
     set_memory(st, adr_idx);
-    if (mem->req() > MemNode::Address && node_cntr_addr2 == mem->in(MemNode::Address))
+    if (mem->req() > MemNode::Address && node_cntr_addr == mem->in(MemNode::Address))
       record_for_igvn(st);
   }
   lock_unlock_heap_event(false);

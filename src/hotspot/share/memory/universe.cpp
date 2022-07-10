@@ -925,7 +925,7 @@ void Universe::verify_heap_graph() {
           ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.address.src,
                                                    event.heap_event_type, event.id));
         }
-      } else if (false && event.heap_event_type == Universe::FieldSet) {
+      } else if (event.heap_event_type == Universe::FieldSet) {
         oopDesc* field = (oopDesc*)event.address.dst;
         auto next_obj_iter = ObjectNode::oop_to_obj_node.lower_bound(field);
         oopDesc* obj = NULL;
@@ -1041,7 +1041,7 @@ void Universe::verify_heap_graph() {
   }
   
   printf("event_threads.size() %ld\n", event_threads.size());
-  CheckGraph check_graph(true, false, false, false);
+  CheckGraph check_graph(true, true, true, true);
   Universe::heap()->object_iterate(&check_graph);
   
   size_t num_objects = ObjectNode::oop_to_obj_node.size();

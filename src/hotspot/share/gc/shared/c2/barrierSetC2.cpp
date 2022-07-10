@@ -102,6 +102,9 @@ Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) cons
 
     store = kit->store_to_memory(kit->control(), access.addr().node(), val.node(), access.type(),
                                      access.addr().type(), mo, requires_atomic_access, unaligned, mismatched, unsafe);
+    if (InstrumentHeapEvents && is_reference_type(access.type())) {
+      kit->append_heap_event(Universe::FieldSet, access.addr().node(), val.node());
+    }
   } else {
     assert(!requires_atomic_access, "not yet supported");
     assert(access.is_opt_access(), "either parse or opt access");
@@ -123,6 +126,9 @@ Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) cons
     store = gvn.transform(st);
     if (store == st) {
       mm->set_memory_at(alias, st);
+    }
+    if (is_reference_type(access.type())) {
+      printf("130:\n");  
     }
   }
   access.set_raw_access(store);

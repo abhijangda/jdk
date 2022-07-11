@@ -1300,7 +1300,6 @@ Node* GraphKit::make_transfer_event(Node* ctrl, Node* mem_adr, Node* cntr, uint6
   st1 = new TransferEventsNode(ctrl, mem, mem_adr, adr_type, cntr, maxval);
   st = _gvn.transform(st1);
   set_memory(st, adr_idx);
-  // printf("st %p st1 %p %d %p\n", st, st1, st->req(), st->in(3));
   if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))
     record_for_igvn(st);
   return st;

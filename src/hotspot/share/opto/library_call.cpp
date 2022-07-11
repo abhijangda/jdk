@@ -3623,7 +3623,6 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
     generate_negative_guard(length, bailout, &length);
 
     if (bailout->req() > 1) {
-      printf("3626\n");
       PreserveJVMState pjvms(this);
       set_control(_gvn.transform(bailout));
       uncommon_trap(Deoptimization::Reason_intrinsic,

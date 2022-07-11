@@ -6061,13 +6061,17 @@ instruct transferEvents(memory mem, rRegL src)
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# long" %}
   ins_encode %{
-    uint64_t maxval = ((TransferEventsNode*)orig_node())->max_val();
-    if (maxval != 536870912L)
+    uint64_t maxval = max_val();
+    if (maxval > 536870912L) {
       printf("maxval %ld\n", maxval);
+      printf("%p %d %d\n", orig_node(), orig_node()->Opcode(), Op_TransferEvents);
+    }
     __ subq($src$$Register, maxval);
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
+    __ pushaq();
     __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    __ popaq();
     //__ movq($mem$$Address, 0);
     __ bind(not_equal);     
   %}

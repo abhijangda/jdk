@@ -677,6 +677,7 @@ public:
 //------------------------------StoreLNode-------------------------------------
 // Store long to memory
 class StoreLNode : public StoreNode {
+  protected:
   virtual uint hash() const { return StoreNode::hash() + _require_atomic_access; }
   virtual bool cmp( const Node &n ) const {
     return _require_atomic_access == ((StoreLNode&)n)._require_atomic_access
@@ -701,6 +702,10 @@ public:
 };
 
 class TransferEventsNode : public StoreLNode {
+  virtual bool cmp( const Node &n ) const {
+    return max_val() == ((TransferEventsNode&)n).max_val() && StoreNode::cmp(n);
+  }
+  virtual uint hash() const { return StoreNode::hash() + (uint)max_val(); }
 private:
   uint64_t _max_val;
 public:

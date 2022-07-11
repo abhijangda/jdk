@@ -3868,7 +3868,8 @@ void ArchDesc::buildMachNode(FILE *fp_cpp, InstructForm *inst, const char *inden
   // Create the MachNode object
   fprintf(fp_cpp, "%s %sNode *node = new %sNode();\n",indent, opClass,opClass);
   if (strstr(inst->_ident, "transferEvent")) {
-    fprintf(fp_cpp, "%s node->set_orig_node(orig_node);\n",indent);
+    // fprintf(fp_cpp, "%s printf(\"932: node %p orig_node %p\n\", node, orig_node);", indent);
+    fprintf(fp_cpp, "%s node->set_max_val(((TransferEventsNode*)orig_node)->max_val());\n",indent);
   }
 
   if ( (inst->num_post_match_opnds() != 0) ) {

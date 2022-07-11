@@ -1425,7 +1425,7 @@ bool LibraryCallKit::inline_string_toBytesU() {
     AllocateArrayNode* alloc = tightly_coupled_allocation(newcopy);
     guarantee(alloc != NULL, "created above");
     if (InstrumentHeapEvents) {
-      append_heap_event(Universe::NewArray, newcopy, size);
+      append_heap_event(Universe::NewObject, newcopy, size);
     }
 
     // Calculate starting addresses.
@@ -3623,6 +3623,7 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
     generate_negative_guard(length, bailout, &length);
 
     if (bailout->req() > 1) {
+      printf("3626\n");
       PreserveJVMState pjvms(this);
       set_control(_gvn.transform(bailout));
       uncommon_trap(Deoptimization::Reason_intrinsic,
@@ -3684,14 +3685,10 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
           if (tk->klass()->is_type_array_klass()) {
             append_heap_event(Universe::NewObject, newcopy, length);
           } else if (tk->klass()->is_obj_array_klass()) {
-            append_heap_event(Universe::NewArray, newcopy, length);
+            append_heap_event(Universe::NewArray2, newcopy, length);
           } else {
             printf("3695\n");
           }
-        }
-
-        if (InstrumentHeapEvents) {
-          append_copy_array(newcopy, original, intcon(0), start, moved);
         }
 
         ArrayCopyNode* ac = ArrayCopyNode::make(this, true, original, start, newcopy, intcon(0), moved, true, false,
@@ -3707,6 +3704,9 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
         } else {
           assert(validated, "shouldn't transform if all arguments not validated");
           set_all_memory(n);
+        }
+        if (InstrumentHeapEvents) {
+          append_copy_array(newcopy, original, intcon(0), start, moved);
         }
       }
     }
@@ -4191,7 +4191,7 @@ bool LibraryCallKit::inline_unsafe_copyMemory() {
       flags |= RC_NARROW_MEM; // narrow in memory
     }
   }
-
+  printf("4194\n");
   // Call it.  Note that the length argument is not scaled.
   make_runtime_call(flags,
                     OptoRuntime::fast_arraycopy_Type(),
@@ -4323,7 +4323,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       Node* alloc_obj = new_array(obj_klass, obj_length, 0, &obj_size, /*deoptimize_on_exception=*/true);
 
       //TODO: Always an ObjectArray? 
-      append_heap_event(Universe::NewArray, alloc_obj, obj_length);
+      append_heap_event(Universe::NewArray2, alloc_obj, obj_length);
 
       BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
       if (bs->array_copy_requires_gc_barriers(true, T_OBJECT, true, false, BarrierSetC2::Parsing)) {
@@ -4345,7 +4345,6 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
           result_val->init_req(_objArray_path, alloc_obj);
           result_i_o ->set_req(_objArray_path, i_o());
           result_mem ->set_req(_objArray_path, reset_memory());
-
           if (InstrumentHeapEvents) {
             append_copy_array(alloc_obj, obj, intcon(0), intcon(0), obj_length);
           }
@@ -4723,6 +4722,7 @@ bool LibraryCallKit::inline_arraycopy() {
     }
   }
 
+  bool reference_type = false;
   if (has_src && has_dest && can_emit_guards) {
     BasicType src_elem  = top_src->klass()->as_array_klass()->element_type()->basic_type();
     BasicType dest_elem = top_dest->klass()->as_array_klass()->element_type()->basic_type();
@@ -4730,6 +4730,7 @@ bool LibraryCallKit::inline_arraycopy() {
     if (is_reference_type(dest_elem))  dest_elem = T_OBJECT;
 
     if (src_elem == dest_elem && src_elem == T_OBJECT) {
+      reference_type = true;
       // If both arrays are object arrays then having the exact types
       // for both will remove the need for a subtype check at runtime
       // before the call and may make it possible to pick a faster copy
@@ -4863,7 +4864,7 @@ bool LibraryCallKit::inline_arraycopy() {
     set_all_memory(n);
   }
   clear_upper_avx();
-  if (InstrumentHeapEvents) {
+  if (InstrumentHeapEvents){
     append_copy_array(dest, src, dest_offset, src_offset, length);
   }
 
@@ -5073,7 +5074,7 @@ bool LibraryCallKit::inline_multiplyToLen() {
        Node * narr = new_array(klass_node, zlen, 1);
        if (InstrumentHeapEvents) {
          //Always an integer.
-         append_heap_event(Universe::NewArray, narr, zlen);
+         append_heap_event(Universe::NewArray2, narr, zlen);
        }
        // Update IdealKit memory and control from graphKit.
        __ sync_kit(this);

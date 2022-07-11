@@ -69,6 +69,60 @@ import java.util.function.ToLongBiFunction;
 import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
 import jdk.internal.misc.Unsafe;
+// import sun.misc.unsafe;
+import java.lang.reflect.Field;
+
+
+class Addresser
+{
+    private static Unsafe unsafe;
+
+    static
+    {
+        try
+        {
+            Field field = Unsafe.class.getDeclaredField("theUnsafe");
+            field.setAccessible(true);
+            unsafe = (Unsafe)field.get(null);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public static long addressOf(Object o)
+    {
+        Object[] array = new Object[] {o};
+
+        long baseOffset = unsafe.arrayBaseOffset(Object[].class);
+        int addressSize = unsafe.addressSize();
+        long objectAddress;
+        switch (addressSize)
+        {
+            case 4:
+                objectAddress = unsafe.getInt(array, baseOffset);
+                break;
+            case 8:
+                objectAddress = unsafe.getLong(array, baseOffset);
+                break;
+            default:
+                objectAddress = -1;
+        }       
+
+        return(objectAddress);
+    }
+
+    public static void printBytes(long objectAddress, int num)
+    {
+        for (long i = 0; i < num; i++)
+        {
+            int cur = unsafe.getByte(objectAddress + i);
+            System.out.print((char)cur);
+        }
+        System.out.println();
+    }
+}
 
 /**
  * A hash table supporting full concurrency of retrievals and
@@ -757,15 +811,34 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
 
     @SuppressWarnings("unchecked")
     static final <K,V> Node<K,V> tabAt(Node<K,V>[] tab, int i) {
+        // try {
+        //     long p_addr = Addresser.addressOf(tab);
+        //     System.out.println("815: addr " + Long.toHexString(p_addr));
+        // } catch(Exception e) {
+
+        // }
         return (Node<K,V>)U.getReferenceAcquire(tab, ((long)i << ASHIFT) + ABASE);
     }
 
     static final <K,V> boolean casTabAt(Node<K,V>[] tab, int i,
                                         Node<K,V> c, Node<K,V> v) {
+                                        //     try {
+                                        //     long p_addr = Addresser.addressOf(tab);
+                                        //     System.out.println("822: addr " + Long.toHexString(p_addr));
+                                        // } catch(Exception e) {
+            
+                                        // }
+        // System.out.println(VM.current().addressOf(tab));
         return U.compareAndSetReference(tab, ((long)i << ASHIFT) + ABASE, c, v);
     }
 
     static final <K,V> void setTabAt(Node<K,V>[] tab, int i, Node<K,V> v) {
+    //     try {
+    //     long p_addr = Addresser.addressOf(tab);
+    //     System.out.println("828: addr " + Long.toHexString(p_addr));
+    // } catch(Exception e) {
+            
+    // }
         U.putReferenceRelease(tab, ((long)i << ASHIFT) + ABASE, v);
     }
 
@@ -4472,7 +4545,10 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                 }
                 r[i++] = e;
             }
-            return (i == n) ? r : Arrays.copyOf(r, i);
+            Object[] ret = (i == n) ? r : Arrays.copyOf(r, i);
+            long p_addr = Addresser.addressOf(ret);
+            System.out.println("addr " + Long.toHexString(p_addr));
+            return ret;
         }
 
         @SuppressWarnings("unchecked")
@@ -4502,7 +4578,10 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                 r[i] = null; // null-terminate
                 return r;
             }
-            return (i == n) ? r : Arrays.copyOf(r, i);
+            T[] ret = (i == n) ? r : Arrays.copyOf(r, i);
+            long p_addr = Addresser.addressOf(ret);
+            System.out.println("addr " + Long.toHexString(p_addr));
+            return ret;
         }
 
         /**

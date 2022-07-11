@@ -207,6 +207,7 @@ class Universe: AllStatic {
   CopyArrayOffsets = 1L << 6,
   CopyArrayLength = 1L << 7,
   MoveObject = 1L << 8,
+  NewArray2 = 1L << 9,
   LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
  };
 

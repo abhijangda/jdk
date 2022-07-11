@@ -100,11 +100,12 @@ Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) cons
       val.set_node(new_val);
     }
 
-    store = kit->store_to_memory(kit->control(), access.addr().node(), val.node(), access.type(),
-                                     access.addr().type(), mo, requires_atomic_access, unaligned, mismatched, unsafe);
     if (InstrumentHeapEvents && is_reference_type(access.type())) {
       kit->append_heap_event(Universe::FieldSet, access.addr().node(), val.node());
     }
+
+    store = kit->store_to_memory(kit->control(), access.addr().node(), val.node(), access.type(),
+                                     access.addr().type(), mo, requires_atomic_access, unaligned, mismatched, unsafe);
   } else {
     assert(!requires_atomic_access, "not yet supported");
     assert(access.is_opt_access(), "either parse or opt access");
@@ -127,8 +128,9 @@ Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) cons
     if (store == st) {
       mm->set_memory_at(alias, st);
     }
+    printf("130: %d\n", access.type());
     if (is_reference_type(access.type())) {
-      printf("130:\n");  
+      
     }
   }
   access.set_raw_access(store);
@@ -431,9 +433,13 @@ Node* BarrierSetC2::atomic_cmpxchg_val_at_resolved(C2AtomicParseAccess& access, 
       Node *newval_enc = kit->gvn().transform(new EncodePNode(new_val, new_val->bottom_type()->make_narrowoop()));
       Node *oldval_enc = kit->gvn().transform(new EncodePNode(expected_val, expected_val->bottom_type()->make_narrowoop()));
       load_store = new CompareAndExchangeNNode(kit->control(), mem, adr, newval_enc, oldval_enc, adr_type, value_type->make_narrowoop(), mo);
+      //TODO: CompressedOop
     } else
 #endif
     {
+      if (InstrumentHeapEvents) {
+        kit->append_heap_event(Universe::FieldSet, adr, new_val);
+      }
       load_store = new CompareAndExchangePNode(kit->control(), mem, adr, new_val, expected_val, adr_type, value_type->is_oopptr(), mo);
     }
   } else {
@@ -497,6 +503,9 @@ Node* BarrierSetC2::atomic_cmpxchg_bool_at_resolved(C2AtomicParseAccess& access,
     } else
 #endif
     {
+      if (InstrumentHeapEvents) {
+        kit->append_heap_event(Universe::FieldSet, adr, new_val);
+      }
       if (is_weak_cas) {
         load_store = new WeakCompareAndSwapPNode(kit->control(), mem, adr, new_val, expected_val, mo);
       } else {
@@ -566,6 +575,9 @@ Node* BarrierSetC2::atomic_xchg_at_resolved(C2AtomicParseAccess& access, Node* n
     } else
 #endif
     {
+      if (InstrumentHeapEvents) {
+        kit->append_heap_event(Universe::FieldSet, adr, new_val);
+      }
       load_store = new GetAndSetPNode(kit->control(), mem, adr, new_val, adr_type, value_type->is_oopptr());
     }
   } else  {

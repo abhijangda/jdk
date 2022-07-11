@@ -524,7 +524,7 @@ class CheckGraph : public ObjectClosure {
           }
         } else {
           num_not_found++;
-          if (num_not_found < 0) {
+          if (num_not_found < 100) {
             char class_name[1024];
             get_oop_klass_name(obj, class_name);
             printf("Not found: object '%p' with class '%s'\n", (void*)obj, class_name);
@@ -711,12 +711,16 @@ class CheckGraph : public ObjectClosure {
             if (field_edge->second.val() != actual_elem) {
               num_src_not_correct++;
               if (num_src_not_correct < 100) {
-                printf("Elem at index '%d' in array '%p' is not correct: '%p' != '%p'\n", i, (oopDesc*)array, elem_addr, (oopDesc*)actual_elem);
+                printf("Elem at index '%d' in array '%p' is not correct: '%p' != '%p'\n", i, (oopDesc*)array, (void*)field_edge->second.val(), (oopDesc*)actual_elem);
               }
             }
           } else if (actual_elem != NULL && actual_elem != INVALID_OOP) {
             num_not_found++;
-            if (num_not_found < 100) printf("Elem at index '%d' is not found in array '%p'\n", i, (oopDesc*)array);
+            if (num_not_found < 100) {
+              printf("Elem at index '%d' is not found in array '%p'\n", i, (oopDesc*)array);
+              char name[1024];
+              printf("elem type %s\n", get_oop_klass_name(actual_elem, name));
+            }
           }
         }
       }
@@ -892,8 +896,13 @@ void Universe::verify_heap_graph() {
       // event_threads.insert(event.id);
 
       if (event.heap_event_type == Universe::NewObject || 
-          event.heap_event_type == Universe::NewArray) {
+          event.heap_event_type == Universe::NewArray ||
+          event.heap_event_type == Universe::NewArray2) {
         oopDesc* obj = (oopDesc*)event.address.dst;
+        
+        if (event.heap_event_type == Universe::NewArray2) {
+          event.heap_event_type = Universe::NewArray;
+        }
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
 
         if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
@@ -985,12 +994,15 @@ void Universe::verify_heap_graph() {
 
         HeapEvent offsets = heap_events_start[event_iter+1];
         HeapEvent length_event = heap_events_start[event_iter+2];
+
+        // printf("src %p dst %p start %ld, %ld ; length %ld\n", (void*)obj_src, (void*)obj_dst, offsets.address.src, offsets.address.dst, length_event.address.src);
+
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
         auto obj_dst_node_iter = ObjectNode::oop_to_obj_node.find(obj_dst);
 
         if (obj_dst_node_iter == ObjectNode::oop_to_obj_node.end() ||
             obj_src_node_iter == ObjectNode::oop_to_obj_node.end()) {
-            continue;
+            printf("didn't find %p %p\n", (void*)obj_src, (void*)obj_dst);
         }
         if (obj_src != obj_dst || (obj_src == obj_dst && offsets.address.src >= offsets.address.dst)) {
           //Non overlapping arrays, so copy forward

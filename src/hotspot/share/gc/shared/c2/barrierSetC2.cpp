@@ -715,10 +715,14 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* si
   } else {
     kit->set_all_memory(n);
   }
-  printf("707\n");
-  // if (InstrumentHeapEvents) {
-  //   kit->append_copy_array(dest, src, dest_offset, src_offset, length);
-  // }
+  
+  if (InstrumentHeapEvents) {
+    if (is_array) {
+      kit->append_copy_array(dst_base, src_base, offset, offset, payload_size);
+    } else {
+      kit->append_heap_event(Universe::CopyObject, dst_base, src_base);
+    }
+  }
 }
 
 Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobig_false, Node* size_in_bytes,

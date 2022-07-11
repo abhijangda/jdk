@@ -1175,7 +1175,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
                   adr_type, MemNode::unordered, false, false, false, true);
   idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(8)));
   Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
-  if (event_type == Universe::NewArray || event_type == Universe::NewObject || event_type == Universe::NewArray2) {
+  if (event_type == Universe::NewArray || event_type == Universe::NewObject) {
     Node* size = size_or_new_val;
     const char* size_string = NodeClassNames[size->Opcode()];
     // printf("%s\n", NodeClassNames[size->Opcode()]);
@@ -1197,6 +1197,9 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
                     false, false, false, true);
     }
   } else if (event_type == Universe::FieldSet) {
+    store_to_memory(ctrl, src_addr, size_or_new_val, T_ADDRESS, adr_type, MemNode::unordered, 
+                  false, false, false, true);
+  } else if (event_type == Universe::CopyObject || event_type == Universe::NewArray2) {
     store_to_memory(ctrl, src_addr, size_or_new_val, T_ADDRESS, adr_type, MemNode::unordered, 
                   false, false, false, true);
   }

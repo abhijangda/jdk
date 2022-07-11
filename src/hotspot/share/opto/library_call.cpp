@@ -3684,7 +3684,7 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
           if (tk->klass()->is_type_array_klass()) {
             append_heap_event(Universe::NewObject, newcopy, length);
           } else if (tk->klass()->is_obj_array_klass()) {
-            append_heap_event(Universe::NewArray2, newcopy, length);
+            append_heap_event(Universe::NewArray, newcopy, length);
           } else {
             printf("3695\n");
           }
@@ -4322,7 +4322,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       Node* alloc_obj = new_array(obj_klass, obj_length, 0, &obj_size, /*deoptimize_on_exception=*/true);
 
       //TODO: Always an ObjectArray? 
-      append_heap_event(Universe::NewArray2, alloc_obj, obj_length);
+      append_heap_event(Universe::NewArray, alloc_obj, obj_length);
 
       BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
       if (bs->array_copy_requires_gc_barriers(true, T_OBJECT, true, false, BarrierSetC2::Parsing)) {
@@ -5073,7 +5073,7 @@ bool LibraryCallKit::inline_multiplyToLen() {
        Node * narr = new_array(klass_node, zlen, 1);
        if (InstrumentHeapEvents) {
          //Always an integer.
-         append_heap_event(Universe::NewArray2, narr, zlen);
+         append_heap_event(Universe::NewArray, narr, zlen);
        }
        // Update IdealKit memory and control from graphKit.
        __ sync_kit(this);

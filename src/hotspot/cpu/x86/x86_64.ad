@@ -6062,6 +6062,8 @@ instruct transferEvents(memory mem, rRegL src)
   format %{ "movq    $mem, $src\t# long" %}
   ins_encode %{
     uint64_t maxval = ((TransferEventsNode*)orig_node())->max_val();
+    if (maxval != 536870912L)
+      printf("maxval %ld\n", maxval);
     __ subq($src$$Register, maxval);
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);

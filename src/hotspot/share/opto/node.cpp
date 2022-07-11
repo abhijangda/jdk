@@ -579,6 +579,11 @@ Node *Node::clone() const {
     n->as_SafePoint()->clone_jvms(C);
     n->as_SafePoint()->clone_replaced_nodes();
   }
+
+  if(Opcode() == Op_TransferEvents) {
+    ((TransferEventsNode*)n)->set_max_val(((TransferEventsNode*)this)->max_val());
+  }
+
   return n;                     // Return the clone
 }
 

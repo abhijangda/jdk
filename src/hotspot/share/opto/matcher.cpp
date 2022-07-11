@@ -1780,6 +1780,13 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
   assert( rule >= NUM_OPERANDS, "called with operand rule" );
 
   MachNode* shared_node = find_shared_node(s->_leaf, rule);
+  // if (s->_leaf->Opcode() == Op_TransferEvents) {
+  //   uint64_t m = ((TransferEventsNode*)s->_leaf)->max_val();
+  //   if (m > MaxHeapEvents*32) {
+  //     printf("1786: m %ld\n", m);
+  //   }
+  //   shared_node->set_orig_node(s->_leaf);
+  // }
   if (shared_node != NULL) {
     return shared_node;
   }
@@ -1787,6 +1794,10 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
   // Build the object to represent this state & prepare for recursive calls
   MachNode *mach = s->MachNodeGenerator(rule, mem);
   if (s->_leaf->Opcode() == Op_TransferEvents) {
+    uint64_t m = ((TransferEventsNode*)s->_leaf)->max_val();
+    if (m > MaxHeapEvents*32) {
+      printf("1792: m %ld %p\n", m, s->_leaf);
+    }
     mach->set_orig_node(s->_leaf);
   }
   guarantee(mach != NULL, "Missing MachNode");

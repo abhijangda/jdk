@@ -707,9 +707,11 @@ public:
   TransferEventsNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, uint64_t max_val)
     : StoreLNode(c, mem, adr, at, val, MemOrd::unordered), _max_val(max_val)
     {}
+  virtual uint size_of() const {return sizeof(*this);}
   virtual int Opcode() const;
   virtual BasicType memory_type() const { return T_LONG; }
   uint64_t max_val() const {return _max_val;}
+  void set_max_val(uint64_t v) {_max_val = v;}
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const {
     StoreNode::dump_spec(st);

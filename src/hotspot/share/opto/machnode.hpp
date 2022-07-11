@@ -209,7 +209,7 @@ private:
   Node* _orig_node;
 
 public:
-  MachNode() : Node((uint)0), _barrier(0), _num_opnds(0), _opnds(NULL) {
+  MachNode() : Node((uint)0),  _orig_node(NULL), _barrier(0), _num_opnds(0), _opnds(NULL) {
     init_class_id(Class_Mach);
   }
   void set_orig_node(Node* n) {_orig_node = n;}

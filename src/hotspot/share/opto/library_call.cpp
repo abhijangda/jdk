@@ -3690,6 +3690,10 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
           }
         }
 
+        if (InstrumentHeapEvents) {
+          append_copy_array(newcopy, original, intcon(0), start, moved);
+        }
+
         ArrayCopyNode* ac = ArrayCopyNode::make(this, true, original, start, newcopy, intcon(0), moved, true, false,
                                                 load_object_klass(original), klass_node);
         if (!is_copyOfRange) {
@@ -4341,6 +4345,10 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
           result_val->init_req(_objArray_path, alloc_obj);
           result_i_o ->set_req(_objArray_path, i_o());
           result_mem ->set_req(_objArray_path, reset_memory());
+
+          if (InstrumentHeapEvents) {
+            append_copy_array(alloc_obj, obj, intcon(0), intcon(0), obj_length);
+          }
         }
       }
       // Otherwise, there are no barriers to worry about.
@@ -4855,7 +4863,9 @@ bool LibraryCallKit::inline_arraycopy() {
     set_all_memory(n);
   }
   clear_upper_avx();
-
+  if (InstrumentHeapEvents) {
+    append_copy_array(dest, src, dest_offset, src_offset, length);
+  }
 
   return true;
 }

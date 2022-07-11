@@ -75,9 +75,9 @@ ArrayCopyNode* ArrayCopyNode::make(GraphKit* kit, bool may_throw,
     kit->add_safepoint_edges(ac, false);
   }
 
-  if (InstrumentHeapEvents) {
-    // append_arraycopy();
-  }
+  // if (InstrumentHeapEvents) {
+  //   kit->append_copy_array(dest, src, dest_offset, src_offset, length);
+  // }
   return ac;
 }
 

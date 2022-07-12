@@ -1199,7 +1199,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   } else if (event_type == Universe::FieldSet) {
     store_to_memory(ctrl, src_addr, size_or_new_val, T_ADDRESS, adr_type, MemNode::unordered, 
                   false, false, false, true);
-  } else if (event_type == Universe::CopyObject || event_type == Universe::NewArray2) {
+  } else if (event_type == Universe::CopyObject) {
     store_to_memory(ctrl, src_addr, size_or_new_val, T_ADDRESS, adr_type, MemNode::unordered, 
                   false, false, false, true);
   }

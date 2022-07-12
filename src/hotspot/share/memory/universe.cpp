@@ -928,9 +928,6 @@ void Universe::verify_heap_graph() {
           event.heap_event_type == Universe::NewArray) {
         oopDesc* obj = (oopDesc*)event.address.dst;
         
-        if (event.heap_event_type == Universe::NewArray2) {
-          event.heap_event_type = Universe::NewArray;
-        }
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
 
         if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
@@ -989,12 +986,12 @@ void Universe::verify_heap_graph() {
         // if (event.heap_event_type == FieldSet && event.id != 0) {
         //   printf("event.id 0x%lx\n", event.id);
         // }
-      } else if (event.heap_event_type == Universe::CopyObject || event.heap_event_type == Universe::NewArray2) {
+      } else if (event.heap_event_type == Universe::CopyObject) {
         oop obj_src = oop((oopDesc*)event.address.src);
         oop obj_dst = oop((oopDesc*)event.address.dst);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
         auto obj_dst_node_iter = ObjectNode::oop_to_obj_node.find(obj_dst);
-        // if (Universe::NewArray2) printf("963: %p %p\n", obj_src, obj_dst);
+        
         if (obj_dst_node_iter == ObjectNode::oop_to_obj_node.end() ||
             obj_src_node_iter == ObjectNode::oop_to_obj_node.end()) {
             printf("didn't find %p %p\n", (void*)obj_src, (void*)obj_dst);

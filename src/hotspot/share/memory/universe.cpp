@@ -972,8 +972,11 @@ void Universe::verify_heap_graph() {
           } else {
             printf("Obj is NULL for %p\n", field);
             auto obj_iter = --next_obj_iter;
-            if (obj_iter->first != NULL || obj_iter->first != CheckGraph::INVALID_OOP)
-              printf("start %p end %ld %ld\n", obj_iter->first, obj_iter->second.size(), obj_iter->first->size());
+            if (obj_iter->first != NULL || obj_iter->first != CheckGraph::INVALID_OOP) {
+              char buf[1024];
+              printf("start %p end %ld %ld t %ld %s\n", obj_iter->first, obj_iter->second.size(), obj_iter->first->size(), 
+              obj_iter->second.type(), get_oop_klass_name(obj_iter->first, buf));
+            }
             if (obj_iter->first <= field && field < obj_iter->second.end()) {
               obj = obj_iter->first;
             }

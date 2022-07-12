@@ -3507,7 +3507,7 @@ bool LibraryCallKit::inline_unsafe_newArray(bool uninitialized) {
     // It could be a dynamic mix of int[], boolean[], Object[], etc.
     Node* obj = new_array(klass_node, count_val, 0);  // no arguments to push
     if (InstrumentHeapEvents) {
-      append_heap_event(Universe::NewObject, obj, count_val);
+      append_heap_event(Universe::NewArray, obj, count_val);
       //TODO: What if klass_node is not a object? Generate reflection code?
     }
     result_reg->init_req(_normal_path, control());

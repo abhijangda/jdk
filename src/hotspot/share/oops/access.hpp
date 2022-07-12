@@ -234,12 +234,10 @@ public:
     //TODO: Assuming T is Oop and not a NarrowOop
     // if (true) {
     //   uint64_t dst = ((uint64_t)(void*)base) + offset;
-    //   char hex_dst[1024];
-    //   sprintf(hex_dst, "0x%lx", dst);
-    //   if (strstr(hex_dst, "03f6e0")) {
+    //   if (Universe::checking == 1) {
     //     char buf[1024];
     //     base->klass()->name()->as_C_string(buf, 1024);
-    //     printf("0x%lx: oop %p offset 0x%lx src %p oop-class %s oop-class-id %d\n", dst, (void*)base, offset, (void*)value, buf, base->klass()->id());
+    //     printf("0x%lx: oop %p offset 0x%lx (%p) src %p oop-class %s oop-class-id %d\n", dst, (void*)base, offset, (char*)base + offset, (void*)value, buf, base->klass()->id());
     //   }
     // }
     Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)value, ((uint64_t)(void*)base) + offset});
@@ -317,7 +315,11 @@ public:
     verify_oop_decorators<store_mo_decorators>();
     typedef typename AccessInternal::OopOrNarrowOop<T>::type OopType;
     OopType oop_value = value;
-    // printf("256: src %p\n", (void*)addr);
+    if (Universe::is_verify_cause_full_gc) {
+      // printf("%p at %p\n", (void*)addr, value);
+      // Universe::print_heap_event_counter();
+      //Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)addr, (uint64_t)value});
+    }
     AccessInternal::store<decorators | INTERNAL_VALUE_IS_OOP>(addr, oop_value);
   }
 

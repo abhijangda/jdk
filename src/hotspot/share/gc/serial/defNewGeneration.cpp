@@ -588,7 +588,7 @@ void DefNewGeneration::collect(bool   full,
 
   // "evacuate followers".
   evacuate_followers.do_void();
-
+  Universe::is_verify_cause_full_gc = true;
   FastKeepAliveClosure keep_alive(this, &scan_weak_ref);
   ReferenceProcessor* rp = ref_processor();
   ReferenceProcessorPhaseTimes pt(_gc_timer, rp->max_num_queues());
@@ -597,7 +597,8 @@ void DefNewGeneration::collect(bool   full,
   gc_tracer.report_gc_reference_stats(stats);
   gc_tracer.report_tenuring_threshold(tenuring_threshold());
   pt.print_all_references();
-
+  Universe::is_verify_cause_full_gc = false;
+  
   assert(heap->no_allocs_since_save_marks(), "save marks have not been newly set.");
 
   WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
@@ -607,6 +608,13 @@ void DefNewGeneration::collect(bool   full,
 
   _string_dedup_requests.flush();
 
+  if (InstrumentHeapEvents) {
+    MemRegion mr = eden()->used_region();
+    Universe::add_heap_event(Universe::HeapEvent{Universe::ClearContiguousSpace, (uint64_t)mr.start(), (uint64_t)mr.end()});
+
+    mr = from()->used_region();
+    Universe::add_heap_event(Universe::HeapEvent{Universe::ClearContiguousSpace, (uint64_t)mr.start(), (uint64_t)mr.end()});
+  }
   if (!_promotion_failed) {
     // Swap the survivor spaces.
     eden()->clear(SpaceDecorator::Mangle);
@@ -733,12 +741,13 @@ oop DefNewGeneration::copy_to_survivor_space(oop old) {
     age_table()->add(obj, s);
   }
 
-  // Done, insert forward pointer to obj in this header
-  old->forward_to(obj);
-
   if (InstrumentHeapEvents) {
+    // printf("%p -> %p\n", old, obj);
     Universe::add_heap_event(Universe::HeapEvent{Universe::MoveObject, (uint64_t)(void*)old, (uint64_t)(void*)obj});
   }
+
+  // Done, insert forward pointer to obj in this header
+  old->forward_to(obj);
   
   if (SerialStringDedup::is_candidate_from_evacuation(obj, new_obj_is_tenured)) {
     // Record old; request adds a new weak reference, which reference

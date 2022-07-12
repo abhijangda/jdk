@@ -229,6 +229,10 @@ ReferenceProcessorStats ReferenceProcessor::process_discovered_references(RefPro
 
 void BarrierEnqueueDiscoveredFieldClosure::enqueue(HeapWord* discovered_field_addr, oop value) {
   assert(Universe::heap()->is_in(discovered_field_addr), PTR_FORMAT " not in heap", p2i(discovered_field_addr));
+  if (InstrumentHeapEvents) {
+    Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)value,(uint64_t)discovered_field_addr});
+    // printf("%p -> %p\n", discovered_field_addr, value);
+  }
   HeapAccess<AS_NO_KEEPALIVE>::oop_store(discovered_field_addr,
                                          value);
 }
@@ -891,6 +895,9 @@ inline bool ReferenceProcessor::set_discovered_link_st(HeapWord* discovered_addr
   if (discovery_is_stw()) {
     // Do a raw store here: the field will be visited later when processing
     // the discovered references.
+    // if (InstrumentHeapEvents) {
+    //   Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)discovered_addr, (uint64_t)next_discovered});
+    // }
     RawAccess<>::oop_store(discovered_addr, next_discovered);
   } else {
     HeapAccess<AS_NO_KEEPALIVE>::oop_store(discovered_addr, next_discovered);

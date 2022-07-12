@@ -444,6 +444,10 @@ void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
       } else {
         // otherwise, it really is a free region.
 
+        if (InstrumentHeapEvents && cur_obj != end) {
+          Universe::add_heap_event(Universe::HeapEvent{Universe::ClearContiguousSpace, (uint64_t)cur_obj, (uint64_t)end});
+        }
+
         // cur_obj is a pointer to a dead object. Use this dead memory to store a pointer to the next live object.
         *(HeapWord**)cur_obj = end;
 
@@ -452,7 +456,6 @@ void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
           first_dead = cur_obj;
         }
       }
-
       // move on to the next object
       cur_obj = end;
     }

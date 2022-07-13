@@ -864,7 +864,7 @@ Universe::HeapEvent* Universe::alloc_heap_events() {
   if (all_heap_events.head())
     events = *all_heap_events.head()->data();
   else {
-    HeapEvent* events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents)*sizeof(Universe::HeapEvent));
+    HeapEvent* events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents*2)*sizeof(Universe::HeapEvent));
     all_heap_events.add(events);
   }
 
@@ -1162,6 +1162,7 @@ void __checkCudaErrors( CUresult err, const char *file, const int line )
 
 void* cumemcpy_func(void* arg)
 {
+  return NULL;
   CUdevice   device;
   CUcontext  context;
   CUstream   stream;

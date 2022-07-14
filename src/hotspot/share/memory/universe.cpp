@@ -613,7 +613,7 @@ class CheckGraph : public ObjectClosure {
                   char class_name[1024];
                   get_oop_klass_name(obj, class_name);
                   if (num_not_found < 100) { 
-                    printf("Field '%s' ('%d':'%p') not found in oop '%p' of class '%s'\n", field_name, ik->field_offset(f), ((char*)obj + ik->field_offset(f)), (oopDesc*)obj, class_name);
+                    printf("Field '%s' ('%d':'%p') not found in oop '%p' of class '%s'\n", field_name, ik->field_offset(f), ((char*)(void*)obj + ik->field_offset(f)), (oopDesc*)obj, class_name);
                   }
                   if (num_not_found < 5) {
                     for (auto it = obj_node.fields().begin(); it != obj_node.fields().end(); it++) {

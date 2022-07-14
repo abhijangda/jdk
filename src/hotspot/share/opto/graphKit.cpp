@@ -1199,17 +1199,17 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
                     false, false, false, is_unsafe);
     }
   } else if (event_type == Universe::FieldSet) {
-    store_to_memory(ctrl, src_addr, size_or_new_val, T_LONG, adr_type, MemNode::unordered, 
+    store_to_memory(ctrl, src_addr, size_or_new_val, T_ADDRESS, adr_type, MemNode::unordered, 
                   false, false, false, is_unsafe);
   } else if (event_type == Universe::CopyObject) {
-    store_to_memory(ctrl, src_addr, size_or_new_val, T_LONG, adr_type, MemNode::unordered, 
+    store_to_memory(ctrl, src_addr, size_or_new_val, T_ADDRESS, adr_type, MemNode::unordered, 
                   false, false, false, is_unsafe);
   }
 
   idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(8)));
   Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
 
-  store_to_memory(ctrl, dst_addr, new_obj_or_field, T_LONG, adr_type, MemNode::unordered, 
+  store_to_memory(ctrl, dst_addr, new_obj_or_field, T_ADDRESS, adr_type, MemNode::unordered, 
                   false, false, false, is_unsafe);
   #endif
   make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
@@ -1253,11 +1253,11 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
                     adr_type, MemNode::unordered, false, false, false, is_unsafe);
     Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
                                     _gvn.transform(new AddLNode(idx, _gvn.longcon(8))));
-    store_to_memory(ctrl, src_addr, src_array, T_LONG, adr_type, MemNode::unordered, 
+    store_to_memory(ctrl, src_addr, src_array, T_ADDRESS, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
     Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
                                     _gvn.transform(new AddLNode(idx, _gvn.longcon(16))));
-    store_to_memory(ctrl, dst_addr, dst_array, T_LONG, adr_type, MemNode::unordered, 
+    store_to_memory(ctrl, dst_addr, dst_array, T_ADDRESS, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
   }
 

@@ -208,6 +208,7 @@ class Universe: AllStatic {
   CopyArrayLength = 1L << 7,
   MoveObject = 1L << 8,
   ClearContiguousSpace = 1L << 9,
+  Dummy = 1L << 10,
   LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
  };
   static bool is_verify_cause_full_gc;

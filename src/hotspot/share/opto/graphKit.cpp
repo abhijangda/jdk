@@ -1170,49 +1170,51 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
                              false, false, false, is_unsafe);
   
   Node* idx = _gvn.transform(new LShiftLNode(incr, _gvn.intcon(5)));
-  #if 1
   Node* addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
   Node* event_type_addr = addr;
-  store_to_memory(ctrl, event_type_addr, _gvn.longcon(event_type), T_LONG, 
+
+  if (false && event_type == Universe::NewObject) {
+    make_store_newobj_event(ctrl, addr, size_or_new_val, new_obj_or_field);
+  } else {
+    store_to_memory(ctrl, event_type_addr, _gvn.longcon(event_type), T_LONG, 
                   adr_type, MemNode::unordered, false, false, false, is_unsafe);
-  idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(8))); //TODO: Optimize address calculation
-  Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
-  if (event_type == Universe::NewArray || event_type == Universe::NewObject) {
-    Node* size = size_or_new_val;
-    const char* size_string = NodeClassNames[size->Opcode()];
-    // printf("%s\n", NodeClassNames[size->Opcode()]);
-    if (size->Opcode() == Op_ConL || size_string[strlen(size_string) - 1] == 'L') {
-      //TODO: Can create a NewObjectSizeInBits event
-      Node* size_in_bytes = _gvn.transform(new RShiftLNode(size, _gvn.intcon(3)));
-      store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
+    idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(8)));
+    Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
+    if (event_type == Universe::NewArray || event_type == Universe::NewObject) {
+      Node* size = size_or_new_val;
+      const char* size_string = NodeClassNames[size->Opcode()];
+      if (size->Opcode() == Op_ConL || size_string[strlen(size_string) - 1] == 'L') {
+        Node* size_in_bytes = _gvn.transform(new RShiftLNode(size, _gvn.intcon(3)));
+        store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
+                      false, false, false, is_unsafe);
+      } else if (size_string[strlen(size_string) - 1] == 'I') {
+        Node* size_in_bytes = ConvI2L(size);
+        store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
+                      false, false, false, is_unsafe);
+      } else {
+        // printf("%s\n", size->node_name());
+        // const Type* ttt = size->Value(&_gvn);
+        // printf("base %d bt %d\n", ttt->base(), ttt->basic_type());
+        Node* size_in_bytes = ConvI2L(size);
+        store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
+                      false, false, false, is_unsafe);
+      }
+    } else if (event_type == Universe::FieldSet) {
+      store_to_memory(ctrl, src_addr, size_or_new_val, T_ADDRESS, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
-    } else if (size_string[strlen(size_string) - 1] == 'I') {
-      Node* size_in_bytes = ConvI2L(size);
-      store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
-                    false, false, false, is_unsafe);
-    } else {
-      // printf("%s\n", size->node_name());
-      // const Type* ttt = size->Value(&_gvn);
-      // printf("base %d bt %d\n", ttt->base(), ttt->basic_type());
-      Node* size_in_bytes = ConvI2L(size);
-      store_to_memory(ctrl, src_addr, size_in_bytes, T_LONG, adr_type, MemNode::unordered, 
+    } else if (event_type == Universe::CopyObject) {
+      store_to_memory(ctrl, src_addr, size_or_new_val, T_ADDRESS, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
     }
-  } else if (event_type == Universe::FieldSet) {
-    store_to_memory(ctrl, src_addr, size_or_new_val, T_ADDRESS, adr_type, MemNode::unordered, 
-                  false, false, false, is_unsafe);
-  } else if (event_type == Universe::CopyObject) {
-    store_to_memory(ctrl, src_addr, size_or_new_val, T_ADDRESS, adr_type, MemNode::unordered, 
-                  false, false, false, is_unsafe);
+
+    idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(8)));
+    Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
+
+    store_to_memory(ctrl, dst_addr, new_obj_or_field, T_ADDRESS, adr_type, MemNode::unordered, 
+                    false, false, false, is_unsafe);
   }
 
-  idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(8)));
-  Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
-
-  store_to_memory(ctrl, dst_addr, new_obj_or_field, T_ADDRESS, adr_type, MemNode::unordered, 
-                  false, false, false, is_unsafe);
-  #endif
-  make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
+  // make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(false);
 }
@@ -1725,6 +1727,20 @@ Node* GraphKit::make_load(Node* ctl, Node* adr, const Type* t, BasicType bt,
   }
   return ld;
 }
+Node* GraphKit::make_store_newobj_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, Node* new_obj) {
+  int adr_idx = Compile::AliasIdxRaw;
+  const TypePtr* adr_type = NULL;
+  debug_only(adr_type = C->get_adr_type(adr_idx));
+  Node *mem = memory(adr_idx);
+  Node* st, *st1;
+  st1 = new StoreNewObjectEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj);
+  st = _gvn.transform(st1);
+  set_memory(st, adr_idx);
+  if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))
+    record_for_igvn(st);
+  return st;
+}
+
 
 Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
                                 int adr_idx,

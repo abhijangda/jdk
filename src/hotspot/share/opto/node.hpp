@@ -160,6 +160,7 @@ class StartNode;
 class State;
 class StoreNode;
 class TransferEventsNode;
+class StoreNewObjectEventNode;
 class SubNode;
 class SubTypeCheckNode;
 class Type;

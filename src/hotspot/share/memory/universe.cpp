@@ -924,12 +924,19 @@ void Universe::verify_heap_graph() {
       HeapEvent event = heap_events_start[event_iter];
       // event_threads.insert(event.id);
 
+      if (event.heap_event_type == Universe::Dummy) {
+        oopDesc* obj = (oopDesc*)event.address.dst;
+        
+        auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
+        printf("event.address.src %ld event.heap_event_type %ld obj %p\n", event.address.src,
+                                                   event.heap_event_type, obj);
+      }
+
       if (event.heap_event_type == Universe::NewObject || 
           event.heap_event_type == Universe::NewArray) {
         oopDesc* obj = (oopDesc*)event.address.dst;
         
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
-
         if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
         }
@@ -941,6 +948,8 @@ void Universe::verify_heap_graph() {
       }
     }
   }
+
+  
   
   for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
        !heap_events_iter.is_empty(); heap_events_iter.next()) {

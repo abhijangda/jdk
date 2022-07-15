@@ -689,6 +689,8 @@ class StoreLNode : public StoreNode {
 public:
   StoreLNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, MemOrd mo, bool require_atomic_access = false)
     : StoreNode(c, mem, adr, at, val, mo), _require_atomic_access(require_atomic_access) {}
+  StoreLNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, Node* val2, MemOrd mo, bool require_atomic_access = false)
+    : StoreNode(c, mem, adr, at, val, val2, mo), _require_atomic_access(require_atomic_access) {}
   virtual int Opcode() const;
   virtual BasicType memory_type() const { return T_LONG; }
   bool require_atomic_access() const { return _require_atomic_access; }
@@ -701,7 +703,30 @@ public:
 #endif
 };
 
+
+class StoreNewObjectEventNode : public StoreNode {
+protected:
+  virtual bool cmp( const Node &n ) const {
+    return StoreNode::cmp(n);
+  }
+  virtual uint hash() const { return StoreNode::hash(); }
+  virtual uint size_of() const {return sizeof(*this);}
+
+public:
+  StoreNewObjectEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj)
+    : StoreNode(c, mem, adr, at, size, obj, MemOrd::unordered) {}
+  virtual int Opcode() const;
+  virtual BasicType memory_type() const { return T_LONG; }
+#ifndef PRODUCT
+  virtual void dump_spec(outputStream *st) const {
+    StoreNode::dump_spec(st);
+    st->print(" StoreNewObjectEvent");
+  }
+#endif
+};
+
 class TransferEventsNode : public StoreLNode {
+  protected:
   virtual bool cmp( const Node &n ) const {
     return max_val() == ((TransferEventsNode&)n).max_val() && StoreNode::cmp(n);
   }

@@ -6078,6 +6078,76 @@ instruct transferEvents(memory mem, rRegL src)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
+instruct storeNewObjectEventLongConst(memory mem, immL32 sz, any_RegP obj)
+%{
+  match(Set mem (StoreNewObjectEvent mem (Binary sz obj)));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ movq(__mem, Universe::NewObject);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, ((size_t)$sz$$constant)/8);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $obj$$Register);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct storeNewObjectEventIntConst(memory mem, immI sz, any_RegP obj)
+%{
+  match(Set mem (StoreNewObjectEvent mem (Binary sz obj)));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ movq(__mem, Universe::NewObject);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, (size_t)$sz$$constant);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $obj$$Register);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct storeNewObjectEventLongReg(memory mem, rRegL sz, any_RegP obj)
+%{
+  match(Set mem (StoreNewObjectEvent mem (Binary sz obj)));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ movq(__mem, Universe::NewObject);
+    __mem = __mem.plus_disp(8);
+    __ shrq($sz$$Register, 3);
+    __ movq(__mem, $sz$$Register);
+    __ shlq($sz$$Register, 3);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $obj$$Register);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct storeNewObjectEventIntReg(memory mem, rRegI sz, any_RegP obj)
+%{
+  match(Set mem (StoreNewObjectEvent mem (Binary sz obj)));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ movq(__mem, Universe::NewObject);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $sz$$Register);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $obj$$Register);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
 // Store Pointer
 instruct storeP(memory mem, any_RegP src)
 %{

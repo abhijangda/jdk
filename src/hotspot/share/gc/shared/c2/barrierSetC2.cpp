@@ -129,7 +129,7 @@ Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) cons
       mm->set_memory_at(alias, st);
     }
     if (is_reference_type(access.type())) {
-      printf("132\n");      
+//      printf("132\n");      
     }
   }
   access.set_raw_access(store);

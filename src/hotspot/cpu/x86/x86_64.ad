@@ -6066,7 +6066,7 @@ instruct transferEvents(memory mem, rRegL src)
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();
-    if (true || CheckHeapEventGraphWithHeap) {
+    if (CheckHeapEventGraphWithHeap) {
       __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
     }  else {
       __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
@@ -6127,6 +6127,23 @@ instruct storeHeapEventLongReg(memory mem, rRegL sz, any_RegP obj)
     __ shlq($sz$$Register, 3);
     __mem = __mem.plus_disp(8);
     __ movq(__mem, $obj$$Register);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct storeHeapEventFieldSet(memory mem, any_RegP val, any_RegP field)
+%{
+  match(Set mem (StoreHeapEvent mem (Binary val field)));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $field\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ movq(__mem, event_type());
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $val$$Register);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $field$$Register);
   %}
   ins_pipe(ialu_mem_reg); // XXX
 %}

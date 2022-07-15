@@ -1173,7 +1173,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   Node* addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
   Node* event_type_addr = addr;
 
-  if (false && event_type == Universe::NewObject) {
+  if (event_type == Universe::NewObject) {
     make_store_newobj_event(ctrl, addr, size_or_new_val, new_obj_or_field);
   } else {
     store_to_memory(ctrl, event_type_addr, _gvn.longcon(event_type), T_LONG, 
@@ -1214,7 +1214,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
                     false, false, false, is_unsafe);
   }
 
-  // make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
+  make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(false);
 }

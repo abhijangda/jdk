@@ -6078,15 +6078,15 @@ instruct transferEvents(memory mem, rRegL src)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct storeNewObjectEventLongConst(memory mem, immL32 sz, any_RegP obj)
+instruct storeHeapEventLongConst(memory mem, immL32 sz, any_RegP obj)
 %{
-  match(Set mem (StoreNewObjectEvent mem (Binary sz obj)));
+  match(Set mem (StoreHeapEvent mem (Binary sz obj)));
 
   ins_cost(125); // XXX
   format %{ "movq    $mem, $obj\t# long" %}
   ins_encode %{
     Address __mem = $mem$$Address;
-    __ movq(__mem, Universe::NewObject);
+    __ movq(__mem, event_type());
     __mem = __mem.plus_disp(8);
     __ movq(__mem, ((size_t)$sz$$constant)/8);
     __mem = __mem.plus_disp(8);
@@ -6094,16 +6094,16 @@ instruct storeNewObjectEventLongConst(memory mem, immL32 sz, any_RegP obj)
   %}
   ins_pipe(ialu_mem_reg); // XXX
 %}
-
-instruct storeNewObjectEventIntConst(memory mem, immI sz, any_RegP obj)
+  
+instruct storeHeapEventIntConst(memory mem, immI sz, any_RegP obj)
 %{
-  match(Set mem (StoreNewObjectEvent mem (Binary sz obj)));
+  match(Set mem (StoreHeapEvent mem (Binary sz obj)));
 
   ins_cost(125); // XXX
   format %{ "movq    $mem, $obj\t# long" %}
   ins_encode %{
     Address __mem = $mem$$Address;
-    __ movq(__mem, Universe::NewObject);
+    __ movq(__mem, event_type());
     __mem = __mem.plus_disp(8);
     __ movq(__mem, (size_t)$sz$$constant);
     __mem = __mem.plus_disp(8);
@@ -6112,15 +6112,15 @@ instruct storeNewObjectEventIntConst(memory mem, immI sz, any_RegP obj)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct storeNewObjectEventLongReg(memory mem, rRegL sz, any_RegP obj)
+instruct storeHeapEventLongReg(memory mem, rRegL sz, any_RegP obj)
 %{
-  match(Set mem (StoreNewObjectEvent mem (Binary sz obj)));
+  match(Set mem (StoreHeapEvent mem (Binary sz obj)));
 
   ins_cost(125); // XXX
   format %{ "movq    $mem, $obj\t# long" %}
   ins_encode %{
     Address __mem = $mem$$Address;
-    __ movq(__mem, Universe::NewObject);
+    __ movq(__mem, event_type());
     __mem = __mem.plus_disp(8);
     __ shrq($sz$$Register, 3);
     __ movq(__mem, $sz$$Register);
@@ -6131,15 +6131,15 @@ instruct storeNewObjectEventLongReg(memory mem, rRegL sz, any_RegP obj)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct storeNewObjectEventIntReg(memory mem, rRegI sz, any_RegP obj)
+instruct storeHeapEventIntReg(memory mem, rRegI sz, any_RegP obj)
 %{
-  match(Set mem (StoreNewObjectEvent mem (Binary sz obj)));
+  match(Set mem (StoreHeapEvent mem (Binary sz obj)));
 
   ins_cost(125); // XXX
   format %{ "movq    $mem, $obj\t# long" %}
   ins_encode %{
     Address __mem = $mem$$Address;
-    __ movq(__mem, Universe::NewObject);
+    __ movq(__mem, event_type());
     __mem = __mem.plus_disp(8);
     __ movq(__mem, $sz$$Register);
     __mem = __mem.plus_disp(8);

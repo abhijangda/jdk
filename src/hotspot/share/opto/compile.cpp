@@ -3030,7 +3030,7 @@ void Compile::final_graph_reshaping_main_switch(Node* n, Final_Reshape_Counts& f
   case Op_StoreI:
   case Op_StoreL:
   case Op_TransferEvents:
-  case Op_StoreNewObjectEvent:
+  case Op_StoreHeapEvent:
   case Op_StoreIConditional:
   case Op_StoreLConditional:
   case Op_CompareAndSwapB:

@@ -1539,6 +1539,8 @@ void ArchDesc::declareClasses(FILE *fp) {
     fprintf(fp,"  MachOper *_opnd_array[%d];\n", instr->num_opnds() );
     if(strcmp(instr->_ident, "transferEvents") == 0) {
       fprintf(fp,"  uint64_t _max_val;\n");
+    } else if(strstr(instr->_ident, "storeHeapEvent")) {
+      fprintf(fp,"  Universe::HeapEventType _event_type;\n");
     }
     if ( instr->is_ideal_jump() ) {
       fprintf(fp, "  GrowableArray<Label*> _index2label;\n");
@@ -1548,7 +1550,11 @@ void ArchDesc::declareClasses(FILE *fp) {
     if(strcmp(instr->_ident, "transferEvents") == 0) {
       fprintf(fp,"  uint64_t max_val () const {return _max_val;}\n");
       fprintf(fp,"  void set_max_val(uint64_t n){_max_val = n;}\n");
+    } else if(strstr(instr->_ident, "storeHeapEvent")) {
+      fprintf(fp,"  Universe::HeapEventType event_type () const {return _event_type;}\n");
+      fprintf(fp,"  void set_event_type(Universe::HeapEventType n){_event_type = n;}\n");
     }
+
     Attribute *att = instr->_attribs;
     // Fields of the node specified in the ad file.
     while (att != NULL) {

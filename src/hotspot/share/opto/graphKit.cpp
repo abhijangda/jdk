@@ -1174,7 +1174,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   Node* event_type_addr = addr;
 
   if (event_type == Universe::NewObject) {
-    make_store_newobj_event(ctrl, addr, size_or_new_val, new_obj_or_field);
+    make_store_event(ctrl, addr, size_or_new_val, new_obj_or_field, event_type);
   } else {
     store_to_memory(ctrl, event_type_addr, _gvn.longcon(event_type), T_LONG, 
                   adr_type, MemNode::unordered, false, false, false, is_unsafe);
@@ -1727,13 +1727,13 @@ Node* GraphKit::make_load(Node* ctl, Node* adr, const Type* t, BasicType bt,
   }
   return ld;
 }
-Node* GraphKit::make_store_newobj_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, Node* new_obj) {
+Node* GraphKit::make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, Node* new_obj, Universe::HeapEventType event_type) {
   int adr_idx = Compile::AliasIdxRaw;
   const TypePtr* adr_type = NULL;
   debug_only(adr_type = C->get_adr_type(adr_idx));
   Node *mem = memory(adr_idx);
   Node* st, *st1;
-  st1 = new StoreNewObjectEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj);
+  st1 = new StoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, event_type);
   st = _gvn.transform(st1);
   set_memory(st, adr_idx);
   if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))

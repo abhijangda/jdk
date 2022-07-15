@@ -582,6 +582,8 @@ Node *Node::clone() const {
 
   if(Opcode() == Op_TransferEvents) {
     ((TransferEventsNode*)n)->set_max_val(((TransferEventsNode*)this)->max_val());
+  } else if(Opcode() == Op_StoreHeapEvent) {
+    ((StoreHeapEventNode*)n)->set_event_type(((StoreHeapEventNode*)this)->event_type());
   }
 
   return n;                     // Return the clone

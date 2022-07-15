@@ -704,23 +704,25 @@ public:
 };
 
 
-class StoreNewObjectEventNode : public StoreNode {
+class StoreHeapEventNode : public StoreNode {
 protected:
   virtual bool cmp( const Node &n ) const {
     return StoreNode::cmp(n);
   }
   virtual uint hash() const { return StoreNode::hash(); }
   virtual uint size_of() const {return sizeof(*this);}
-
+  Universe::HeapEventType _event_type;
 public:
-  StoreNewObjectEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj)
-    : StoreNode(c, mem, adr, at, size, obj, MemOrd::unordered) {}
+  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, Universe::HeapEventType event_type)
+    : StoreNode(c, mem, adr, at, size, obj, MemOrd::unordered), _event_type(event_type) {}
   virtual int Opcode() const;
   virtual BasicType memory_type() const { return T_LONG; }
+  Universe::HeapEventType event_type() {return _event_type;}
+  void set_event_type(Universe::HeapEventType t) {_event_type = t;}
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const {
     StoreNode::dump_spec(st);
-    st->print(" StoreNewObjectEvent");
+    st->print(" StoreHeapEventNode");
   }
 #endif
 };

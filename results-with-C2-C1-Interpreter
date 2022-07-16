@@ -1,0 +1,903 @@
+nohup: ignoring input
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar avrora -n1 -t1
+exec 0
+avrora 3715
+exec 1
+avrora 3883
+exec 2
+avrora 3895
+exec 3
+avrora 3631
+exec 4
+avrora 3759
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar avrora -n1 -t1
+exec 0
+avrora 4135
+exec 1
+avrora 4053
+exec 2
+avrora 3969
+exec 3
+avrora 4029
+exec 4
+avrora 3970
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar fop -n1 -t1
+exec 0
+fop 2605
+exec 1
+fop 2643
+exec 2
+fop 2603
+exec 3
+fop 2598
+exec 4
+fop 2623
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar fop -n1 -t1
+exec 0
+fop 3094
+exec 1
+fop 3069
+exec 2
+fop 3040
+exec 3
+fop 3001
+exec 4
+fop 3042
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar h2 -n1 -t1
+exec 0
+h2 5850
+exec 1
+h2 5701
+exec 2
+h2 5820
+exec 3
+h2 5816
+exec 4
+h2 5701
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar h2 -n1 -t1
+exec 0
+h2 6310
+exec 1
+h2 6503
+exec 2
+h2 6239
+exec 3
+h2 6256
+exec 4
+h2 6241
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar jython -n1 -t1
+exec 0
+jython 11740
+exec 1
+jython 11682
+exec 2
+jython 11708
+exec 3
+jython 11807
+exec 4
+jython 12002
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar jython -n1 -t1
+exec 0
+jython 13672
+exec 1
+jython 12804
+exec 2
+jython 12944
+exec 3
+jython 12828
+exec 4
+jython 12797
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar luindex -n1 -t1
+exec 0
+luindex 1784
+exec 1
+luindex 1750
+exec 2
+luindex 1838
+exec 3
+luindex 1752
+exec 4
+luindex 1705
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar luindex -n1 -t1
+exec 0
+luindex 2296
+exec 1
+luindex 2127
+exec 2
+luindex 2151
+exec 3
+luindex 2248
+exec 4
+luindex 2326
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar lusearch -n1 -t1
+exec 0
+lusearch 3728
+exec 1
+lusearch 3584
+exec 2
+lusearch 3797
+exec 3
+lusearch 3894
+exec 4
+lusearch 3626
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar lusearch -n1 -t1
+exec 0
+lusearch 4550
+exec 1
+1079: cur_thread 0x7fe4d8025840 heap_events 0x7fe497fff000
+[0.026s][info][gc,init] CardTable entry size: 512
+[0.026s][info][gc     ] Using Serial
+[0.062s][info][gc,init] Version: 18-internal+0-adhoc.aabhinav.jdk (release)
+[0.062s][info][gc,init] CPUs: 64 total, 1 available
+[0.062s][info][gc,init] Memory: 141G
+[0.062s][info][gc,init] Large Page Support: Disabled
+[0.062s][info][gc,init] NUMA Support: Disabled
+[0.062s][info][gc,init] Compressed Oops: Disabled
+[0.062s][info][gc,init] Heap Min Capacity: 32770M
+[0.062s][info][gc,init] Heap Initial Capacity: 32770M
+[0.062s][info][gc,init] Heap Max Capacity: 32770M
+[0.062s][info][gc,init] Pre-touch: Disabled
+1079: cur_thread 0x7fe4d80c1270 heap_events 0x7fdc64bfd000
+1079: cur_thread 0x7fe4d80c27d0 heap_events 0x7fdc64bfd000
+1079: cur_thread 0x7fe4d80f58d0 heap_events 0x7fdc64bfd000
+1079: cur_thread 0x7fe4d80f6c50 heap_events 0x7fdc64bfd000
+1079: cur_thread 0x7fe4d80f8030 heap_events 0x7fdc64bfd000
+1079: cur_thread 0x7fe4d80eb980 heap_events 0x7fdc64bfd000
+1079: cur_thread 0x7fe4d80ece80 heap_events 0x7fdc64bfd000
+1079: cur_thread 0x7fe4d80ee2c0 heap_events 0x7fdc64bfd000
+1079: cur_thread 0x7fe4d8145480 heap_events 0x7fdc64bfd000
+1079: cur_thread 0x7fe4d81ea460 heap_events 0x7fdc64bfd000
+Using scaled threading model. 1 processors detected, 1 threads used to drive the workload, in a possible range of [1,64]
+===== DaCapo 9.12-MR1 lusearch starting =====
+4 query batches completed
+8 query batches completed
+12 query batches completed
+16 query batches completed
+20 query batches completed
+24 query batches completed
+28 query batches completed
+32 query batches completed
+36 query batches completed
+40 query batches completed
+44 query batches completed
+48 query batches completed
+java.lang.NullPointerException: Cannot read field "value" because "anotherString" is null
+	at java.base/java.lang.String.compareTo(String.java:2011)
+	at org.apache.lucene.index.Term.compareTo(Term.java:105)
+	at org.apache.lucene.index.TermInfosReader.get(TermInfosReader.java:272)
+	at org.apache.lucene.index.TermInfosReader.get(TermInfosReader.java:218)
+	at org.apache.lucene.index.SegmentReader.docFreq(SegmentReader.java:752)
+	at org.apache.lucene.search.IndexSearcher.docFreq(IndexSearcher.java:86)
+	at org.apache.lucene.search.Similarity.idf(Similarity.java:457)
+	at org.apache.lucene.search.TermQuery$TermWeight.<init>(TermQuery.java:44)
+	at org.apache.lucene.search.TermQuery.createWeight(TermQuery.java:146)
+	at org.apache.lucene.search.Query.weight(Query.java:95)
+	at org.apache.lucene.search.Searcher.createWeight(Searcher.java:185)
+	at org.apache.lucene.search.Searcher.search(Searcher.java:136)
+	at org.dacapo.lusearch.Search$QueryProcessor.run(Search.java:241)
+	at org.dacapo.lusearch.Search$QueryThread.run(Search.java:179)
+1079: cur_thread 0x7fe4d83d65f0 heap_events 0x7fdc64bfd000
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777214
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+1079: cur_thread 0x7fdc4c000f30 heap_events 0x7fdc64bfd000
+[1150.413s][info][gc,heap,exit] Heap
+[1150.413s][info][gc,heap,exit]  def new generation   total 30196096K, used 1080515K [0x00007fdc88c00000, 0x00007fe4888d0000, 0x00007fe4888d0000)
+[1150.413s][info][gc,heap,exit]   eden space 26841024K,   4% used [0x00007fdc88c00000, 0x00007fdccab30e28, 0x00007fe2eeff0000)
+[1150.413s][info][gc,heap,exit]   from space 3355072K,   0% used [0x00007fe2eeff0000, 0x00007fe2eeff0000, 0x00007fe3bbc60000)
+[1150.413s][info][gc,heap,exit]   to   space 3355072K,   0% used [0x00007fe3bbc60000, 0x00007fe3bbc60000, 0x00007fe4888d0000)
+[1150.413s][info][gc,heap,exit]  tenured generation   total 5312K, used 0K [0x00007fe4888d0000, 0x00007fe488e00000, 0x00007fe488e00000)
+[1150.413s][info][gc,heap,exit]    the space 5312K,   0% used [0x00007fe4888d0000, 0x00007fe4888d0000, 0x00007fe4888d0200, 0x00007fe488e00000)
+[1150.413s][info][gc,heap,exit]  Metaspace       used 9396K, committed 9472K, reserved 65536K
+lusearch -1
+exec 2
+1079: cur_thread 0x7fe3b4025840 heap_events 0x7fe373fff000
+[0.025s][info][gc,init] CardTable entry size: 512
+[0.025s][info][gc     ] Using Serial
+[0.063s][info][gc,init] Version: 18-internal+0-adhoc.aabhinav.jdk (release)
+[0.063s][info][gc,init] CPUs: 64 total, 1 available
+[0.063s][info][gc,init] Memory: 141G
+[0.063s][info][gc,init] Large Page Support: Disabled
+[0.063s][info][gc,init] NUMA Support: Disabled
+[0.063s][info][gc,init] Compressed Oops: Disabled
+[0.063s][info][gc,init] Heap Min Capacity: 32770M
+[0.063s][info][gc,init] Heap Initial Capacity: 32770M
+[0.063s][info][gc,init] Heap Max Capacity: 32770M
+[0.063s][info][gc,init] Pre-touch: Disabled
+1079: cur_thread 0x7fe3b40c1270 heap_events 0x7fdb40bfd000
+1079: cur_thread 0x7fe3b40c27d0 heap_events 0x7fdb40bfd000
+1079: cur_thread 0x7fe3b40f58d0 heap_events 0x7fdb40bfd000
+1079: cur_thread 0x7fe3b40f6c50 heap_events 0x7fdb40bfd000
+1079: cur_thread 0x7fe3b40f8030 heap_events 0x7fdb40bfd000
+1079: cur_thread 0x7fe3b40eb980 heap_events 0x7fdb40bfd000
+1079: cur_thread 0x7fe3b40ece80 heap_events 0x7fdb40bfd000
+1079: cur_thread 0x7fe3b40ee2c0 heap_events 0x7fdb40bfd000
+1079: cur_thread 0x7fe3b4145480 heap_events 0x7fdb40bfd000
+1079: cur_thread 0x7fe3b41ea570 heap_events 0x7fdb40bfd000
+Using scaled threading model. 1 processors detected, 1 threads used to drive the workload, in a possible range of [1,64]
+===== DaCapo 9.12-MR1 lusearch starting =====
+4 query batches completed
+1079: cur_thread 0x7fe3b43d6940 heap_events 0x7fdb40bfd000
+1079: cur_thread 0x7fdb28000f30 heap_events 0x7fdb40bfd000
+[1.713s][info][gc,heap,exit] Heap
+[1.713s][info][gc,heap,exit]  def new generation   total 30196096K, used 122976K [0x00007fdb64c00000, 0x00007fe3648d0000, 0x00007fe3648d0000)
+[1.713s][info][gc,heap,exit]   eden space 26841024K,   0% used [0x00007fdb64c00000, 0x00007fdb6c418058, 0x00007fe1caff0000)
+[1.713s][info][gc,heap,exit]   from space 3355072K,   0% used [0x00007fe1caff0000, 0x00007fe1caff0000, 0x00007fe297c60000)
+[1.713s][info][gc,heap,exit]   to   space 3355072K,   0% used [0x00007fe297c60000, 0x00007fe297c60000, 0x00007fe3648d0000)
+[1.713s][info][gc,heap,exit]  tenured generation   total 5312K, used 0K [0x00007fe3648d0000, 0x00007fe364e00000, 0x00007fe364e00000)
+[1.713s][info][gc,heap,exit]    the space 5312K,   0% used [0x00007fe3648d0000, 0x00007fe3648d0000, 0x00007fe3648d0200, 0x00007fe364e00000)
+[1.713s][info][gc,heap,exit]  Metaspace       used 9288K, committed 9408K, reserved 65536K
+lusearch -1
+exec 3
+lusearch 4378
+exec 4
+lusearch 4528
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar lusearch-fix -n1 -t1
+exec 0
+lusearch-fix 3970
+exec 1
+lusearch-fix 3682
+exec 2
+lusearch-fix 3791
+exec 3
+lusearch-fix 3637
+exec 4
+lusearch-fix 3798
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar lusearch-fix -n1 -t1
+exec 0
+lusearch-fix 4470
+exec 1
+lusearch-fix 4373
+exec 2
+1079: cur_thread 0x7fc6c0025840 heap_events 0x7fc67ffff000
+[0.026s][info][gc,init] CardTable entry size: 512
+[0.026s][info][gc     ] Using Serial
+[0.062s][info][gc,init] Version: 18-internal+0-adhoc.aabhinav.jdk (release)
+[0.062s][info][gc,init] CPUs: 64 total, 1 available
+[0.062s][info][gc,init] Memory: 141G
+[0.062s][info][gc,init] Large Page Support: Disabled
+[0.062s][info][gc,init] NUMA Support: Disabled
+[0.062s][info][gc,init] Compressed Oops: Disabled
+[0.062s][info][gc,init] Heap Min Capacity: 32770M
+[0.062s][info][gc,init] Heap Initial Capacity: 32770M
+[0.062s][info][gc,init] Heap Max Capacity: 32770M
+[0.062s][info][gc,init] Pre-touch: Disabled
+1079: cur_thread 0x7fc6c00c1270 heap_events 0x7fbe4cbfd000
+1079: cur_thread 0x7fc6c00c27d0 heap_events 0x7fbe4cbfd000
+1079: cur_thread 0x7fc6c00f58d0 heap_events 0x7fbe4cbfd000
+1079: cur_thread 0x7fc6c00f6c50 heap_events 0x7fbe4cbfd000
+1079: cur_thread 0x7fc6c00f8030 heap_events 0x7fbe4cbfd000
+1079: cur_thread 0x7fc6c00eb980 heap_events 0x7fbe4cbfd000
+1079: cur_thread 0x7fc6c00ece80 heap_events 0x7fbe4cbfd000
+1079: cur_thread 0x7fc6c00ee2c0 heap_events 0x7fbe4cbfd000
+1079: cur_thread 0x7fc6c0145480 heap_events 0x7fbe4cbfd000
+1079: cur_thread 0x7fc6c01e9c90 heap_events 0x7fbe4cbfd000
+Using scaled threading model. 1 processors detected, 1 threads used to drive the workload, in a possible range of [1,64]
+===== DaCapo 9.12-MR1 lusearch-fix starting =====
+4 query batches completed
+8 query batches completed
+12 query batches completed
+16 query batches completed
+20 query batches completed
+24 query batches completed
+28 query batches completed
+32 query batches completed
+36 query batches completed
+40 query batches completed
+java.lang.NullPointerException: Cannot read field "value" because "anotherString" is null
+	at java.base/java.lang.String.compareTo(String.java:2011)
+	at org.apache.lucene.index.Term.compareTo(Term.java:105)
+	at org.apache.lucene.index.TermInfosReader.get(TermInfosReader.java:243)
+	at org.apache.lucene.index.TermInfosReader.get(TermInfosReader.java:218)
+	at org.apache.lucene.index.SegmentTermDocs.seek(SegmentTermDocs.java:55)
+	at org.apache.lucene.index.IndexReader.termDocs(IndexReader.java:780)
+	at org.apache.lucene.search.TermQuery$TermWeight.scorer(TermQuery.java:64)
+	at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:131)
+	at org.apache.lucene.search.IndexSearcher.search(IndexSearcher.java:112)
+	at org.apache.lucene.search.Searcher.search(Searcher.java:136)
+	at org.dacapo.lusearchFix.Search$QueryProcessor.run(Search.java:241)
+	at org.dacapo.lusearchFix.Search$QueryThread.run(Search.java:179)
+1079: cur_thread 0x7fc6c03d5ed0 heap_events 0x7fbe4cbfd000
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777214
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+1079: cur_thread 0x7fbe30000f30 heap_events 0x7fbe4cbfd000
+[182.077s][info][gc,heap,exit] Heap
+[182.077s][info][gc,heap,exit]  def new generation   total 30196096K, used 903660K [0x00007fbe70c00000, 0x00007fc6708d0000, 0x00007fc6708d0000)
+[182.077s][info][gc,heap,exit]   eden space 26841024K,   3% used [0x00007fbe70c00000, 0x00007fbea7e7b328, 0x00007fc4d6ff0000)
+[182.077s][info][gc,heap,exit]   from space 3355072K,   0% used [0x00007fc4d6ff0000, 0x00007fc4d6ff0000, 0x00007fc5a3c60000)
+[182.077s][info][gc,heap,exit]   to   space 3355072K,   0% used [0x00007fc5a3c60000, 0x00007fc5a3c60000, 0x00007fc6708d0000)
+[182.077s][info][gc,heap,exit]  tenured generation   total 5312K, used 0K [0x00007fc6708d0000, 0x00007fc670e00000, 0x00007fc670e00000)
+[182.077s][info][gc,heap,exit]    the space 5312K,   0% used [0x00007fc6708d0000, 0x00007fc6708d0000, 0x00007fc6708d0200, 0x00007fc670e00000)
+[182.077s][info][gc,heap,exit]  Metaspace       used 9395K, committed 9472K, reserved 65536K
+lusearch-fix -1
+exec 3
+lusearch-fix 4353
+exec 4
+1079: cur_thread 0x7f021c025840 heap_events 0x7f01dbfff000
+[0.026s][info][gc,init] CardTable entry size: 512
+[0.026s][info][gc     ] Using Serial
+[0.064s][info][gc,init] Version: 18-internal+0-adhoc.aabhinav.jdk (release)
+[0.064s][info][gc,init] CPUs: 64 total, 1 available
+[0.064s][info][gc,init] Memory: 141G
+[0.064s][info][gc,init] Large Page Support: Disabled
+[0.064s][info][gc,init] NUMA Support: Disabled
+[0.064s][info][gc,init] Compressed Oops: Disabled
+[0.064s][info][gc,init] Heap Min Capacity: 32770M
+[0.064s][info][gc,init] Heap Initial Capacity: 32770M
+[0.064s][info][gc,init] Heap Max Capacity: 32770M
+[0.064s][info][gc,init] Pre-touch: Disabled
+1079: cur_thread 0x7f021c0c1270 heap_events 0x7ef9a8bfd000
+1079: cur_thread 0x7f021c0c27d0 heap_events 0x7ef9a8bfd000
+1079: cur_thread 0x7f021c0f58d0 heap_events 0x7ef9a8bfd000
+1079: cur_thread 0x7f021c0f6c50 heap_events 0x7ef9a8bfd000
+1079: cur_thread 0x7f021c0f8030 heap_events 0x7ef9a8bfd000
+1079: cur_thread 0x7f021c0eb980 heap_events 0x7ef9a8bfd000
+1079: cur_thread 0x7f021c0ece80 heap_events 0x7ef9a8bfd000
+1079: cur_thread 0x7f021c0ee2c0 heap_events 0x7ef9a8bfd000
+1079: cur_thread 0x7f021c145480 heap_events 0x7ef9a8bfd000
+1079: cur_thread 0x7f021c1eb560 heap_events 0x7ef9a8bfd000
+Using scaled threading model. 1 processors detected, 1 threads used to drive the workload, in a possible range of [1,64]
+===== DaCapo 9.12-MR1 lusearch-fix starting =====
+4 query batches completed
+8 query batches completed
+12 query batches completed
+16 query batches completed
+20 query batches completed
+24 query batches completed
+28 query batches completed
+32 query batches completed
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x00007f01d4b469d2, pid=25628, tid=25643
+#
+# JRE version: OpenJDK Runtime Environment (18.0) (build 18-internal+0-adhoc.aabhinav.jdk)
+# Java VM: OpenJDK 64-Bit Server VM (18-internal+0-adhoc.aabhinav.jdk, mixed mode, tiered, serial gc, linux-amd64)
+# Problematic frame:
+# J 1110 c2 org.apache.lucene.search.TopDocCollector.collect(IF)V (90 bytes) @ 0x00007f01d4b469d2 [0x00007f01d4b461a0+0x0000000000000832]
+#
+# Core dump will be written. Default location: Core dumps may be processed with "/usr/share/apport/apport -p%p -s%s -c%c -d%d -P%P -u%u -g%g -- %E" (or dumping to /mnt/homes/aabhinav/jdk/core.25628)
+#
+# An error report file with more information is saved as:
+# /mnt/homes/aabhinav/jdk/hs_err_pid25628.log
+#
+# If you would like to submit a bug report, please visit:
+#   https://bugreport.java.com/bugreport/crash.jsp
+#
+1079: cur_thread 0x7f021c3d7a50 heap_events 0x7ef9a8bfd000
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777214
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777214
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Aborted (core dumped)
+lusearch-fix -1
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar sunflow -n1 -t1
+exec 0
+sunflow 9278
+exec 1
+sunflow 9635
+exec 2
+sunflow 9466
+exec 3
+sunflow 9493
+exec 4
+sunflow 9342
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar sunflow -n1 -t1
+exec 0
+1079: cur_thread 0x7fbce0025840 heap_events 0x7fbc9ffff000
+[0.024s][info][gc,init] CardTable entry size: 512
+[0.024s][info][gc     ] Using Serial
+[0.062s][info][gc,init] Version: 18-internal+0-adhoc.aabhinav.jdk (release)
+[0.062s][info][gc,init] CPUs: 64 total, 1 available
+[0.062s][info][gc,init] Memory: 141G
+[0.062s][info][gc,init] Large Page Support: Disabled
+[0.062s][info][gc,init] NUMA Support: Disabled
+[0.062s][info][gc,init] Compressed Oops: Disabled
+[0.062s][info][gc,init] Heap Min Capacity: 32770M
+[0.062s][info][gc,init] Heap Initial Capacity: 32770M
+[0.062s][info][gc,init] Heap Max Capacity: 32770M
+[0.062s][info][gc,init] Pre-touch: Disabled
+1079: cur_thread 0x7fbce00c1270 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce00c27d0 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce00f58d0 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce00f6c50 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce00f8030 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce00eb980 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce00ece80 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce00ee2c0 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce0145480 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce01f3570 heap_events 0x7fb46cbfd000
+Using scaled threading model. 1 processors detected, 1 threads used to drive the workload, in a possible range of [1,256]
+===== DaCapo 9.12-MR1 sunflow starting =====
+Exception in thread "Thread-1" java.lang.RuntimeException: Inf shading sample!
+	at org.sunflow.Benchmark.print(Benchmark.java:252)
+	at org.sunflow.system.UI.printError(UI.java:63)
+	at org.sunflow.core.renderer.BucketRenderer$ImageSample.checkNanInf(BucketRenderer.java:408)
+	at org.sunflow.core.renderer.BucketRenderer$ImageSample.set(BucketRenderer.java:382)
+	at org.sunflow.core.renderer.BucketRenderer.computeSubPixel(BucketRenderer.java:318)
+	at org.sunflow.core.renderer.BucketRenderer.refineSamples(BucketRenderer.java:337)
+	at org.sunflow.core.renderer.BucketRenderer.refineSamples(BucketRenderer.java:342)
+	at org.sunflow.core.renderer.BucketRenderer.refineSamples(BucketRenderer.java:345)
+	at org.sunflow.core.renderer.BucketRenderer.renderBucket(BucketRenderer.java:244)
+	at org.sunflow.core.renderer.BucketRenderer.access$300(BucketRenderer.java:24)
+	at org.sunflow.core.renderer.BucketRenderer$BucketThread.run(BucketRenderer.java:190)
+java.lang.reflect.InvocationTargetException
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:119)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:577)
+	at org.dacapo.harness.Sunflow.validate(Sunflow.java:79)
+	at org.dacapo.harness.Benchmark.run(Benchmark.java:196)
+	at org.dacapo.harness.TestHarness.runBenchmark(TestHarness.java:199)
+	at org.dacapo.harness.TestHarness.main(TestHarness.java:152)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:577)
+	at Harness.main(Unknown Source)
+Caused by: java.lang.RuntimeException: Image check failed! - #errors: 9195305
+	at org.sunflow.Benchmark.print(Benchmark.java:252)
+	at org.sunflow.system.UI.printError(UI.java:63)
+	at org.sunflow.Benchmark.kernelEnd(Benchmark.java:240)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	... 8 more
+===== DaCapo 9.12-MR1 sunflow FAILED =====
+Validation FAILED for sunflow default
+1079: cur_thread 0x7fbce0451990 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce0508f30 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce050bf40 heap_events 0x7fb46cbfd000
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+1079: cur_thread 0x7fbce050bf40 heap_events 0x7fb46cbfd000
+1079: cur_thread 0x7fbce050d080 heap_events 0x7fb46cbfd000
+[7.263s][info][gc,heap,exit] Heap
+[7.263s][info][gc,heap,exit]  def new generation   total 30196096K, used 1514204K [0x00007fb490c00000, 0x00007fbc908d0000, 0x00007fbc908d0000)
+[7.263s][info][gc,heap,exit]   eden space 26841024K,   5% used [0x00007fb490c00000, 0x00007fb4ed2b70b8, 0x00007fbaf6ff0000)
+[7.263s][info][gc,heap,exit]   from space 3355072K,   0% used [0x00007fbaf6ff0000, 0x00007fbaf6ff0000, 0x00007fbbc3c60000)
+[7.263s][info][gc,heap,exit]   to   space 3355072K,   0% used [0x00007fbbc3c60000, 0x00007fbbc3c60000, 0x00007fbc908d0000)
+[7.263s][info][gc,heap,exit]  tenured generation   total 5312K, used 0K [0x00007fbc908d0000, 0x00007fbc90e00000, 0x00007fbc90e00000)
+[7.263s][info][gc,heap,exit]    the space 5312K,   0% used [0x00007fbc908d0000, 0x00007fbc908d0000, 0x00007fbc908d0200, 0x00007fbc90e00000)
+[7.263s][info][gc,heap,exit]  Metaspace       used 13523K, committed 13696K, reserved 65536K
+sunflow -1
+exec 1
+1079: cur_thread 0x7fe934025840 heap_events 0x7fe8f3fff000
+[0.024s][info][gc,init] CardTable entry size: 512
+[0.024s][info][gc     ] Using Serial
+[0.061s][info][gc,init] Version: 18-internal+0-adhoc.aabhinav.jdk (release)
+[0.061s][info][gc,init] CPUs: 64 total, 1 available
+[0.061s][info][gc,init] Memory: 141G
+[0.061s][info][gc,init] Large Page Support: Disabled
+[0.061s][info][gc,init] NUMA Support: Disabled
+[0.061s][info][gc,init] Compressed Oops: Disabled
+[0.061s][info][gc,init] Heap Min Capacity: 32770M
+[0.061s][info][gc,init] Heap Initial Capacity: 32770M
+[0.061s][info][gc,init] Heap Max Capacity: 32770M
+[0.061s][info][gc,init] Pre-touch: Disabled
+1079: cur_thread 0x7fe9340c1270 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe9340c27d0 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe9340f58d0 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe9340f6c50 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe9340f8030 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe9340eb980 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe9340ece80 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe9340ee2c0 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe934145480 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe9341e98c0 heap_events 0x7fe0c0bfd000
+Using scaled threading model. 1 processors detected, 1 threads used to drive the workload, in a possible range of [1,256]
+===== DaCapo 9.12-MR1 sunflow starting =====
+Exception in thread "Thread-1" java.lang.NullPointerException: Cannot invoke "org.sunflow.image.Color.getMax()" because "diffuseReflectance" is null
+	at org.sunflow.core.gi.InstantGI.getIrradiance(InstantGI.java:80)
+	at org.sunflow.core.LightServer.getIrradiance(LightServer.java:469)
+	at org.sunflow.core.ShadingState.getIrradiance(ShadingState.java:677)
+	at org.sunflow.core.ShadingState.diffuse(ShadingState.java:756)
+	at org.sunflow.core.shader.DiffuseShader.getRadiance(DiffuseShader.java:34)
+	at org.sunflow.core.LightServer.shadeHit(LightServer.java:348)
+	at org.sunflow.core.LightServer.traceReflection(LightServer.java:439)
+	at org.sunflow.core.ShadingState.traceReflection(ShadingState.java:567)
+	at org.sunflow.core.shader.GlassShader.getRadiance(GlassShader.java:85)
+	at org.sunflow.core.LightServer.getRadiance(LightServer.java:329)
+	at org.sunflow.core.Scene.getRadiance(Scene.java:158)
+	at org.sunflow.core.renderer.BucketRenderer.computeSubPixel(BucketRenderer.java:318)
+	at org.sunflow.core.renderer.BucketRenderer.refineSamples(BucketRenderer.java:337)
+	at org.sunflow.core.renderer.BucketRenderer.refineSamples(BucketRenderer.java:342)
+	at org.sunflow.core.renderer.BucketRenderer.refineSamples(BucketRenderer.java:342)
+	at org.sunflow.core.renderer.BucketRenderer.renderBucket(BucketRenderer.java:244)
+	at org.sunflow.core.renderer.BucketRenderer.access$300(BucketRenderer.java:24)
+	at org.sunflow.core.renderer.BucketRenderer$BucketThread.run(BucketRenderer.java:190)
+java.lang.reflect.InvocationTargetException
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:119)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:577)
+	at org.dacapo.harness.Sunflow.validate(Sunflow.java:79)
+	at org.dacapo.harness.Benchmark.run(Benchmark.java:196)
+	at org.dacapo.harness.TestHarness.runBenchmark(TestHarness.java:199)
+	at org.dacapo.harness.TestHarness.main(TestHarness.java:152)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:577)
+	at Harness.main(Unknown Source)
+Caused by: java.lang.RuntimeException: Image check failed! - #errors: 7095259
+	at org.sunflow.Benchmark.print(Benchmark.java:252)
+	at org.sunflow.system.UI.printError(UI.java:63)
+	at org.sunflow.Benchmark.kernelEnd(Benchmark.java:240)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	... 8 more
+===== DaCapo 9.12-MR1 sunflow FAILED =====
+Validation FAILED for sunflow default
+1079: cur_thread 0x7fe934448070 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe934501fb0 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe934504fd0 heap_events 0x7fe0c0bfd000
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+1079: cur_thread 0x7fe934501fb0 heap_events 0x7fe0c0bfd000
+1079: cur_thread 0x7fe9345061f0 heap_events 0x7fe0c0bfd000
+[8.259s][info][gc,heap,exit] Heap
+[8.259s][info][gc,heap,exit]  def new generation   total 30196096K, used 1807776K [0x00007fe0e4c00000, 0x00007fe8e48d0000, 0x00007fe8e48d0000)
+[8.259s][info][gc,heap,exit]   eden space 26841024K,   6% used [0x00007fe0e4c00000, 0x00007fe1531680d0, 0x00007fe74aff0000)
+[8.259s][info][gc,heap,exit]   from space 3355072K,   0% used [0x00007fe74aff0000, 0x00007fe74aff0000, 0x00007fe817c60000)
+[8.259s][info][gc,heap,exit]   to   space 3355072K,   0% used [0x00007fe817c60000, 0x00007fe817c60000, 0x00007fe8e48d0000)
+[8.259s][info][gc,heap,exit]  tenured generation   total 5312K, used 0K [0x00007fe8e48d0000, 0x00007fe8e4e00000, 0x00007fe8e4e00000)
+[8.259s][info][gc,heap,exit]    the space 5312K,   0% used [0x00007fe8e48d0000, 0x00007fe8e48d0000, 0x00007fe8e48d0200, 0x00007fe8e4e00000)
+[8.259s][info][gc,heap,exit]  Metaspace       used 13518K, committed 13696K, reserved 65536K
+sunflow -1
+exec 2
+1079: cur_thread 0x7f7fb4025840 heap_events 0x7f7f73fff000
+[0.024s][info][gc,init] CardTable entry size: 512
+[0.025s][info][gc     ] Using Serial
+[0.063s][info][gc,init] Version: 18-internal+0-adhoc.aabhinav.jdk (release)
+[0.063s][info][gc,init] CPUs: 64 total, 1 available
+[0.063s][info][gc,init] Memory: 141G
+[0.063s][info][gc,init] Large Page Support: Disabled
+[0.063s][info][gc,init] NUMA Support: Disabled
+[0.063s][info][gc,init] Compressed Oops: Disabled
+[0.063s][info][gc,init] Heap Min Capacity: 32770M
+[0.063s][info][gc,init] Heap Initial Capacity: 32770M
+[0.063s][info][gc,init] Heap Max Capacity: 32770M
+[0.063s][info][gc,init] Pre-touch: Disabled
+1079: cur_thread 0x7f7fb40c1270 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb40c27d0 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb40f58d0 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb40f6c50 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb40f8030 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb40eb980 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb40ece80 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb40ee2c0 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb4145480 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb41eb590 heap_events 0x7f7740bfd000
+Using scaled threading model. 1 processors detected, 1 threads used to drive the workload, in a possible range of [1,256]
+===== DaCapo 9.12-MR1 sunflow starting =====
+java.lang.reflect.InvocationTargetException
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:119)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:577)
+	at org.dacapo.harness.Sunflow.validate(Sunflow.java:79)
+	at org.dacapo.harness.Benchmark.run(Benchmark.java:196)
+	at org.dacapo.harness.TestHarness.runBenchmark(TestHarness.java:199)
+	at org.dacapo.harness.TestHarness.main(TestHarness.java:152)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:577)
+	at Harness.main(Unknown Source)
+Caused by: java.lang.RuntimeException: Image check failed! - #errors: 21
+	at org.sunflow.Benchmark.print(Benchmark.java:252)
+	at org.sunflow.system.UI.printError(UI.java:63)
+	at org.sunflow.Benchmark.kernelEnd(Benchmark.java:240)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	... 8 more
+===== DaCapo 9.12-MR1 sunflow FAILED =====
+Validation FAILED for sunflow default
+1079: cur_thread 0x7f7fb44499b0 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb4500f40 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb4503f70 heap_events 0x7f7740bfd000
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+1079: cur_thread 0x7f7fb45050b0 heap_events 0x7f7740bfd000
+1079: cur_thread 0x7f7fb4505900 heap_events 0x7f7740bfd000
+[10.814s][info][gc,heap,exit] Heap
+[10.814s][info][gc,heap,exit]  def new generation   total 30196096K, used 2665324K [0x00007f7764c00000, 0x00007f7f648d0000, 0x00007f7f648d0000)
+[10.814s][info][gc,heap,exit]   eden space 26841024K,   9% used [0x00007f7764c00000, 0x00007f78076db3d0, 0x00007f7dcaff0000)
+[10.814s][info][gc,heap,exit]   from space 3355072K,   0% used [0x00007f7dcaff0000, 0x00007f7dcaff0000, 0x00007f7e97c60000)
+[10.814s][info][gc,heap,exit]   to   space 3355072K,   0% used [0x00007f7e97c60000, 0x00007f7e97c60000, 0x00007f7f648d0000)
+[10.814s][info][gc,heap,exit]  tenured generation   total 5312K, used 0K [0x00007f7f648d0000, 0x00007f7f64e00000, 0x00007f7f64e00000)
+[10.814s][info][gc,heap,exit]    the space 5312K,   0% used [0x00007f7f648d0000, 0x00007f7f648d0000, 0x00007f7f648d0200, 0x00007f7f64e00000)
+[10.814s][info][gc,heap,exit]  Metaspace       used 13491K, committed 13632K, reserved 65536K
+sunflow -1
+exec 3
+1079: cur_thread 0x7fd418025840 heap_events 0x7fd3d7fff000
+[0.023s][info][gc,init] CardTable entry size: 512
+[0.023s][info][gc     ] Using Serial
+[0.060s][info][gc,init] Version: 18-internal+0-adhoc.aabhinav.jdk (release)
+[0.060s][info][gc,init] CPUs: 64 total, 1 available
+[0.060s][info][gc,init] Memory: 141G
+[0.060s][info][gc,init] Large Page Support: Disabled
+[0.060s][info][gc,init] NUMA Support: Disabled
+[0.060s][info][gc,init] Compressed Oops: Disabled
+[0.060s][info][gc,init] Heap Min Capacity: 32770M
+[0.060s][info][gc,init] Heap Initial Capacity: 32770M
+[0.060s][info][gc,init] Heap Max Capacity: 32770M
+[0.060s][info][gc,init] Pre-touch: Disabled
+1079: cur_thread 0x7fd4180c1270 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd4180c27d0 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd4180f58d0 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd4180f6c50 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd4180f8030 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd4180eb980 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd4180ece80 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd4180ee2c0 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd418145480 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd4181ea320 heap_events 0x7fcba4b7c000
+Using scaled threading model. 1 processors detected, 1 threads used to drive the workload, in a possible range of [1,256]
+===== DaCapo 9.12-MR1 sunflow starting =====
+Exception in thread "Thread-1" java.lang.RuntimeException: Inf shading sample!
+	at org.sunflow.Benchmark.print(Benchmark.java:252)
+	at org.sunflow.system.UI.printError(UI.java:63)
+	at org.sunflow.core.renderer.BucketRenderer$ImageSample.checkNanInf(BucketRenderer.java:408)
+	at org.sunflow.core.renderer.BucketRenderer$ImageSample.set(BucketRenderer.java:382)
+	at org.sunflow.core.renderer.BucketRenderer.computeSubPixel(BucketRenderer.java:318)
+	at org.sunflow.core.renderer.BucketRenderer.refineSamples(BucketRenderer.java:337)
+	at org.sunflow.core.renderer.BucketRenderer.refineSamples(BucketRenderer.java:343)
+	at org.sunflow.core.renderer.BucketRenderer.renderBucket(BucketRenderer.java:244)
+	at org.sunflow.core.renderer.BucketRenderer.access$300(BucketRenderer.java:24)
+	at org.sunflow.core.renderer.BucketRenderer$BucketThread.run(BucketRenderer.java:190)
+java.lang.reflect.InvocationTargetException
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:119)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:577)
+	at org.dacapo.harness.Sunflow.validate(Sunflow.java:79)
+	at org.dacapo.harness.Benchmark.run(Benchmark.java:196)
+	at org.dacapo.harness.TestHarness.runBenchmark(TestHarness.java:199)
+	at org.dacapo.harness.TestHarness.main(TestHarness.java:152)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:577)
+	at Harness.main(Unknown Source)
+Caused by: java.lang.RuntimeException: Image check failed! - #errors: 11724248
+	at org.sunflow.Benchmark.print(Benchmark.java:252)
+	at org.sunflow.system.UI.printError(UI.java:63)
+	at org.sunflow.Benchmark.kernelEnd(Benchmark.java:240)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	... 8 more
+===== DaCapo 9.12-MR1 sunflow FAILED =====
+Validation FAILED for sunflow default
+1079: cur_thread 0x7fd418448a80 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd4184fff50 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd418502f70 heap_events 0x7fcba4b7c000
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+1079: cur_thread 0x7fd4184fff50 heap_events 0x7fcba4b7c000
+1079: cur_thread 0x7fd418504190 heap_events 0x7fcba4b7c000
+[5.117s][info][gc,heap,exit] Heap
+[5.117s][info][gc,heap,exit]  def new generation   total 30196096K, used 911691K [0x00007fcbc8c00000, 0x00007fd3c88d0000, 0x00007fd3c88d0000)
+[5.117s][info][gc,heap,exit]   eden space 26841024K,   3% used [0x00007fcbc8c00000, 0x00007fcc00652ca8, 0x00007fd22eff0000)
+[5.117s][info][gc,heap,exit]   from space 3355072K,   0% used [0x00007fd22eff0000, 0x00007fd22eff0000, 0x00007fd2fbc60000)
+[5.117s][info][gc,heap,exit]   to   space 3355072K,   0% used [0x00007fd2fbc60000, 0x00007fd2fbc60000, 0x00007fd3c88d0000)
+[5.117s][info][gc,heap,exit]  tenured generation   total 5312K, used 0K [0x00007fd3c88d0000, 0x00007fd3c8e00000, 0x00007fd3c8e00000)
+[5.117s][info][gc,heap,exit]    the space 5312K,   0% used [0x00007fd3c88d0000, 0x00007fd3c88d0000, 0x00007fd3c88d0200, 0x00007fd3c8e00000)
+[5.117s][info][gc,heap,exit]  Metaspace       used 13502K, committed 13568K, reserved 65536K
+sunflow -1
+exec 4
+1079: cur_thread 0x7f4c20025840 heap_events 0x7f4bdffff000
+[0.025s][info][gc,init] CardTable entry size: 512
+[0.025s][info][gc     ] Using Serial
+[0.062s][info][gc,init] Version: 18-internal+0-adhoc.aabhinav.jdk (release)
+[0.062s][info][gc,init] CPUs: 64 total, 1 available
+[0.062s][info][gc,init] Memory: 141G
+[0.062s][info][gc,init] Large Page Support: Disabled
+[0.062s][info][gc,init] NUMA Support: Disabled
+[0.062s][info][gc,init] Compressed Oops: Disabled
+[0.062s][info][gc,init] Heap Min Capacity: 32770M
+[0.062s][info][gc,init] Heap Initial Capacity: 32770M
+[0.062s][info][gc,init] Heap Max Capacity: 32770M
+[0.062s][info][gc,init] Pre-touch: Disabled
+1079: cur_thread 0x7f4c200c1270 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c200c27d0 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c200f58d0 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c200f6c50 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c200f8030 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c200eb980 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c200ece80 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c200ee2c0 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c20145480 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c201f2530 heap_events 0x7f43acbfd000
+Using scaled threading model. 1 processors detected, 1 threads used to drive the workload, in a possible range of [1,256]
+===== DaCapo 9.12-MR1 sunflow starting =====
+Exception in thread "Thread-1" java.lang.RuntimeException: Inf shading sample!
+	at org.sunflow.Benchmark.print(Benchmark.java:252)
+	at org.sunflow.system.UI.printError(UI.java:63)
+	at org.sunflow.core.renderer.BucketRenderer$ImageSample.checkNanInf(BucketRenderer.java:408)
+	at org.sunflow.core.renderer.BucketRenderer$ImageSample.set(BucketRenderer.java:382)
+	at org.sunflow.core.renderer.BucketRenderer.computeSubPixel(BucketRenderer.java:318)
+	at org.sunflow.core.renderer.BucketRenderer.refineSamples(BucketRenderer.java:337)
+	at org.sunflow.core.renderer.BucketRenderer.refineSamples(BucketRenderer.java:342)
+	at org.sunflow.core.renderer.BucketRenderer.renderBucket(BucketRenderer.java:244)
+	at org.sunflow.core.renderer.BucketRenderer.access$300(BucketRenderer.java:24)
+	at org.sunflow.core.renderer.BucketRenderer$BucketThread.run(BucketRenderer.java:190)
+java.lang.reflect.InvocationTargetException
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:119)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:577)
+	at org.dacapo.harness.Sunflow.validate(Sunflow.java:79)
+	at org.dacapo.harness.Benchmark.run(Benchmark.java:196)
+	at org.dacapo.harness.TestHarness.runBenchmark(TestHarness.java:199)
+	at org.dacapo.harness.TestHarness.main(TestHarness.java:152)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:577)
+	at Harness.main(Unknown Source)
+Caused by: java.lang.RuntimeException: Image check failed! - #errors: 15665707
+	at org.sunflow.Benchmark.print(Benchmark.java:252)
+	at org.sunflow.system.UI.printError(UI.java:63)
+	at org.sunflow.Benchmark.kernelEnd(Benchmark.java:240)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	... 8 more
+===== DaCapo 9.12-MR1 sunflow FAILED =====
+Validation FAILED for sunflow default
+1079: cur_thread 0x7f4c20450c60 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c205081f0 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c2050b210 heap_events 0x7f43acbfd000
+Transferring Events to GPU *cur_thread::heap_event_counter_ptr 16777216
+1079: cur_thread 0x7f4c2050c350 heap_events 0x7f43acbfd000
+1079: cur_thread 0x7f4c2050c8c0 heap_events 0x7f43acbfd000
+[2.778s][info][gc,heap,exit] Heap
+[2.778s][info][gc,heap,exit]  def new generation   total 30196096K, used 308142K [0x00007f43d0c00000, 0x00007f4bd08d0000, 0x00007f4bd08d0000)
+[2.778s][info][gc,heap,exit]   eden space 26841024K,   1% used [0x00007f43d0c00000, 0x00007f43e38eb900, 0x00007f4a36ff0000)
+[2.778s][info][gc,heap,exit]   from space 3355072K,   0% used [0x00007f4a36ff0000, 0x00007f4a36ff0000, 0x00007f4b03c60000)
+[2.778s][info][gc,heap,exit]   to   space 3355072K,   0% used [0x00007f4b03c60000, 0x00007f4b03c60000, 0x00007f4bd08d0000)
+[2.778s][info][gc,heap,exit]  tenured generation   total 5312K, used 0K [0x00007f4bd08d0000, 0x00007f4bd0e00000, 0x00007f4bd0e00000)
+[2.778s][info][gc,heap,exit]    the space 5312K,   0% used [0x00007f4bd08d0000, 0x00007f4bd08d0000, 0x00007f4bd08d0200, 0x00007f4bd0e00000)
+[2.778s][info][gc,heap,exit]  Metaspace       used 13501K, committed 13632K, reserved 65536K
+sunflow -1
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar xalan -n1 -t1
+exec 0
+xalan 6083
+exec 1
+xalan 6177
+exec 2
+xalan 6110
+exec 3
+xalan 6167
+exec 4
+xalan 6248
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar xalan -n1 -t1
+exec 0
+xalan 6719
+exec 1
+xalan 6776
+exec 2
+xalan 6897
+exec 3
+xalan 6852
+exec 4
+xalan 6844
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar pmd -n1 -t1
+exec 0
+pmd 4634
+exec 1
+pmd 4538
+exec 2
+pmd 4674
+exec 3
+pmd 4664
+exec 4
+pmd 4739
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar pmd -n1 -t1
+exec 0
+pmd 5519
+exec 1
+pmd 5521
+exec 2
+pmd 5731
+exec 3
+pmd 5662
+exec 4
+pmd 5582
+Times of benchmark
+===avrora=== Average: baseline  3776.6 instrument: 4031.2 Average Overhead:  1.0674151353068897
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  3715.0  |   4135.0   |
+|  3883.0  |   4053.0   |
+|  3895.0  |   3969.0   |
+|  3631.0  |   4029.0   |
+|  3759.0  |   3970.0   |
++----------+------------+
+===fop=== Average: baseline  2614.4 instrument: 3049.2 Average Overhead:  1.1663096695226438
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  2605.0  |   3094.0   |
+|  2643.0  |   3069.0   |
+|  2603.0  |   3040.0   |
+|  2598.0  |   3001.0   |
+|  2623.0  |   3042.0   |
++----------+------------+
+===h2=== Average: baseline  5777.6 instrument: 6309.8 Average Overhead:  1.0921143727499307
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  5850.0  |   6310.0   |
+|  5701.0  |   6503.0   |
+|  5820.0  |   6239.0   |
+|  5816.0  |   6256.0   |
+|  5701.0  |   6241.0   |
++----------+------------+
+===jython=== Average: baseline  11787.8 instrument: 13009.0 Average Overhead:  1.103598635877772
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+| 11740.0  |  13672.0   |
+| 11682.0  |  12804.0   |
+| 11708.0  |  12944.0   |
+| 11807.0  |  12828.0   |
+| 12002.0  |  12797.0   |
++----------+------------+
+===luindex=== Average: baseline  1765.8 instrument: 2229.6 Average Overhead:  1.2626571525654093
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  1784.0  |   2296.0   |
+|  1750.0  |   2127.0   |
+|  1838.0  |   2151.0   |
+|  1752.0  |   2248.0   |
+|  1705.0  |   2326.0   |
++----------+------------+
+===lusearch=== Average: baseline  3725.8 instrument: 4485.333333333333 Average Overhead:  1.203857784457924
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  3728.0  |   4550.0   |
+|  3584.0  |    -1.0    |
+|  3797.0  |    -1.0    |
+|  3894.0  |   4378.0   |
+|  3626.0  |   4528.0   |
++----------+------------+
+===lusearch-fix=== Average: baseline  3775.6 instrument: 4398.666666666667 Average Overhead:  1.1650245435604054
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  3970.0  |   4470.0   |
+|  3682.0  |   4373.0   |
+|  3791.0  |    -1.0    |
+|  3637.0  |   4353.0   |
+|  3798.0  |    -1.0    |
++----------+------------+
+===sunflow=== Average: baseline  9442.8 instrument: 1.0 Average Overhead:  0.0001059007921379252
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  9278.0  |    -1.0    |
+|  9635.0  |    -1.0    |
+|  9466.0  |    -1.0    |
+|  9493.0  |    -1.0    |
+|  9342.0  |    -1.0    |
++----------+------------+
+===xalan=== Average: baseline  6157.0 instrument: 6817.6 Average Overhead:  1.107292512587299
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  6083.0  |   6719.0   |
+|  6177.0  |   6776.0   |
+|  6110.0  |   6897.0   |
+|  6167.0  |   6852.0   |
+|  6248.0  |   6844.0   |
++----------+------------+
+===pmd=== Average: baseline  4649.8 instrument: 5603.0 Average Overhead:  1.2049980644328788
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  4634.0  |   5519.0   |
+|  4538.0  |   5521.0   |
+|  4674.0  |   5731.0   |
+|  4664.0  |   5662.0   |
+|  4739.0  |   5582.0   |
++----------+------------+

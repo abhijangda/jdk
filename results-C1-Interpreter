@@ -1,0 +1,322 @@
+nohup: ignoring input
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar avrora -n1 -t1
+exec 0
+avrora 5223
+exec 1
+avrora 5215
+exec 2
+avrora 5208
+exec 3
+avrora 5242
+exec 4
+avrora 5283
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar avrora -n1 -t1
+exec 0
+avrora 5627
+exec 1
+avrora 5565
+exec 2
+avrora 5577
+exec 3
+avrora 5622
+exec 4
+avrora 5595
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar fop -n1 -t1
+exec 0
+fop 1933
+exec 1
+fop 1947
+exec 2
+fop 1940
+exec 3
+fop 1934
+exec 4
+fop 1937
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar fop -n1 -t1
+exec 0
+fop 2152
+exec 1
+fop 2155
+exec 2
+fop 2153
+exec 3
+fop 2154
+exec 4
+fop 2150
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar h2 -n1 -t1
+exec 0
+h2 7882
+exec 1
+h2 7845
+exec 2
+h2 7864
+exec 3
+h2 7827
+exec 4
+h2 7834
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar h2 -n1 -t1
+exec 0
+h2 8297
+exec 1
+h2 8255
+exec 2
+h2 8264
+exec 3
+h2 8267
+exec 4
+h2 8303
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar jython -n1 -t1
+exec 0
+jython 10794
+exec 1
+jython 10769
+exec 2
+jython 10759
+exec 3
+jython 10752
+exec 4
+jython 10748
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar jython -n1 -t1
+exec 0
+jython 11799
+exec 1
+jython 11767
+exec 2
+jython 11730
+exec 3
+jython 11786
+exec 4
+jython 11767
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar luindex -n1 -t1
+exec 0
+luindex 1518
+exec 1
+luindex 1526
+exec 2
+luindex 1529
+exec 3
+luindex 1524
+exec 4
+luindex 1528
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar luindex -n1 -t1
+exec 0
+luindex 1712
+exec 1
+luindex 1718
+exec 2
+luindex 1713
+exec 3
+luindex 1708
+exec 4
+luindex 1707
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar lusearch -n1 -t1
+exec 0
+lusearch 5143
+exec 1
+lusearch 5174
+exec 2
+lusearch 5137
+exec 3
+lusearch 5187
+exec 4
+lusearch 5203
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar lusearch -n1 -t1
+exec 0
+lusearch 5771
+exec 1
+lusearch 5765
+exec 2
+lusearch 5755
+exec 3
+lusearch 5736
+exec 4
+lusearch 5787
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar lusearch-fix -n1 -t1
+exec 0
+lusearch-fix 5236
+exec 1
+lusearch-fix 5122
+exec 2
+lusearch-fix 5127
+exec 3
+lusearch-fix 5162
+exec 4
+lusearch-fix 5166
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar lusearch-fix -n1 -t1
+exec 0
+lusearch-fix 5708
+exec 1
+lusearch-fix 5773
+exec 2
+lusearch-fix 5716
+exec 3
+lusearch-fix 5802
+exec 4
+lusearch-fix 5713
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar sunflow -n1 -t1
+exec 0
+sunflow 14696
+exec 1
+sunflow 14678
+exec 2
+sunflow 14695
+exec 3
+sunflow 14736
+exec 4
+sunflow 14705
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar sunflow -n1 -t1
+exec 0
+sunflow 15440
+exec 1
+sunflow 15408
+exec 2
+sunflow 15442
+exec 3
+sunflow 15413
+exec 4
+sunflow 15518
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar xalan -n1 -t1
+exec 0
+xalan 6224
+exec 1
+xalan 6245
+exec 2
+xalan 6262
+exec 3
+xalan 6237
+exec 4
+xalan 6224
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar xalan -n1 -t1
+exec 0
+xalan 6926
+exec 1
+xalan 6953
+exec 2
+xalan 6890
+exec 3
+xalan 6940
+exec 4
+xalan 6895
+Baseline taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m  -jar dacapo-9.12-MR1-bach.jar pmd -n1 -t1
+exec 0
+pmd 3307
+exec 1
+pmd 3303
+exec 2
+pmd 3316
+exec 3
+pmd 3310
+exec 4
+pmd 3299
+Instrument taskset -c 10 ~/jdk/build/linux-x86_64-server-release/jdk/bin/java -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m -XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -jar dacapo-9.12-MR1-bach.jar pmd -n1 -t1
+exec 0
+pmd 3834
+exec 1
+pmd 3814
+exec 2
+pmd 3836
+exec 3
+pmd 3825
+exec 4
+pmd 3831
+Times of benchmark
+===avrora=== Average: baseline  5234.2 instrument: 5597.2 Average Overhead:  1.0693515723510756
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  5223.0  |   5627.0   |
+|  5215.0  |   5565.0   |
+|  5208.0  |   5577.0   |
+|  5242.0  |   5622.0   |
+|  5283.0  |   5595.0   |
++----------+------------+
+===fop=== Average: baseline  1938.2 instrument: 2152.8 Average Overhead:  1.1107212877927974
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  1933.0  |   2152.0   |
+|  1947.0  |   2155.0   |
+|  1940.0  |   2153.0   |
+|  1934.0  |   2154.0   |
+|  1937.0  |   2150.0   |
++----------+------------+
+===h2=== Average: baseline  7850.4 instrument: 8277.2 Average Overhead:  1.0543666564761032
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  7882.0  |   8297.0   |
+|  7845.0  |   8255.0   |
+|  7864.0  |   8264.0   |
+|  7827.0  |   8267.0   |
+|  7834.0  |   8303.0   |
++----------+------------+
+===jython=== Average: baseline  10764.4 instrument: 11769.8 Average Overhead:  1.0934004682100256
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+| 10794.0  |  11799.0   |
+| 10769.0  |  11767.0   |
+| 10759.0  |  11730.0   |
+| 10752.0  |  11786.0   |
+| 10748.0  |  11767.0   |
++----------+------------+
+===luindex=== Average: baseline  1525.0 instrument: 1711.6 Average Overhead:  1.1223606557377048
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  1518.0  |   1712.0   |
+|  1526.0  |   1718.0   |
+|  1529.0  |   1713.0   |
+|  1524.0  |   1708.0   |
+|  1528.0  |   1707.0   |
++----------+------------+
+===lusearch=== Average: baseline  5168.8 instrument: 5762.8 Average Overhead:  1.114920290976629
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  5143.0  |   5771.0   |
+|  5174.0  |   5765.0   |
+|  5137.0  |   5755.0   |
+|  5187.0  |   5736.0   |
+|  5203.0  |   5787.0   |
++----------+------------+
+===lusearch-fix=== Average: baseline  5162.6 instrument: 5742.4 Average Overhead:  1.1123077519079532
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  5236.0  |   5708.0   |
+|  5122.0  |   5773.0   |
+|  5127.0  |   5716.0   |
+|  5162.0  |   5802.0   |
+|  5166.0  |   5713.0   |
++----------+------------+
+===sunflow=== Average: baseline  14702.0 instrument: 15444.2 Average Overhead:  1.0504829274928582
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+| 14696.0  |  15440.0   |
+| 14678.0  |  15408.0   |
+| 14695.0  |  15442.0   |
+| 14736.0  |  15413.0   |
+| 14705.0  |  15518.0   |
++----------+------------+
+===xalan=== Average: baseline  6238.4 instrument: 6920.8 Average Overhead:  1.1093870223134137
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  6224.0  |   6926.0   |
+|  6245.0  |   6953.0   |
+|  6262.0  |   6890.0   |
+|  6237.0  |   6940.0   |
+|  6224.0  |   6895.0   |
++----------+------------+
+===pmd=== Average: baseline  3307.0 instrument: 3828.0 Average Overhead:  1.157544602358633
++----------+------------+
+| Baseline | Instrument |
++----------+------------+
+|  3307.0  |   3834.0   |
+|  3303.0  |   3814.0   |
+|  3316.0  |   3836.0   |
+|  3310.0  |   3825.0   |
+|  3299.0  |   3831.0   |
++----------+------------+

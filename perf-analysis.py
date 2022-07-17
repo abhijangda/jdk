@@ -1,17 +1,17 @@
 import os
 import subprocess
 
-num_runs = 5
+num_runs = 3
 
 base_jvm_path = "java"
 build = "release"
-modified_jvm_path = "taskset -c 10 ~/jdk/build/linux-x86_64-server-%s/jdk/bin/java"%build
+modified_jvm_path = "taskset -c 10,11,12,13 ~/jdk/build/linux-x86_64-server-%s/jdk/bin/java"%build
 
-jvm_command = modified_jvm_path + " -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m %s -jar dacapo-9.12-MR1-bach.jar %s -n1 -t1"
+jvm_command = modified_jvm_path + " -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m %s -jar dacapo-9.12-MR1-bach.jar %s -n4 -t1"
 
 instrument_args = "-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap"
 
-all_benchs = "avrora fop h2 jython luindex lusearch lusearch-fix sunflow xalan pmd".split() #batik eclipse tomcat tradebeans tradesoap
+all_benchs = "avrora fop h2 jython luindex lusearch-fix sunflow xalan pmd".split() #batik eclipse tomcat tradebeans tradesoap
 
 def exec_bench(bench, c):
   s, o = subprocess.getstatusoutput(c)

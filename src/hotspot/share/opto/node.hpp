@@ -161,6 +161,7 @@ class State;
 class StoreNode;
 class TransferEventsNode;
 class StoreHeapEventNode;
+class IncrCntrAndStoreHeapEventNode;
 class SubNode;
 class SubTypeCheckNode;
 class Type;

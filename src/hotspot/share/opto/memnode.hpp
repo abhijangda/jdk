@@ -55,7 +55,8 @@ public:
          Memory,                // Chunk of memory is being loaded from
          Address,               // Actually address, derived from base
          ValueIn,               // Value to store
-         OopStore               // Preceeding oop store, only in StoreCM
+         OopStore,              // Preceeding oop store, only in StoreCM
+         Index
   };
   typedef enum { unordered = 0,
                  acquire,       // Load has to acquire or be succeeded by MemBarAcquire.
@@ -404,11 +405,11 @@ class LoadLNode : public LoadNode {
   }
   virtual uint size_of() const { return sizeof(*this); }
   const bool _require_atomic_access;  // is piecewise load forbidden?
-
+  
 public:
   LoadLNode(Node *c, Node *mem, Node *adr, const TypePtr* at, const TypeLong *tl,
             MemOrd mo, ControlDependency control_dependency = DependsOnlyOnTest, bool require_atomic_access = false)
-    : LoadNode(c, mem, adr, at, tl, mo, control_dependency), _require_atomic_access(require_atomic_access) {}
+    : LoadNode(c, mem, adr, at, tl, mo, control_dependency), _require_atomic_access(require_atomic_access), is_heap_event_cntr_load(false) {}
   virtual int Opcode() const;
   virtual uint ideal_reg() const { return Op_RegL; }
   virtual int store_Opcode() const { return Op_StoreL; }
@@ -417,6 +418,7 @@ public:
   static LoadLNode* make_atomic(Node* ctl, Node* mem, Node* adr, const TypePtr* adr_type,
                                 const Type* rt, MemOrd mo, ControlDependency control_dependency = DependsOnlyOnTest,
                                 bool unaligned = false, bool mismatched = false, bool unsafe = false, uint8_t barrier_data = 0);
+  bool is_heap_event_cntr_load;
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const {
     LoadNode::dump_spec(st);
@@ -703,6 +705,33 @@ public:
 #endif
 };
 
+
+class IncrCntrAndStoreHeapEventNode : public StoreNode {
+protected:
+  virtual bool cmp( const Node &n ) const {
+    return StoreNode::cmp(n);
+  }
+  virtual uint hash() const { return StoreNode::hash(); }
+  virtual uint size_of() const {return sizeof(*this);}
+  Universe::HeapEventType _event_type;
+public:
+  IncrCntrAndStoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, Node* cntr, Universe::HeapEventType event_type)
+    : StoreNode(c, mem, adr, at, size, obj, MemOrd::unordered), _event_type(event_type) 
+    {
+      add_req(cntr);
+    }
+  virtual int Opcode() const;
+  virtual uint match_edge(uint idx) const;
+  virtual BasicType memory_type() const { return T_LONG; }
+  Universe::HeapEventType event_type() {return _event_type;}
+  void set_event_type(Universe::HeapEventType t) {_event_type = t;}
+#ifndef PRODUCT
+  virtual void dump_spec(outputStream *st) const {
+    StoreNode::dump_spec(st);
+    st->print(" IncrCntrAndStoreHeapEventNode");
+  }
+#endif
+};
 
 class StoreHeapEventNode : public StoreNode {
 protected:

@@ -1163,18 +1163,24 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   Node* ctrl = control();
   Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
                          LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
-  Node* n = new AddLNode(cnt, _gvn.longcon(1));
-  Node* incr = _gvn.transform(n);
-  
-  Node* st = store_to_memory(ctrl, node_cntr_addr, incr, T_LONG, adr_type, MemNode::unordered, 
-                             false, false, false, is_unsafe);
-  
-  Node* idx = _gvn.transform(new LShiftLNode(incr, _gvn.intcon(5)));
-  Node* addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
-  Node* event_type_addr = addr;
 
-  make_store_event(ctrl, addr, size_or_new_val, new_obj_or_field, event_type);
-  make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
+  if (true || size_or_new_val->Opcode() == Op_ConL) {
+    // ((LoadLNode*)cnt)->is_heap_event_cntr_load = true;
+    make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, cnt);
+  } else {
+    Node* n = new AddLNode(cnt, _gvn.longcon(1));
+    Node* incr = _gvn.transform(n);
+    
+    Node* st = store_to_memory(ctrl, node_cntr_addr, incr, T_LONG, adr_type, MemNode::unordered, 
+                              false, false, false, is_unsafe);
+    
+    Node* idx = _gvn.transform(new LShiftLNode(incr, _gvn.intcon(5)));
+    Node* addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
+    Node* event_type_addr = addr;
+
+    make_store_event(ctrl, addr, size_or_new_val, new_obj_or_field, event_type);
+    make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
+  }
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(false);
 }
@@ -1687,13 +1693,17 @@ Node* GraphKit::make_load(Node* ctl, Node* adr, const Type* t, BasicType bt,
   }
   return ld;
 }
-Node* GraphKit::make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, Node* new_obj, Universe::HeapEventType event_type) {
+Node* GraphKit::make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, Node* new_obj, Universe::HeapEventType event_type, Node* idx) {
   int adr_idx = Compile::AliasIdxRaw;
   const TypePtr* adr_type = NULL;
   debug_only(adr_type = C->get_adr_type(adr_idx));
   Node *mem = memory(adr_idx);
   Node* st, *st1;
-  st1 = new StoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, event_type);
+  if (idx) {
+    st1 = new IncrCntrAndStoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, idx, event_type);
+  } else {
+    st1 = new StoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, event_type);
+  }
   st = _gvn.transform(st1);
   set_memory(st, adr_idx);
   if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))

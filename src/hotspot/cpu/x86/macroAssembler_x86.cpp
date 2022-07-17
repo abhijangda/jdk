@@ -4704,7 +4704,7 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     push(temp1);
   if (preserve_temp2)
     push(temp2);
-  if (preserve_flags) 
+  if (preserve_flags)
     pushf(); 
 
   gen_lock_heap_event_mutex();

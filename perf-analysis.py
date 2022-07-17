@@ -1,13 +1,13 @@
 import os
 import subprocess
 
-num_runs = 3
+num_runs = 4
 
 base_jvm_path = "java"
 build = "release"
-modified_jvm_path = "taskset -c 10,11,12,13 ~/jdk/build/linux-x86_64-server-%s/jdk/bin/java"%build
+modified_jvm_path = "taskset -c 10,11,12,13,14,15,16,17,18,19,20,21,22,23 ~/jdk/build/linux-x86_64-server-%s/jdk/bin/java"%build
 
-jvm_command = modified_jvm_path + " -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:TieredStopAtLevel=3 -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m %s -jar dacapo-9.12-MR1-bach.jar %s -n4 -t1"
+jvm_command = modified_jvm_path + " -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:-TieredCompilation -XX:-UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m %s -jar dacapo-9.12-MR1-bach.jar %s -n2 -t1"
 
 instrument_args = "-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap"
 
@@ -49,21 +49,27 @@ for bench in all_benchs:
     all_bench_times[bench]["instrument"].append(float(t))
     print (bench, t)
 
-def process_times(times_l):
+def process_times(times_l, k):
   a = []
   for i in times_l:
     if i != -1:
       a.append(i)
   if a == []:
-    a = [1]
+    a = [1, 1]
   
-  return a
+  a = sorted(a)
+  if (k == "baseline"):
+    return a[1:]
+  if (k == "instrument"):
+    return a[:-1]
+  if a == []:
+    return [1]
 
 from prettytable import PrettyTable
 print("Times of benchmark")
 for bench in all_benchs:
-  baseline_times = process_times(all_bench_times[bench]["baseline"])
-  instrument_times = process_times(all_bench_times[bench]["instrument"])
+  baseline_times = process_times(all_bench_times[bench]["baseline"], "baseline")
+  instrument_times = process_times(all_bench_times[bench]["instrument"], "instrument")
 
   baseline = sum(baseline_times)/len(baseline_times)
   instrument = sum(instrument_times)/len(instrument_times)

@@ -2208,6 +2208,7 @@ bool Matcher::find_shared_visit(MStack& mstack, Node* n, uint opcode, bool& mem_
       set_dontcare(n);
       break;
     case Op_StoreHeapEvent:
+    case Op_IncrCntrAndStoreHeapEvent:
       set_shared(n);
       break;
     case Op_If:
@@ -2362,6 +2363,20 @@ void Matcher::find_shared_post_visit(Node* n, uint opcode) {
       Node* obj = n->in(MemNode::OopStore);
       Node* pair = new BinaryNode(sz, obj);
       n->set_req(MemNode::ValueIn, pair);
+      n->del_req(MemNode::OopStore);
+      break;
+    }
+    case Op_IncrCntrAndStoreHeapEvent: {
+      Node* sz = n->in(MemNode::ValueIn);
+      Node* obj = n->in(MemNode::OopStore);
+      Node* idx = n->in(MemNode::Index);
+      
+      Node* pair2 = new BinaryNode(obj, idx);
+      Node* pair1 = new BinaryNode(sz, pair2);
+
+      n->set_req(MemNode::ValueIn, pair1);
+      
+      n->del_req(MemNode::Index);
       n->del_req(MemNode::OopStore);
       break;
     }

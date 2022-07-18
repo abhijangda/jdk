@@ -1161,13 +1161,13 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
   int adr_type = Compile::AliasIdxRaw;
   Node* ctrl = control();
-  Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
-                         LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
 
   if (true || size_or_new_val->Opcode() == Op_ConL) {
     // ((LoadLNode*)cnt)->is_heap_event_cntr_load = true;
-    make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, cnt);
+    make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, ctrl);
   } else {
+    Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
+                          LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
     Node* n = new AddLNode(cnt, _gvn.longcon(1));
     Node* incr = _gvn.transform(n);
     
@@ -1700,14 +1700,20 @@ Node* GraphKit::make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, 
   Node *mem = memory(adr_idx);
   Node* st, *st1;
   if (idx) {
-    st1 = new IncrCntrAndStoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, idx, event_type);
+    LoadNode* l = new IncrCntrAndStoreHeapEventNode(ctl, mem, mem_adr, adr_type, TypeLong::LONG, size_in_bytes, new_obj, event_type);
+    l->set_unsafe_access();
+    st1 = l;
   } else {
     st1 = new StoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, event_type);
   }
   st = _gvn.transform(st1);
-  set_memory(st, adr_idx);
-  if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))
-    record_for_igvn(st);
+  if (idx) {
+    record_for_igvn(st1);
+  } else {
+    set_memory(st, adr_idx);
+    if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))
+      record_for_igvn(st);
+  }
   return st;
 }
 

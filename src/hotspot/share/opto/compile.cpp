@@ -3031,7 +3031,6 @@ void Compile::final_graph_reshaping_main_switch(Node* n, Final_Reshape_Counts& f
   case Op_StoreL:
   case Op_TransferEvents:
   case Op_StoreHeapEvent:
-  case Op_IncrCntrAndStoreHeapEvent:
   case Op_StoreIConditional:
   case Op_StoreLConditional:
   case Op_CompareAndSwapB:
@@ -3072,6 +3071,7 @@ void Compile::final_graph_reshaping_main_switch(Node* n, Final_Reshape_Counts& f
   case Op_LoadKlass:
   case Op_LoadNKlass:
   case Op_LoadL:
+  case Op_IncrCntrAndStoreHeapEvent:
   case Op_LoadL_unaligned:
   case Op_LoadPLocked:
   case Op_LoadP:

@@ -2313,6 +2313,7 @@ const RegMask &Node::out_RegMask() const {
 }
 
 const RegMask &Node::in_RegMask(uint) const {
+  printf("2316: %s\n", node_name());
   ShouldNotCallThis();
   return RegMask::Empty;
 }

@@ -1223,6 +1223,8 @@ bool LoadNode::is_instance_field_load_with_local_phi(Node* ctrl) {
 //------------------------------Identity---------------------------------------
 // Loads are identity if previous store is to same address
 Node* LoadNode::Identity(PhaseGVN* phase) {
+  if (Opcode() == Op_IncrCntrAndStoreHeapEvent)
+    return this;
   // If the previous store-maker is the right kind of Store, and the store is
   // to the same address, then we are equal to the value stored.
   Node* mem = in(Memory);
@@ -1302,6 +1304,7 @@ Node* LoadNode::convert_to_signed_load(PhaseGVN& gvn) {
     case Op_LoadB: // fall through
     case Op_LoadS: // fall through
     case Op_LoadI: // fall through
+    case Op_IncrCntrAndStoreHeapEvent:
     case Op_LoadL: return this;
     default:
       assert(false, "no signed variant: %s", Name());
@@ -1713,7 +1716,7 @@ AllocateNode* LoadNode::is_new_object_mark_load(PhaseGVN *phase) const {
 // If the offset is constant and the base is an object allocation,
 // try to hook me up to the exact initializing store.
 Node *LoadNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (Opcode() == Op_LoadL && ((LoadLNode*)this)->is_heap_event_cntr_load)
+  if (Opcode() == Op_IncrCntrAndStoreHeapEvent)
     return NULL;
   Node* p = MemNode::Ideal_common(phase, can_reshape);
   if (p)  return (p == NodeSentinel) ? NULL : p;
@@ -2825,9 +2828,9 @@ uint StoreNode::match_edge(uint idx) const {
   return idx == MemNode::Address || idx == MemNode::ValueIn;
 }
 
-uint IncrCntrAndStoreHeapEventNode::match_edge(uint idx) const {
-  return idx == MemNode::Address || idx == MemNode::ValueIn || idx == MemNode::OopStore;
-}
+// uint IncrCntrAndStoreHeapEventNode::match_edge(uint idx) const {
+//   return idx == MemNode::Address || idx == MemNode::ValueIn || idx == MemNode::OopStore;
+// }
 
 //------------------------------cmp--------------------------------------------
 // Do not common stores up together.  They generally have to be split

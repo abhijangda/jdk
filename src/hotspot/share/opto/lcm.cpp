@@ -169,6 +169,7 @@ void PhaseCFG::implicit_null_check(Block* block, Node *proj, Node *val, int allo
     case Op_LoadF:
     case Op_LoadI:
     case Op_LoadL:
+    case Op_IncrCntrAndStoreHeapEvent:
     case Op_LoadP:
     case Op_LoadN:
     case Op_LoadS:
@@ -188,7 +189,6 @@ void PhaseCFG::implicit_null_check(Block* block, Node *proj, Node *val, int allo
     case Op_StoreL:
     case Op_TransferEvents:
     case Op_StoreHeapEvent:
-    case Op_IncrCntrAndStoreHeapEvent:
     case Op_StoreP:
     case Op_StoreN:
     case Op_StoreNKlass:

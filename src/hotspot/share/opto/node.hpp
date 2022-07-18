@@ -739,7 +739,8 @@ public:
         DEFINE_CLASS_ID(LoadStoreConditional, LoadStore, 0)
           DEFINE_CLASS_ID(CompareAndSwap, LoadStoreConditional, 0)
         DEFINE_CLASS_ID(CompareAndExchangeNode, LoadStore, 1)
-
+      DEFINE_CLASS_ID(IncrCntrAndStoreHeapEventNode, Mem, 3)
+      
     DEFINE_CLASS_ID(Region, Node, 5)
       DEFINE_CLASS_ID(Loop, Region, 0)
         DEFINE_CLASS_ID(Root,                Loop, 0)

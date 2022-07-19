@@ -1700,7 +1700,7 @@ Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem)
       if (C->failing()) return NULL;
     }
   }
-
+  
   // Call DFA to match this node, and return
   svec->DFA( n->Opcode(), n );
 
@@ -1785,7 +1785,8 @@ MachNode *Matcher::ReduceInst( State *s, int rule, Node *&mem ) {
   }
 
   // Build the object to represent this state & prepare for recursive calls
-  MachNode *mach = s->MachNodeGenerator(rule);
+  MachNode *mach = s->MachNodeGenerator(rule, s->_leaf);
+
   guarantee(mach != NULL, "Missing MachNode");
   mach->_opnds[0] = s->MachOperGenerator(_reduceOp[rule]);
   assert( mach->_opnds[0] != NULL, "Missing result operand" );
@@ -2206,6 +2207,10 @@ bool Matcher::find_shared_visit(MStack& mstack, Node* n, uint opcode, bool& mem_
       set_shared(n);
       set_dontcare(n);
       break;
+    case Op_StoreHeapEvent:
+    case Op_IncrCntrAndStoreHeapEvent:
+      set_shared(n);
+      break;
     case Op_If:
     case Op_CountedLoopEnd:
       mstack.set_state(Alt_Post_Visit); // Alternative way
@@ -2351,6 +2356,28 @@ void Matcher::find_shared_post_visit(Node* n, uint opcode) {
       Node* pair = new BinaryNode(oldval, newval);
       n->set_req(MemNode::ValueIn, pair);
       n->del_req(LoadStoreConditionalNode::ExpectedIn);
+      break;
+    }
+    case Op_StoreHeapEvent: {
+      Node* sz = n->in(MemNode::ValueIn);
+      Node* obj = n->in(MemNode::OopStore);
+      Node* pair = new BinaryNode(sz, obj);
+      n->set_req(MemNode::ValueIn, pair);
+      n->del_req(MemNode::OopStore);
+      break;
+    }
+    case Op_IncrCntrAndStoreHeapEvent: {
+      Node* sz = n->in(MemNode::ValueIn);
+      Node* obj = n->in(MemNode::OopStore);
+      Node* idx = n->in(MemNode::Index);
+      
+      Node* pair2 = new BinaryNode(obj, idx);
+      Node* pair1 = new BinaryNode(sz, pair2);
+
+      n->set_req(MemNode::ValueIn, pair1);
+      
+      n->del_req(MemNode::Index);
+      n->del_req(MemNode::OopStore);
       break;
     }
     case Op_CMoveD:              // Convert trinary to binary-tree

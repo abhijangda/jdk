@@ -579,8 +579,19 @@ Node *Node::clone() const {
     n->as_SafePoint()->clone_jvms(C);
     n->as_SafePoint()->clone_replaced_nodes();
   }
+
+  if(Opcode() == Op_TransferEvents) {
+    ((TransferEventsNode*)n)->set_max_val(((TransferEventsNode*)this)->max_val());
+  } else if(Opcode() == Op_StoreHeapEvent) {
+    ((StoreHeapEventNode*)n)->set_event_type(((StoreHeapEventNode*)this)->event_type());
+  } else if (Opcode() == Op_IncrCntrAndStoreHeapEvent) {
+    ((IncrCntrAndStoreHeapEventNode*)n)->set_event_type(((IncrCntrAndStoreHeapEventNode*)this)->event_type());
+  }
+
   return n;                     // Return the clone
 }
+
+const char* Node::node_name() const {return NodeClassNames[Opcode()];}
 
 //---------------------------setup_is_top--------------------------------------
 // Call this when changing the top node, to reassert the invariants

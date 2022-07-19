@@ -891,7 +891,7 @@ bool StringConcat::validate_mem_flow() {
         assert(ctrl->in(0)->is_Initialize(), "should be initialize");
         for (SimpleDUIterator i(ctrl); i.has_next(); i.next()) {
           Node* use = i.get();
-          assert(use == copy || use == iff || use == curr || use->is_CheckCastPP() || use->is_Load(),
+          assert(use == copy || use == iff || use == curr || use->is_CheckCastPP() || use->is_Load() || use->is_Store(),
                  "unexpected user: %s", use->Name());
         }
 #endif // ASSERT
@@ -1715,6 +1715,9 @@ Node* PhaseStringOpts::allocate_byte_array(GraphKit& kit, IdealKit* ideal, Node*
     kit.jvms()->set_should_reexecute(true);
     byte_array = kit.new_array(__ makecon(TypeKlassPtr::make(ciTypeArrayKlass::make(T_BYTE))),
                                length, 1);
+    if (InstrumentHeapEvents) {
+      kit.append_heap_event(Universe::NewObject, byte_array, length);
+    }
   }
 
   // Mark the allocation so that zeroing is skipped since the code

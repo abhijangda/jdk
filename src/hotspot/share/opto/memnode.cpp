@@ -1713,6 +1713,8 @@ AllocateNode* LoadNode::is_new_object_mark_load(PhaseGVN *phase) const {
 // If the offset is constant and the base is an object allocation,
 // try to hook me up to the exact initializing store.
 Node *LoadNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+  if (Opcode() == Op_LoadL && ((LoadLNode*)this)->is_heap_event_cntr_load)
+    return NULL;
   Node* p = MemNode::Ideal_common(phase, can_reshape);
   if (p)  return (p == NodeSentinel) ? NULL : p;
 
@@ -2650,6 +2652,8 @@ uint StoreNode::hash() const {
 // When a store immediately follows a relevant allocation/initialization,
 // try to capture it into the initialization, or hoist it above.
 Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+  if (this->Opcode() == Op_TransferEvents || this->Opcode() == Op_StoreHeapEvent || Opcode() == Op_IncrCntrAndStoreHeapEvent)
+    return NULL;
   Node* p = MemNode::Ideal_common(phase, can_reshape);
   if (p)  return (p == NodeSentinel) ? NULL : p;
 
@@ -2750,6 +2754,8 @@ const Type* StoreNode::Value(PhaseGVN* phase) const {
 //   Store(m, p, Load(m, p)) changes to m.
 //   Store(, p, x) -> Store(m, p, x) changes to Store(m, p, x).
 Node* StoreNode::Identity(PhaseGVN* phase) {
+  if (this->Opcode() == Op_TransferEvents || this->Opcode() == Op_StoreHeapEvent || Opcode() == Op_IncrCntrAndStoreHeapEvent)
+    return this;
   Node* mem = in(MemNode::Memory);
   Node* adr = in(MemNode::Address);
   Node* val = in(MemNode::ValueIn);
@@ -2817,6 +2823,10 @@ Node* StoreNode::Identity(PhaseGVN* phase) {
 // Do we Match on this edge index or not?  Match only memory & value
 uint StoreNode::match_edge(uint idx) const {
   return idx == MemNode::Address || idx == MemNode::ValueIn;
+}
+
+uint IncrCntrAndStoreHeapEventNode::match_edge(uint idx) const {
+  return idx == MemNode::Address || idx == MemNode::ValueIn || idx == MemNode::OopStore;
 }
 
 //------------------------------cmp--------------------------------------------

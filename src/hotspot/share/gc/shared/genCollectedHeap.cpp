@@ -633,6 +633,15 @@ void GenCollectedHeap::do_collection(bool           full,
     _old_gen->compute_new_size();
     _young_gen->compute_new_size();
 
+    if (InstrumentHeapEvents) {
+      //Before collection transfer all the events
+      Universe::is_verify_cause_full_gc = true;
+      if(CheckHeapEventGraphWithHeap)
+        Universe::verify_heap_graph();
+      else
+        Universe::transfer_events_to_gpu();
+    }
+
     // Delete metaspaces for unloaded class loaders and clean up loader_data graph
     ClassLoaderDataGraph::purge(/*at_safepoint*/true);
     DEBUG_ONLY(MetaspaceUtils::verify();)

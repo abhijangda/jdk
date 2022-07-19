@@ -1136,6 +1136,149 @@ bool GraphKit::compute_stack_effects(int& inputs, int& depth) {
 
 
 
+void GraphKit::lock_unlock_heap_event(bool lock) {
+  // create input type (domain)
+  const Type **fields = TypeTuple::fields(0);
+  const TypeTuple *domain = TypeTuple::make(TypeFunc::Parms+0, fields);
+
+  // create result type (range)
+  fields = TypeTuple::fields(0);
+  const TypeTuple *range = TypeTuple::make(TypeFunc::Parms+0, fields);
+  auto tf = TypeFunc::make(domain, range);
+  if (lock)
+    make_runtime_call(RC_LEAF, tf, (address)Universe::lock_mutex_heap_event, "lock_mutex_heap_event", NULL);
+  else
+    make_runtime_call(RC_LEAF, tf, (address)Universe::unlock_mutex_heap_event, "unlock_mutex_heap_event", NULL);
+}
+
+void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_obj_or_field, Node* size_or_new_val) {
+  if (!InstrumentHeapEvents) return;
+  
+  uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
+  if (CheckHeapEventGraphWithHeap)
+    lock_unlock_heap_event(true);
+  bool is_unsafe = true;
+  Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
+  int adr_type = Compile::AliasIdxRaw;
+  Node* ctrl = control();
+  Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
+                         LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
+
+  if (true || size_or_new_val->Opcode() == Op_ConL) {
+    // ((LoadLNode*)cnt)->is_heap_event_cntr_load = true;
+    make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, cnt);
+  } else {
+    Node* n = new AddLNode(cnt, _gvn.longcon(1));
+    Node* incr = _gvn.transform(n);
+    
+    Node* st = store_to_memory(ctrl, node_cntr_addr, incr, T_LONG, adr_type, MemNode::unordered, 
+                              false, false, false, is_unsafe);
+    
+    Node* idx = _gvn.transform(new LShiftLNode(incr, _gvn.intcon(5)));
+    Node* addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
+    Node* event_type_addr = addr;
+
+    make_store_event(ctrl, addr, size_or_new_val, new_obj_or_field, event_type);
+    make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
+  }
+  if (CheckHeapEventGraphWithHeap)
+    lock_unlock_heap_event(false);
+}
+
+void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_offset, Node* src_offset, Node* count) {
+  if (!InstrumentHeapEvents)
+    return;
+  
+  if (CheckHeapEventGraphWithHeap)
+    lock_unlock_heap_event(true);
+  
+  bool is_unsafe = true;
+  uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
+  Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
+  int adr_type = Compile::AliasIdxRaw;
+  Node* ctrl = control();
+  
+  Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
+                         LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
+  make_transfer_event(ctrl, node_cntr_addr, cnt, MaxHeapEvents - 2);
+  cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
+                   LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
+  make_transfer_event(ctrl, node_cntr_addr, cnt, MaxHeapEvents - 1);
+  
+  cnt = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
+                   LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);  
+  cnt = _gvn.transform(new AddLNode(cnt, _gvn.longcon(1)));
+  Node* idx = cnt;
+  cnt = _gvn.transform(new AddLNode(cnt, _gvn.longcon(2)));
+  store_to_memory(ctrl, node_cntr_addr, cnt, T_LONG, adr_type, MemNode::unordered, 
+                  false, false, false, is_unsafe);
+  
+  idx = _gvn.transform(new LShiftLNode(idx, _gvn.intcon(5)));
+
+  {
+    Node* event_type_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
+    store_to_memory(ctrl, event_type_addr, _gvn.longcon(Universe::CopyArray), T_LONG, 
+                    adr_type, MemNode::unordered, false, false, false, is_unsafe);
+    Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
+                                    _gvn.transform(new AddLNode(idx, _gvn.longcon(8))));
+    store_to_memory(ctrl, src_addr, src_array, T_ADDRESS, adr_type, MemNode::unordered, 
+                    false, false, false, is_unsafe);
+    Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
+                                    _gvn.transform(new AddLNode(idx, _gvn.longcon(16))));
+    store_to_memory(ctrl, dst_addr, dst_array, T_ADDRESS, adr_type, MemNode::unordered, 
+                    false, false, false, is_unsafe);
+  }
+
+  idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(sizeof(Universe::HeapEvent))));
+  if(true) {
+    Node* event_type_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
+    store_to_memory(ctrl, event_type_addr, _gvn.longcon(Universe::CopyArrayOffsets), T_LONG, 
+                    adr_type, MemNode::unordered, false, false, false, is_unsafe);
+    Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
+                                    _gvn.transform(new AddLNode(idx, _gvn.longcon(8))));
+    store_to_memory(ctrl, src_addr, ConvI2L(src_offset), T_LONG, adr_type, MemNode::unordered, 
+                    false, false, false, is_unsafe);
+    Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
+                                    _gvn.transform(new AddLNode(idx, _gvn.longcon(16))));
+    store_to_memory(ctrl, dst_addr, ConvI2L(dst_offset), T_LONG, adr_type, MemNode::unordered, 
+                    false, false, false, is_unsafe);
+  }
+
+  idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(sizeof(Universe::HeapEvent))));
+  if(true) {
+    Node* event_type_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
+    store_to_memory(ctrl, event_type_addr, _gvn.longcon(Universe::CopyArrayLength), T_LONG, 
+                    adr_type, MemNode::unordered, false, false, false, is_unsafe);
+    Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
+                                    _gvn.transform(new AddLNode(idx, _gvn.longcon(8))));
+    store_to_memory(ctrl, src_addr, ConvI2L(count), T_LONG, adr_type, MemNode::unordered, 
+                    false, false, false, is_unsafe);
+    Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
+                                    _gvn.transform(new AddLNode(idx, _gvn.longcon(16))));
+    store_to_memory(ctrl, dst_addr, ConvI2L(count), T_LONG, adr_type, MemNode::unordered, 
+                    false, false, false, is_unsafe);
+  }
+
+  make_transfer_event(ctrl, node_cntr_addr, idx, (MaxHeapEvents*sizeof(Universe::HeapEvent)));
+
+  if (CheckHeapEventGraphWithHeap)
+    lock_unlock_heap_event(false);
+}
+
+Node* GraphKit::make_transfer_event(Node* ctrl, Node* mem_adr, Node* cntr, uint64_t maxval) {
+  int adr_idx = Compile::AliasIdxRaw;
+  const TypePtr* adr_type = NULL;
+  debug_only(adr_type = C->get_adr_type(adr_idx));
+  Node *mem = memory(adr_idx);
+  Node* st, *st1;
+  st1 = new TransferEventsNode(ctrl, mem, mem_adr, adr_type, cntr, maxval);
+  st = _gvn.transform(st1);
+  set_memory(st, adr_idx);
+  if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))
+    record_for_igvn(st);
+  return st;
+}
+
 //------------------------------basic_plus_adr---------------------------------
 Node* GraphKit::basic_plus_adr(Node* base, Node* ptr, Node* offset) {
   // short-circuit a common case
@@ -1550,6 +1693,24 @@ Node* GraphKit::make_load(Node* ctl, Node* adr, const Type* t, BasicType bt,
   }
   return ld;
 }
+Node* GraphKit::make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, Node* new_obj, Universe::HeapEventType event_type, Node* idx) {
+  int adr_idx = Compile::AliasIdxRaw;
+  const TypePtr* adr_type = NULL;
+  debug_only(adr_type = C->get_adr_type(adr_idx));
+  Node *mem = memory(adr_idx);
+  Node* st, *st1;
+  if (idx) {
+    st1 = new IncrCntrAndStoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, idx, event_type);
+  } else {
+    st1 = new StoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, event_type);
+  }
+  st = _gvn.transform(st1);
+  set_memory(st, adr_idx);
+  if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))
+    record_for_igvn(st);
+  return st;
+}
+
 
 Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
                                 int adr_idx,
@@ -3824,8 +3985,10 @@ Node* GraphKit::new_instance(Node* klass_node,
                                          control(), mem, i_o(),
                                          size, klass_node,
                                          initial_slow_test);
-
-  return set_output_for_allocation(alloc, oop_type, deoptimize_on_exception);
+  
+  Node* obj = set_output_for_allocation(alloc, oop_type, deoptimize_on_exception);
+  append_heap_event(Universe::NewObject, obj, size);
+  return obj;
 }
 
 //-------------------------------new_array-------------------------------------
@@ -4005,6 +4168,18 @@ Node* GraphKit::new_array(Node* klass_node,     // array klass (maybe variable)
   Node* javaoop = set_output_for_allocation(alloc, ary_type, deoptimize_on_exception);
 
   array_ideal_length(alloc, ary_type, true);
+  // const TypeKlassPtr* tk = _gvn.type(klass_node)->is_klassptr();
+  // printf("tk->klass() %d %d\n", tk->klass()->is_type_array_klass(), tk->klass()->is_obj_array_klass());
+  // if (tk->klass()->is_type_array_klass()) {
+  //   append_heap_event(Universe::NewObject, javaoop, length);
+  // } else if (tk->klass()->is_obj_array_klass()) {
+  //   append_heap_event(Universe::NewArray, javaoop, length);
+  // } else {
+  //   //This case is called in LibraryCallKit::inline_string_toBytesU()
+  //   Universe::print_heap_event_counter();
+  //   printf("4095\n");
+  // }
+
   return javaoop;
 }
 

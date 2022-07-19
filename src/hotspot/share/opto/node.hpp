@@ -159,6 +159,9 @@ class SafePointScalarObjectNode;
 class StartNode;
 class State;
 class StoreNode;
+class TransferEventsNode;
+class StoreHeapEventNode;
+class IncrCntrAndStoreHeapEventNode;
 class SubNode;
 class SubTypeCheckNode;
 class Type;
@@ -390,9 +393,9 @@ protected:
   }
   Node*    last_out(DUIterator_Last i) const  { return *i; }
 #endif
-
+  const char* node_name () const;
   // Reference to the i'th input Node.  Error if out of bounds.
-  Node* in(uint i) const { assert(i < _max, "oob: i=%d, _max=%d", i, _max); return _in[i]; }
+  Node* in(uint i) const { assert(i < _max, "oob: i=%d, _max=%d, node=%s", i, _max, node_name()); return _in[i]; }
   // Reference to the i'th input Node.  NULL if out of bounds.
   Node* lookup(uint i) const { return ((i < _max) ? _in[i] : NULL); }
   // Reference to the i'th output Node.  Error if out of bounds.

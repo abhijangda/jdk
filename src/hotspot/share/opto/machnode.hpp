@@ -206,11 +206,14 @@ public:
 class MachNode : public Node {
 private:
   bool _removed = false;
+  Node* _orig_node;
 
 public:
-  MachNode() : Node((uint)0), _barrier(0), _num_opnds(0), _opnds(NULL) {
+  MachNode() : Node((uint)0),  _orig_node(NULL), _barrier(0), _num_opnds(0), _opnds(NULL) {
     init_class_id(Class_Mach);
   }
+  void set_orig_node(Node* n) {_orig_node = n;}
+  Node* orig_node() const {return _orig_node;}
   // Required boilerplate
   virtual uint size_of() const { return sizeof(MachNode); }
   virtual int  Opcode() const;          // Always equal to MachNode

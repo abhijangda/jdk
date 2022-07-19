@@ -6054,6 +6054,304 @@ instruct storeL(memory mem, rRegL src)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
+instruct transferEvents(memory mem, rRegL src)
+%{
+  match(Set mem (TransferEvents mem src));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $src\t# long" %}
+  ins_encode %{
+    uint64_t maxval = max_val();
+    __ subq($src$$Register, maxval);
+    Label not_equal;
+    __ jcc(Assembler::Condition::less, not_equal);
+    __ pushaq();
+    if (CheckHeapEventGraphWithHeap) {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    }  else {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    }
+    __ popaq();
+    //__ movq($mem$$Address, 0);
+    __ bind(not_equal);     
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct incrCntrAndStoreHeapEventLongConst(memory mem, immL32 sz, any_RegP obj, rRegL idx)
+%{
+  match(Set mem (IncrCntrAndStoreHeapEvent mem (Binary sz (Binary obj idx))));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ leaq($idx$$Register, Address($idx$$Register, 1));
+    __ movq(__mem, $idx$$Register);
+    assert(__mem.index() == noreg, "sanity");
+    assert(__mem.disp() == 0, "sanity");
+    __ shlq($idx$$Register, 5);
+    Address event_mem = Address(__mem.base(), $idx$$Register);
+    __ movq(event_mem, event_type());
+    event_mem = event_mem.plus_disp(8);
+    __ movq(event_mem, ((size_t)$sz$$constant)/8);
+    event_mem = event_mem.plus_disp(8);
+    __ movq(event_mem, $obj$$Register);
+
+    uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
+    __ subq($idx$$Register, maxval);
+    Label not_equal;
+    __ jcc(Assembler::Condition::less, not_equal);
+    __ pushaq();
+    if (CheckHeapEventGraphWithHeap) {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    }  else {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    }
+    __ popaq();
+    //__ movq($mem$$Address, 0);
+    __ bind(not_equal);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct incrCntrAndStoreHeapEventIntConst(memory mem, immI sz, any_RegP obj, rRegL idx)
+%{
+  match(Set mem (IncrCntrAndStoreHeapEvent mem (Binary sz (Binary obj idx))));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ leaq($idx$$Register, Address($idx$$Register, 1));
+    __ movq(__mem, $idx$$Register);
+    assert(__mem.index() == noreg, "sanity");
+    assert(__mem.disp() == 0, "sanity");
+    __ shlq($idx$$Register, 5);
+    Address event_mem = Address(__mem.base(), $idx$$Register);
+    __ movq(event_mem, event_type());
+    event_mem = event_mem.plus_disp(8);
+    __ movq(event_mem, (size_t)$sz$$constant);
+    event_mem = event_mem.plus_disp(8);
+    __ movq(event_mem, $obj$$Register);
+
+    uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
+    __ subq($idx$$Register, maxval);
+    Label not_equal;
+    __ jcc(Assembler::Condition::less, not_equal);
+    __ pushaq();
+    if (CheckHeapEventGraphWithHeap) {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    }  else {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    }
+    __ popaq();
+    //__ movq($mem$$Address, 0);
+    __ bind(not_equal);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct incrCntrAndStoreHeapEventIntReg(memory mem, rRegI sz, any_RegP obj, rRegL idx)
+%{
+  match(Set mem (IncrCntrAndStoreHeapEvent mem (Binary sz (Binary obj idx))));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ leaq($idx$$Register, Address($idx$$Register, 1));
+    __ movq(__mem, $idx$$Register);
+    assert(__mem.index() == noreg, "sanity");
+    assert(__mem.disp() == 0, "sanity");
+    __ shlq($idx$$Register, 5);
+    Address event_mem = Address(__mem.base(), $idx$$Register);
+    __ movq(event_mem, event_type());
+    event_mem = event_mem.plus_disp(8);
+    __ movq(event_mem, $sz$$Register);
+    event_mem = event_mem.plus_disp(8);
+    __ movq(event_mem, $obj$$Register);
+
+    uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
+    __ subq($idx$$Register, maxval);
+    Label not_equal;
+    __ jcc(Assembler::Condition::less, not_equal);
+    __ pushaq();
+    if (CheckHeapEventGraphWithHeap) {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    }  else {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    }
+    __ popaq();
+    //__ movq($mem$$Address, 0);
+    __ bind(not_equal);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct incrCntrAndStoreHeapEventLongReg(memory mem, rRegL sz, any_RegP obj, rRegL idx)
+%{
+  match(Set mem (IncrCntrAndStoreHeapEvent mem (Binary sz (Binary obj idx))));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ leaq($idx$$Register, Address($idx$$Register, 1));
+    __ movq(__mem, $idx$$Register);
+    assert(__mem.index() == noreg, "sanity");
+    assert(__mem.disp() == 0, "sanity");
+    __ shlq($idx$$Register, 5);
+    Address event_mem = Address(__mem.base(), $idx$$Register);
+    __ movq(event_mem, event_type());
+    event_mem = event_mem.plus_disp(8);
+    __ shrq($sz$$Register, 3);
+    __ movq(event_mem, $sz$$Register);
+    __ shlq($sz$$Register, 3);
+    event_mem = event_mem.plus_disp(8);
+    __ movq(event_mem, $obj$$Register);
+
+    uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
+    __ subq($idx$$Register, maxval);
+    Label not_equal;
+    __ jcc(Assembler::Condition::less, not_equal);
+    __ pushaq();
+    if (CheckHeapEventGraphWithHeap) {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    }  else {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    }
+    __ popaq();
+    //__ movq($mem$$Address, 0);
+    __ bind(not_equal);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct incrCntrAndStoreHeapEventFieldSet(memory mem, any_RegP val, any_RegP obj, rRegL idx)
+%{
+  match(Set mem (IncrCntrAndStoreHeapEvent mem (Binary val (Binary obj idx))));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ leaq($idx$$Register, Address($idx$$Register, 1));
+    __ movq(__mem, $idx$$Register);
+    assert(__mem.index() == noreg, "sanity");
+    assert(__mem.disp() == 0, "sanity");
+    __ shlq($idx$$Register, 5);
+    Address event_mem = Address(__mem.base(), $idx$$Register);
+    __ movq(event_mem, event_type());
+    event_mem = event_mem.plus_disp(8);
+    __ movq(event_mem, $val$$Register);
+    event_mem = event_mem.plus_disp(8);
+    __ movq(event_mem, $obj$$Register);
+
+    uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
+    __ subq($idx$$Register, maxval);
+    Label not_equal;
+    __ jcc(Assembler::Condition::less, not_equal);
+    __ pushaq();
+    if (CheckHeapEventGraphWithHeap) {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    }  else {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    }
+    __ popaq();
+    //__ movq($mem$$Address, 0);
+    __ bind(not_equal);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct storeHeapEventLongConst(memory mem, immL32 sz, any_RegP obj)
+%{
+  match(Set mem (StoreHeapEvent mem (Binary sz obj)));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ movq(__mem, event_type());
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, ((size_t)$sz$$constant)/8);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $obj$$Register);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+  
+instruct storeHeapEventIntConst(memory mem, immI sz, any_RegP obj)
+%{
+  match(Set mem (StoreHeapEvent mem (Binary sz obj)));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ movq(__mem, event_type());
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, (size_t)$sz$$constant);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $obj$$Register);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct storeHeapEventLongReg(memory mem, rRegL sz, any_RegP obj)
+%{
+  match(Set mem (StoreHeapEvent mem (Binary sz obj)));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ movq(__mem, event_type());
+    __mem = __mem.plus_disp(8);
+    __ shrq($sz$$Register, 3);
+    __ movq(__mem, $sz$$Register);
+    __ shlq($sz$$Register, 3);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $obj$$Register);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct storeHeapEventFieldSet(memory mem, any_RegP val, any_RegP field)
+%{
+  match(Set mem (StoreHeapEvent mem (Binary val field)));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $field\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ movq(__mem, event_type());
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $val$$Register);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $field$$Register);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
+instruct storeHeapEventIntReg(memory mem, rRegI sz, any_RegP obj)
+%{
+  match(Set mem (StoreHeapEvent mem (Binary sz obj)));
+
+  ins_cost(125); // XXX
+  format %{ "movq    $mem, $obj\t# long" %}
+  ins_encode %{
+    Address __mem = $mem$$Address;
+    __ movq(__mem, event_type());
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $sz$$Register);
+    __mem = __mem.plus_disp(8);
+    __ movq(__mem, $obj$$Register);
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
 // Store Pointer
 instruct storeP(memory mem, any_RegP src)
 %{
@@ -6062,9 +6360,6 @@ instruct storeP(memory mem, any_RegP src)
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
-    //__ append_heap_event($mem$$Address, $src$$Register);
-    //printf("src register: %s\n", $src$$Register->name());
-    //printf("address: %s, %s\n", $mem$$Address.base()->name(), $mem$$Address.index()->name());
     __ movq($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
@@ -6078,7 +6373,6 @@ instruct storeImmP0(memory mem, immP0 zero)
   ins_cost(125); // XXX
   format %{ "movq    $mem, R12\t# ptr (R12_heapbase==0)" %}
   ins_encode %{
-    //__ append_heap_event($mem$$Address, r12);
     __ movq($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
@@ -6092,8 +6386,6 @@ instruct storeImmP(memory mem, immP31 src)
   ins_cost(150); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   ins_encode %{
-    //__ append_heap_event($mem$$Address, $src$$constant);
-    //printf("6154: %p\n", (void*)$src$$constant);
     __ movq($mem$$Address, $src$$constant);
   %}
   ins_pipe(ialu_mem_imm);
@@ -6107,7 +6399,6 @@ instruct storeN(memory mem, rRegN src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# compressed ptr" %}
   ins_encode %{
-    //__ append_heap_event($mem$$Address, $src$$Register);
     __ movl($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
@@ -6120,7 +6411,6 @@ instruct storeNKlass(memory mem, rRegN src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# compressed klass ptr" %}
   ins_encode %{
-    //__ append_heap_event($mem$$Address, $src$$Register);
     __ movl($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
@@ -6134,8 +6424,6 @@ instruct storeImmN0(memory mem, immN0 zero)
   ins_cost(125); // XXX
   format %{ "movl    $mem, R12\t# compressed ptr (R12_heapbase==0)" %}
   ins_encode %{
-    //__ append_heap_event($mem$$Address, r12);
-    //printf("6138: %p\n", (void*)$src$$constant);
     __ movl($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
@@ -6150,11 +6438,8 @@ instruct storeImmN(memory mem, immN src)
   ins_encode %{
     address con = (address)$src$$constant;
     if (con == NULL) {
-      //__ append_heap_event($mem$$Address, (int32_t)0);
       __ movl($mem$$Address, (int32_t)0);
     } else {
-      //printf("6154: %p\n", (void*)$src$$constant);
-      //__ append_heap_event($mem$$Address, (int32_t)0);
       __ set_narrow_oop($mem$$Address, (jobject)$src$$constant);
     }
   %}
@@ -6168,7 +6453,6 @@ instruct storeImmNKlass(memory mem, immNKlass src)
   ins_cost(150); // XXX
   format %{ "movl    $mem, $src\t# compressed klass ptr" %}
   ins_encode %{
-    //__ append_heap_event($mem$$Address, (uint64_t)$src$$constant);
     __ set_narrow_klass($mem$$Address, (Klass*)$src$$constant);
   %}
   ins_pipe(ialu_mem_imm);
@@ -7783,7 +8067,6 @@ instruct compareAndSwapP(rRegI res,
             "sete    $res\n\t"
             "movzbl  $res, $res" %}
   ins_encode %{
-    //__ append_heap_event($mem_ptr$$Address, $newval$$Register);
     __ lock();
     __ cmpxchgq($newval$$Register, $mem_ptr$$Address);
     __ sete($res$$Register);
@@ -7894,7 +8177,6 @@ instruct compareAndSwapN(rRegI res,
             "sete    $res\n\t"
             "movzbl  $res, $res" %}
   ins_encode %{
-    //__ append_heap_event($mem_ptr$$Address, $newval$$Register);
     __ lock();
     __ cmpxchgl($newval$$Register, $mem_ptr$$Address);
     __ sete($res$$Register);
@@ -7982,7 +8264,6 @@ instruct compareAndExchangeN(
   format %{ "cmpxchgl $mem_ptr,$newval\t# "
             "If rax == $mem_ptr then store $newval into $mem_ptr\n\t" %}
   ins_encode %{
-    //__ append_heap_event($mem_ptr$$Address, $newval$$Register);
     __ lock();
     __ cmpxchgl($newval$$Register, $mem_ptr$$Address);
   %}
@@ -8001,7 +8282,6 @@ instruct compareAndExchangeP(
   format %{ "cmpxchgq $mem_ptr,$newval\t# "
             "If rax == $mem_ptr then store $newval into $mem_ptr\n\t" %}
   ins_encode %{
-    //__ append_heap_event($mem_ptr$$Address, $newval$$Register);
     __ lock();
     __ cmpxchgq($newval$$Register, $mem_ptr$$Address);
   %}
@@ -8141,7 +8421,6 @@ instruct xchgP( memory mem, rRegP newval) %{
   predicate(n->as_LoadStore()->barrier_data() == 0);
   format %{ "XCHGQ  $newval,[$mem]" %}
   ins_encode %{
-    //__ append_heap_event($mem$$Address, $newval$$Register);
     __ xchgq($newval$$Register, $mem$$Address);
   %}
   ins_pipe( pipe_cmpxchg );
@@ -8151,7 +8430,6 @@ instruct xchgN( memory mem, rRegN newval) %{
   match(Set newval (GetAndSetN mem newval));
   format %{ "XCHGL  $newval,$mem]" %}
   ins_encode %{
-    //__ append_heap_event($mem$$Address, $newval$$Register);
     __ xchgl($newval$$Register, $mem$$Address);
   %}
   ins_pipe( pipe_cmpxchg );

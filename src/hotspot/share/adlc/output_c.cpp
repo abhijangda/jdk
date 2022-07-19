@@ -3867,6 +3867,14 @@ void ArchDesc::buildMachNode(FILE *fp_cpp, InstructForm *inst, const char *inden
 
   // Create the MachNode object
   fprintf(fp_cpp, "%s %sNode *node = new %sNode();\n",indent, opClass,opClass);
+  if (strstr(inst->_ident, "transferEvent")) {
+    // fprintf(fp_cpp, "%s printf(\"932: node %p orig_node %p\n\", node, orig_node);", indent);
+    fprintf(fp_cpp, "%s node->set_max_val(((TransferEventsNode*)orig_node)->max_val());\n",indent);
+  } else if (strstr(inst->_ident, "storeHeapEvent") == inst->_ident) {
+    fprintf(fp_cpp, "%s node->set_event_type(((StoreHeapEventNode*)orig_node)->event_type());\n",indent);
+  } else if (strstr(inst->_ident, "incrCntrAndStoreHeapEvent") == inst->_ident) {
+    fprintf(fp_cpp, "%s node->set_event_type(((IncrCntrAndStoreHeapEventNode*)orig_node)->event_type());\n",indent);
+  }
 
   if ( (inst->num_post_match_opnds() != 0) ) {
     // Instruction that contains operands which are not in match rule.
@@ -4075,7 +4083,7 @@ void ArchDesc::buildMachNodeGenerator(FILE *fp_cpp) {
           "// that invokes 'new' on the corresponding class constructor.\n");
   fprintf(fp_cpp, "\n");
   fprintf(fp_cpp, "MachNode *State::MachNodeGenerator");
-  fprintf(fp_cpp, "(int opcode)");
+  fprintf(fp_cpp, "(int opcode, Node* orig_node)");
   fprintf(fp_cpp, "{\n");
   fprintf(fp_cpp, "  switch(opcode) {\n");
 

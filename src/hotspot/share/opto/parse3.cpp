@@ -280,6 +280,9 @@ void Parse::do_anewarray() {
   const TypeKlassPtr* array_klass_type = TypeKlassPtr::make(array_klass);
   Node* count_val = pop();
   Node* obj = new_array(makecon(array_klass_type), count_val, 1);
+  if (InstrumentHeapEvents) {
+    append_heap_event(Universe::NewArray, obj, count_val);
+  }
   push(obj);
 }
 
@@ -290,6 +293,9 @@ void Parse::do_newarray(BasicType elem_type) {
   Node*   count_val = pop();
   const TypeKlassPtr* array_klass = TypeKlassPtr::make(ciTypeArrayKlass::make(elem_type));
   Node*   obj = new_array(makecon(array_klass), count_val, 1);
+  if (InstrumentHeapEvents) {
+    append_heap_event(Universe::NewObject, obj, count_val);
+  }
   // Push resultant oop onto stack
   push(obj);
 }
@@ -300,6 +306,17 @@ Node* Parse::expand_multianewarray(ciArrayKlass* array_klass, Node* *lengths, in
   Node* length = lengths[0];
   assert(length != NULL, "");
   Node* array = new_array(makecon(TypeKlassPtr::make(array_klass)), length, nargs);
+
+  if (InstrumentHeapEvents) {
+    if (array_klass->is_type_array_klass()) {
+      append_heap_event(Universe::NewObject, array, length);
+    } else if (array_klass->is_obj_array_klass()) {
+      append_heap_event(Universe::NewArray, array, length);
+    } else {
+      printf("316\n");
+    }
+  }
+
   if (ndimensions > 1) {
     jint length_con = find_int_con(length, -1);
     guarantee(length_con >= 0, "non-constant multianewarray");

@@ -1537,11 +1537,25 @@ void ArchDesc::declareClasses(FILE *fp) {
             instr->_ident, instr->mach_base_class(_globalNames) );
     fprintf(fp,"private:\n");
     fprintf(fp,"  MachOper *_opnd_array[%d];\n", instr->num_opnds() );
+    if(strcmp(instr->_ident, "transferEvents") == 0 || strstr(instr->_ident, "incrCntrAndStoreHeapEvent")) {
+      fprintf(fp,"  uint64_t _max_val;\n");
+    }
+    if(strstr(instr->_ident, "storeHeapEvent") || strstr(instr->_ident, "incrCntrAndStoreHeapEvent")) {
+      fprintf(fp,"  Universe::HeapEventType _event_type;\n");
+    }
     if ( instr->is_ideal_jump() ) {
       fprintf(fp, "  GrowableArray<Label*> _index2label;\n");
     }
 
     fprintf(fp, "public:\n");
+    if(strcmp(instr->_ident, "transferEvents") == 0 || strstr(instr->_ident, "incrCntrAndStoreHeapEvent")) {
+      fprintf(fp,"  uint64_t max_val () const {return _max_val;}\n");
+      fprintf(fp,"  void set_max_val(uint64_t n){_max_val = n;}\n");
+    } 
+    if(strstr(instr->_ident, "storeHeapEvent") || strstr(instr->_ident, "incrCntrAndStoreHeapEvent")) {
+      fprintf(fp,"  Universe::HeapEventType event_type () const {return _event_type;}\n");
+      fprintf(fp,"  void set_event_type(Universe::HeapEventType n){_event_type = n;}\n");
+    }
 
     Attribute *att = instr->_attribs;
     // Fields of the node specified in the ad file.
@@ -1848,7 +1862,7 @@ void ArchDesc::declareClasses(FILE *fp) {
     }
     if ( instr->num_post_match_opnds() != 0
          || instr->is_chain_of_constant(_globalNames) ) {
-      fprintf(fp,"  friend MachNode *State::MachNodeGenerator(int opcode);\n");
+      fprintf(fp,"  friend MachNode *State::MachNodeGenerator(int opcode, Node* orig_node);\n");
     }
     if ( instr->rematerialize(_globalNames, get_registers()) ) {
       fprintf(fp,"  // Rematerialize %s\n", instr->_ident);
@@ -2035,7 +2049,7 @@ void ArchDesc::defineStateClass(FILE *fp) {
   fprintf(fp,"\n");
   fprintf(fp,"  // Methods created by ADLC and invoked by Reduce\n");
   fprintf(fp,"  MachOper *MachOperGenerator(int opcode);\n");
-  fprintf(fp,"  MachNode *MachNodeGenerator(int opcode);\n");
+  fprintf(fp,"  MachNode *MachNodeGenerator(int opcode, Node* orig_node);\n");
   fprintf(fp,"\n");
   fprintf(fp,"  // Assign a state to a node, definition of method produced by ADLC\n");
   fprintf(fp,"  bool DFA( int opcode, const Node *ideal );\n");

@@ -6272,6 +6272,7 @@ instruct storeHeapEventLongConst(memory mem, immL32 sz, any_RegP obj)
   ins_cost(125); // XXX
   format %{ "movq    $mem, $obj\t# long" %}
   ins_encode %{
+    printf("6275\n");
     Address __mem = $mem$$Address;
     __ movq(__mem, event_type());
     __mem = __mem.plus_disp(8);
@@ -6289,6 +6290,7 @@ instruct storeHeapEventIntConst(memory mem, immI sz, any_RegP obj)
   ins_cost(125); // XXX
   format %{ "movq    $mem, $obj\t# long" %}
   ins_encode %{
+    printf("6292\n");
     Address __mem = $mem$$Address;
     __ movq(__mem, event_type());
     __mem = __mem.plus_disp(8);
@@ -6306,6 +6308,7 @@ instruct storeHeapEventLongReg(memory mem, rRegL sz, any_RegP obj)
   ins_cost(125); // XXX
   format %{ "movq    $mem, $obj\t# long" %}
   ins_encode %{
+    printf("6309\n");
     Address __mem = $mem$$Address;
     __ movq(__mem, event_type());
     __mem = __mem.plus_disp(8);
@@ -6318,19 +6321,24 @@ instruct storeHeapEventLongReg(memory mem, rRegL sz, any_RegP obj)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct storeHeapEventFieldSet(memory mem, any_RegP val, any_RegP field)
+instruct storeHeapEventFieldSet(memory field, any_RegP val, memory event_addr)
 %{
-  match(Set mem (StoreHeapEvent mem (Binary val field)));
+  match(Set field (StoreHeapEvent field (Binary val event_addr)));
 
   ins_cost(125); // XXX
-  format %{ "movq    $mem, $field\t# long" %}
+  format %{ "movq    $field, $val\t# long" %}
   ins_encode %{
-    Address __mem = $mem$$Address;
+    __ movq($field$$Address, $val$$Register);
+    Address __mem = $event_addr$$Address;
     __ movq(__mem, event_type());
     __mem = __mem.plus_disp(8);
     __ movq(__mem, $val$$Register);
     __mem = __mem.plus_disp(8);
-    __ movq(__mem, $field$$Register);
+    Register __val = $val$$Register;
+    __ push(__val);
+    __ leaq(__val, $field$$Address);
+    __ movq(__mem, __val);
+    __ pop(__val);
   %}
   ins_pipe(ialu_mem_reg); // XXX
 %}
@@ -6342,6 +6350,8 @@ instruct storeHeapEventIntReg(memory mem, rRegI sz, any_RegP obj)
   ins_cost(125); // XXX
   format %{ "movq    $mem, $obj\t# long" %}
   ins_encode %{
+    printf("6351\n");
+
     Address __mem = $mem$$Address;
     __ movq(__mem, event_type());
     __mem = __mem.plus_disp(8);

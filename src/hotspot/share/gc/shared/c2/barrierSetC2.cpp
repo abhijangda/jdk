@@ -100,12 +100,12 @@ Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) cons
       val.set_node(new_val);
     }
 
-    if (InstrumentHeapEvents && is_reference_type(access.type())) {
-      kit->append_heap_event(Universe::FieldSet, access.addr().node(), val.node());
-    }
+    // if (InstrumentHeapEvents && is_reference_type(access.type())) {
+    //   kit->append_heap_event(Universe::FieldSet, access.addr().node(), val.node());
+    // }
 
     store = kit->store_to_memory(kit->control(), access.addr().node(), val.node(), access.type(),
-                                     access.addr().type(), mo, requires_atomic_access, unaligned, mismatched, unsafe);
+                                 access.addr().type(), mo, requires_atomic_access, unaligned, mismatched, unsafe);
   } else {
     assert(!requires_atomic_access, "not yet supported");
     assert(access.is_opt_access(), "either parse or opt access");

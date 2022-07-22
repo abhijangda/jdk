@@ -6323,26 +6323,34 @@ instruct storeHeapEventLongReg(memory mem, rRegL sz, any_RegP obj)
 
 instruct storeHeapEventFieldSet(memory field, any_RegP val, any_RegP cntr_addr, rRegL cntr)
 %{
-  match(Set field (StoreHeapEvent field (Binary val (Binary cntr_addr cntr))));
+  match(Set field (StoreHeapEvent field val)); //(Binary val (Binary cntr_addr cntr))));
+  effect(TEMP cntr_addr, TEMP cntr);
 
   ins_cost(125); // XXX
   format %{ "movq    $field, $val\t# long" %}
   ins_encode %{
     __ movq($field$$Address, $val$$Register);
-    __ shlq($cntr$$Register, 5);
-    Address __mem = Address($cntr_addr$$Register, $cntr$$Register, Address::times_1, 0);
-    __ movq(__mem, event_type());
-    __mem = __mem.plus_disp(8);
-    __ movq(__mem, $val$$Register);
-    __mem = __mem.plus_disp(8);
-    Register __val = $val$$Register;
-    __ push(__val);
-    __ leaq(__val, $field$$Address);
-    __ movq(__mem, __val);
-    __ pop(__val);
+    
+    uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
+    Register cntr_reg = $cntr$$Register;
+    Register cntr_addr_reg = $cntr_addr$$Register;
+    __ mov64(cntr_addr_reg, (uint64_t)ptr_event_ctr, relocInfo::relocType::external_word_type, 0);
+    __ movq(cntr_reg, Address(cntr_addr_reg, 0));
+    __ leaq(cntr_reg, Address(cntr_reg, 1));
+    __ movq(Address(cntr_addr_reg, 0), cntr_reg);
+    __ shlq(cntr_reg, 5);
 
+    __ leaq(cntr_addr_reg, Address(cntr_addr_reg, cntr_reg, Address::times_1));
+
+    __ movq(Address(cntr_addr_reg, 0), event_type());
+    __ movq(Address(cntr_addr_reg, 8), $val$$Register);
+    __ push(cntr_reg);
+    __ leaq(cntr_reg, $field$$Address);
+    __ movq(Address(cntr_addr_reg, 16), cntr_reg);
+    __ pop(cntr_reg);
+  
     uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
-    __ subq($cntr$$Register, maxval);
+    __ subq(cntr_reg, maxval);
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();

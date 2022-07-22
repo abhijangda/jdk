@@ -742,6 +742,8 @@ protected:
   virtual uint size_of() const {return sizeof(*this);}
   Universe::HeapEventType _event_type;
 public:
+  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, MemOrd mo, Universe::HeapEventType event_type)
+    : StoreNode(c, mem, adr, at, size, mo), _event_type(event_type) {}
   StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, MemOrd mo, Universe::HeapEventType event_type)
     : StoreNode(c, mem, adr, at, size, obj, mo), _event_type(event_type) {}
   StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* cntr_addr, Node* cntr_idx, MemOrd mo, Universe::HeapEventType event_type)

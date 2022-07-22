@@ -1753,12 +1753,13 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
       store_to_memory(ctl, node_cntr_addr, incr, T_LONG, adr_type1, MemNode::unordered, 
                       false, false, false, is_unsafe);
     
-      Node* idx = _gvn.transform(new LShiftLNode(incr, _gvn.intcon(5)));
-      Node* addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
-      Node* event_type_addr = addr;
+      // Node* idx = _gvn.transform(new LShiftLNode(incr, _gvn.intcon(5)));
+      // Node* addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
+      // Node* event_type_addr = addr;
 
-      st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, event_type_addr, mo, Universe::FieldSet);
-      make_transfer_event(ctl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
+      st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, node_cntr_addr, incr, mo, Universe::FieldSet);
+      
+      //make_transfer_event(ctl, node_cntr_addr, incr, MaxHeapEvents*sizeof(Universe::HeapEvent));
       if (CheckHeapEventGraphWithHeap)
         lock_unlock_heap_event(false);
     } else {

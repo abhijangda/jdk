@@ -2359,11 +2359,25 @@ void Matcher::find_shared_post_visit(Node* n, uint opcode) {
       break;
     }
     case Op_StoreHeapEvent: {
-      Node* sz = n->in(MemNode::ValueIn);
-      Node* obj = n->in(MemNode::OopStore);
-      Node* pair = new BinaryNode(sz, obj);
-      n->set_req(MemNode::ValueIn, pair);
-      n->del_req(MemNode::OopStore);
+      if(n->req() == 5) {
+        Node* sz = n->in(MemNode::ValueIn);
+        Node* obj = n->in(MemNode::OopStore);
+        Node* pair = new BinaryNode(sz, obj);
+        n->set_req(MemNode::ValueIn, pair);
+        n->del_req(MemNode::OopStore);
+      } else if (n->req() == 6) {
+        Node* val = n->in(MemNode::ValueIn);
+        Node* cntr_addr = n->in(MemNode::OopStore);
+        Node* cntr_idx = n->in(MemNode::OopStore+1);
+        Node* pair1 = new BinaryNode(cntr_addr, cntr_idx);
+        Node* pair2 = new BinaryNode(val, pair1);
+        
+        n->set_req(MemNode::ValueIn, pair1);
+        n->set_req(MemNode::OopStore, pair2);
+        n->del_req(MemNode::OopStore+1);
+      } else {
+        printf("2379: Wrong case: %d\n", n->req());
+      }
       break;
     }
     case Op_IncrCntrAndStoreHeapEvent: {

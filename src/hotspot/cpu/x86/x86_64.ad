@@ -6321,15 +6321,16 @@ instruct storeHeapEventLongReg(memory mem, rRegL sz, any_RegP obj)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct storeHeapEventFieldSet(memory field, any_RegP val, memory event_addr)
+instruct storeHeapEventFieldSet(memory field, any_RegP val, any_RegP cntr_addr, rRegL cntr)
 %{
-  match(Set field (StoreHeapEvent field (Binary val event_addr)));
+  match(Set field (StoreHeapEvent field (Binary val (Binary cntr_addr cntr))));
 
   ins_cost(125); // XXX
   format %{ "movq    $field, $val\t# long" %}
   ins_encode %{
     __ movq($field$$Address, $val$$Register);
-    Address __mem = $event_addr$$Address;
+    __ shlq($cntr$$Register, 5);
+    Address __mem = Address($cntr_addr$$Register, $cntr$$Register, Address::times_1, 0);
     __ movq(__mem, event_type());
     __mem = __mem.plus_disp(8);
     __ movq(__mem, $val$$Register);
@@ -6339,6 +6340,20 @@ instruct storeHeapEventFieldSet(memory field, any_RegP val, memory event_addr)
     __ leaq(__val, $field$$Address);
     __ movq(__mem, __val);
     __ pop(__val);
+
+    uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
+    __ subq($cntr$$Register, maxval);
+    Label not_equal;
+    __ jcc(Assembler::Condition::less, not_equal);
+    __ pushaq();
+    if (CheckHeapEventGraphWithHeap) {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    }  else {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    }
+    __ popaq();
+    //__ movq($mem$$Address, 0);
+    __ bind(not_equal);
   %}
   ins_pipe(ialu_mem_reg); // XXX
 %}

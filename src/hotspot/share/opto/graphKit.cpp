@@ -1193,7 +1193,7 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
 
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(true);
-  
+
   bool is_unsafe = true;
   uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));

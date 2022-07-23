@@ -7,11 +7,11 @@ base_jvm_path = "java"
 build = "release"
 modified_jvm_path = "taskset -c 10,11,12,13,14,15,16,17,18,19,20,21,22,23 ~/jdk/build/linux-x86_64-server-%s/jdk/bin/java"%build
 
-jvm_command = modified_jvm_path + " -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+TieredCompilation -XX:+UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:MetaspaceSize=16384m %s -jar dacapo-9.12-MR1-bach.jar %s -n2 -t1"
+jvm_command = modified_jvm_path + " -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:-TieredCompilation -XX:-UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:-DoEscapeAnalysis -XX:MetaspaceSize=16384m %s -jar dacapo-9.12-MR1-bach.jar %s -n3 -t1"
 
 instrument_args = "-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap"
 
-all_benchs = "avrora fop h2 jython luindex lusearch-fix sunflow xalan pmd".split() #batik eclipse tomcat tradebeans tradesoap
+all_benchs = "avrora fop jython luindex lusearch-fix sunflow xalan pmd".split() #h2 batik eclipse tomcat tradebeans tradesoap
 
 def exec_bench(bench, c):
   s, o = subprocess.getstatusoutput(c)
@@ -70,11 +70,14 @@ print("Times of benchmark")
 for bench in all_benchs:
   baseline_times = process_times(all_bench_times[bench]["baseline"], "baseline")
   instrument_times = process_times(all_bench_times[bench]["instrument"], "instrument")
-
-  baseline = sum(baseline_times)/len(baseline_times)
-  instrument = sum(instrument_times)/len(instrument_times)
-  print("===%s==="%bench, "Average: baseline ", baseline, "instrument:", instrument, "Average Overhead: ", (instrument/baseline))
-  tab = PrettyTable()
-  tab.add_column("Baseline", all_bench_times[bench]["baseline"])
-  tab.add_column("Instrument", all_bench_times[bench]["instrument"])
-  print(tab)
+  
+  try:
+    baseline = sum(baseline_times)/len(baseline_times)
+    instrument = sum(instrument_times)/len(instrument_times)
+    print("===%s==="%bench, "Average: baseline ", baseline, "instrument:", instrument, "Average Overhead: ", (instrument/baseline))
+    tab = PrettyTable()
+    tab.add_column("Baseline", all_bench_times[bench]["baseline"])
+    tab.add_column("Instrument", all_bench_times[bench]["instrument"])
+    print(tab)
+  except BaseException as err:
+    print(err)

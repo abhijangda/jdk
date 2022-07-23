@@ -495,6 +495,7 @@ protected:
   bool has_out_with(int opcode);
   // Return true if the current node has an out that matches any of the opcodes.
   bool has_out_with(int opcode1, int opcode2, int opcode3, int opcode4);
+  bool has_out_with(int opcode1, int opcode2, int opcode3, int opcode4, int opcode5);
 
 private:
   static Node* uncast_helper(const Node* n, bool keep_deps);

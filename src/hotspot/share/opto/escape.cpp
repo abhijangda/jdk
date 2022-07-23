@@ -602,6 +602,7 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
       add_objload_to_connection_graph(n, delayed_worklist);
       // fall-through
     }
+    case Op_StoreHeapEvent:
     case Op_StoreP:
     case Op_StoreN:
     case Op_StoreNKlass:
@@ -744,6 +745,7 @@ void ConnectionGraph::add_final_edges(Node *n) {
     case Op_CompareAndSwapN:
     case Op_WeakCompareAndSwapP:
     case Op_WeakCompareAndSwapN:
+    case Op_StoreHeapEvent:
     case Op_StoreP:
     case Op_StoreN:
     case Op_StoreNKlass:
@@ -799,7 +801,7 @@ void ConnectionGraph::add_to_congraph_unsafe_access(Node* n, uint opcode, Unique
     return; // skip dead nodes
   }
   if (adr_type->isa_oopptr()
-      || ((opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass)
+      || ((opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass || opcode == Op_StoreHeapEvent)
           && adr_type == TypeRawPtr::NOTNULL
           && is_captured_store_address(adr))) {
     delayed_worklist->push(n); // Process it later.
@@ -841,7 +843,7 @@ bool ConnectionGraph::add_final_edges_unsafe_access(Node* n, uint opcode) {
 #endif
 
   if (adr_type->isa_oopptr()
-      || ((opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass)
+      || ((opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass || opcode == Op_StoreHeapEvent)
            && adr_type == TypeRawPtr::NOTNULL
            && is_captured_store_address(adr))) {
     // Point Address to Value
@@ -2190,7 +2192,7 @@ bool ConnectionGraph::is_oop_field(Node* n, int offset, bool* unsafe) {
         bt = field->layout_type();
       } else {
         // Check for unsafe oop field access
-        if (n->has_out_with(Op_StoreP, Op_LoadP, Op_StoreN, Op_LoadN) ||
+        if (n->has_out_with(Op_StoreP, Op_LoadP, Op_StoreN, Op_LoadN, Op_StoreHeapEvent) ||
             n->has_out_with(Op_GetAndSetP, Op_GetAndSetN, Op_CompareAndExchangeP, Op_CompareAndExchangeN) ||
             n->has_out_with(Op_CompareAndSwapP, Op_CompareAndSwapN, Op_WeakCompareAndSwapP, Op_WeakCompareAndSwapN) ||
             BarrierSet::barrier_set()->barrier_set_c2()->escape_has_out_with_unsafe_object(n)) {
@@ -2209,7 +2211,7 @@ bool ConnectionGraph::is_oop_field(Node* n, int offset, bool* unsafe) {
       }
     } else if (adr_type->isa_rawptr() || adr_type->isa_klassptr()) {
       // Allocation initialization, ThreadLocal field access, unsafe access
-      if (n->has_out_with(Op_StoreP, Op_LoadP, Op_StoreN, Op_LoadN) ||
+      if (n->has_out_with(Op_StoreP, Op_LoadP, Op_StoreN, Op_LoadN, Op_StoreHeapEvent) ||
           n->has_out_with(Op_GetAndSetP, Op_GetAndSetN, Op_CompareAndExchangeP, Op_CompareAndExchangeN) ||
           n->has_out_with(Op_CompareAndSwapP, Op_CompareAndSwapN, Op_WeakCompareAndSwapP, Op_WeakCompareAndSwapN) ||
           BarrierSet::barrier_set()->barrier_set_c2()->escape_has_out_with_unsafe_object(n)) {

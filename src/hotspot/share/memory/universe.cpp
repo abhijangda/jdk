@@ -916,7 +916,7 @@ void Universe::verify_heap_graph() {
     const size_t heap_events_size = *(const uint64_t*)th_heap_events;
     const HeapEvent* heap_events_start = &th_heap_events[1];
     printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, alloc_heap_events());
-    
+
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
       // event_threads.insert(event.id);
@@ -954,7 +954,7 @@ void Universe::verify_heap_graph() {
     const size_t heap_events_size = *(const uint64_t*)th_heap_events;
     *(uint64_t*)th_heap_events = 0;
     HeapEvent* heap_events_start = &th_heap_events[1];
-    
+
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
       event_threads.insert(event.id);

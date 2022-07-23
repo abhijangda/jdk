@@ -6340,7 +6340,6 @@ instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, rRe
     assert(val_reg != cntr_addr_reg, "sanity");
     assert(field_addr.base() != cntr_addr_reg, "sanity");
     assert(field_addr.base() != cntr_reg, "sanity");
-    //printf("val_reg %s %p cntr_addr %s %p cntr %s %p\n", val_reg->name(), val_reg, cntr_addr_reg->name(), cntr_addr_reg, cntr_reg->name(), cntr_reg);
     
     uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
 

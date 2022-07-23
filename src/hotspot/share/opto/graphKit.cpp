@@ -1759,7 +1759,6 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
       uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
       if (CheckHeapEventGraphWithHeap)
         lock_unlock_heap_event(true);
-      bool is_unsafe = true;
       // Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
       // int adr_type1 = Compile::AliasIdxRaw;
       // Node* ctrl = control();

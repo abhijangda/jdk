@@ -222,6 +222,7 @@ class Universe: AllStatic {
     uint64_t id;
   //}
   };
+
   static LinkedListImpl<HeapEvent*> all_heap_events;
   static pthread_mutex_t mutex_heap_event;
   static bool enable_transfer_events;

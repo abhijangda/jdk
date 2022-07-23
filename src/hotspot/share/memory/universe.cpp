@@ -2137,10 +2137,28 @@ void Universe::compute_base_vtable_size() {
   _base_vtable_size = ClassLoader::compute_Object_vtable();
 }
 
+class ObjectCount : public ObjectClosure {
+  private:
+  uint64_t _count;
+  public:
+  ObjectCount() : _count(0) {}
+
+  virtual void do_object(oop obj) {
+    _count++;
+  }
+
+  uint64_t count(){return _count;}
+};
+
 void Universe::print_on(outputStream* st) {
   GCMutexLocker hl(Heap_lock); // Heap_lock might be locked by caller thread.
   st->print_cr("Heap");
   heap()->print_on(st);
+  if (PrintNumberOfObjects) {
+    ObjectCount obj_count;
+    Universe::heap()->object_iterate(&obj_count);
+    st->print("Number of Object: %ld\n", obj_count.count());
+  }
 }
 
 void Universe::print_heap_at_SIGBREAK() {

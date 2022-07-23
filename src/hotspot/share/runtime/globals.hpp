@@ -2059,6 +2059,8 @@ const intx ObjectAlignmentInBytes = 8;
                                                                             \
   product(bool, CheckHeapEventGraphWithHeap, false,                          \
                "Max Heap Events within each batch of transfer")             \
+  product(bool, PrintNumberOfObjects, false,                          \
+               "Print Number of Objects created")             \
                                                                             \
   product(bool, OffloadGCToGPU, false,                                       \
                 "Transfer heap events to GPU and run GC on GPU")            \

@@ -1748,7 +1748,7 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
   } else if (require_atomic_access && bt == T_DOUBLE) {
     st = StoreDNode::make_atomic(ctl, mem, adr, adr_type, val, mo);
   } else {
-    bool store_heap = bt == T_OBJECT && InstrumentHeapEvents &&
+    bool store_heap = is_reference_type(bt) && InstrumentHeapEvents &&
                       !adr->bottom_type()->is_ptr_to_narrowoop() &&
                       !(adr->bottom_type()->is_ptr_to_narrowklass() ||
                           (UseCompressedClassPointers && val->bottom_type()->isa_klassptr() &&
@@ -1779,6 +1779,10 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
       if (CheckHeapEventGraphWithHeap)
         lock_unlock_heap_event(false);
     } else {
+      if (InstrumentHeapEvents && is_reference_type(bt)) {
+        //It looks like this is rarely called
+        append_heap_event(Universe::FieldSet, adr, val);
+      }
       st = StoreNode::make(_gvn, ctl, mem, adr, adr_type, val, bt, mo);
     }
   }

@@ -1737,7 +1737,8 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
                                 bool require_atomic_access,
                                 bool unaligned,
                                 bool mismatched,
-                                bool unsafe) {
+                                bool unsafe,
+                                bool from_barrierset) {
   assert(adr_idx != Compile::AliasIdxTop, "use other store_to_memory factory" );
   const TypePtr* adr_type = NULL;
   debug_only(adr_type = C->get_adr_type(adr_idx));
@@ -1756,26 +1757,12 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
     if (store_heap) {
       assert(C->get_alias_index(adr_type) != Compile::AliasIdxRaw ||
              ctl != NULL, "raw memory operations should have control edge");
-      uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
       if (CheckHeapEventGraphWithHeap)
         lock_unlock_heap_event(true);
-      // Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
-      // int adr_type1 = Compile::AliasIdxRaw;
-      // Node* ctrl = control();
-      // Node* cnt  = make_load(ctl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type1, MemNode::unordered, 
-      //                        LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
-      // Node* incr = _gvn.transform(new AddLNode(cnt, _gvn.longcon(1)));
-      // store_to_memory(ctl, node_cntr_addr, incr, T_LONG, adr_type1, MemNode::unordered, 
-      //                 false, false, false, is_unsafe);
-    
-      // Node* idx = _gvn.transform(new LShiftLNode(incr, _gvn.intcon(5)));
-      // Node* addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
-      // Node* event_type_addr = addr;
 
-      //st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, node_cntr_addr, incr, mo, Universe::FieldSet);
+      //TODO: If this could be removed due to optimizations then handle FieldSet event 
       st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, mo, Universe::FieldSet);
-      
-      //make_transfer_event(ctl, node_cntr_addr, incr, MaxHeapEvents*sizeof(Universe::HeapEvent));
+    
       if (CheckHeapEventGraphWithHeap)
         lock_unlock_heap_event(false);
     } else {

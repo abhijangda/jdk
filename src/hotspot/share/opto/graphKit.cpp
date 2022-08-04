@@ -1164,10 +1164,11 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
                          LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
 
-  if (true || size_or_new_val->Opcode() == Op_ConL) {
-    // ((LoadLNode*)cnt)->is_heap_event_cntr_load = true;
-    make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, cnt);
-  } else {
+  // ((LoadLNode*)cnt)->is_heap_event_cntr_load = true;
+  make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, cnt);
+  //TODO: For FieldSet should only be called for Atomic FieldSet
+  
+  /*else {
     Node* n = new AddLNode(cnt, _gvn.longcon(1));
     Node* incr = _gvn.transform(n);
     
@@ -1180,7 +1181,8 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
 
     make_store_event(ctrl, addr, size_or_new_val, new_obj_or_field, event_type);
     make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
-  }
+  }*/
+
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(false);
 }
@@ -1188,10 +1190,10 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
 void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_offset, Node* src_offset, Node* count) {
   if (!InstrumentHeapEvents)
     return;
-  
+
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(true);
-  
+
   bool is_unsafe = true;
   uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
@@ -1236,11 +1238,22 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
                     adr_type, MemNode::unordered, false, false, false, is_unsafe);
     Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
                                     _gvn.transform(new AddLNode(idx, _gvn.longcon(8))));
-    store_to_memory(ctrl, src_addr, ConvI2L(src_offset), T_LONG, adr_type, MemNode::unordered, 
+    if (_gvn.type(src_offset)->isa_int()) {
+      src_offset = ConvI2L(src_offset);
+    } else {
+      assert(_gvn.type(src_offset)->isa_long() != NULL, "sanity");
+    }
+
+    store_to_memory(ctrl, src_addr, src_offset, T_LONG, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
     Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
                                     _gvn.transform(new AddLNode(idx, _gvn.longcon(16))));
-    store_to_memory(ctrl, dst_addr, ConvI2L(dst_offset), T_LONG, adr_type, MemNode::unordered, 
+    if (_gvn.type(dst_offset)->isa_int()) {
+      dst_offset = ConvI2L(dst_offset);
+    } else {
+      assert(_gvn.type(dst_offset)->isa_long() != NULL, "sanity");
+    }
+    store_to_memory(ctrl, dst_addr, dst_offset, T_LONG, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
   }
 
@@ -1251,12 +1264,17 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
                     adr_type, MemNode::unordered, false, false, false, is_unsafe);
     Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
                                     _gvn.transform(new AddLNode(idx, _gvn.longcon(8))));
-    store_to_memory(ctrl, src_addr, ConvI2L(count), T_LONG, adr_type, MemNode::unordered, 
+    if (_gvn.type(count)->isa_int()) {
+      count = ConvI2L(count);
+    } else {
+      assert(_gvn.type(count)->isa_long() != NULL, "sanity");
+    }
+    store_to_memory(ctrl, src_addr, count, T_LONG, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
-    Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
-                                    _gvn.transform(new AddLNode(idx, _gvn.longcon(16))));
-    store_to_memory(ctrl, dst_addr, ConvI2L(count), T_LONG, adr_type, MemNode::unordered, 
-                    false, false, false, is_unsafe);
+    // Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
+    //                                 _gvn.transform(new AddLNode(idx, _gvn.longcon(16))));
+    // store_to_memory(ctrl, dst_addr, ConvI2L(count), T_LONG, adr_type, MemNode::unordered, 
+    //                 false, false, false, is_unsafe);
   }
 
   make_transfer_event(ctrl, node_cntr_addr, idx, (MaxHeapEvents*sizeof(Universe::HeapEvent)));
@@ -1702,7 +1720,8 @@ Node* GraphKit::make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, 
   if (idx) {
     st1 = new IncrCntrAndStoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, idx, event_type);
   } else {
-    st1 = new StoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, event_type);
+    printf("1710\n");
+    // st1 = new StoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, MemNode::unordered event_type);
   }
   st = _gvn.transform(st1);
   set_memory(st, adr_idx);
@@ -1718,7 +1737,8 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
                                 bool require_atomic_access,
                                 bool unaligned,
                                 bool mismatched,
-                                bool unsafe) {
+                                bool unsafe,
+                                bool from_barrierset) {
   assert(adr_idx != Compile::AliasIdxTop, "use other store_to_memory factory" );
   const TypePtr* adr_type = NULL;
   debug_only(adr_type = C->get_adr_type(adr_idx));
@@ -1729,7 +1749,29 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
   } else if (require_atomic_access && bt == T_DOUBLE) {
     st = StoreDNode::make_atomic(ctl, mem, adr, adr_type, val, mo);
   } else {
-    st = StoreNode::make(_gvn, ctl, mem, adr, adr_type, val, bt, mo);
+    bool store_heap = is_reference_type(bt) && InstrumentHeapEvents && use_store_heap_event() &&
+                      !adr->bottom_type()->is_ptr_to_narrowoop() &&
+                      !(adr->bottom_type()->is_ptr_to_narrowklass() ||
+                          (UseCompressedClassPointers && val->bottom_type()->isa_klassptr() &&
+                           adr->bottom_type()->isa_rawptr()));
+    if (store_heap) {
+      assert(C->get_alias_index(adr_type) != Compile::AliasIdxRaw ||
+             ctl != NULL, "raw memory operations should have control edge");
+      if (CheckHeapEventGraphWithHeap)
+        lock_unlock_heap_event(true);
+
+      //TODO: If this could be removed due to optimizations then handle FieldSet event 
+      st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, mo, Universe::FieldSet);
+    
+      if (CheckHeapEventGraphWithHeap)
+        lock_unlock_heap_event(false);
+    } else {
+      if (InstrumentHeapEvents && is_reference_type(bt)) {
+        //It looks like this is rarely called
+        append_heap_event(Universe::FieldSet, adr, val);
+      }
+      st = StoreNode::make(_gvn, ctl, mem, adr, adr_type, val, bt, mo);
+    }
   }
   if (unaligned) {
     st->as_Store()->set_unaligned_access();

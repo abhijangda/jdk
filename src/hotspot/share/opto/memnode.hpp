@@ -742,10 +742,17 @@ protected:
   virtual uint size_of() const {return sizeof(*this);}
   Universe::HeapEventType _event_type;
 public:
-  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, Universe::HeapEventType event_type)
-    : StoreNode(c, mem, adr, at, size, obj, MemOrd::unordered), _event_type(event_type) {}
+  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, MemOrd mo, Universe::HeapEventType event_type)
+    : StoreNode(c, mem, adr, at, size, mo), _event_type(event_type) {}
+  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, MemOrd mo, Universe::HeapEventType event_type)
+    : StoreNode(c, mem, adr, at, size, obj, mo), _event_type(event_type) {}
+  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* cntr_addr, Node* cntr_idx, MemOrd mo, Universe::HeapEventType event_type)
+    : StoreNode(c, mem, adr, at, size, cntr_addr, mo), _event_type(event_type) 
+    {
+      add_req(cntr_idx);
+    }
   virtual int Opcode() const;
-  virtual BasicType memory_type() const { return T_LONG; }
+  virtual BasicType memory_type() const { return T_ADDRESS; }
   Universe::HeapEventType event_type() {return _event_type;}
   void set_event_type(Universe::HeapEventType t) {_event_type = t;}
 #ifndef PRODUCT

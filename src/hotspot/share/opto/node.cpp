@@ -1003,6 +1003,15 @@ bool Node::has_out_with(int opcode1, int opcode2, int opcode3, int opcode4) {
   return false;
 }
 
+bool Node::has_out_with(int opcode1, int opcode2, int opcode3, int opcode4, int opcode5) {
+  for (DUIterator_Fast imax, i = fast_outs(imax); i < imax; i++) {
+      int opcode = fast_out(i)->Opcode();
+      if (opcode == opcode1 || opcode == opcode2 || opcode == opcode3 || opcode == opcode4 || opcode == opcode5) {
+        return true;
+      }
+  }
+  return false;
+}
 
 //---------------------------uncast_helper-------------------------------------
 Node* Node::uncast_helper(const Node* p, bool keep_deps) {

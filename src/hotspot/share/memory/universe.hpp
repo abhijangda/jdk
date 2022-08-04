@@ -228,7 +228,7 @@ class Universe: AllStatic {
   static bool enable_transfer_events;
   static void transfer_events_to_gpu();
   static sem_t cuda_semaphore;
-  static void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3);
+  static void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2);
   static void add_heap_event(Universe::HeapEvent event);
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();

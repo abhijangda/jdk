@@ -784,7 +784,7 @@ void Universe::print_heap_event_counter() {
   *heap_event_counter_ptr = 0;
 }
 
-void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3) {
+void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2) {
   // JavaThread* cur_thread = JavaThread::current();
   // assert(cur_thread->heap_events, "");
   HeapEvent* heap_events = Universe::alloc_heap_events();//cur_thread->heap_events;
@@ -797,7 +797,7 @@ void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent e
   // if (event.address.src == 0x0) {
   //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
   // }
-  if (*heap_event_counter_ptr + 3 > MaxHeapEvents) {
+  if (*heap_event_counter_ptr + 2 > MaxHeapEvents) {
     if (CheckHeapEventGraphWithHeap)
       Universe::verify_heap_graph();
     else
@@ -806,8 +806,8 @@ void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent e
   uint64_t v = *heap_event_counter_ptr;
   (&heap_events[1])[v] = event1;
   (&heap_events[1])[1+v] = event2;
-  (&heap_events[1])[2+v] = event3;
-  *heap_event_counter_ptr = v + 3;
+  
+  *heap_event_counter_ptr = v + 2;
   // if (event.heap_event_type == 0) {
   //   printf("new object at %ld\n");
   // }
@@ -871,7 +871,7 @@ Universe::HeapEvent* Universe::alloc_heap_events() {
 }
 
 template<typename Map>
-oopDesc* oop_for_field(Map& oop_map, oopDesc* field) {
+oopDesc* oop_for_address(Map& oop_map, oopDesc* field) {
   auto next_obj_iter = oop_map.lower_bound(field);
   oopDesc* obj = NULL;
   if (next_obj_iter != oop_map.end() && next_obj_iter->first == field) {
@@ -909,7 +909,7 @@ void Universe::verify_heap_graph() {
   printf("Check Shadow Graph is_verify_cause_full_gc %d\n", is_verify_cause_full_gc);
 
   map<oopDesc*, oopDesc*> old_to_new_objects;
-
+  printf("Creating Nodes\n");
   for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
        !heap_events_iter.is_empty(); heap_events_iter.next()) {
     auto th_heap_events = *heap_events_iter;
@@ -921,13 +921,13 @@ void Universe::verify_heap_graph() {
       HeapEvent event = heap_events_start[event_iter];
       // event_threads.insert(event.id);
 
-      if (event.heap_event_type == Universe::Dummy) {
-        oopDesc* obj = (oopDesc*)event.address.dst;
+      // if (event.heap_event_type == Universe::Dummy) {
+      //   oopDesc* obj = (oopDesc*)event.address.dst;
         
-        auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
-        printf("event.address.src %ld event.heap_event_type %ld obj %p\n", event.address.src,
-                                                   event.heap_event_type, obj);
-      }
+      //   auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
+      //   printf("event.address.src %ld event.heap_event_type %ld obj %p\n", event.address.src,
+      //                                              event.heap_event_type, obj);
+      // }
 
       if (event.heap_event_type == Universe::NewObject || 
           event.heap_event_type == Universe::NewArray) {
@@ -937,16 +937,15 @@ void Universe::verify_heap_graph() {
         if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
         }
-        // if (checking > 2) {
-        //   printf("obj %p size %ld\n", obj, event.address.src);
-        // }
-        ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.address.src,
-                                                   event.heap_event_type, event.id));
+        // printf("obj %p size %ld\n", obj, event.address.src);
+        ObjectNode obj_node = ObjectNode(obj, event.address.src,
+                                         event.heap_event_type, event.id);
+        ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
       }
     }
   }
 
-  
+  printf("Creating Edges\n");
   
   for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
        !heap_events_iter.is_empty(); heap_events_iter.next()) {
@@ -969,7 +968,7 @@ void Universe::verify_heap_graph() {
         // }
       } else if (event.heap_event_type == Universe::FieldSet) {
         oopDesc* field = (oopDesc*)event.address.dst;
-        oop obj = oop_for_field(ObjectNode::oop_to_obj_node, field);
+        oop obj = oop_for_address(ObjectNode::oop_to_obj_node, field);
         if (obj == NULL) {
           auto next_obj_iter = ObjectNode::oop_to_obj_node.lower_bound(field);
           oopDesc* obj = NULL;
@@ -1033,14 +1032,24 @@ void Universe::verify_heap_graph() {
           } while(ik && ik->is_klass());
         }
       } else if (event.heap_event_type == Universe::CopyArray) {
-        objArrayOop obj_src = objArrayOop((objArrayOopDesc*)event.address.src);
-        objArrayOop obj_dst = objArrayOop((objArrayOopDesc*)event.address.dst);      
+        continue;
+        oopDesc* obj_src_start = (oopDesc*)event.address.src;
+        oopDesc* obj_dst_start = (oopDesc*)event.address.dst;
 
-        HeapEvent offsets = heap_events_start[event_iter+1];
-        HeapEvent length_event = heap_events_start[event_iter+2];
+        HeapEvent length_event = heap_events_start[event_iter+1];
 
-        // printf("src %p dst %p start %ld, %ld ; length %ld\n", (void*)obj_src, (void*)obj_dst, offsets.address.src, offsets.address.dst, length_event.address.src);
+        objArrayOop obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
+        objArrayOop obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
 
+        if (obj_src == NULL or obj_dst == NULL) {
+          printf("Didn't find \n");
+        }
+        HeapEvent offsets = {Universe::CopyArrayOffsets, (uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
+                                                         (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
+        
+        if (offsets.address.src != 0) {
+          printf("src %p dst %p start %ld, %ld ; length %ld\n", (void*)obj_src, (void*)obj_dst, offsets.address.src, offsets.address.dst, length_event.address.src);
+        }
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
         auto obj_dst_node_iter = ObjectNode::oop_to_obj_node.find(obj_dst);
 

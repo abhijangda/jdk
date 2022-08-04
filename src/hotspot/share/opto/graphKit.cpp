@@ -1749,7 +1749,7 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
   } else if (require_atomic_access && bt == T_DOUBLE) {
     st = StoreDNode::make_atomic(ctl, mem, adr, adr_type, val, mo);
   } else {
-    bool store_heap = is_reference_type(bt) && InstrumentHeapEvents &&
+    bool store_heap = is_reference_type(bt) && InstrumentHeapEvents && use_store_heap_event() &&
                       !adr->bottom_type()->is_ptr_to_narrowoop() &&
                       !(adr->bottom_type()->is_ptr_to_narrowklass() ||
                           (UseCompressedClassPointers && val->bottom_type()->isa_klassptr() &&

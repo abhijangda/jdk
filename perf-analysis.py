@@ -6,10 +6,10 @@ num_runs = 4
 base_jvm_path = "java"
 build = "release"
 modified_jvm_path = "taskset -c 10,11,12,13,14,15,16,17,18,19,20,21,22,23 ~/jdk/build/linux-x86_64-server-%s/jdk/bin/java"%build
-
+max_heap_events = str(4*1024*1024)
 jvm_command = modified_jvm_path + " -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:-TieredCompilation -XX:-UseInterpreter -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:-DoEscapeAnalysis -XX:MetaspaceSize=16384m %s -jar dacapo-9.12-MR1-bach.jar %s -n3 -t1"
 
-instrument_args = "-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap"
+instrument_args = f"-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -XX:MaxHeapEvents={max_heap_events}"
 
 all_benchs = "avrora fop jython luindex lusearch-fix sunflow xalan pmd".split() #h2 batik eclipse tomcat tradebeans tradesoap
 

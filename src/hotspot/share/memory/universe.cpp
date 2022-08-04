@@ -135,11 +135,11 @@ class MmapHeap {
   };
   
   // 2^3 = 8
-  const int LOG_MIN_SMALL_OBJ_SIZE = 3; 
+  static const int LOG_MIN_SMALL_OBJ_SIZE = 3; 
   // 2^22 = 4*1024*1024
-  const int LOG_MAX_SMALL_OBJ_SIZE = 22;
+  static const int LOG_MAX_SMALL_OBJ_SIZE = 22;
   // free_list for small objects
-  ListNode* free_lists[22];
+  ListNode* free_lists[LOG_MAX_SMALL_OBJ_SIZE];
 
   public:
   MmapHeap() : PAGE_SIZE(getpagesize()), ALLOC_SIZE(256*1024*PAGE_SIZE), LARGE_OBJ_SIZE(4*1024*1024) {
@@ -150,16 +150,16 @@ class MmapHeap {
   };
 
   size_t remaining_size_in_curr_alloc() const {
+    if (alloc_ptr == NULL) return 0;
     return ALLOC_SIZE - curr_ptr;
   }
 
   bool is_power_of_2(size_t x) const {
-      return (x != 0) && ((x & (x - 1)) == 0);
+    return (x != 0) && ((x & (x - 1)) == 0);
   }
 
-  int32_t ilog2(uint64_t x)
-  {
-    return sizeof(uint64_t) * 8 - __builtin_clz(x) - 1;
+  int32_t ilog2(uint64_t x) {
+    return sizeof(uint64_t) * 8 - __builtin_clzl(x) - 1;
   }
 
   uint32_t next_power_of_2(uint32_t v) const {
@@ -201,6 +201,9 @@ class MmapHeap {
   }
 
   void* malloc(size_t sz) {
+    if (sz == 0) return NULL;
+    sz = adjust_size(sz);
+
     if (sz >= LARGE_OBJ_SIZE) {
       printf("sz %ld multiple_of_page_size(sz) %ld\n", sz, multiple_of_page_size(sz));
       sz = multiple_of_page_size(sz);
@@ -209,28 +212,13 @@ class MmapHeap {
     if (alloc_ptr == NULL) {
       alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
     }
-    
-    sz = adjust_size(sz);
 
     int log_size = ilog2(sz);
-    if (log_size < LOG_MAX_SMALL_OBJ_SIZE && free_lists[log_size] != NULL) {
+    assert(log_size < LOG_MAX_SMALL_OBJ_SIZE, "sanity '%d' '%ld' < '%d'", log_size, sz, LOG_MAX_SMALL_OBJ_SIZE);
+    if (free_lists[log_size] != NULL) {
       ListNode* ptr = free_lists[log_size];
-      ListNode* prev = NULL;
-      //TODO: No need of ListNode::size
-      while (ptr != NULL) {
-        if (sz <= ptr->size) {
-          if (prev) {
-            prev->next = ptr->next;
-          } else {
-            free_lists[log_size] = ptr->next;
-          }
+      free_lists[log_size] = ptr->next;
 
-          break;
-        }
-        prev = ptr;
-        ptr = ptr->next;
-      }
-      
       if (ptr != NULL) {
         if (ptr->size < sz)
           printf("ptr %p ptr->size %ld sz %ld\n", ptr, ptr->size, sz);
@@ -254,16 +242,20 @@ class MmapHeap {
   }
 
   void free(void* p, size_t sz) {
+    if (sz == 0) return;
+    if (p == NULL) return;
+    
+    sz = adjust_size(sz);
+
     if (sz >= LARGE_OBJ_SIZE) {
       sz = multiple_of_page_size(sz);
       munmap(p, sz);
       return;
     }
 
-    sz = adjust_size(sz);
     int log_size = ilog2(sz);
     if (log_size < LOG_MAX_SMALL_OBJ_SIZE) {
-      ListNode* new_head = (ListNode*)free_lists[log_size];
+      ListNode* new_head = (ListNode*)p;
       new_head->next = free_lists[log_size];
       new_head->size = sz;
       free_lists[log_size] = new_head;

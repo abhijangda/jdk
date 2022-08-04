@@ -61,6 +61,7 @@ LIR_Opr LIR_OprFact::double_fpu(int reg1, int reg2) {
 void LIR_Address::verify() const {
 #ifdef _LP64
   assert(base()->is_cpu_register(), "wrong base operand");
+  // printf("index()->is_illegal() %d index()->is_double_cpu() %d\n", index()->is_illegal()index()->is_double_cpu());
   assert(index()->is_illegal() || index()->is_double_cpu(), "wrong index operand");
   assert(base()->type() == T_ADDRESS || base()->type() == T_OBJECT || base()->type() == T_LONG || base()->type() == T_METADATA,
          "wrong type for addresses");

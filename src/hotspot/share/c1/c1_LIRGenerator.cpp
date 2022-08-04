@@ -1892,6 +1892,7 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
   LIR_Opr counter = new_pointer_register();
   LIR_Opr heap_events_idx = new_pointer_register();
   LIR_Opr tmp = new_pointer_register();
+
   LabelObj* pass_through = new LabelObj();
   BasicTypeList signature;
   if (CheckHeapEventGraphWithHeap)
@@ -1907,14 +1908,12 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
 
     LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
     __ load(heap_event_counter_addr, counter);
-    __ transfer_events(counter, LIR_OprFact::longConst(MaxHeapEvents - 2));
-    __ load(heap_event_counter_addr, counter);
     __ transfer_events(counter, LIR_OprFact::longConst(MaxHeapEvents - 1));
 
     __ load(heap_event_counter_addr, counter);
     __ add(counter, LIR_OprFact::longConst(1L), counter);
     __ move(counter, heap_events_idx);
-    __ add(counter, LIR_OprFact::longConst(2L), counter);
+    __ add(counter, LIR_OprFact::longConst(1L), counter);
     __ store(counter, heap_event_counter_addr);
 
     __ shift_left(heap_events_idx, 5, heap_events_idx); //HeapEvent size is 1<<5
@@ -1925,20 +1924,23 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 16, T_LONG);
 
     __ store(LIR_OprFact::longConst(Universe::CopyArray), heap_events_addr_type);
+    // __ leal(new LIR_Address(src_offset, 0, T_LONG), tmp2);
     __ leal(new LIR_Address(src_array, 0, T_LONG), tmp);
-    __ store(tmp, heap_events_addr_src);
+    __ add(tmp, src_offset, tmp);
+    __ store(tmp, heap_events_addr_src);    
     __ leal(new LIR_Address(dst_array, 0, T_LONG), tmp);
+    __ add(tmp, dst_offset, tmp);
     __ store(tmp, heap_events_addr_dst);
 
-    __ add(heap_event_counter_addr_reg, LIR_OprFact::longConst(sizeof(Universe::HeapEvent)), heap_event_counter_addr_reg);
-    __ store(LIR_OprFact::longConst(Universe::CopyArrayOffsets), heap_events_addr_type);
-    __ store(src_offset, heap_events_addr_src);
-    __ store(dst_offset, heap_events_addr_dst);
+    // __ add(heap_event_counter_addr_reg, LIR_OprFact::longConst(sizeof(Universe::HeapEvent)), heap_event_counter_addr_reg);
+    // __ store(LIR_OprFact::longConst(Universe::CopyArrayOffsets), heap_events_addr_type);
+    // __ store(src_offset, heap_events_addr_src);
+    // __ store(dst_offset, heap_events_addr_dst);
 
     __ add(heap_event_counter_addr_reg, LIR_OprFact::longConst(sizeof(Universe::HeapEvent)), heap_event_counter_addr_reg);
     __ store(LIR_OprFact::longConst(Universe::CopyArrayLength), heap_events_addr_type);
     __ store(count, heap_events_addr_src);
-    __ store(count, heap_events_addr_dst);
+    // __ store(count, heap_events_addr_dst);
 
     __ transfer_events(counter, LIR_OprFact::longConst(MaxHeapEvents));
   }

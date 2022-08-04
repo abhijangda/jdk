@@ -866,6 +866,9 @@ template<typename Map>
 oopDesc* oop_for_address(Map& oop_map, oopDesc* field) {
   auto next_obj_iter = oop_map.lower_bound(field);
   oopDesc* obj = NULL;
+  if (next_obj_iter == oop_map.begin()) {
+    printf("870 %p %p\n",next_obj_iter->first, next_obj_iter->second.end());
+  }
   if (next_obj_iter != oop_map.end() && next_obj_iter->first == field) {
     obj = next_obj_iter->first;
   } else {
@@ -1024,24 +1027,21 @@ void Universe::verify_heap_graph() {
           } while(ik && ik->is_klass());
         }
       } else if (event.heap_event_type == Universe::CopyArray) {
-        continue;
         oopDesc* obj_src_start = (oopDesc*)event.address.src;
         oopDesc* obj_dst_start = (oopDesc*)event.address.dst;
 
         HeapEvent length_event = heap_events_start[event_iter+1];
-
+        
         objArrayOop obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
         objArrayOop obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
 
         if (obj_src == NULL or obj_dst == NULL) {
           printf("Didn't find \n");
         }
+        //No need to consider objArrayOop::base() in offset calculation
         HeapEvent offsets = {Universe::CopyArrayOffsets, (uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
                                                          (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
         
-        if (offsets.address.src != 0) {
-          printf("src %p dst %p start %ld, %ld ; length %ld\n", (void*)obj_src, (void*)obj_dst, offsets.address.src, offsets.address.dst, length_event.address.src);
-        }
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
         auto obj_dst_node_iter = ObjectNode::oop_to_obj_node.find(obj_dst);
 

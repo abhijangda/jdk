@@ -2239,6 +2239,23 @@ void LIR_Assembler::arith_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
       }
 #endif // _LP64
 
+    } else if (right->is_single_stack()) {
+      // cpu register - stack
+      Address raddr = frame_map()->address_for_slot(right->single_stack_ix());
+      __ movl(r10, raddr);
+      switch (code) {
+        case lir_add: __ addq(lreg_hi, r10); break;
+        case lir_sub: __ subq(lreg_hi, r10); break;
+        default:      ShouldNotReachHere();
+      }
+    } else if (right->is_double_stack()) {
+      // cpu register - stack
+      Address raddr = frame_map()->address_for_slot(right->double_stack_ix());
+      switch (code) {
+        case lir_add: __ addq(lreg_hi, raddr); break;
+        case lir_sub: __ subq(lreg_hi, raddr); break;
+        default:      ShouldNotReachHere();
+      }
     } else {
       ShouldNotReachHere();
     }

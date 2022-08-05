@@ -786,8 +786,8 @@ void Universe::add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent e
   if (CheckHeapEventGraphWithHeap)
     Universe::lock_mutex_heap_event();
   // Universe::heap_event_counter++;
-  // if (event.address.src == 0x0) {
-  //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
+  // if (event.src == 0x0) {
+  //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);
   // }
   if (*heap_event_counter_ptr + 2 > MaxHeapEvents) {
     if (CheckHeapEventGraphWithHeap)
@@ -825,8 +825,8 @@ void Universe::add_heap_event(Universe::HeapEvent event) {
   if (CheckHeapEventGraphWithHeap)
     Universe::lock_mutex_heap_event();
   // Universe::heap_event_counter++;
-  // if (event.address.src == 0x0) {
-  //   printf("src 0x%lx dst 0x%lx\n", event.address.src, event.address.dst);
+  // if (event.src == 0x0) {
+  //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);
   // }
   uint64_t v = *heap_event_counter_ptr;
   // printf("v %ld\n", v);
@@ -917,23 +917,23 @@ void Universe::verify_heap_graph() {
       // event_threads.insert(event.id);
 
       // if (event.heap_event_type == Universe::Dummy) {
-      //   oopDesc* obj = (oopDesc*)event.address.dst;
+      //   oopDesc* obj = (oopDesc*)event.dst;
         
       //   auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
-      //   printf("event.address.src %ld event.heap_event_type %ld obj %p\n", event.address.src,
+      //   printf("event.src %ld event.heap_event_type %ld obj %p\n", event.src,
       //                                              event.heap_event_type, obj);
       // }
 
       if (event.heap_event_type == Universe::NewObject || 
           event.heap_event_type == Universe::NewArray) {
-        oopDesc* obj = (oopDesc*)event.address.dst;
+        oopDesc* obj = (oopDesc*)event.dst;
         
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
         if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
         }
-        // printf("obj %p size %ld\n", obj, event.address.src);
-        ObjectNode obj_node = ObjectNode(obj, event.address.src,
+        // printf("obj %p size %ld\n", obj, event.src);
+        ObjectNode obj_node = ObjectNode(obj, event.src,
                                          event.heap_event_type, event.id);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
       }
@@ -956,13 +956,13 @@ void Universe::verify_heap_graph() {
       if (event.heap_event_type == Universe::NewObject || 
           event.heap_event_type == Universe::NewArray) {
             continue;
-        // oopDesc* obj = (oopDesc*)event.address.dst;
+        // oopDesc* obj = (oopDesc*)event.dst;
         // if (ObjectNode::oop_to_obj_node.find(obj) == ObjectNode::oop_to_obj_node.end()) {
-        //   ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.address.src,
+        //   ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.src,
         //                                            event.heap_event_type, event.id));
         // }
       } else if (event.heap_event_type == Universe::FieldSet) {
-        oopDesc* field = (oopDesc*)event.address.dst;
+        oopDesc* field = (oopDesc*)event.dst;
         oop obj = oop_for_address(ObjectNode::oop_to_obj_node, field);
         if (obj == NULL) {
           auto next_obj_iter = ObjectNode::oop_to_obj_node.lower_bound(field);
@@ -982,7 +982,7 @@ void Universe::verify_heap_graph() {
             }
           }
         } else {
-          ObjectNode::oop_to_obj_node[obj].update_or_add_field((void*)field, (oopDesc*)event.address.src, 
+          ObjectNode::oop_to_obj_node[obj].update_or_add_field((void*)field, (oopDesc*)event.src, 
                                                                event.id);
         }
 
@@ -990,8 +990,8 @@ void Universe::verify_heap_graph() {
         //   printf("event.id 0x%lx\n", event.id);
         // }
       } else if (event.heap_event_type == Universe::CopyObject) {
-        oop obj_src = oop((oopDesc*)event.address.src);
-        oop obj_dst = oop((oopDesc*)event.address.dst);
+        oop obj_src = oop((oopDesc*)event.src);
+        oop obj_dst = oop((oopDesc*)event.dst);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
         auto obj_dst_node_iter = ObjectNode::oop_to_obj_node.find(obj_dst);
         
@@ -1013,8 +1013,8 @@ void Universe::verify_heap_graph() {
               Symbol* signature = ik->field_signature(f);
               
               if (signature_to_type(signature->as_C_string(buf2,1024)) == T_OBJECT || signature_to_type(signature->as_C_string(buf2,1024)) == T_ARRAY) {
-                uint64_t dst_obj_field_offset = event.address.dst + ik->field_offset(f);
-                uint64_t src_obj_field_offset = event.address.src + ik->field_offset(f);
+                uint64_t dst_obj_field_offset = event.dst + ik->field_offset(f);
+                uint64_t src_obj_field_offset = event.src + ik->field_offset(f);
 
                 if (obj_src_node_iter->second.has_field((void*)src_obj_field_offset)) {
                   oop src_field_val = obj_src_node_iter->second.field_val((void*)src_obj_field_offset);
@@ -1027,8 +1027,8 @@ void Universe::verify_heap_graph() {
           } while(ik && ik->is_klass());
         }
       } else if (event.heap_event_type == Universe::CopyArray) {
-        oopDesc* obj_src_start = (oopDesc*)event.address.src;
-        oopDesc* obj_dst_start = (oopDesc*)event.address.dst;
+        oopDesc* obj_src_start = (oopDesc*)event.src;
+        oopDesc* obj_dst_start = (oopDesc*)event.dst;
 
         HeapEvent length_event = heap_events_start[event_iter+1];
         
@@ -1049,11 +1049,11 @@ void Universe::verify_heap_graph() {
             obj_src_node_iter == ObjectNode::oop_to_obj_node.end()) {
             printf("didn't find %p %p\n", (void*)obj_src, (void*)obj_dst);
         }
-        if (obj_src != obj_dst || (obj_src == obj_dst && offsets.address.src >= offsets.address.dst)) {
+        if (obj_src != obj_dst || (obj_src == obj_dst && offsets.src >= offsets.dst)) {
           //Non overlapping arrays, so copy forward
-          for (uint i = 0; i < length_event.address.src; i++) {
-            int src_array_index = offsets.address.src + i;
-            int dst_array_index = offsets.address.dst + i;
+          for (uint i = 0; i < length_event.src; i++) {
+            int src_array_index = offsets.src + i;
+            int dst_array_index = offsets.dst + i;
             uint64_t src_elem_addr = ((uint64_t)obj_src->base()) + src_array_index * sizeof(oop);
             uint64_t dst_elem_addr = ((uint64_t)obj_dst->base()) + dst_array_index * sizeof(oop);
             
@@ -1065,9 +1065,9 @@ void Universe::verify_heap_graph() {
           }
         } else {
           //Overlapping arrays, so copy backward
-          for (int i = (int)length_event.address.src - 1; i >= 0; i--) {
-            int src_array_index = offsets.address.src + i;
-            int dst_array_index = offsets.address.dst + i;
+          for (int i = (int)length_event.src - 1; i >= 0; i--) {
+            int src_array_index = offsets.src + i;
+            int dst_array_index = offsets.dst + i;
             uint64_t src_elem_addr = ((uint64_t)obj_src->base()) + src_array_index * sizeof(oop);
             uint64_t dst_elem_addr = ((uint64_t)
             obj_dst->base()) + dst_array_index * sizeof(oop);
@@ -1080,8 +1080,8 @@ void Universe::verify_heap_graph() {
           }
         }
       } else if (event.heap_event_type == MoveObject) {
-        oop obj_src = oop((oopDesc*)event.address.src);
-        oop obj_dst = oop((oopDesc*)event.address.dst);
+        oop obj_src = oop((oopDesc*)event.src);
+        oop obj_dst = oop((oopDesc*)event.dst);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
 
         if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
@@ -1100,8 +1100,8 @@ void Universe::verify_heap_graph() {
 
         old_to_new_objects[obj_src] = obj_dst;
       } else if (event.heap_event_type == ClearContiguousSpace) {
-        uint64_t start = event.address.src;
-        uint64_t end = event.address.dst;
+        uint64_t start = event.src;
+        uint64_t end = event.dst;
         oopDesc* first = (oopDesc*)start;
         oopDesc* last = (oopDesc*)end;
         if (first == last) {

@@ -53,7 +53,7 @@ instanceOop InstanceMirrorKlass::allocate_instance(Klass* k, TRAPS) {
   // Since mirrors can be variable sized because of the static fields, store
   // the size in the mirror itself.
   instanceOop i = (instanceOop)Universe::heap()->class_allocate(this, size, THREAD);
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, size, (uint64_t)(void*)i});
+  Universe::add_heap_event(Universe::NewObject, Universe::HeapEvent{size, (uint64_t)(void*)i});
   return i;
 }
 

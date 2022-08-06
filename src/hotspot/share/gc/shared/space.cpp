@@ -445,7 +445,7 @@ void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
         // otherwise, it really is a free region.
 
         if (InstrumentHeapEvents && cur_obj != end) {
-          Universe::add_heap_event(Universe::HeapEvent{Universe::ClearContiguousSpace, (uint64_t)cur_obj, (uint64_t)end});
+          Universe::add_heap_event(Universe::ClearContiguousSpace, Universe::HeapEvent{(uint64_t)cur_obj, (uint64_t)end});
         }
 
         // cur_obj is a pointer to a dead object. Use this dead memory to store a pointer to the next live object.
@@ -551,7 +551,7 @@ void CompactibleSpace::compact() {
       // size and destination
       size_t size = cast_to_oop(cur_obj)->size();
       if (InstrumentHeapEvents)
-        Universe::add_heap_event(Universe::HeapEvent{Universe::MoveObject, (uint64_t)(void*)cast_to_oop(cur_obj), (uint64_t)(void*)cast_to_oop(cur_obj)->forwardee()});
+        Universe::add_heap_event(Universe::MoveObject, Universe::HeapEvent{(uint64_t)(void*)cast_to_oop(cur_obj), (uint64_t)(void*)cast_to_oop(cur_obj)->forwardee()});
       // printf("550: cur_obj %p forwardee %p\n", (void*)cast_to_oop(cur_obj), (void*)cast_to_oop(cur_obj)->forwardee());
       HeapWord* compaction_top = cast_from_oop<HeapWord*>(cast_to_oop(cur_obj)->forwardee());
 

@@ -240,7 +240,7 @@ public:
     //     printf("0x%lx: oop %p offset 0x%lx (%p) src %p oop-class %s oop-class-id %d\n", dst, (void*)base, offset, (char*)base + offset, (void*)value, buf, base->klass()->id());
     //   }
     // }
-    Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)value, ((uint64_t)(void*)base) + offset});
+    Universe::add_heap_event(Universe::FieldSet, Universe::HeapEvent{(uint64_t)(void*)value, ((uint64_t)(void*)base) + offset});
     AccessInternal::store_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, oop_value);
   }
 
@@ -253,7 +253,7 @@ public:
     // printf("206: src %p dst 0x%lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
     //TODO: Is this also called by some other function
     //TODO: Assuming T is oop and not a narrowoop
-    Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
+    Universe::add_heap_event(Universe::FieldSet, Universe::HeapEvent{(uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
     return AccessInternal::atomic_cmpxchg_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, compare_oop_value, new_oop_value);
   }
 
@@ -265,7 +265,7 @@ public:
     // printf("206: src %p dst 0x%lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
     //TODO: Is this also called by some other function
     //TODO: Assuming T is oop and not a narrowoop
-    Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
+    Universe::add_heap_event(Universe::FieldSet, Universe::HeapEvent{(uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
     return AccessInternal::atomic_xchg_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, new_oop_value);
   }
 

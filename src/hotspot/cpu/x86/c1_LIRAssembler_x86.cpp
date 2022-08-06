@@ -618,7 +618,12 @@ void LIR_Assembler::const2reg(LIR_Opr src, LIR_Opr dest, LIR_PatchCode patch_cod
       if (patch_code != lir_patch_none) {
         jobject2reg_with_patching(dest->as_register(), info);
       } else {
-        __ movoop(dest->as_register(), c->as_jobject());
+        // print("621: %ld\n", dest->is_double_cpu());
+        if (dest->is_double_cpu()) {
+          __ movoop(dest->as_register_lo(), c->as_jobject());
+        } else {
+          __ movoop(dest->as_register(), c->as_jobject());
+        }
       }
       break;
     }
@@ -1168,11 +1173,16 @@ void LIR_Assembler::stack2reg(LIR_Opr src, LIR_Opr dest, BasicType type) {
     }
 
   } else if (dest->is_double_cpu()) {
-    Address src_addr_LO = frame_map()->address_for_slot(src->double_stack_ix(), lo_word_offset_in_bytes);
-    Address src_addr_HI = frame_map()->address_for_slot(src->double_stack_ix(), hi_word_offset_in_bytes);
-    __ movptr(dest->as_register_lo(), src_addr_LO);
-    NOT_LP64(__ movptr(dest->as_register_hi(), src_addr_HI));
-
+    if (src->is_single_stack()) {
+      Address src_addr_LO = frame_map()->address_for_slot(src->single_stack_ix());
+      __ movptr(dest->as_register_lo(), src_addr_LO);
+    } else {
+      assert(src->is_double_stack(), "sanity");
+      Address src_addr_LO = frame_map()->address_for_slot(src->double_stack_ix(), lo_word_offset_in_bytes);
+      Address src_addr_HI = frame_map()->address_for_slot(src->double_stack_ix(), hi_word_offset_in_bytes);
+      __ movptr(dest->as_register_lo(), src_addr_LO);
+      NOT_LP64(__ movptr(dest->as_register_hi(), src_addr_HI));
+    }
   } else if (dest->is_single_xmm()) {
     Address src_addr = frame_map()->address_for_slot(src->single_stack_ix());
     __ movflt(dest->as_xmm_float_reg(), src_addr);
@@ -2610,10 +2620,20 @@ void LIR_Assembler::logic_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
     } else {
 #ifdef _LP64
       Register r_lo;
-      if (is_reference_type(right->type())) {
-        r_lo = right->as_register();
+      if(right->is_double_cpu()) {
+        if (is_reference_type(right->type())) {
+          r_lo = right->as_register();
+        } else  {
+          r_lo = right->as_register_lo();
+        }
       } else {
-        r_lo = right->as_register_lo();
+        if (right->is_register()) {
+          r_lo = right->as_register();
+        } else if (right->is_stack()) {
+           Address raddr = frame_map()->address_for_slot(right->single_stack_ix());
+           __ movl(r10, raddr);
+           r_lo = r10;
+        }
       }
 #else
       Register r_lo = right->as_register_lo();

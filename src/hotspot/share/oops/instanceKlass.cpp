@@ -1395,7 +1395,7 @@ objArrayOop InstanceKlass::allocate_objArray(int n, int length, TRAPS) {
   Klass* ak = array_klass(n, CHECK_NULL);
   objArrayOop o = (objArrayOop)Universe::heap()->array_allocate(ak, size, length,
                                                                 /* do_zero */ true, CHECK_NULL);
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewArray, (uint64_t)length, (uint64_t)(void*)o});
+  Universe::add_heap_event(Universe::NewArray, Universe::HeapEvent{(uint64_t)length, (uint64_t)(void*)o});
   return o;
 }
 
@@ -1426,7 +1426,7 @@ instanceOop InstanceKlass::allocate_instance(TRAPS) {
     i = register_finalizer(i, CHECK_NULL);
   }
   //Convert size in bits to bytes
-  Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, size, (uint64_t)((void*)i)}); 
+  Universe::add_heap_event(Universe::NewObject, Universe::HeapEvent{size, (uint64_t)((void*)i)}); 
 
   // printf("1429: new_instance oop %p %ld\n", (void*)i, size);
   return i;

@@ -312,6 +312,14 @@ void Assembler::emit_arith(int op1, int op2, Register dst, int32_t imm32) {
   }
 }
 
+void Assembler::emit_arith(int op1, int op2, Register dst, int64_t imm64) {
+  assert(isByte(op1) && isByte(op2), "wrong opcode");
+  assert((op1 & 0x01) == 1, "should be 32bit operation");
+  assert((op1 & 0x02) == 0, "sign-extension bit should not be set");
+  emit_int16(op1, (op2 | encode(dst)));
+  emit_int64(imm64);
+}
+
 // Force generation of a 4 byte immediate value even if it fits into 8bit
 void Assembler::emit_arith_imm32(int op1, int op2, Register dst, int32_t imm32) {
   assert(isByte(op1) && isByte(op2), "wrong opcode");
@@ -334,6 +342,14 @@ void Assembler::emit_arith_operand(int op1, Register rm, Address adr, int32_t im
     emit_operand(rm, adr, 4);
     emit_int32(imm32);
   }
+}
+
+void Assembler::emit_arith_operand(int op1, Register rm, Address adr, int64_t imm64) {
+  assert((op1 & 0x01) == 1, "should be 32bit operation");
+  assert((op1 & 0x02) == 0, "sign-extension bit should not be set");
+  emit_int8(op1);
+  emit_operand(rm, adr, 4);
+  emit_int64(imm64);
 }
 
 
@@ -12481,6 +12497,13 @@ void Assembler::btrq(Address dst, int imm8) {
              (unsigned char)0xBA);
   emit_operand(rsi /* 6 */, dst, 1);
   emit_int8(imm8);
+}
+
+void Assembler::or64(Register dst, int64_t imm64) {
+  InstructionMark im(this);
+  int encode = prefixq_and_encode(dst->encoding());
+  emit_int8(0x0B | encode);
+  emit_arith(0x81, 0xC8, dst, imm64);
 }
 
 void Assembler::orq(Address dst, int32_t imm32) {

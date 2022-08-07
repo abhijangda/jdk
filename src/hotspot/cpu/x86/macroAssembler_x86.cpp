@@ -4718,12 +4718,11 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
   
   //movq(Address(temp1, 0), (uint64_t)event_type);
   if (src_or_obj_size.is_register()) {
-    uint64_t encoded_event = Universe::encode_heap_event_src(event_type, 0L);
-    mov64(temp3, (int64_t)encoded_event);
-    orq(temp3, src_or_obj_size.as_register());
+    movq(temp3, src_or_obj_size.as_register());
+    shlq(temp3, 15);
+    orq(temp3, (int32_t)event_type);
     movq(Address(temp1, 0), temp3);
-  }
-  else {
+  } else {
     uint64_t const_src = (uint64_t)src_or_obj_size.as_constant();
     const_src = Universe::encode_heap_event_src(event_type, const_src);
     mov64(temp3, (int64_t)const_src);

@@ -703,7 +703,8 @@ class CheckGraph : public ObjectClosure {
       } else if (_check_array_elements && klass->id() == ObjArrayKlassID) {
         //Check each array element
         objArrayOop array = (objArrayOop)obj;
-        for (int i = 0; i < array->length(); i++) {
+        int length = array->length();
+        for (int i = 0; i < length; i++) {
           oop actual_elem = array->obj_at(i);
           void* elem_addr = (void*)(((uint64_t)array->base()) + i * sizeof(oop)); 
           auto field_edge = obj_node.fields().find(i * sizeof(oop)); 
@@ -714,13 +715,13 @@ class CheckGraph : public ObjectClosure {
             if (field_edge->second.val() != actual_elem) {
               num_src_not_correct++;
               if (num_src_not_correct < 100) {
-                printf("Elem at index '%d' in array '%p' is not correct: '%p' != '%p'\n", i, (oopDesc*)array, (void*)field_edge->second.val(), (oopDesc*)actual_elem);
+                printf("Elem at index '%d' in array '%p' of length '%d' is not correct: '%p' != '%p'\n", i, (oopDesc*)array, length, (void*)field_edge->second.val(), (oopDesc*)actual_elem);
               }
             }
           } else if (actual_elem != NULL && actual_elem != INVALID_OOP) {
             num_not_found++;
             if (num_not_found < 100) {
-              printf("Elem at index '%d' is not found in array '%p'\n", i, (oopDesc*)array);
+              printf("Elem at index '%d' is not found in array '%p' of length '%d'\n", i, (oopDesc*)array, length);
               char name[1024];
               printf("elem type %s\n", get_oop_klass_name(actual_elem, name));
             }
@@ -854,25 +855,22 @@ uint64_t Universe::heap_event_mask() {
 }
 
 uint64_t Universe::encode_heap_event_src(HeapEventType event_type, uint64_t src){
-  uint64_t encoded_type = event_type << (64 - 16);
-  return encoded_type | src;
+  return ((uint64_t)event_type) | (src << 15);
 }
 
 Universe::HeapEvent Universe::encode_heap_event(Universe::HeapEventType event_type, Universe::HeapEvent event) {
-  //Most significant 16-bits of event.src represents the HeapEventType
-  //next 48-bits of event.src is the src address
   return HeapEvent{encode_heap_event_src(event_type, event.src), event.dst};
 }
 
 Universe::HeapEventType Universe::decode_heap_event_type(Universe::HeapEvent event) {
-  //Obtain the most significant 16-bits and return those as HeapEventType
-  return (HeapEventType) (event.src >> 48);
+  //Obtain the least significant 16-bits and return those as HeapEventType
+  uint64_t mask = (1UL << 15) - 1;
+  return (HeapEventType) (event.src & mask);
 }
 
 uint64_t Universe::decode_heap_event_src(HeapEvent event) {
-  //Obtain the Least significant 48-bits as source
-  uint64_t mask = (1UL << 48) - 1;
-  return (uint64_t)(event.src & mask);
+  //Obtain the Most significant 48 bits as source
+  return (event.src >> 15);
 }
 
 Universe::HeapEvent* Universe::alloc_heap_events() {
@@ -896,7 +894,7 @@ oopDesc* oop_for_address(Map& oop_map, oopDesc* field) {
   auto next_obj_iter = oop_map.lower_bound(field);
   oopDesc* obj = NULL;
   if (next_obj_iter == oop_map.begin()) {
-    printf("870 %p %p\n",next_obj_iter->first, next_obj_iter->second.end());
+    printf("870 %p %p for %p\n",next_obj_iter->first, next_obj_iter->second.end(), field);
   }
   if (next_obj_iter != oop_map.end() && next_obj_iter->first == field) {
     obj = next_obj_iter->first;
@@ -1064,17 +1062,17 @@ void Universe::verify_heap_graph() {
 
         HeapEvent length_event = heap_events_start[event_iter+1];
         length_event.src = decode_heap_event_src(length_event);
-        
         objArrayOop obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
+        // printf("1067: %p\n", (oopDesc*)obj_src);
         objArrayOop obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
-        
+        // printf("1069: %p\n", (oopDesc*)obj_dst);
         if (obj_src == NULL or obj_dst == NULL) {
           printf("Didn't find \n");
         }
         //No need to consider objArrayOop::base() in offset calculation
         HeapEvent offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
                              (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
-        
+        // if (checking > 1) printf("src %p %ld dst %p %ld length %ld\n", obj_src, offsets.src, obj_dst, offsets.dst, length_event.src);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
         auto obj_dst_node_iter = ObjectNode::oop_to_obj_node.find(obj_dst);
 

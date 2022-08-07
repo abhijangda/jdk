@@ -2584,39 +2584,57 @@ void LIR_Assembler::logic_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
     Register l_lo = left->as_register_lo();
     Register l_hi = left->as_register_hi();
     if (right->is_constant()) {
+      if (true || right->type() == T_LONG) {
 #ifdef _LP64
-      __ mov64(rscratch1, right->as_constant_ptr()->as_jlong());
-      switch (code) {
-        case lir_logic_and:
-          __ andq(l_lo, rscratch1);
-          break;
-        case lir_logic_or:
-          __ orq(l_lo, rscratch1);
-          break;
-        case lir_logic_xor:
-          __ xorq(l_lo, rscratch1);
-          break;
-        default: ShouldNotReachHere();
-      }
+        __ mov64(rscratch1, right->as_constant_ptr()->as_jlong());
+        switch (code) {
+          case lir_logic_and:
+            __ andq(l_lo, rscratch1);
+            break;
+          case lir_logic_or:
+            __ orq(l_lo, rscratch1);
+            break;
+          case lir_logic_xor:
+            __ xorq(l_lo, rscratch1);
+            break;
+          default: ShouldNotReachHere();
+        }
 #else
-      int r_lo = right->as_constant_ptr()->as_jint_lo();
-      int r_hi = right->as_constant_ptr()->as_jint_hi();
-      switch (code) {
-        case lir_logic_and:
-          __ andl(l_lo, r_lo);
-          __ andl(l_hi, r_hi);
-          break;
-        case lir_logic_or:
-          __ orl(l_lo, r_lo);
-          __ orl(l_hi, r_hi);
-          break;
-        case lir_logic_xor:
-          __ xorl(l_lo, r_lo);
-          __ xorl(l_hi, r_hi);
-          break;
-        default: ShouldNotReachHere();
-      }
+        int r_lo = right->as_constant_ptr()->as_jint_lo();
+        int r_hi = right->as_constant_ptr()->as_jint_hi();
+        switch (code) {
+          case lir_logic_and:
+            __ andl(l_lo, r_lo);
+            __ andl(l_hi, r_hi);
+            break;
+          case lir_logic_or:
+            __ orl(l_lo, r_lo);
+            __ orl(l_hi, r_hi);
+            break;
+          case lir_logic_xor:
+            __ xorl(l_lo, r_lo);
+            __ xorl(l_hi, r_hi);
+            break;
+          default: ShouldNotReachHere();
+        }
 #endif // _LP64
+      } /*else if (right->type() == T_INT) {
+        int32_t c = right->as_constant_ptr()->as_jint();
+        switch (code) {
+          case lir_logic_and:
+            __ andq(l_lo, c);
+            break;
+          case lir_logic_or:
+            __ orq(l_lo, c);
+            break;
+          case lir_logic_xor:
+            __ xorq(l_lo, c);
+            break;
+          default: ShouldNotReachHere();
+        } 
+      } */else {
+        ShouldNotReachHere();
+      }
     } else {
 #ifdef _LP64
       Register r_lo;

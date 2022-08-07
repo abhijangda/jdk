@@ -778,7 +778,6 @@ void Universe::print_heap_event_counter() {
 
 void Universe::add_heap_events(Universe::HeapEventType event_type1, Universe::HeapEvent event1, 
                                Universe::HeapEventType event_type2, Universe::HeapEvent event2) {
-  return;
   // JavaThread* cur_thread = JavaThread::current();
   // assert(cur_thread->heap_events, "");
   HeapEvent* heap_events = Universe::alloc_heap_events();//cur_thread->heap_events;
@@ -1065,10 +1064,10 @@ void Universe::verify_heap_graph() {
 
         HeapEvent length_event = heap_events_start[event_iter+1];
         length_event.src = decode_heap_event_src(length_event);
-
+        
         objArrayOop obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
         objArrayOop obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
-
+        
         if (obj_src == NULL or obj_dst == NULL) {
           printf("Didn't find \n");
         }
@@ -1165,7 +1164,7 @@ void Universe::verify_heap_graph() {
     }
   }
   printf("event_threads.size() %ld\n", event_threads.size());
-  CheckGraph check_graph(true, true, false, false);
+  CheckGraph check_graph(true, true, true, true);
   Universe::heap()->object_iterate(&check_graph);
 
   size_t num_objects = ObjectNode::oop_to_obj_node.size();

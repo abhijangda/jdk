@@ -1907,7 +1907,7 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
 void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_Opr dst_offset, LIR_Opr src_offset, LIR_Opr count) {
   if (!InstrumentHeapEvents)
     return;
-  return;
+  
   LIR_Opr heap_event_counter_addr_reg = new_pointer_register();
   LIR_Opr heap_events_addr_reg = heap_event_counter_addr_reg;
   LIR_Opr counter = new_pointer_register();
@@ -1937,17 +1937,19 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     __ add(counter, LIR_OprFact::longConst(1L), counter);
     __ store(counter, heap_event_counter_addr);
 
-    __ shift_left(heap_events_idx, 5, heap_events_idx); //HeapEvent size is 1<<5
+    __ shift_left(heap_events_idx, exact_log2_long(sizeof(Universe::HeapEvent)), heap_events_idx);
     __ leal(new LIR_Address(heap_event_counter_addr_reg, heap_events_idx, 0, T_LONG), heap_events_addr_reg);
 
-    LIR_Address* heap_events_addr_type = new LIR_Address(heap_events_addr_reg, 0, T_LONG);
-    LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, 8, T_LONG);
-    LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 16, T_LONG);
+    LIR_Address* heap_events_addr_src = new LIR_Address(heap_events_addr_reg, 0, T_LONG);
+    LIR_Address* heap_events_addr_dst = new LIR_Address(heap_events_addr_reg, 8, T_LONG);
 
-    __ store(LIR_OprFact::longConst(Universe::CopyArray), heap_events_addr_type);
     // __ leal(new LIR_Address(src_offset, 0, T_LONG), tmp2);
     __ leal(new LIR_Address(src_array, 0, T_LONG), tmp);
     __ add(tmp, src_offset, tmp);
+    uint64_t encoded_copy_array = Universe::encode_heap_event_src(Universe::CopyArray, 0L);
+    LIR_Opr encoded_event_reg = new_pointer_register();
+    __ move(LIR_OprFact::longConst(encoded_copy_array), encoded_event_reg);
+    __ logical_or(tmp, encoded_event_reg, tmp);
     __ store(tmp, heap_events_addr_src);    
     __ leal(new LIR_Address(dst_array, 0, T_LONG), tmp);
     __ add(tmp, dst_offset, tmp);
@@ -1959,7 +1961,11 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     // __ store(dst_offset, heap_events_addr_dst);
 
     __ add(heap_event_counter_addr_reg, LIR_OprFact::longConst(sizeof(Universe::HeapEvent)), heap_event_counter_addr_reg);
-    __ store(LIR_OprFact::longConst(Universe::CopyArrayLength), heap_events_addr_type);
+    // uint64_t encoded_event_copy_array_length = Universe::encode_heap_event_src(Universe::CopyArrayLength, 0L);
+    // __ move(LIR_OprFact::longConst(encoded_event_copy_array_length), encoded_event_reg);
+    // __ move(LIR_OprFact::longConst(0), tmp);
+    // __ move(count, tmp);
+    // __ logical_or(count, encoded_event_reg, count);
     __ store(count, heap_events_addr_src);
     // __ store(count, heap_events_addr_dst);
 

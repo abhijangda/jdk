@@ -1155,17 +1155,19 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   if (!InstrumentHeapEvents) return;
   
   uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
+  
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(true);
+  
   bool is_unsafe = true;
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
   int adr_type = Compile::AliasIdxRaw;
   Node* ctrl = control();
-  Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
-                         LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
+  // Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
+  //                        LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
 
   // ((LoadLNode*)cnt)->is_heap_event_cntr_load = true;
-  make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, cnt);
+  make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, NULL);
   //TODO: For FieldSet should only be called for Atomic FieldSet
   
   /*else {
@@ -1190,7 +1192,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
 void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_offset, Node* src_offset, Node* count) {
   if (!InstrumentHeapEvents)
     return;
-
+  
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(true);
 
@@ -1215,20 +1217,18 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
   store_to_memory(ctrl, node_cntr_addr, cnt, T_LONG, adr_type, MemNode::unordered, 
                   false, false, false, is_unsafe);
   
-  idx = _gvn.transform(new LShiftLNode(idx, _gvn.intcon(5)));
+  idx = _gvn.transform(new LShiftLNode(idx, _gvn.intcon(exact_log2_long(sizeof(Universe::HeapEvent)))));
 
   {
-    Node* event_type_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
-    store_to_memory(ctrl, event_type_addr, _gvn.longcon(Universe::CopyArray), T_LONG, 
-                    adr_type, MemNode::unordered, false, false, false, is_unsafe);
-    Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
-                                    _gvn.transform(new AddLNode(idx, _gvn.longcon(8))));
+    Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
     if (_gvn.type(src_offset)->isa_int()) {
       src_offset = ConvI2L(src_offset);
     } else {
       assert(_gvn.type(src_offset)->isa_long() != NULL, "sanity");
     }
     src_array = basic_plus_adr(src_array, src_array, src_offset);
+    src_array = _gvn.transform(new LShiftLNode(src_array, _gvn.intcon(15)));
+    src_array = _gvn.transform(new OrLNode(src_array, _gvn.longcon(Universe::encode_heap_event_src(Universe::CopyArray, 0L))));
     store_to_memory(ctrl, src_addr, src_array, T_ADDRESS, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
     Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
@@ -1281,6 +1281,7 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
     } else {
       assert(_gvn.type(count)->isa_long() != NULL, "sanity");
     }
+    count = _gvn.transform(new LShiftLNode(count, _gvn.intcon(15)));
     store_to_memory(ctrl, src_addr, count, T_LONG, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
     // Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
@@ -1729,12 +1730,12 @@ Node* GraphKit::make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, 
   debug_only(adr_type = C->get_adr_type(adr_idx));
   Node *mem = memory(adr_idx);
   Node* st, *st1;
-  if (idx) {
-    st1 = new IncrCntrAndStoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, idx, event_type);
-  } else {
-    printf("1710\n");
-    // st1 = new StoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, MemNode::unordered event_type);
-  }
+  
+    st1 = new IncrCntrAndStoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, event_type);
+  // } else {
+  //   printf("1710\n");
+  //   // st1 = new StoreHeapEventNode(ctl, mem, mem_adr, adr_type, size_in_bytes, new_obj, MemNode::unordered event_type);
+  // }
   st = _gvn.transform(st1);
   set_memory(st, adr_idx);
   if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))

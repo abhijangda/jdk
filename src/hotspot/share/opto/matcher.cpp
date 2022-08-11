@@ -2209,6 +2209,7 @@ bool Matcher::find_shared_visit(MStack& mstack, Node* n, uint opcode, bool& mem_
       break;
     case Op_StoreHeapEvent:
     case Op_IncrCntrAndStoreHeapEvent:
+    case Op_IncrCntrAndStoreCopyArrayEvent:
       set_shared(n);
       break;
     case Op_If:
@@ -2390,6 +2391,27 @@ void Matcher::find_shared_post_visit(Node* n, uint opcode) {
       n->set_req(MemNode::ValueIn, pair1);
     
       n->del_req(MemNode::OopStore);
+      break;
+    }
+    case Op_IncrCntrAndStoreCopyArrayEvent: {
+      Node* src_array = n->in(IncrCntrAndStoreCopyArrayEventNode::SrcArray);
+      Node* src_offset = n->in(IncrCntrAndStoreCopyArrayEventNode::SrcOffset);
+      Node* dst_array = n->in(IncrCntrAndStoreCopyArrayEventNode::DstArray);
+      Node* dst_offset = n->in(IncrCntrAndStoreCopyArrayEventNode::DstOffset);
+      Node* count = n->in(IncrCntrAndStoreCopyArrayEventNode::Count);
+
+      Node* pair1 = new BinaryNode(dst_offset, count);
+      Node* pair2 = new BinaryNode(dst_array, pair1);
+      Node* pair3 = new BinaryNode(src_offset, pair2);
+      Node* pair4 = new BinaryNode(src_array, pair3);
+
+      n->set_req(IncrCntrAndStoreCopyArrayEventNode::SrcArray, pair4);
+
+      n->del_req(IncrCntrAndStoreCopyArrayEventNode::Count);
+      n->del_req(IncrCntrAndStoreCopyArrayEventNode::DstOffset);
+      n->del_req(IncrCntrAndStoreCopyArrayEventNode::DstArray);
+      n->del_req(IncrCntrAndStoreCopyArrayEventNode::SrcOffset);
+
       break;
     }
     case Op_CMoveD:              // Convert trinary to binary-tree

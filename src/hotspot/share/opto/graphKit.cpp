@@ -1202,9 +1202,9 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
   int adr_type = Compile::AliasIdxRaw;
   Node* ctrl = control();
   
-  // Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
-  //                        LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
-  // make_transfer_event(ctrl, node_cntr_addr, cnt, MaxHeapEvents - 2);
+  #if 1
+  make_store_array_copy_event(ctrl, node_cntr_addr, src_array, src_offset, dst_array, dst_offset, count);
+  #else 
   Node* cnt  = make_load(ctrl, node_cntr_addr, TypeLong::LONG, T_LONG, adr_type, MemNode::unordered, 
                          LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
   make_transfer_event(ctrl, node_cntr_addr, cnt, MaxHeapEvents - 1);
@@ -1243,32 +1243,6 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
                     false, false, false, is_unsafe);
   }
 
-  // idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(sizeof(Universe::HeapEvent))));
-  // if(true) {
-  //   Node* event_type_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
-  //   store_to_memory(ctrl, event_type_addr, _gvn.longcon(Universe::CopyArrayOffsets), T_LONG, 
-  //                   adr_type, MemNode::unordered, false, false, false, is_unsafe);
-  //   Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
-  //                                   _gvn.transform(new AddLNode(idx, _gvn.longcon(8))));
-  //   if (_gvn.type(src_offset)->isa_int()) {
-  //     src_offset = ConvI2L(src_offset);
-  //   } else {
-  //     assert(_gvn.type(src_offset)->isa_long() != NULL, "sanity");
-  //   }
-
-  //   store_to_memory(ctrl, src_addr, src_offset, T_LONG, adr_type, MemNode::unordered, 
-  //                   false, false, false, is_unsafe);
-  //   Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
-  //                                   _gvn.transform(new AddLNode(idx, _gvn.longcon(16))));
-  //   if (_gvn.type(dst_offset)->isa_int()) {
-  //     dst_offset = ConvI2L(dst_offset);
-  //   } else {
-  //     assert(_gvn.type(dst_offset)->isa_long() != NULL, "sanity");
-  //   }
-  //   store_to_memory(ctrl, dst_addr, dst_offset, T_LONG, adr_type, MemNode::unordered, 
-  //                   false, false, false, is_unsafe);
-  // }
-
   idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(sizeof(Universe::HeapEvent))));
   if(true) {
     Node* event_type_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
@@ -1284,14 +1258,10 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
     count = _gvn.transform(new LShiftLNode(count, _gvn.intcon(15)));
     store_to_memory(ctrl, src_addr, count, T_LONG, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
-    // Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
-    //                                 _gvn.transform(new AddLNode(idx, _gvn.longcon(16))));
-    // store_to_memory(ctrl, dst_addr, ConvI2L(count), T_LONG, adr_type, MemNode::unordered, 
-    //                 false, false, false, is_unsafe);
   }
 
   make_transfer_event(ctrl, node_cntr_addr, idx, (MaxHeapEvents*sizeof(Universe::HeapEvent)));
-
+  #endif
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(false);
 }
@@ -1724,6 +1694,7 @@ Node* GraphKit::make_load(Node* ctl, Node* adr, const Type* t, BasicType bt,
   }
   return ld;
 }
+
 Node* GraphKit::make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, Node* new_obj, Universe::HeapEventType event_type, Node* idx) {
   int adr_idx = Compile::AliasIdxRaw;
   const TypePtr* adr_type = NULL;
@@ -1743,6 +1714,20 @@ Node* GraphKit::make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, 
   return st;
 }
 
+Node* GraphKit::make_store_array_copy_event(Node* ctl, Node* mem_adr, Node *src_array, Node *src_offset, Node *dst_array, Node *dst_offset, Node *count) {
+  int adr_idx = Compile::AliasIdxRaw;
+  const TypePtr* adr_type = NULL;
+  debug_only(adr_type = C->get_adr_type(adr_idx));
+  Node *mem = memory(adr_idx);
+  Node* st;
+  
+  st = new IncrCntrAndStoreCopyArrayEventNode(ctl, mem, mem_adr, adr_type, src_array, src_offset, dst_array, dst_offset, count);
+  st = _gvn.transform(st);
+  set_memory(st, adr_idx);
+  if (mem->req() > MemNode::Address && mem_adr == mem->in(MemNode::Address))
+    record_for_igvn(st);
+  return st;
+}
 
 Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
                                 int adr_idx,

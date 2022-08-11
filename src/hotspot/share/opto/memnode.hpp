@@ -730,6 +730,41 @@ public:
 #endif
 };
 
+class IncrCntrAndStoreCopyArrayEventNode : public StoreNode {
+protected:
+  virtual bool cmp( const Node &n ) const {
+    return StoreNode::cmp(n);
+  }
+  virtual uint hash() const { return StoreNode::hash(); }
+  virtual uint size_of() const {return sizeof(*this);}
+public:
+  enum { Control,               // When is it safe to do this load?
+         Memory,                // Chunk of memory is being loaded from
+         Address,               // Actually address, derived from base
+         SrcArray,              
+         SrcOffset,             
+         DstArray,
+         DstOffset,
+         Count
+  };
+  IncrCntrAndStoreCopyArrayEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *src_array, Node* src_offset, Node* dst_array, Node* dst_offset, Node* count)
+    : StoreNode(c, mem, adr, at, src_array, src_offset, MemOrd::unordered)
+    {
+      add_req(dst_array);
+      add_req(dst_offset);
+      add_req(count);
+    }
+  virtual int Opcode() const;
+  virtual uint match_edge(uint idx) const;
+  virtual BasicType memory_type() const { return T_LONG; }
+#ifndef PRODUCT
+  virtual void dump_spec(outputStream *st) const {
+    StoreNode::dump_spec(st);
+    st->print(" IncrCntrAndStoreCopyArrayEventNode");
+  }
+#endif
+};
+
 class StoreHeapEventNode : public StoreNode {
 protected:
   virtual bool cmp( const Node &n ) const {

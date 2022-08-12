@@ -85,7 +85,7 @@ class GraphKit : public Phase {
     assert(!has_exceptions(), "user must call transfer_exceptions_into_jvms");
   }
 #endif
-  bool use_store_heap_event() {return false;}
+  bool use_store_heap_event() {return true;}
   virtual Parse*          is_Parse()          const { return NULL; }
   virtual LibraryCallKit* is_LibraryCallKit() const { return NULL; }
 
@@ -309,6 +309,7 @@ class GraphKit : public Phase {
   void append_heap_event(Universe::HeapEventType event_type, Node* obj, Node* size);
   void append_copy_array(Node* dst_array, Node* src_array, Node* dst_offset, Node* src_offset, Node* count);
   Node* make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, Node* new_obj, Universe::HeapEventType event_type, Node* idx = nullptr);
+  Node* make_store_array_copy_event(Node* ctl, Node* mem_adr, Node *src_array, Node *src_offset, Node *dst_array, Node *dst_offset, Node *count);
   void lock_unlock_heap_event(bool lock);
   Node* make_transfer_event(Node* ctrl, Node* mem_adr, Node* cntr, uint64_t maxval);
   // Some convenient shortcuts for common nodes

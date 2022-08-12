@@ -213,23 +213,21 @@ class Universe: AllStatic {
  };
   static bool is_verify_cause_full_gc;
   struct HeapEvent {
-    HeapEventType heap_event_type; //0 for new object and 1 for field assignment
-    // union {
-    struct {
-      uint64_t src;
-      uint64_t dst;
-    } address;
-    uint64_t id;
-  //}
+    uint64_t src;
+    uint64_t dst;
   };
-
+  static uint64_t heap_event_mask();
+  static uint64_t encode_heap_event_src(HeapEventType event_type, uint64_t src);
+  static HeapEvent encode_heap_event(HeapEventType event_type, HeapEvent event);
+  static HeapEventType decode_heap_event_type(HeapEvent event);
+  static uint64_t decode_heap_event_src(HeapEvent event);
   static LinkedListImpl<HeapEvent*> all_heap_events;
   static pthread_mutex_t mutex_heap_event;
   static bool enable_transfer_events;
   static void transfer_events_to_gpu();
   static sem_t cuda_semaphore;
-  static void add_heap_events(Universe::HeapEvent event1, Universe::HeapEvent event2, Universe::HeapEvent event3);
-  static void add_heap_event(Universe::HeapEvent event);
+  static void add_heap_events(Universe::HeapEventType event_type1, Universe::HeapEvent event1, Universe::HeapEventType event_type2, Universe::HeapEvent event2);
+  static void add_heap_event(Universe::HeapEventType event_type, Universe::HeapEvent event);
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();
   static void print_heap_event_counter();

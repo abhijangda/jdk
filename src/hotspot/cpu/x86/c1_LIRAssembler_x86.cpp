@@ -618,7 +618,12 @@ void LIR_Assembler::const2reg(LIR_Opr src, LIR_Opr dest, LIR_PatchCode patch_cod
       if (patch_code != lir_patch_none) {
         jobject2reg_with_patching(dest->as_register(), info);
       } else {
-        __ movoop(dest->as_register(), c->as_jobject());
+        // print("621: %ld\n", dest->is_double_cpu());
+        if (dest->is_double_cpu()) {
+          __ movoop(dest->as_register_lo(), c->as_jobject());
+        } else {
+          __ movoop(dest->as_register(), c->as_jobject());
+        }
       }
       break;
     }
@@ -1168,11 +1173,16 @@ void LIR_Assembler::stack2reg(LIR_Opr src, LIR_Opr dest, BasicType type) {
     }
 
   } else if (dest->is_double_cpu()) {
-    Address src_addr_LO = frame_map()->address_for_slot(src->double_stack_ix(), lo_word_offset_in_bytes);
-    Address src_addr_HI = frame_map()->address_for_slot(src->double_stack_ix(), hi_word_offset_in_bytes);
-    __ movptr(dest->as_register_lo(), src_addr_LO);
-    NOT_LP64(__ movptr(dest->as_register_hi(), src_addr_HI));
-
+    if (src->is_single_stack()) {
+      Address src_addr_LO = frame_map()->address_for_slot(src->single_stack_ix());
+      __ movptr(dest->as_register_lo(), src_addr_LO);
+    } else {
+      assert(src->is_double_stack(), "sanity");
+      Address src_addr_LO = frame_map()->address_for_slot(src->double_stack_ix(), lo_word_offset_in_bytes);
+      Address src_addr_HI = frame_map()->address_for_slot(src->double_stack_ix(), hi_word_offset_in_bytes);
+      __ movptr(dest->as_register_lo(), src_addr_LO);
+      NOT_LP64(__ movptr(dest->as_register_hi(), src_addr_HI));
+    }
   } else if (dest->is_single_xmm()) {
     Address src_addr = frame_map()->address_for_slot(src->single_stack_ix());
     __ movflt(dest->as_xmm_float_reg(), src_addr);
@@ -2239,6 +2249,23 @@ void LIR_Assembler::arith_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
       }
 #endif // _LP64
 
+    } else if (right->is_single_stack()) {
+      // cpu register - stack
+      Address raddr = frame_map()->address_for_slot(right->single_stack_ix());
+      __ movl(r10, raddr);
+      switch (code) {
+        case lir_add: __ addq(lreg_hi, r10); break;
+        case lir_sub: __ subq(lreg_hi, r10); break;
+        default:      ShouldNotReachHere();
+      }
+    } else if (right->is_double_stack()) {
+      // cpu register - stack
+      Address raddr = frame_map()->address_for_slot(right->double_stack_ix());
+      switch (code) {
+        case lir_add: __ addq(lreg_hi, raddr); break;
+        case lir_sub: __ subq(lreg_hi, raddr); break;
+        default:      ShouldNotReachHere();
+      }
     } else {
       ShouldNotReachHere();
     }
@@ -2557,46 +2584,74 @@ void LIR_Assembler::logic_op(LIR_Code code, LIR_Opr left, LIR_Opr right, LIR_Opr
     Register l_lo = left->as_register_lo();
     Register l_hi = left->as_register_hi();
     if (right->is_constant()) {
+      if (true || right->type() == T_LONG) {
 #ifdef _LP64
-      __ mov64(rscratch1, right->as_constant_ptr()->as_jlong());
-      switch (code) {
-        case lir_logic_and:
-          __ andq(l_lo, rscratch1);
-          break;
-        case lir_logic_or:
-          __ orq(l_lo, rscratch1);
-          break;
-        case lir_logic_xor:
-          __ xorq(l_lo, rscratch1);
-          break;
-        default: ShouldNotReachHere();
-      }
+        __ mov64(rscratch1, right->as_constant_ptr()->as_jlong());
+        switch (code) {
+          case lir_logic_and:
+            __ andq(l_lo, rscratch1);
+            break;
+          case lir_logic_or:
+            __ orq(l_lo, rscratch1);
+            break;
+          case lir_logic_xor:
+            __ xorq(l_lo, rscratch1);
+            break;
+          default: ShouldNotReachHere();
+        }
 #else
-      int r_lo = right->as_constant_ptr()->as_jint_lo();
-      int r_hi = right->as_constant_ptr()->as_jint_hi();
-      switch (code) {
-        case lir_logic_and:
-          __ andl(l_lo, r_lo);
-          __ andl(l_hi, r_hi);
-          break;
-        case lir_logic_or:
-          __ orl(l_lo, r_lo);
-          __ orl(l_hi, r_hi);
-          break;
-        case lir_logic_xor:
-          __ xorl(l_lo, r_lo);
-          __ xorl(l_hi, r_hi);
-          break;
-        default: ShouldNotReachHere();
-      }
+        int r_lo = right->as_constant_ptr()->as_jint_lo();
+        int r_hi = right->as_constant_ptr()->as_jint_hi();
+        switch (code) {
+          case lir_logic_and:
+            __ andl(l_lo, r_lo);
+            __ andl(l_hi, r_hi);
+            break;
+          case lir_logic_or:
+            __ orl(l_lo, r_lo);
+            __ orl(l_hi, r_hi);
+            break;
+          case lir_logic_xor:
+            __ xorl(l_lo, r_lo);
+            __ xorl(l_hi, r_hi);
+            break;
+          default: ShouldNotReachHere();
+        }
 #endif // _LP64
+      } /*else if (right->type() == T_INT) {
+        int32_t c = right->as_constant_ptr()->as_jint();
+        switch (code) {
+          case lir_logic_and:
+            __ andq(l_lo, c);
+            break;
+          case lir_logic_or:
+            __ orq(l_lo, c);
+            break;
+          case lir_logic_xor:
+            __ xorq(l_lo, c);
+            break;
+          default: ShouldNotReachHere();
+        } 
+      } */else {
+        ShouldNotReachHere();
+      }
     } else {
 #ifdef _LP64
       Register r_lo;
-      if (is_reference_type(right->type())) {
-        r_lo = right->as_register();
+      if(right->is_double_cpu()) {
+        if (is_reference_type(right->type())) {
+          r_lo = right->as_register();
+        } else  {
+          r_lo = right->as_register_lo();
+        }
       } else {
-        r_lo = right->as_register_lo();
+        if (right->is_register()) {
+          r_lo = right->as_register();
+        } else if (right->is_stack()) {
+           Address raddr = frame_map()->address_for_slot(right->single_stack_ix());
+           __ movl(r10, raddr);
+           r_lo = r10;
+        }
       }
 #else
       Register r_lo = right->as_register_lo();

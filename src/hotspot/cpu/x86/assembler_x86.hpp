@@ -757,6 +757,7 @@ private:
   void emit_arith_b(int op1, int op2, Register dst, int imm8);
 
   void emit_arith(int op1, int op2, Register dst, int32_t imm32);
+  void emit_arith(int op1, int op2, Register dst, int64_t imm64);
   // Force generation of a 4 byte immediate value even if it fits into 8bit
   void emit_arith_imm32(int op1, int op2, Register dst, int32_t imm32);
   void emit_arith(int op1, int op2, Register dst, Register src);
@@ -806,6 +807,7 @@ private:
 
   // Immediate-to-memory forms
   void emit_arith_operand(int op1, Register rm, Address adr, int32_t imm32);
+  void emit_arith_operand(int op1, Register rm, Address adr, int64_t imm64);
 
  protected:
   #ifdef ASSERT
@@ -1729,6 +1731,7 @@ private:
   void orq(Register dst, int32_t imm32);
   void orq(Register dst, Address src);
   void orq(Register dst, Register src);
+  void or64(Register dst, int64_t imm64);
 
   // Pack with signed saturation
   void packsswb(XMMRegister dst, XMMRegister src);

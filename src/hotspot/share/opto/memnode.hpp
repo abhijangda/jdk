@@ -56,7 +56,6 @@ public:
          Address,               // Actually address, derived from base
          ValueIn,               // Value to store
          OopStore,              // Preceeding oop store, only in StoreCM
-         Index
   };
   typedef enum { unordered = 0,
                  acquire,       // Load has to acquire or be succeeded by MemBarAcquire.
@@ -715,11 +714,9 @@ protected:
   virtual uint size_of() const {return sizeof(*this);}
   Universe::HeapEventType _event_type;
 public:
-  IncrCntrAndStoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, Node* cntr, Universe::HeapEventType event_type)
+  IncrCntrAndStoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, Universe::HeapEventType event_type)
     : StoreNode(c, mem, adr, at, size, obj, MemOrd::unordered), _event_type(event_type) 
-    {
-      add_req(cntr);
-    }
+    {}
   virtual int Opcode() const;
   virtual uint match_edge(uint idx) const;
   virtual BasicType memory_type() const { return T_LONG; }
@@ -729,6 +726,41 @@ public:
   virtual void dump_spec(outputStream *st) const {
     StoreNode::dump_spec(st);
     st->print(" IncrCntrAndStoreHeapEventNode");
+  }
+#endif
+};
+
+class IncrCntrAndStoreCopyArrayEventNode : public StoreNode {
+protected:
+  virtual bool cmp( const Node &n ) const {
+    return StoreNode::cmp(n);
+  }
+  virtual uint hash() const { return StoreNode::hash(); }
+  virtual uint size_of() const {return sizeof(*this);}
+public:
+  enum { Control,               // When is it safe to do this load?
+         Memory,                // Chunk of memory is being loaded from
+         Address,               // Actually address, derived from base
+         SrcArray,              
+         SrcOffset,             
+         DstArray,
+         DstOffset,
+         Count
+  };
+  IncrCntrAndStoreCopyArrayEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *src_array, Node* src_offset, Node* dst_array, Node* dst_offset, Node* count)
+    : StoreNode(c, mem, adr, at, src_array, src_offset, MemOrd::unordered)
+    {
+      add_req(dst_array);
+      add_req(dst_offset);
+      add_req(count);
+    }
+  virtual int Opcode() const;
+  virtual uint match_edge(uint idx) const;
+  virtual BasicType memory_type() const { return T_LONG; }
+#ifndef PRODUCT
+  virtual void dump_spec(outputStream *st) const {
+    StoreNode::dump_spec(st);
+    st->print(" IncrCntrAndStoreCopyArrayEventNode");
   }
 #endif
 };

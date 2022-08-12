@@ -610,10 +610,10 @@ void DefNewGeneration::collect(bool   full,
 
   if (InstrumentHeapEvents) {
     MemRegion mr = eden()->used_region();
-    Universe::add_heap_event(Universe::HeapEvent{Universe::ClearContiguousSpace, (uint64_t)mr.start(), (uint64_t)mr.end()});
+    Universe::add_heap_event(Universe::ClearContiguousSpace, Universe::HeapEvent{(uint64_t)mr.start(), (uint64_t)mr.end()});
 
     mr = from()->used_region();
-    Universe::add_heap_event(Universe::HeapEvent{Universe::ClearContiguousSpace, (uint64_t)mr.start(), (uint64_t)mr.end()});
+    Universe::add_heap_event(Universe::ClearContiguousSpace, Universe::HeapEvent{(uint64_t)mr.start(), (uint64_t)mr.end()});
   }
   if (!_promotion_failed) {
     // Swap the survivor spaces.
@@ -743,7 +743,7 @@ oop DefNewGeneration::copy_to_survivor_space(oop old) {
 
   if (InstrumentHeapEvents) {
     // printf("%p -> %p\n", old, obj);
-    Universe::add_heap_event(Universe::HeapEvent{Universe::MoveObject, (uint64_t)(void*)old, (uint64_t)(void*)obj});
+    Universe::add_heap_event(Universe::MoveObject, Universe::HeapEvent{(uint64_t)(void*)old, (uint64_t)(void*)obj});
   }
 
   // Done, insert forward pointer to obj in this header

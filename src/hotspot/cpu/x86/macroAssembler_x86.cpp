@@ -4713,19 +4713,27 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
   movq(temp2, Address(temp1, 0));
   leaq(temp2, Address(temp2, 1));
   movq(Address(temp1, 0), temp2);
-  shlq(temp2, 5);
+  shlq(temp2, 4); //exact_log2_long(sizeof(Universe::HeapEvent))
   leaq(temp1, Address(temp1, temp2, Address::times_1));
   
-  movq(Address(temp1, 0), (uint64_t)event_type);
-  if (src_or_obj_size.is_register())
-    movq(Address(temp1, 8), src_or_obj_size.as_register());
-  else
-    movq(Address(temp1, 8), src_or_obj_size.as_constant());
+  //movq(Address(temp1, 0), (uint64_t)event_type);
+  if (src_or_obj_size.is_register()) {
+    shlq(src_or_obj_size.as_register(), 15);
+    orq(src_or_obj_size.as_register(), (int32_t)event_type);
+    movq(Address(temp1, 0), src_or_obj_size.as_register());
+    shrq(src_or_obj_size.as_register(), 15);
+  } else {
+    uint64_t const_src = (uint64_t)src_or_obj_size.as_constant();
+    const_src = Universe::encode_heap_event_src(event_type, const_src);
+    mov64(temp3, (int64_t)const_src);
+    //TODO: Move imm64 directly to memory?
+    movq(Address(temp1, 0), temp3);
+  }
   if (dst_or_new_obj.is_register()) {
-    movq(Address(temp1, 16), dst_or_new_obj.as_register());
+    movq(Address(temp1, 8), dst_or_new_obj.as_register());
   } else {
     leaq(temp3, dst_or_new_obj.as_address());
-    movq(Address(temp1, 16), temp3);
+    movq(Address(temp1, 8), temp3);
   }
   subq(temp2, MaxHeapEvents*sizeof(Universe::HeapEvent));
   Label not_equal;

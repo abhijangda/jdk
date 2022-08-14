@@ -821,6 +821,7 @@ class JavaThread: public Thread {
   inline void set_pending_async_exception(oop e);
   inline void set_pending_unsafe_access_error();
   static void send_async_exception(JavaThread* jt, oop java_throwable);
+  static int heap_events_offset();
   void send_thread_stop(oop throwable);
   void check_and_handle_async_exceptions();
 

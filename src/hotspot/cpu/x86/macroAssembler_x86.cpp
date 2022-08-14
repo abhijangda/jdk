@@ -4696,8 +4696,6 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     assert(dst_or_new_obj.as_address().index() != temp1 && dst_or_new_obj.as_address().index() != temp2 &&dst_or_new_obj.as_address().index() != temp2, "");
   }
   
-  JavaThread* cur_thread = JavaThread::current();
-  size_t heap_events_offset = (uint8_t*)&cur_thread->heap_events - (uint8_t*)cur_thread;
   Register temp3 = r14;
   push(r14);
   if (preserve_temp1)
@@ -4708,7 +4706,8 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     pushf(); 
 
   gen_lock_heap_event_mutex();
-  movq(temp1, Address(r15_thread, heap_events_offset, Address::times_1));
+  //TODO: Optimize
+  leaq(temp1, Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1));
   // mov64(temp1, (uint64_t)Universe::heap_event_counter_ptr, relocInfo::relocType::external_word_type, 0);
   movq(temp2, Address(temp1, 0));
   leaq(temp2, Address(temp2, 1));

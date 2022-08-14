@@ -740,9 +740,9 @@ const oop CheckGraph::INVALID_OOP = oop((oopDesc*)INVALID_PTR);
 
 void Universe::transfer_events_to_gpu() {
   sem_post(&cuda_semaphore);
-  JavaThread* cur_thread = JavaThread::current();
-  printf("Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)cur_thread->heap_events);
-  *(uint64_t*)cur_thread->heap_events = 0;
+  Universe::HeapEvent* events = Universe::get_heap_events_ptr();
+  printf("Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)events);
+  *(uint64_t*)events = 0;
 }
 
 void Universe::verify_heap_graph_for_copy_array() {

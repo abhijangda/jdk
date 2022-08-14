@@ -6086,10 +6086,12 @@ instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP
   ins_cost(125); // XXX
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
-    Address __mem = $cntr_mem$$Address;
+    Register cntr_addr_reg = $cntr_mem$$Address.base();
+    Address __mem = Address(r15_thread, cntr_addr_reg, Address::times_1);
     Register cntr_reg = $cntr$$Register;
-    Register cntr_addr_reg = __mem.base();
     
+    __ leaq(cntr_addr_reg, __mem);
+    __mem = Address(cntr_addr_reg, 0);
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
     __ movq(__mem, cntr_reg);
@@ -6106,11 +6108,10 @@ instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP
     event_mem = event_mem.plus_disp(8);
     __ movq(event_mem, $obj$$Register);
 
-    uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
-    uint64_t maxval = (uint64_t)ptr_event_ctr + (MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-    __ mov64(cntr_reg, maxval);
+    int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
+    __ leaq(cntr_reg, Address(r15_thread, (int)JavaThread::heap_events_offset() + maxval, Address::times_1));
     __ subq(cntr_addr_reg, cntr_reg);
-    __ mov64(cntr_addr_reg, (uint64_t)ptr_event_ctr);
+    __ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();
@@ -6134,10 +6135,12 @@ instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP ob
   ins_cost(125); // XXX
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
-    Address __mem = $cntr_mem$$Address;
+    Register cntr_addr_reg = $cntr_mem$$Address.base();
+    Address __mem = Address(r15_thread, cntr_addr_reg, Address::times_1);
     Register cntr_reg = $cntr$$Register;
-    Register cntr_addr_reg = __mem.base();
     
+    __ leaq(cntr_addr_reg, __mem);
+    __mem = Address(cntr_addr_reg, 0);
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
     __ movq(__mem, cntr_reg);
@@ -6154,11 +6157,10 @@ instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP ob
     event_mem = event_mem.plus_disp(8);
     __ movq(event_mem, $obj$$Register);
 
-    uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
-    uint64_t maxval = (uint64_t)ptr_event_ctr + (MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-    __ mov64(cntr_reg, maxval);
+    int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
+    __ leaq(cntr_reg, Address(r15_thread, (int)JavaThread::heap_events_offset() + maxval, Address::times_1));
     __ subq(cntr_addr_reg, cntr_reg);
-    __ mov64(cntr_addr_reg, (uint64_t)ptr_event_ctr);
+    __ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();
@@ -6182,10 +6184,12 @@ instruct incrCntrAndStoreHeapEventIntReg(memory cntr_mem, rRegI sz, any_RegP obj
   ins_cost(125); // XXX
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
-    Address __mem = $cntr_mem$$Address;
+    Register cntr_addr_reg = $cntr_mem$$Address.base();
+    Address __mem = Address(r15_thread, cntr_addr_reg, Address::times_1);
     Register cntr_reg = $cntr$$Register;
-    Register cntr_addr_reg = __mem.base();
-
+    
+    __ leaq(cntr_addr_reg, __mem);
+    __mem = Address(cntr_addr_reg, 0);
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
     __ movq(__mem, cntr_reg);
@@ -6204,11 +6208,10 @@ instruct incrCntrAndStoreHeapEventIntReg(memory cntr_mem, rRegI sz, any_RegP obj
     event_mem = event_mem.plus_disp(8);
     __ movq(event_mem, $obj$$Register);
     
-    uint64_t* ptr_event_ctr = (uint64_t*)*Universe::all_heap_events.head()->data();
-    uint64_t maxval = (uint64_t)ptr_event_ctr + (MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-    __ mov64(cntr_reg, maxval);
+    int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
+    __ leaq(cntr_reg, Address(r15_thread, (int)JavaThread::heap_events_offset() + maxval, Address::times_1));
     __ subq(cntr_addr_reg, cntr_reg);
-    __ mov64(cntr_addr_reg, (uint64_t)ptr_event_ctr); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+    __ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();
@@ -6232,10 +6235,12 @@ instruct incrCntrAndStoreHeapEventLongReg(memory cntr_mem, rRegL sz, any_RegP ob
   ins_cost(125); // XXX
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
-    Address __mem = $cntr_mem$$Address;
+    Register cntr_addr_reg = $cntr_mem$$Address.base();
+    Address __mem = Address(r15_thread, cntr_addr_reg, Address::times_1);
     Register cntr_reg = $cntr$$Register;
-    Register cntr_addr_reg = __mem.base();
-
+    
+    __ leaq(cntr_addr_reg, __mem);
+    __mem = Address(cntr_addr_reg, 0);
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
     __ movq(__mem, cntr_reg);
@@ -6253,7 +6258,6 @@ instruct incrCntrAndStoreHeapEventLongReg(memory cntr_mem, rRegL sz, any_RegP ob
     event_mem = event_mem.plus_disp(8);
     __ movq(event_mem, $obj$$Register);
     
-    uint64_t ptr_event_ctr = (uint64_t)(*Universe::all_heap_events.head()->data());
     uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
     __ subq(cntr_reg, maxval);
     Label not_equal;

@@ -91,6 +91,16 @@ template <class E> class LinkedList : public ResourceObj {
   inline void set_head(LinkedListNode<E>* h) { _head = h; }
   inline LinkedListNode<E>* head() const     { return _head; }
   inline bool is_empty()           const     { return head() == NULL; }
+  inline LinkedListNode<E>* tail() const {
+    LinkedListNode<E>* tail = head();
+    while (tail != NULL) {
+      if (tail->next() == NULL)
+        return tail;
+      tail = tail->next();
+    }
+
+    return NULL;
+  }
 
   inline size_t size() const {
     LinkedListNode<E>* p;

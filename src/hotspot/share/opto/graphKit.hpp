@@ -85,7 +85,7 @@ class GraphKit : public Phase {
     assert(!has_exceptions(), "user must call transfer_exceptions_into_jvms");
   }
 #endif
-  bool use_store_heap_event() {return true;}
+  bool use_store_heap_event() {return false;}
   virtual Parse*          is_Parse()          const { return NULL; }
   virtual LibraryCallKit* is_LibraryCallKit() const { return NULL; }
 

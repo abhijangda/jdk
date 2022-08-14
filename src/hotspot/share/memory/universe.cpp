@@ -1031,6 +1031,7 @@ void Universe::verify_heap_graph() {
         //                                            heap_event_type, 0));
         // }
       } else if (heap_event_type == Universe::FieldSet) {
+        continue;
         oopDesc* field = (oopDesc*)event.dst;
         oop obj = oop_for_address(ObjectNode::oop_to_obj_node, field);
         if (obj == NULL) {
@@ -1059,6 +1060,7 @@ void Universe::verify_heap_graph() {
         //   printf("0 0x%lx\n", 0);
         // }
       } else if (heap_event_type == Universe::CopyObject) {
+        continue;
         oop obj_src = oop((oopDesc*)event.src);
         oop obj_dst = oop((oopDesc*)event.dst);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
@@ -1096,6 +1098,7 @@ void Universe::verify_heap_graph() {
           } while(ik && ik->is_klass());
         }
       } else if (heap_event_type == Universe::CopyArray) {
+        continue;
         oopDesc* obj_src_start = (oopDesc*)event.src;
         oopDesc* obj_dst_start = (oopDesc*)event.dst;
 
@@ -1200,7 +1203,7 @@ void Universe::verify_heap_graph() {
     }
   }
   printf("event_threads.size() %ld\n", event_threads.size());
-  CheckGraph check_graph(true, true, true, true);
+  CheckGraph check_graph(true, false, false, false);
   Universe::heap()->object_iterate(&check_graph);
 
   size_t num_objects = ObjectNode::oop_to_obj_node.size();

@@ -192,19 +192,27 @@ void* Thread::allocate(size_t size, bool throw_excpt, MEMFLAGS flags) {
                        : AllocateHeap(size, flags, CURRENT_PC, AllocFailStrategy::RETURN_NULL);
   if (InstrumentHeapEvents) {
     size -= (128+MaxHeapEvents)*sizeof(Universe::HeapEvent);
-    for (uint i = 0; i < 128*sizeof(Universe::HeapEvent); i++) {
+    for (uint i = 0; i < (128+MaxHeapEvents)*sizeof(Universe::HeapEvent); i++) {
       *(((char*)p) + size + i) = 0;
     }
-    if (size == sizeof(JavaThread)) {
-      Universe::add_heap_event_ptr((Universe::HeapEvent*)(((char*)p) + JavaThread::heap_events_offset()));
-    }
+    Universe::HeapEvent* he = (Universe::HeapEvent*)(((char*)p) + JavaThread::heap_events_offset());
+    printf("199: thread %p heap_events %p num %ld\n", p, he, Universe::all_heap_events.size());
+    // if (size == sizeof(JavaThread)) {
+      Universe::add_heap_event_ptr(he);
+    // }
   }
 
   return p;
 }
 
 void Thread::operator delete(void* p) {
-  FreeHeap(p);
+  if (InstrumentHeapEvents) {
+    Universe::HeapEvent* ptr = (Universe::HeapEvent*)(((char*)p) + JavaThread::heap_events_offset());
+    printf("free p %p he %p\n", p, ptr);
+    // Universe::copy_heap_events(ptr);
+    // Universe::remove_heap_event_ptr(ptr);
+  }
+  // FreeHeap(p);
 }
 
 void JavaThread::smr_delete() {
@@ -792,7 +800,7 @@ static void call_postVMInitHook(TRAPS) {
 // Initialized by VMThread at vm_global_init
 static OopStorage* _thread_oop_storage = NULL;
 int JavaThread::heap_events_offset() {
-  return sizeof(JavaThread);
+  return 1600;//sizeof(JavaThread) + 16;
 }
 oop  JavaThread::threadObj() const    {
   return _threadObj.resolve();

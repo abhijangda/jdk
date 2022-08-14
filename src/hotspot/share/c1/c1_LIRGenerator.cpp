@@ -1817,12 +1817,13 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
   if (true) {
     // __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
 
-    JavaThread* cur_thread = JavaThread::current();
-    size_t heap_events_offset = (uint8_t*)&cur_thread->heap_events - (uint8_t*)cur_thread;
-    __ move(getThreadPointer(), counter);
-    __ load(new LIR_Address(counter, heap_events_offset, T_LONG), heap_event_counter_addr_reg);
+    __ move(getThreadPointer(), heap_event_counter_addr_reg);
+    // __ add(counter, LIR_OprFact::longConst(JavaThread::heap_events_offset()), counter);
+    // __ load(new LIR_Address(counter, 0, T_LONG), heap_event_counter_addr_reg);
 
-    LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
+    LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, JavaThread::heap_events_offset(), T_LONG);
+    __ leal(heap_event_counter_addr, heap_event_counter_addr_reg);
+    heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
     __ load(heap_event_counter_addr, counter);
     __ add(counter, LIR_OprFact::longConst(1L), counter);
     __ store(counter, heap_event_counter_addr);
@@ -1905,7 +1906,7 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
 void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_Opr dst_offset, LIR_Opr src_offset, LIR_Opr count) {
   if (!InstrumentHeapEvents)
     return;
-  
+
   LIR_Opr heap_event_counter_addr_reg = new_pointer_register();
   LIR_Opr heap_events_addr_reg = heap_event_counter_addr_reg;
   LIR_Opr counter = new_pointer_register();
@@ -1920,12 +1921,14 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
   if (true) {
     //TODO: combine this block with next block's statement
     // __ move(LIR_OprFact::longConst((uint64_t)Universe::heap_event_counter_ptr), heap_event_counter_addr_reg);
-    JavaThread* cur_thread = JavaThread::current();
-    size_t heap_events_offset = (uint8_t*)&cur_thread->heap_events - (uint8_t*)cur_thread;
-    __ leal(new LIR_Address(getThreadPointer(), 0, T_LONG), counter);
-    __ load(new LIR_Address(counter, heap_events_offset, T_LONG), heap_event_counter_addr_reg);
+    // JavaThread* cur_thread = JavaThread::current();
+    // size_t heap_events_offset = (uint8_t*)&cur_thread->heap_events - (uint8_t*)cur_thread;
+    __ move(getThreadPointer(), heap_event_counter_addr_reg);
+    // __ load(new LIR_Address(counter, JavaThread::heap_events_offset(), T_LONG), heap_event_counter_addr_reg);
 
-    LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
+    LIR_Address* heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, JavaThread::heap_events_offset(), T_LONG);
+    __ leal(heap_event_counter_addr, heap_event_counter_addr_reg);
+    heap_event_counter_addr = new LIR_Address(heap_event_counter_addr_reg, 0, T_LONG);
     __ load(heap_event_counter_addr, counter);
     __ transfer_events(counter, LIR_OprFact::longConst(MaxHeapEvents - 1));
 

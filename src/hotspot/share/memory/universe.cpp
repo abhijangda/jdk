@@ -782,20 +782,22 @@ void Universe::add_heap_events(Universe::HeapEventType event_type1, Universe::He
                                Universe::HeapEventType event_type2, Universe::HeapEvent event2) {
   // JavaThread* cur_thread = JavaThread::current();
   // assert(cur_thread->heap_events, "");
-  HeapEvent* heap_events = Universe::get_heap_events_ptr();//cur_thread->heap_events;
-  uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   if (!InstrumentHeapEvents) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
   if (CheckHeapEventGraphWithHeap)
     Universe::lock_mutex_heap_event();
+  HeapEvent* heap_events = Universe::get_heap_events_ptr();//cur_thread->heap_events;
+  uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   // Universe::heap_event_counter++;
   // if (event.src == 0x0) {
   //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);
   // }
+  #ifndef PRODUCT
   if (all_heap_events.find(heap_events) == NULL) {
     printf("835: heap_events %p\n", heap_events);
     abort();
   }
+  #endif
   if (*heap_event_counter_ptr + 2 > MaxHeapEvents) {
     if (CheckHeapEventGraphWithHeap)
       Universe::verify_heap_graph();
@@ -823,7 +825,7 @@ void Universe::add_heap_events(Universe::HeapEventType event_type1, Universe::He
 
 void Universe::add_heap_event(Universe::HeapEventType event_type, Universe::HeapEvent event) {
   if (!InstrumentHeapEvents) return;
-  JavaThread* cur_thread = JavaThread::current();
+  // JavaThread* cur_thread = JavaThread::current();
   // assert(cur_thread->heap_events, "");
   HeapEvent* heap_events = Universe::get_heap_events_ptr();//cur_thread->heap_events;
   uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
@@ -835,10 +837,12 @@ void Universe::add_heap_event(Universe::HeapEventType event_type, Universe::Heap
   // if (event.src == 0x0) {
   //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);
   // }  
+  #ifndef PRODUCT
   if (all_heap_events.find(heap_events) == NULL) {
     printf("835: heap_events %p\n", heap_events);
     abort();
   }
+  #endif
 
   // if (event_type == Universe::FieldSet) {
   //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);

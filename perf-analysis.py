@@ -10,7 +10,7 @@ max_heap_events = str(4*1024*1024)
 config = "-XX:+TieredCompilation -XX:+UseInterpreter"
 inline_copy = "-XX:+UnlockDiagnosticVMOptions -XX:-InlineObjectCopy"
 jvm_command = modified_jvm_path + f" -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:-DoEscapeAnalysis -XX:MetaspaceSize=16384m"
-dacapo_args = "-jar dacapo-9.12-MR1-bach.jar %s -n2 -t1"
+dacapo_args = "-jar dacapo-9.12-MR1-bach.jar %s -n1 -t1"
 
 instrument_args = f"-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -XX:MaxHeapEvents={max_heap_events}"
 
@@ -24,7 +24,7 @@ cannot_use_InlineObjCopy = ["luindex", "h2", "fop"]
 def exec_bench(bench, c):
   s, o = subprocess.getstatusoutput(c)
   return (s, o)
-  
+
 all_bench_times = {b: {"baseline": [], "instrument": []} for b in all_benchs}
 
 import re
@@ -55,7 +55,7 @@ for bench in all_benchs:
     all_bench_times[bench]["baseline"].append(float(t))
     print (bench, t)
 
-  c = bench_c + " " + instrument_args + " " + bench_args + " " + bench
+  c = bench_c + " " + instrument_args + " " + bench_args 
   print("Instrument", c)
   for i in range(num_runs):
     print ("exec", i)
@@ -71,7 +71,7 @@ def process_times(times_l, k):
       a.append(i)
   if a == []:
     a = [1, 1]
-  
+
   a = sorted(a)
   if (k == "baseline"):
     return a[1:]

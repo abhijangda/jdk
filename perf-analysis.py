@@ -10,7 +10,7 @@ max_heap_events = str(4*1024*1024)
 config = "-XX:+TieredCompilation -XX:+UseInterpreter"
 inline_copy = "-XX:+UnlockDiagnosticVMOptions -XX:-InlineObjectCopy"
 jvm_command = modified_jvm_path + f" -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:-DoEscapeAnalysis -XX:MetaspaceSize=16384m"
-dacapo_args = "-jar dacapo-9.12-MR1-bach.jar %s -n1 -t1"
+dacapo_args = "-jar dacapo-9.12-MR1-bach.jar %s -n2 -t1"
 
 instrument_args = f"-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -XX:MaxHeapEvents={max_heap_events}"
 
@@ -19,7 +19,7 @@ all_benchs = "avrora fop h2 jython luindex lusearch sunflow xalan pmd".split() #
 if "-Tiered" in config:
   all_benchs = all_benchs.replace("h2 ",'')
 
-cannot_use_InlineObjCopy = ["luindex"]
+cannot_use_InlineObjCopy = ["luindex", "h2", "fop"]
 
 def exec_bench(bench, c):
   s, o = subprocess.getstatusoutput(c)

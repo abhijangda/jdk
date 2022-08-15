@@ -85,7 +85,14 @@ class GraphKit : public Phase {
     assert(!has_exceptions(), "user must call transfer_exceptions_into_jvms");
   }
 #endif
-  bool use_store_heap_event() {return false;}
+  bool use_store_heap_event() {
+    bool to_return = true;
+    // if (!CheckHeapEventGraphWithHeap && !to_return) {
+    //   printf("should be set to true?\n");
+    //   abort();
+    // }
+    return to_return;
+  }
   virtual Parse*          is_Parse()          const { return NULL; }
   virtual LibraryCallKit* is_LibraryCallKit() const { return NULL; }
 

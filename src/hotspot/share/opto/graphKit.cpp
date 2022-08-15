@@ -1156,7 +1156,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   
   uint64_t offset = JavaThread::heap_events_offset();
   uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(offset);//(uint64_t*)*Universe::all_heap_events.tail()->data();
-  if (event_type == Universe::FieldSet) return;
+  
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(true);
   
@@ -1193,7 +1193,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
 void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_offset, Node* src_offset, Node* count) {
   if (!InstrumentHeapEvents)
     return;
-  return;
+  
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(true);
 

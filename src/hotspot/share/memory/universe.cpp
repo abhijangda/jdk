@@ -952,7 +952,7 @@ void Universe::verify_heap_graph() {
   if (!CheckHeapEventGraphWithHeap)
     return;
   
-  pthread_mutex_lock(&lock);
+  // pthread_mutex_lock(&lock);
   size_t num_events_created = 0;
   checking++;
   // printf("checking %d %ld tid %ld\n", checking++, Universe::heap_event_counter, gettid()); 
@@ -984,8 +984,11 @@ void Universe::verify_heap_graph() {
       //                                              event.heap_event_type, obj);
       // }
       HeapEventType heap_event_type = decode_heap_event_type(event);
+      // if (heap_events_size < 16*1024*1024) {
+      //   uint64_t size = decode_heap_event_src(event);
+      //   printf("het %ld src 0x%lx 0x%lx\n", heap_event_type, size, event.dst);
+      // }
       
-      // printf("het %ld src %ld\n", heap_event_type, event.src);
       if (heap_event_type == Universe::NewObject || 
           heap_event_type == Universe::NewArray) {
         oopDesc* obj = (oopDesc*)event.dst;
@@ -1031,7 +1034,6 @@ void Universe::verify_heap_graph() {
         //                                            heap_event_type, 0));
         // }
       } else if (heap_event_type == Universe::FieldSet) {
-        continue;
         oopDesc* field = (oopDesc*)event.dst;
         oop obj = oop_for_address(ObjectNode::oop_to_obj_node, field);
         if (obj == NULL) {
@@ -1060,7 +1062,6 @@ void Universe::verify_heap_graph() {
         //   printf("0 0x%lx\n", 0);
         // }
       } else if (heap_event_type == Universe::CopyObject) {
-        continue;
         oop obj_src = oop((oopDesc*)event.src);
         oop obj_dst = oop((oopDesc*)event.dst);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
@@ -1098,7 +1099,6 @@ void Universe::verify_heap_graph() {
           } while(ik && ik->is_klass());
         }
       } else if (heap_event_type == Universe::CopyArray) {
-        continue;
         oopDesc* obj_src_start = (oopDesc*)event.src;
         oopDesc* obj_dst_start = (oopDesc*)event.dst;
 
@@ -1133,6 +1133,9 @@ void Universe::verify_heap_graph() {
               oop src_elem_val = obj_src_node_iter->second.field_val((void*)src_elem_addr);
               obj_dst_node_iter->second.update_or_add_field((void*)dst_elem_addr, 
               src_elem_val, 0);
+            } else {
+              // obj_dst_node_iter->second.update_or_add_field((void*)dst_elem_addr, (oopDesc*)*(reinterpret_cast<uint64_t*>(src_elem_addr)), 0);
+              // printf("1134: Not found 0x%lx -> 0x%lx for array %p\n", src_elem_addr, dst_elem_addr, (oopDesc*)obj_dst);
             }
           }
         } else {
@@ -1148,6 +1151,8 @@ void Universe::verify_heap_graph() {
               oop src_elem_val = obj_src_node_iter->second.field_val((void*)src_elem_addr);
               obj_dst_node_iter->second.update_or_add_field((void*)dst_elem_addr, 
               src_elem_val, 0);
+            } else {
+              // printf("1151: Not found 0x%lx -> 0x%lx for array %p\n", src_elem_addr, dst_elem_addr, (oopDesc*)obj_dst);
             }
           }
         }
@@ -1203,7 +1208,7 @@ void Universe::verify_heap_graph() {
     }
   }
   printf("event_threads.size() %ld\n", event_threads.size());
-  CheckGraph check_graph(true, false, false, false);
+  CheckGraph check_graph(true, true, true, true);
   Universe::heap()->object_iterate(&check_graph);
 
   size_t num_objects = ObjectNode::oop_to_obj_node.size();
@@ -1218,7 +1223,7 @@ void Universe::verify_heap_graph() {
   // if (Universe::is_verify_cause_full_gc) abort();
 
   Universe::is_verify_cause_full_gc = false;
-  pthread_mutex_unlock(&lock);
+  // pthread_mutex_unlock(&lock);
 }
 
 #include <cuda.h>

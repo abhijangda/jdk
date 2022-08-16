@@ -131,6 +131,8 @@
           "maximum size of a loop optimized by global value numbering")     \
           range(0, 128)                                                     \
                                                                             \
+  product(bool, C1InstrumentHeapEvents, true,                               \
+          "Instrument heap events in C1")                                   \
   develop(bool, EliminateBlocks, true,                                      \
           "Eliminate unneccessary basic blocks")                            \
                                                                             \

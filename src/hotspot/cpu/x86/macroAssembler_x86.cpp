@@ -4687,6 +4687,7 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
                                        Register temp1, bool preserve_temp1, Register temp2, bool preserve_temp2, bool preserve_flags)
 {
   if (!InstrumentHeapEvents) return;
+  if (!InterpreterInstrumentHeapEvents) return;
   if (src_or_obj_size.is_register())
     assert(src_or_obj_size.as_register() != temp1 && src_or_obj_size.as_register() != temp2, "");
   if (dst_or_new_obj.is_address()) {

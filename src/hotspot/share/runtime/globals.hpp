@@ -2064,6 +2064,8 @@ const intx ObjectAlignmentInBytes = 8;
                                                                             \
   product(bool, OffloadGCToGPU, false,                                       \
                 "Transfer heap events to GPU and run GC on GPU")            \
+  product(bool, InterpreterInstrumentHeapEvents, true,                      \
+          "InstrumentHeapEvents in interpreter")                            \
 
 // end of RUNTIME_FLAGS
 

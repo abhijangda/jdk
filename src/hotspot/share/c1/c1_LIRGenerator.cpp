@@ -1804,6 +1804,8 @@ LIR_Opr LIRGenerator::access_atomic_add_at(DecoratorSet decorators, BasicType ty
 void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr dst_or_new_obj, LIR_Opr src_or_obj_size) {
   if (!InstrumentHeapEvents)
     return;
+  if (!C1InstrumentHeapEvents)
+    return;
   LIR_Opr heap_event_counter_addr_reg = new_pointer_register();
   LIR_Opr heap_events_addr_reg = heap_event_counter_addr_reg;
   LIR_Opr counter = new_pointer_register();
@@ -1905,7 +1907,7 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
 void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_Opr dst_offset, LIR_Opr src_offset, LIR_Opr count) {
   if (!InstrumentHeapEvents)
     return;
-
+  if (!C1InstrumentHeapEvents) return;
   LIR_Opr heap_event_counter_addr_reg = new_pointer_register();
   LIR_Opr heap_events_addr_reg = heap_event_counter_addr_reg;
   LIR_Opr counter = new_pointer_register();

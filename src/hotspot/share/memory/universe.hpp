@@ -221,6 +221,9 @@ class Universe: AllStatic {
   static HeapEvent encode_heap_event(HeapEventType event_type, HeapEvent event);
   static HeapEventType decode_heap_event_type(HeapEvent event);
   static uint64_t decode_heap_event_src(HeapEvent event);
+  static void add_heap_event_ptr(Universe::HeapEvent* ptr);
+  static void remove_heap_event_ptr(Universe::HeapEvent* ptr);
+  static void copy_heap_events(Universe::HeapEvent* ptr);
   static LinkedListImpl<HeapEvent*> all_heap_events;
   static pthread_mutex_t mutex_heap_event;
   static bool enable_transfer_events;
@@ -231,7 +234,7 @@ class Universe: AllStatic {
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();
   static void print_heap_event_counter();
-  static HeapEvent* alloc_heap_events();
+  static HeapEvent* get_heap_events_ptr();
   static void verify_heap_graph();
   static void verify_heap_graph_for_copy_array();
   static void* mmap(size_t sz) {
@@ -239,6 +242,7 @@ class Universe: AllStatic {
     assert(ptr != NULL, "");
     if (ptr == MAP_FAILED) {
       perror("mmap failed");
+      abort();
     }
     
     return ptr;

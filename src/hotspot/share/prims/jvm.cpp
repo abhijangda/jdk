@@ -685,6 +685,7 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
     Universe::add_heap_event(Universe::CopyObject, Universe::HeapEvent{(uint64_t)(void*)obj(), (uint64_t)(void*)new_obj_oop});
   } else if (obj->klass()->id() == ObjArrayKlassID) {
     //TODO: Add these using single function call
+    // printf("copy: %p -> %p\n", obj(), new_obj_oop);
     Universe::add_heap_events(Universe::CopyArray, Universe::HeapEvent{(uint64_t)(void*)obj(), (uint64_t)(void*)new_obj_oop}, 
                               Universe::CopyArrayLength, Universe::HeapEvent{event_size, event_size});
   }

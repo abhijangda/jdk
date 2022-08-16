@@ -183,12 +183,35 @@ THREAD_LOCAL Thread* Thread::_thr_current = NULL;
 
 // ======= Thread ========
 void* Thread::allocate(size_t size, bool throw_excpt, MEMFLAGS flags) {
-  return throw_excpt ? AllocateHeap(size, flags, CURRENT_PC)
+  bool is_javathread = size == sizeof(JavaThread);
+  if (InstrumentHeapEvents) {
+    printf("186: size %ld\n", size);
+    size += (128+MaxHeapEvents)*sizeof(Universe::HeapEvent);
+    printf("189: size %ld\n", size);
+  }
+  void* p = throw_excpt ? AllocateHeap(size, flags, CURRENT_PC)
                        : AllocateHeap(size, flags, CURRENT_PC, AllocFailStrategy::RETURN_NULL);
+  if (InstrumentHeapEvents) {
+    size -= (128+MaxHeapEvents)*sizeof(Universe::HeapEvent);
+    *(uint64_t*)(((char*)p) + JavaThread::heap_events_offset()) = 0;
+    Universe::HeapEvent* he = (Universe::HeapEvent*)(((char*)p) + JavaThread::heap_events_offset());
+    printf("199: thread %p heap_events %p num %ld\n", p, he, Universe::all_heap_events.size());
+    // if (size == sizeof(JavaThread)) {
+      Universe::add_heap_event_ptr(he);
+    // }
+  }
+
+  return p;
 }
 
 void Thread::operator delete(void* p) {
-  FreeHeap(p);
+  if (InstrumentHeapEvents) {
+    Universe::HeapEvent* ptr = (Universe::HeapEvent*)(((char*)p) + JavaThread::heap_events_offset());
+    printf("free p %p he %p\n", p, ptr);
+    // Universe::copy_heap_events(ptr);
+    // Universe::remove_heap_event_ptr(ptr);
+  }
+  // FreeHeap(p);
 }
 
 void JavaThread::smr_delete() {
@@ -775,7 +798,9 @@ static void call_postVMInitHook(TRAPS) {
 
 // Initialized by VMThread at vm_global_init
 static OopStorage* _thread_oop_storage = NULL;
-
+int JavaThread::heap_events_offset() {
+  return 1600;//sizeof(JavaThread) + 16;
+}
 oop  JavaThread::threadObj() const    {
   return _threadObj.resolve();
 }
@@ -1075,8 +1100,8 @@ JavaThread::JavaThread() :
 
   _SleepEvent(ParkEvent::Allocate(this))
 {
-  heap_events = Universe::alloc_heap_events();
-  printf("1079: cur_thread %p heap_events %p\n", this, heap_events);
+  // heap_events = Universe::alloc_heap_events();
+  // printf("1079: cur_thread %p heap_events %p\n", this, heap_events);
   set_jni_functions(jni_functions());
 
 #if INCLUDE_JVMCI
@@ -2817,6 +2842,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Attach the main thread to this os thread
   JavaThread* main_thread = new JavaThread();
+  printf("2824: main_thread %p\n", main_thread);
   main_thread->set_thread_state(_thread_in_vm);
   main_thread->initialize_thread_current();
   // must do this before set_active_handles

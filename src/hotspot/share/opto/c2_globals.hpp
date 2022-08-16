@@ -738,6 +738,8 @@
           "loads/stores")                                                   \
           range(0, max_intx)                                                \
                                                                             \
+  product(bool, C2InstrumentHeapEvents, true,                               \
+          "Instrument heap events in C2 compiler")                          \
   develop(bool, StressArrayCopyMacroNode, false,                            \
           "Perform ArrayCopy load/store replacement during IGVN only")      \
                                                                             \

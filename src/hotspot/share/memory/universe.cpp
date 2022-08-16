@@ -202,6 +202,7 @@ class MmapHeap {
 
   void* malloc(size_t sz) {
     if (sz == 0) return NULL;
+    
     sz = adjust_size(sz);
 
     if (sz >= LARGE_OBJ_SIZE) {
@@ -721,7 +722,7 @@ class CheckGraph : public ObjectClosure {
           } else if (actual_elem != NULL && actual_elem != INVALID_OOP) {
             num_not_found++;
             if (num_not_found < 100) {
-              printf("Elem at index '%d' is not found in array '%p' of length '%d'\n", i, (oopDesc*)array, length);
+              printf("Elem at index '%d' of addr '%p' is not found in array '%p' of length '%d'\n", i, elem_addr, (oopDesc*)array, length);
               char name[1024];
               printf("elem type %s\n", get_oop_klass_name(actual_elem, name));
             }
@@ -739,9 +740,9 @@ const oop CheckGraph::INVALID_OOP = oop((oopDesc*)INVALID_PTR);
 
 void Universe::transfer_events_to_gpu() {
   sem_post(&cuda_semaphore);
-  JavaThread* cur_thread = JavaThread::current();
-  printf("Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)cur_thread->heap_events);
-  *(uint64_t*)cur_thread->heap_events = 0;
+  Universe::HeapEvent* events = Universe::get_heap_events_ptr();
+  printf("Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)events);
+  *(uint64_t*)events = 0;
 }
 
 void Universe::verify_heap_graph_for_copy_array() {
@@ -769,7 +770,7 @@ void Universe::unlock_mutex_heap_event() {
 
 void Universe::print_heap_event_counter() {
   // *Universe::heap_event_counter_ptr = 0; 
-  HeapEvent* heap_events = Universe::alloc_heap_events();
+  HeapEvent* heap_events = Universe::get_heap_events_ptr();
   uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
 
   printf("ctr %ld\n", *heap_event_counter_ptr);
@@ -781,16 +782,22 @@ void Universe::add_heap_events(Universe::HeapEventType event_type1, Universe::He
                                Universe::HeapEventType event_type2, Universe::HeapEvent event2) {
   // JavaThread* cur_thread = JavaThread::current();
   // assert(cur_thread->heap_events, "");
-  HeapEvent* heap_events = Universe::alloc_heap_events();//cur_thread->heap_events;
-  uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   if (!InstrumentHeapEvents) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
   if (CheckHeapEventGraphWithHeap)
     Universe::lock_mutex_heap_event();
+  HeapEvent* heap_events = Universe::get_heap_events_ptr();//cur_thread->heap_events;
+  uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   // Universe::heap_event_counter++;
   // if (event.src == 0x0) {
   //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);
   // }
+  #ifndef PRODUCT
+  if (all_heap_events.find(heap_events) == NULL) {
+    printf("835: heap_events %p\n", heap_events);
+    abort();
+  }
+  #endif
   if (*heap_event_counter_ptr + 2 > MaxHeapEvents) {
     if (CheckHeapEventGraphWithHeap)
       Universe::verify_heap_graph();
@@ -820,7 +827,7 @@ void Universe::add_heap_event(Universe::HeapEventType event_type, Universe::Heap
   if (!InstrumentHeapEvents) return;
   // JavaThread* cur_thread = JavaThread::current();
   // assert(cur_thread->heap_events, "");
-  HeapEvent* heap_events = Universe::alloc_heap_events();//cur_thread->heap_events;
+  HeapEvent* heap_events = Universe::get_heap_events_ptr();//cur_thread->heap_events;
   uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   // if (!cur_thread->heap_events) return;
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
@@ -829,9 +836,20 @@ void Universe::add_heap_event(Universe::HeapEventType event_type, Universe::Heap
   // Universe::heap_event_counter++;
   // if (event.src == 0x0) {
   //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);
+  // }  
+  #ifndef PRODUCT
+  if (all_heap_events.find(heap_events) == NULL) {
+    printf("835: heap_events %p\n", heap_events);
+    abort();
+  }
+  #endif
+
+  // if (event_type == Universe::FieldSet) {
+  //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);
   // }
-  uint64_t v = *heap_event_counter_ptr;
   event = encode_heap_event(event_type, event);
+
+  uint64_t v = *heap_event_counter_ptr;
   // printf("v %ld\n", v);
   (&heap_events[1])[v] = event;
   *heap_event_counter_ptr = v + 1;
@@ -873,20 +891,37 @@ uint64_t Universe::decode_heap_event_src(HeapEvent event) {
   return (event.src >> 15);
 }
 
-Universe::HeapEvent* Universe::alloc_heap_events() {
- static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-  if (all_heap_events.head() == NULL) {
-    pthread_mutex_lock(&lock);
-    // HeapEvent* events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents)*sizeof(Universe::HeapEvent));
-    // all_heap_events.add(events);
-    if (all_heap_events.head() == NULL) {
-      HeapEvent* events = (Universe::HeapEvent*)Universe::mmap((128+MaxHeapEvents*2)*sizeof(Universe::HeapEvent));
-      all_heap_events.add(events);
-    }
-    pthread_mutex_unlock(&lock);
-  }
+static pthread_mutex_t heap_events_list_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void Universe::copy_heap_events(Universe::HeapEvent* ptr) {  
+  const size_t heap_events_size = *(const uint64_t*)ptr;
+  if (heap_events_size == 0) return;
+  pthread_mutex_lock(&heap_events_list_lock);
+  printf("882: th_heap_events %p heap_events_size %ld\n", ptr, heap_events_size);
+  Universe::HeapEvent* copy = (Universe::HeapEvent*)Universe::mmap(heap_events_size * sizeof(Universe::HeapEvent));
+  memcpy(copy, ptr, heap_events_size*sizeof(Universe::HeapEvent));
+  all_heap_events.add(copy);
+  pthread_mutex_unlock(&heap_events_list_lock);
+}
+
+void Universe::add_heap_event_ptr(Universe::HeapEvent* ptr) {
+  pthread_mutex_lock(&heap_events_list_lock);
+  all_heap_events.add(ptr);
+  pthread_mutex_unlock(&heap_events_list_lock);
+}
+
+void Universe::remove_heap_event_ptr(Universe::HeapEvent* ptr) {
+  pthread_mutex_lock(&heap_events_list_lock);
+  all_heap_events.remove(ptr);
+  pthread_mutex_unlock(&heap_events_list_lock);
+}
+
+Universe::HeapEvent* Universe::get_heap_events_ptr() {
+  JavaThread* curr_thread = JavaThread::current();
   
-  return *all_heap_events.head()->data();
+  Universe::HeapEvent* p = (Universe::HeapEvent*)((uint64_t)curr_thread + JavaThread::heap_events_offset());
+  // printf("curr_thread %p sizeof(JavaThread) %ld p %p\n", curr_thread, sizeof(JavaThread), p);
+  return p;
 }
 
 template<typename Map>
@@ -911,15 +946,17 @@ oopDesc* oop_for_address(Map& oop_map, oopDesc* field) {
 bool Universe::is_verify_cause_full_gc = false;
 
 void Universe::verify_heap_graph() {
+
   // if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
   //   return;
-  
+  static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;  
   if (Universe::enable_transfer_events)
     Universe::transfer_events_to_gpu();
 
   if (!CheckHeapEventGraphWithHeap)
     return;
   
+  // pthread_mutex_lock(&lock);
   size_t num_events_created = 0;
   checking++;
   // printf("checking %d %ld tid %ld\n", checking++, Universe::heap_event_counter, gettid()); 
@@ -937,7 +974,7 @@ void Universe::verify_heap_graph() {
     auto th_heap_events = *heap_events_iter;
     const size_t heap_events_size = *(const uint64_t*)th_heap_events;
     const HeapEvent* heap_events_start = &th_heap_events[1];
-    printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, alloc_heap_events());
+    printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, get_heap_events_ptr());
 
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
@@ -950,9 +987,12 @@ void Universe::verify_heap_graph() {
       //   printf("event.src %ld event.heap_event_type %ld obj %p\n", event.src,
       //                                              event.heap_event_type, obj);
       // }
-
       HeapEventType heap_event_type = decode_heap_event_type(event);
-      // printf("het %ld src %ld\n", heap_event_type, event.src);
+      // if (heap_events_size < 16*1024*1024) {
+      //   uint64_t size = decode_heap_event_src(event);
+      //   printf("het %ld src 0x%lx 0x%lx\n", heap_event_type, size, event.dst);
+      // }
+      
       if (heap_event_type == Universe::NewObject || 
           heap_event_type == Universe::NewArray) {
         oopDesc* obj = (oopDesc*)event.dst;
@@ -962,7 +1002,6 @@ void Universe::verify_heap_graph() {
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
         }
         uint64_t size = decode_heap_event_src(event);
-        // printf("obj %p size %ld\n", obj, event.src);
         ObjectNode obj_node = ObjectNode(obj, size, heap_event_type, 0);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
       }
@@ -970,11 +1009,18 @@ void Universe::verify_heap_graph() {
   }
 
   printf("Nodes created: %ld\nCreating Edges\n", ObjectNode::oop_to_obj_node.size());
+  //Go through events in the order they are created
+  Universe::HeapEvent* reverse_events[all_heap_events.size()];
+  auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head());
   
-  for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
-       !heap_events_iter.is_empty(); heap_events_iter.next()) {
-    auto th_heap_events = *heap_events_iter;
+  for (uint i = 0; i < all_heap_events.size(); i++) {
+    reverse_events[all_heap_events.size() - i - 1] = *heap_events_iter;
+    heap_events_iter.next();
+  }
+  for (uint i = 0; i < all_heap_events.size(); i++) {
+    auto th_heap_events = reverse_events[i];
     const size_t heap_events_size = *(const uint64_t*)th_heap_events;
+    // printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, get_heap_events_ptr());
     *(uint64_t*)th_heap_events = 0;
     HeapEvent* heap_events_start = &th_heap_events[1];
     
@@ -1063,9 +1109,8 @@ void Universe::verify_heap_graph() {
         HeapEvent length_event = heap_events_start[event_iter+1];
         length_event.src = decode_heap_event_src(length_event);
         objArrayOop obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
-        // printf("1067: %p\n", (oopDesc*)obj_src);
         objArrayOop obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
-        // printf("1069: %p\n", (oopDesc*)obj_dst);
+        
         if (obj_src == NULL or obj_dst == NULL) {
           printf("Didn't find \n");
         }
@@ -1092,6 +1137,9 @@ void Universe::verify_heap_graph() {
               oop src_elem_val = obj_src_node_iter->second.field_val((void*)src_elem_addr);
               obj_dst_node_iter->second.update_or_add_field((void*)dst_elem_addr, 
               src_elem_val, 0);
+            } else {
+              // obj_dst_node_iter->second.update_or_add_field((void*)dst_elem_addr, (oopDesc*)*(reinterpret_cast<uint64_t*>(src_elem_addr)), 0);
+              // printf("1134: Not found 0x%lx -> 0x%lx for array %p\n", src_elem_addr, dst_elem_addr, (oopDesc*)obj_dst);
             }
           }
         } else {
@@ -1107,6 +1155,8 @@ void Universe::verify_heap_graph() {
               oop src_elem_val = obj_src_node_iter->second.field_val((void*)src_elem_addr);
               obj_dst_node_iter->second.update_or_add_field((void*)dst_elem_addr, 
               src_elem_val, 0);
+            } else {
+              // printf("1151: Not found 0x%lx -> 0x%lx for array %p\n", src_elem_addr, dst_elem_addr, (oopDesc*)obj_dst);
             }
           }
         }
@@ -1177,6 +1227,7 @@ void Universe::verify_heap_graph() {
   // if (Universe::is_verify_cause_full_gc) abort();
 
   Universe::is_verify_cause_full_gc = false;
+  // pthread_mutex_unlock(&lock);
 }
 
 #include <cuda.h>

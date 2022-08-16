@@ -6323,55 +6323,52 @@ instruct incrCntrAndStoreHeapEventFieldSet(memory cntr_mem, any_RegP val, any_Re
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct incrCntrAndStoreCopyArrayEvent(memory cntr_mem, any_RegP src_array, rRegI src_offset, any_RegP dst_array, rRegI dst_offset, rRegI copy_count, rRegL cntr)
+instruct incrCntrAndStoreCopyArrayEvent(memory cntr_mem, any_RegP src_array, rRegI src_offset, any_RegP dst_array, rRegI dst_offset, rRegI copy_count)
 %{
   match(Set cntr_mem (IncrCntrAndStoreCopyArrayEvent cntr_mem (Binary src_array (Binary src_offset (Binary dst_array (Binary dst_offset copy_count))))));
-  effect(TEMP cntr);
   ins_cost(125); // XXX
   format %{ "movq    $cntr_mem, $src_offset\t# long" %}
   ins_encode %{
-    Register cntr_reg = $cntr$$Register;
-    Register cntr_addr_reg = $cntr_mem$$Address.base();
+    Register cntr_reg = $cntr_mem$$Address.base();
     Register src_array_reg = $src_array$$Register;
     Register src_offset_reg = $src_offset$$Register;
     Register dst_array_reg = $dst_array$$Register;
     Register dst_offset_reg = $dst_offset$$Register;
     Register copy_count_reg = $copy_count$$Register;
-    
+    //TODO: Specialize for immediate offsets
     Address __mem = Address(r15_thread, (int)JavaThread::heap_events_offset());
     
-    __ leaq(cntr_addr_reg, __mem);
-    __ movq(cntr_reg, Address(cntr_addr_reg, 0));
+    __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 2));
-    __ movq(Address(cntr_addr_reg, 0), cntr_reg);
+    __ movq(__mem, cntr_reg);
     __ subq(cntr_reg, 1);
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
 
-    __ leaq(cntr_addr_reg, Address(cntr_addr_reg, cntr_reg, Address::times_1));
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset());
 
     uint64_t encoded = Universe::encode_heap_event_src(Universe::CopyArray, 0);
     __ addq(src_array_reg, src_offset_reg);
     __ shlq(src_array_reg, 15);
     __ orq(src_array_reg, (int32_t)encoded);
-    __ movq(Address(cntr_addr_reg, 0), src_array_reg);
+    __ movq(__mem, src_array_reg);
     __ shrq(src_array_reg, 15);
     __ subq(src_array_reg, src_offset_reg);
     
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
     __ addq(dst_array_reg, dst_offset_reg);
-    __ movq(Address(cntr_addr_reg, 8), dst_array_reg);
+    __ movq(__mem, dst_array_reg);
     __ subq(dst_array_reg, dst_offset_reg);
-    
-    __ leaq(cntr_addr_reg, Address(cntr_addr_reg, 16));
+
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 16);
 
     encoded = Universe::encode_heap_event_src(Universe::CopyArrayLength, 0);
     __ shlq(copy_count_reg, 15);
-    __ movq(Address(cntr_addr_reg, 0), copy_count_reg);
+    __ movq(__mem, copy_count_reg);
     __ shrq(copy_count_reg, 15);
 
-    int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-    __ leaq(cntr_reg, Address(r15_thread, (int)JavaThread::heap_events_offset() + maxval));
-    __ subq(cntr_addr_reg, cntr_reg);
-    __ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+    int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
+    __ subq(cntr_reg, maxval);
+    __ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();

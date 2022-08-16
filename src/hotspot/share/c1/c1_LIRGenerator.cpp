@@ -1898,7 +1898,7 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
   if (!InstrumentHeapEvents)
     return;
   if (!C1InstrumentHeapEvents) return;
-  LIR_Opr heap_event_counter_addr_reg = new_pointer_register();
+  
   LIR_Opr counter = new_pointer_register();
   LIR_Opr heap_events_idx = new_pointer_register();
   LIR_Opr tmp = new_pointer_register();

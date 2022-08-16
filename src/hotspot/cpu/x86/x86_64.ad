@@ -6467,27 +6467,25 @@ instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, rRe
 
     Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
     
-    __ leaq(cntr_addr_reg, __mem);
-    __mem = Address(cntr_addr_reg, 0);
-    __ movq(cntr_reg, Address(cntr_addr_reg, 0));
+    __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
-    __ movq(Address(cntr_addr_reg, 0), cntr_reg);
+    __ movq(__mem, cntr_reg);
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
 
-    __ leaq(cntr_addr_reg, Address(cntr_addr_reg, cntr_reg, Address::times_1));
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
 
     uint64_t encoded = Universe::encode_heap_event_src(event_type(), 0);
     __ shlq($val$$Register, 15);
     __ orq($val$$Register, (int32_t)encoded);
-    __ movq(Address(cntr_addr_reg, 0), $val$$Register);
+    __ movq(__mem, $val$$Register);
     __ shrq($val$$Register, 15);
-    __ leaq(cntr_reg, $field$$Address);
-    __ movq(Address(cntr_addr_reg, 8), cntr_reg);
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
+    //TODO: Anyway to remove this extra reg use
+    __ leaq(cntr_addr_reg, $field$$Address);
+    __ movq(__mem, cntr_addr_reg);
     
-    int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-    __ leaq(cntr_reg, Address(r15_thread, (int)JavaThread::heap_events_offset() + maxval, Address::times_1));
-    __ subq(cntr_addr_reg, cntr_reg);
-    __ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+    int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
+    __ subq(cntr_reg, maxval);
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();

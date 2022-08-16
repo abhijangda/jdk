@@ -206,8 +206,8 @@ void* Thread::allocate(size_t size, bool throw_excpt, MEMFLAGS flags) {
 
 void Thread::operator delete(void* p) {
   if (InstrumentHeapEvents) {
-    Universe::HeapEvent* ptr = (Universe::HeapEvent*)(((char*)p) + JavaThread::heap_events_offset());
-    printf("free p %p he %p\n", p, ptr);
+    // Universe::HeapEvent* ptr = (Universe::HeapEvent*)(((char*)p) + JavaThread::heap_events_offset());
+    // printf("free p %p he %p\n", p, ptr);
     // Universe::copy_heap_events(ptr);
     // Universe::remove_heap_event_ptr(ptr);
   }
@@ -799,7 +799,7 @@ static void call_postVMInitHook(TRAPS) {
 // Initialized by VMThread at vm_global_init
 static OopStorage* _thread_oop_storage = NULL;
 int JavaThread::heap_events_offset() {
-  return 1600;//sizeof(JavaThread) + 16;
+  return 2048;//sizeof(JavaThread) + 16;
 }
 oop  JavaThread::threadObj() const    {
   return _threadObj.resolve();

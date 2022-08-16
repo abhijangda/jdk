@@ -1195,6 +1195,7 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
     return;
   if (!C2InstrumentHeapEvents) 
     return;
+
   if (CheckHeapEventGraphWithHeap)
     lock_unlock_heap_event(true);
 

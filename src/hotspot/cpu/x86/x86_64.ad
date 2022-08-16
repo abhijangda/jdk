@@ -6087,11 +6087,10 @@ instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
     Register cntr_addr_reg = $cntr_mem$$Address.base();
-    Address __mem = Address(r15_thread, cntr_addr_reg, Address::times_1);
     Register cntr_reg = $cntr$$Register;
     
-    __ leaq(cntr_addr_reg, __mem);
-    __mem = Address(cntr_addr_reg, 0);
+    Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
     __ movq(__mem, cntr_reg);
@@ -6099,18 +6098,16 @@ instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP
     assert(__mem.disp() == 0, "sanity");
 
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-    Address event_mem = Address(__mem.base(), cntr_reg);
-    __ leaq(cntr_addr_reg, event_mem);
-    event_mem = Address(__mem.base(), 0);
+    
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
     uint64_t encoded_src = Universe::encode_heap_event_src(event_type(), ((size_t)$sz$$constant)/8);
-    __ movq(cntr_reg, encoded_src);
-    __ movq(event_mem, cntr_reg);
-    event_mem = event_mem.plus_disp(8);
-    __ movq(event_mem, $obj$$Register);
+    __ movq(cntr_addr_reg, encoded_src);
+    __ movq(__mem, cntr_addr_reg);
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
+    __ movq(__mem, $obj$$Register);
 
     int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-    __ leaq(cntr_reg, Address(r15_thread, (int)JavaThread::heap_events_offset() + maxval, Address::times_1));
-    __ subq(cntr_addr_reg, cntr_reg);
+    __ subq(cntr_reg, maxval);
     __ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
@@ -6136,11 +6133,9 @@ instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP ob
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
     Register cntr_addr_reg = $cntr_mem$$Address.base();
-    Address __mem = Address(r15_thread, cntr_addr_reg, Address::times_1);
     Register cntr_reg = $cntr$$Register;
-    
-    __ leaq(cntr_addr_reg, __mem);
-    __mem = Address(cntr_addr_reg, 0);
+    Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+        
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
     __ movq(__mem, cntr_reg);
@@ -6148,18 +6143,16 @@ instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP ob
     assert(__mem.disp() == 0, "sanity");
 
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-    Address event_mem = Address(__mem.base(), cntr_reg);
-    __ leaq(cntr_addr_reg, event_mem);
-    event_mem = Address(__mem.base(), 0);
+    
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
     uint64_t encoded_src = Universe::encode_heap_event_src(event_type(), ((size_t)$sz$$constant));
-    __ movq(cntr_reg, encoded_src);
-    __ movq(event_mem, cntr_reg);
-    event_mem = event_mem.plus_disp(8);
-    __ movq(event_mem, $obj$$Register);
+    __ movq(cntr_addr_reg, encoded_src);
+    __ movq(__mem, cntr_addr_reg);
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
+    __ movq(__mem, $obj$$Register);
 
     int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-    __ leaq(cntr_reg, Address(r15_thread, (int)JavaThread::heap_events_offset() + maxval, Address::times_1));
-    __ subq(cntr_addr_reg, cntr_reg);
+    __ subq(cntr_reg, maxval);
     __ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);

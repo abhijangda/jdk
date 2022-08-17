@@ -1846,20 +1846,17 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
 
       if (orig_addr->index()->is_valid()) {
         field_addr = new LIR_Address(orig_addr->base(), orig_addr->index(), orig_addr->disp(), orig_addr->type());
-        LIR_Opr r = new_pointer_register();
-        __ leal(field_addr, r);
-        __ store(r, heap_events_addr_dst);
+        __ leal(field_addr, tmp2);
+        __ store(tmp2, heap_events_addr_dst);
       } else if (orig_addr->disp() != 0) {
         field_addr = new LIR_Address(orig_addr->base(), orig_addr->disp(), orig_addr->type());
-        LIR_Opr r = new_pointer_register();
-        __ leal(field_addr, r);
-        __ store(r, heap_events_addr_dst);
+        __ leal(field_addr, tmp2);
+        __ store(tmp2, heap_events_addr_dst);
       } else {
         #ifndef PRODUCT
         field_addr = new LIR_Address(orig_addr->base(), orig_addr->disp(), orig_addr->type());
-        LIR_Opr r = new_pointer_register();
-        __ leal(field_addr, r);
-        __ store(r, heap_events_addr_dst);
+        __ leal(field_addr, tmp2);
+        __ store(tmp2, heap_events_addr_dst);
         #else
         __ store(orig_addr->base(), heap_events_addr_dst);
         #endif
@@ -1897,8 +1894,8 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
 void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_Opr dst_offset, LIR_Opr src_offset, LIR_Opr count) {
   if (!InstrumentHeapEvents)
     return;
-  if (!C1InstrumentHeapEvents) return;
   
+  if (!C1InstrumentHeapEvents) return;
   LIR_Opr counter = new_pointer_register();
   LIR_Opr heap_events_idx = new_pointer_register();
   LIR_Opr tmp = new_pointer_register();

@@ -55,7 +55,7 @@ for bench in all_benchs:
     all_bench_times[bench]["baseline"].append(float(t))
     print (bench, t)
 
-  c = bench_c + " " + instrument_args + " " + bench_args 
+  c = bench_c + " " + instrument_args + " " + bench_args
   print("Instrument", c)
   for i in range(num_runs):
     print ("exec", i)

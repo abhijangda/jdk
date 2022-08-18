@@ -688,6 +688,10 @@ void LIR_Assembler::emit_op0(LIR_Op0* op) {
 
 void LIR_Assembler::emit_op2(LIR_Op2* op) {
   switch (op->code()) {
+    case lir_store_heap_event:
+      store_heap_event(op->event_type(), op->in_opr1(), op->in_opr2());
+      break;
+
     case lir_cmp:
       if (op->info() != NULL) {
         assert(op->in_opr1()->is_address() || op->in_opr2()->is_address(),

@@ -970,6 +970,7 @@ enum LIR_Code {
       , lir_throw
       , lir_xadd
       , lir_xchg
+      , lir_store_heap_event
   , end_op2
   , begin_op3
       , lir_idiv
@@ -1631,6 +1632,7 @@ class LIR_Op2: public LIR_Op {
   LIR_Opr   _tmp4;
   LIR_Opr   _tmp5;
   LIR_Condition _condition;
+  Universe::HeapEventType _event_type;
 
   void verify() const;
 
@@ -1646,7 +1648,8 @@ class LIR_Op2: public LIR_Op {
     , _tmp3(LIR_OprFact::illegalOpr)
     , _tmp4(LIR_OprFact::illegalOpr)
     , _tmp5(LIR_OprFact::illegalOpr)
-    , _condition(condition) {
+    , _condition(condition) 
+    , _event_type(Universe::None) {
     assert(code == lir_cmp || code == lir_assert, "code check");
   }
 
@@ -1661,7 +1664,8 @@ class LIR_Op2: public LIR_Op {
     , _tmp3(LIR_OprFact::illegalOpr)
     , _tmp4(LIR_OprFact::illegalOpr)
     , _tmp5(LIR_OprFact::illegalOpr)
-    , _condition(condition) {
+    , _condition(condition) 
+    , _event_type(Universe::None) {
     assert(code == lir_cmove, "code check");
     assert(type != T_ILLEGAL, "cmove should have type");
   }
@@ -1678,7 +1682,24 @@ class LIR_Op2: public LIR_Op {
     , _tmp3(LIR_OprFact::illegalOpr)
     , _tmp4(LIR_OprFact::illegalOpr)
     , _tmp5(LIR_OprFact::illegalOpr)
-    , _condition(lir_cond_unknown) {
+    , _condition(lir_cond_unknown) 
+    , _event_type(Universe::None) {
+    assert(code != lir_cmp && is_in_range(code, begin_op2, end_op2), "code check");
+  }
+
+  LIR_Op2(LIR_Code code, LIR_Opr opr1, LIR_Opr opr2, Universe::HeapEventType _event_type_)
+    : LIR_Op(code, LIR_OprFact::illegalOpr, NULL)
+    , _fpu_stack_size(0)
+    , _opr1(opr1)
+    , _opr2(opr2)
+    , _type(T_ILLEGAL)
+    , _tmp1(LIR_OprFact::illegalOpr)
+    , _tmp2(LIR_OprFact::illegalOpr)
+    , _tmp3(LIR_OprFact::illegalOpr)
+    , _tmp4(LIR_OprFact::illegalOpr)
+    , _tmp5(LIR_OprFact::illegalOpr)
+    , _condition(lir_cond_unknown) 
+    , _event_type(_event_type_) {
     assert(code != lir_cmp && is_in_range(code, begin_op2, end_op2), "code check");
   }
 
@@ -1694,10 +1715,12 @@ class LIR_Op2: public LIR_Op {
     , _tmp3(tmp3)
     , _tmp4(tmp4)
     , _tmp5(tmp5)
-    , _condition(lir_cond_unknown) {
+    , _condition(lir_cond_unknown) 
+    , _event_type(Universe::None) {
     assert(code != lir_cmp && is_in_range(code, begin_op2, end_op2), "code check");
   }
 
+  Universe::HeapEventType event_type() const     { return _event_type; }
   LIR_Opr in_opr1() const                        { return _opr1; }
   LIR_Opr in_opr2() const                        { return _opr2; }
   BasicType type()  const                        { return _type; }
@@ -2145,6 +2168,7 @@ class LIR_List: public CompilationResourceObj {
 
   void convert(Bytecodes::Code code, LIR_Opr left, LIR_Opr dst, ConversionStub* stub = NULL/*, bool is_32bit = false*/) { append(new LIR_OpConvert(code, left, dst, stub)); }
   void transfer_events(LIR_Opr counter, LIR_Opr max_events) {append(new LIR_Op1(lir_transfer_events, counter, max_events));}
+  void store_heap_event(Universe::HeapEventType event_type, LIR_Opr src, LIR_Opr dst) {append(new LIR_Op2(lir_store_heap_event, src, dst, event_type));}
   void inc_heap_event_cntr(LIR_Opr addr_base, LIR_Opr counter) {append(new LIR_Op1(lir_inc_heap_event_cntr, addr_base, counter));}
   void logical_and (LIR_Opr left, LIR_Opr right, LIR_Opr dst) { append(new LIR_Op2(lir_logic_and,  left, right, dst)); }
   void logical_or  (LIR_Opr left, LIR_Opr right, LIR_Opr dst) { append(new LIR_Op2(lir_logic_or,   left, right, dst)); }

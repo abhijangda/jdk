@@ -186,7 +186,9 @@ void C1_MacroAssembler::allocate_object(Register obj, Register t1, Register t2, 
   assert(header_size >= 0 && object_size >= header_size, "illegal sizes");
 
   try_allocate(obj, noreg, object_size * BytesPerWord, t1, t2, slow_case);
-
+  if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+    append_newobj_event(obj, object_size, t1, false, t2, false, false);
+  }
   initialize_object(obj, klass, noreg, object_size * HeapWordSize, t1, t2, UseTLAB);
 }
 
@@ -259,9 +261,11 @@ void C1_MacroAssembler::allocate_array(Register obj, Register len, Register t1, 
   andptr(arr_size, ~MinObjAlignmentInBytesMask);
 
   try_allocate(obj, arr_size, 0, t1, t2, slow_case);
-
   initialize_header(obj, klass, len, t1, t2);
-
+  if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+    // printf("t1 %s t2 %s len %s obj %s\n", t1->name(), t2->name(), len->name(), obj->name());
+    append_newarray_event(obj, len, rscratch2, false, rscratch1, false, false);
+  }
   // clear rest of allocated space
   const Register len_zero = len;
   initialize_body(obj, arr_size, header_size * BytesPerWord, len_zero);

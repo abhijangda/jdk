@@ -681,6 +681,16 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
       break;
     }
 
+    case lir_store_heap_event:
+    {
+      assert(op->as_Op2() != NULL, "must be");
+      LIR_Op2* op2 = (LIR_Op2*)op;
+
+      if (op2->_info)                     do_info(op2->_info);
+      if (op2->_opr1->is_valid())         do_input(op2->_opr1);
+      if (op2->_opr2->is_valid())         do_input(op2->_opr2);
+      break;
+    }
 // LIR_Op3
     case lir_idiv:
     case lir_irem: {

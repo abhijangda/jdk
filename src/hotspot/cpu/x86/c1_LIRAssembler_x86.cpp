@@ -965,6 +965,17 @@ void LIR_Assembler::reg2stack(LIR_Opr src, LIR_Opr dest, BasicType type, bool po
   }
 }
 
+void LIR_Assembler::store_heap_event(Universe::HeapEventType event_type, LIR_Opr src, LIR_Opr dst) {
+  if (InstrumentHeapEvents) {
+    //assert(dst->is_cpu_register(), "");
+    
+    // if (src->is_constant() && dst->is_register()) {
+    //   Register dst_reg = dst->is_single_cpu() ? dst->as_register() : dst->as_register_lo();
+    //   __ append_newobj_event(dst_reg, src->as_jlong(), rscratch1, false, rscratch2, false, false);
+    // }
+  }
+}
+
 void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
   if (InstrumentHeapEvents) {
     assert(counter->is_cpu_register(), "");
@@ -1067,6 +1078,11 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
         __ movl(as_Address(to_addr), compressed_src);
       } else {
         __ movptr(as_Address(to_addr), src->as_register());
+        // if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+        //   printf("1082: %s\n", src->as_register()->name());
+        //   __ append_fieldset_event(as_Address(to_addr), src->as_register(), 
+        //                            rscratch1, false, rscratch2, false, false);
+        // }
       }
       break;
     case T_METADATA:
@@ -1680,6 +1696,7 @@ void LIR_Assembler::emit_alloc_obj(LIR_OpAllocObj* op) {
                      op->object_size(),
                      op->klass()->as_register(),
                      *op->stub()->entry());
+  
   __ bind(*op->stub()->continuation());
 }
 

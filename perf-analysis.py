@@ -6,7 +6,8 @@ num_runs = 4
 base_jvm_path = "java"
 build = "release"
 modified_jvm_path = "taskset -c 10,11,12,13,14,15,16,17,18,19,20,21,22,23 ~/jdk/build/linux-x86_64-server-%s/jdk/bin/java"%build
-config = "-XX:+TieredCompilation -XX:+UseInterpreter"
+#lusearch fixes with -XX:+UnlockDiagnosticVMOptions -XX:-InlineArrayCopy -XX:-InlineClassNatives -XX:-InlineMathNatives -XX:-InlineNatives -XX:-InlineObjectCopy -XX:-InlineObjectHash -XX:-                  InlineReflectionGetCallerClass -XX:-InlineSynchronizedMethods -XX:-InlineThreadNatives -XX:-InlineUnsafeOps -XX:+IncrementalInline -XX:+IncrementalInlineMH -XX:+IncrementalInlineVirtual
+config = "-XX:+TieredCompilation -XX:+UseInterpreter -XX:+UnlockDiagnosticVMOptions -XX:-InlineArrayCopy -XX:-InlineClassNatives -XX:-InlineMathNatives -XX:-InlineNatives -XX:-InlineObjectCopy -XX:-InlineObjectHash -XX:-InlineReflectionGetCallerClass -XX:-InlineSynchronizedMethods -XX:-InlineThreadNatives -XX:-InlineUnsafeOps -XX:+IncrementalInline -XX:+IncrementalInlineMH -XX:+IncrementalInlineVirtual"
 inline_copy = "-XX:+UnlockDiagnosticVMOptions -XX:-InlineObjectCopy"
 jvm_command = modified_jvm_path + f" -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:-DoEscapeAnalysis -XX:MetaspaceSize=16384m"
 dacapo_args = "-jar dacapo-9.12-MR1-bach.jar %s -n1 -t1"

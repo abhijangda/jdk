@@ -162,6 +162,7 @@ class LIR_Assembler: public CompilationResourceObj {
   // returns offset of poll instruction
   int safepoint_poll(LIR_Opr result, CodeEmitInfo* info);
   void transfer_events(LIR_Opr counter, LIR_Opr max_events);
+  void store_heap_event(Universe::HeapEventType event_type, LIR_Opr src, LIR_Opr dst);
   void inc_heap_event_cntr(LIR_Opr counter, LIR_Opr addr_base);
   void const2reg  (LIR_Opr src, LIR_Opr dest, LIR_PatchCode patch_code, CodeEmitInfo* info);
   void const2stack(LIR_Opr src, LIR_Opr dest);

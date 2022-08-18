@@ -1807,6 +1807,11 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
   if (!C1InstrumentHeapEvents)
     return;
 
+  if (event_type == Universe::NewObject) {
+    // __ store_heap_event(event_type, src_or_obj_size, dst_or_new_obj);
+    return;
+  }
+  return;
   LIR_Opr counter = new_pointer_register();
   
   LabelObj* pass_through = new LabelObj();
@@ -1896,6 +1901,7 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     return;
   
   if (!C1InstrumentHeapEvents) return;
+  return;
   LIR_Opr counter = new_pointer_register();
   LIR_Opr heap_events_idx = new_pointer_register();
   LIR_Opr tmp = new_pointer_register();

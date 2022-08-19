@@ -1200,7 +1200,7 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
     lock_unlock_heap_event(true);
 
   bool is_unsafe = true;
-  uint64_t* ptr_event_ctr = NULL;//(uint64_t*)(void*)JavaThread::heap_events_offset();
+  uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(JavaThread::heap_events_offset());
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
   int adr_type = Compile::AliasIdxRaw;
   Node* ctrl = control();

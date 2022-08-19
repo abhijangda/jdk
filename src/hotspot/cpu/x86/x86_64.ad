@@ -6094,8 +6094,6 @@ instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
     __ movq(__mem, cntr_reg);
-    assert(__mem.index() == noreg, "sanity");
-    assert(__mem.disp() == 0, "sanity");
 
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
     
@@ -6139,9 +6137,7 @@ instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP ob
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
     __ movq(__mem, cntr_reg);
-    assert(__mem.index() == noreg, "sanity");
-    assert(__mem.disp() == 0, "sanity");
-
+    
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
     
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
@@ -6182,8 +6178,7 @@ instruct incrCntrAndStoreHeapEventIntReg(memory cntr_mem, rRegI sz, any_RegP obj
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
     __ movq(__mem, cntr_reg);
-    assert(__mem.index() == noreg, "sanity");
-    assert(__mem.disp() == 0, "sanity");
+    
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
     
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
@@ -6229,8 +6224,7 @@ instruct incrCntrAndStoreHeapEventLongReg(memory cntr_mem, rRegL sz, any_RegP ob
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
     __ movq(__mem, cntr_reg);
-    assert(__mem.index() == noreg, "sanity");
-    assert(__mem.disp() == 0, "sanity");
+    
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
     uint64_t encoded_src = Universe::encode_heap_event_src(event_type(), 0);

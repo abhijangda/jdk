@@ -518,6 +518,14 @@ void LIR_Assembler::emit_op1(LIR_Op1* op) {
       // printf("src is address dst is reg basictype %d\n", (int)type);
       break;
 
+    case lir_store_heap_event: {
+      store_heap_event(op->in_opr(), op->result_opr(), op->type(),
+                op->patch_code(), op->info(), op->pop_fpu_stack(),
+                op->move_kind() == lir_move_wide,
+                op->tmp());
+      break;
+    }
+
     case lir_roundfp: {
       LIR_OpRoundFP* round_op = op->as_OpRoundFP();
       roundfp_op(round_op->in_opr(), round_op->tmp(), round_op->result_opr(), round_op->pop_fpu_stack());
@@ -688,10 +696,6 @@ void LIR_Assembler::emit_op0(LIR_Op0* op) {
 
 void LIR_Assembler::emit_op2(LIR_Op2* op) {
   switch (op->code()) {
-    case lir_store_heap_event:
-      store_heap_event(op->event_type(), op->in_opr1(), op->in_opr2());
-      break;
-
     case lir_cmp:
       if (op->info() != NULL) {
         assert(op->in_opr1()->is_address() || op->in_opr2()->is_address(),

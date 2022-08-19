@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "c1/c1_Defs.hpp"
 #include "c1/c1_LIRGenerator.hpp"
+#include "c1/c1_FrameMap.hpp"
 #include "classfile/javaClasses.hpp"
 #include "gc/shared/c1/barrierSetC1.hpp"
 #include "utilities/macros.hpp"
@@ -161,7 +162,7 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
 
   bool reference_type = (is_reference_type(value.type()) ||  is_reference_type(access.type()));
 
-  if (InstrumentHeapEvents && reference_type) {
+  if (InstrumentHeapEvents && reference_type && is_volatile) {
     gen->append_heap_event(Universe::FieldSet, access.resolved_addr(), value);
   }
 
@@ -173,7 +174,11 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
   if (is_volatile && !needs_patching) {
     gen->volatile_field_store(value, access.resolved_addr()->as_address_ptr(), access.access_emit_info());
   } else {
-    __ store(value, access.resolved_addr()->as_address_ptr(), access.access_emit_info(), patch_code);
+    if (InstrumentHeapEvents && C1InstrumentHeapEvents && reference_type) {
+      __ store_heap_event(value, access.resolved_addr()->as_address_ptr(), access.access_emit_info(), patch_code, gen->new_pointer_register());
+    } else {
+      __ store(value, access.resolved_addr()->as_address_ptr(), access.access_emit_info(), patch_code);
+    }
   }
 
   if (is_volatile && !support_IRIW_for_not_multiple_copy_atomic_cpu) {

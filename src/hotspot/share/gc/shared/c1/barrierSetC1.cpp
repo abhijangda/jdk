@@ -163,6 +163,7 @@ void BarrierSetC1::store_at_resolved(LIRAccess& access, LIR_Opr value) {
   bool reference_type = (is_reference_type(value.type()) ||  is_reference_type(access.type()));
 
   if (InstrumentHeapEvents && reference_type && is_volatile) {
+    //TODO: store_heap_event for volatile
     gen->append_heap_event(Universe::FieldSet, access.resolved_addr(), value);
   }
 

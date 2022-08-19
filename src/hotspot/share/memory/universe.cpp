@@ -1106,7 +1106,6 @@ void Universe::verify_heap_graph() {
           } while(ik && ik->is_klass());
         }
       } else if (heap_event_type == Universe::CopyArray) {
-        continue;
         oopDesc* obj_src_start = (oopDesc*)event.src;
         oopDesc* obj_dst_start = (oopDesc*)event.dst;
 
@@ -1216,7 +1215,7 @@ void Universe::verify_heap_graph() {
     }
   }
   printf("event_threads.size() %ld\n", event_threads.size());
-  CheckGraph check_graph(true, true, false, false);
+  CheckGraph check_graph(true, true, true, true);
   Universe::heap()->object_iterate(&check_graph);
 
   size_t num_objects = ObjectNode::oop_to_obj_node.size();

@@ -966,7 +966,7 @@ void LIR_Assembler::reg2stack(LIR_Opr src, LIR_Opr dest, BasicType type, bool po
 }
 
 void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
-  if (InstrumentHeapEvents) {
+  if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
     assert(counter->is_cpu_register(), "");
     assert(max_events->is_constant(), "");
     
@@ -998,6 +998,100 @@ void LIR_Assembler::inc_heap_event_cntr(LIR_Opr addr, LIR_Opr counter) {
     __ movq(counter_reg, as_Address(src));
     __ leaq(counter_reg, Address(counter_reg, 1));
     __ movq(as_Address(src), counter_reg);
+  }
+}
+
+void LIR_Assembler::store_heap_event(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_PatchCode patch_code, CodeEmitInfo* info, bool pop_fpu_stack, bool wide, LIR_Opr tmp) {
+  if (src->is_register() || src->is_constant()) {
+    LIR_Address* addr = dest->as_address_ptr();
+    PatchingStub* patch = NULL;
+    Register compressed_src = rscratch1;
+
+    if (src->is_register()) {
+      if (is_reference_type(type)) {
+        __ verify_oop(src->as_register());
+    #ifdef _LP64
+        if (UseCompressedOops && !wide) {
+          __ movptr(compressed_src, src->as_register());
+          __ encode_heap_oop(compressed_src);
+          if (patch_code != lir_patch_none) {
+            info->oop_map()->set_narrowoop(compressed_src->as_VMReg());
+          }
+        }
+    #endif
+      }
+
+      if (patch_code != lir_patch_none) {
+        patch = new PatchingStub(_masm, PatchingStub::access_field_id);
+        Address toa = as_Address(addr);
+        assert(toa.disp() != 0, "must have");
+      }
+
+      int null_check_here = code_offset();
+      if (UseCompressedOops && !wide) {
+        __ movl(as_Address(addr), compressed_src);
+      } else {
+        __ movptr(as_Address(addr), src->as_register());
+        if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+          __ append_fieldset_event(as_Address(addr), src->as_register(), 
+                                  rscratch1, false, tmp->as_register_lo(), false, false);
+        }
+      }
+      if (info != NULL) {
+        add_debug_info_for_null_check(null_check_here, info);
+      }
+    } else if (src->is_constant()) {
+      LIR_Const* c = src->as_constant_ptr();
+      int null_check_here = code_offset();
+
+      if (c->as_jobject() == NULL) {
+        if (UseCompressedOops && !wide) {
+          __ movl(as_Address(addr), (int32_t)NULL_WORD);
+        } else {
+#ifdef _LP64
+          __ xorptr(rscratch1, rscratch1);
+          null_check_here = code_offset();
+          __ movptr(as_Address(addr), rscratch1);
+          __ append_fieldset_event(as_Address(addr), 0L,
+                                   rscratch1, false, tmp->as_register_lo(), false, false);
+#else
+          __ movptr(as_Address(addr), NULL_WORD);
+#endif
+        }
+      } else {
+        if (is_literal_address(addr)) {
+          ShouldNotReachHere();
+          __ movoop(as_Address(addr, noreg), c->as_jobject());
+        } else {
+#ifdef _LP64
+          __ movoop(rscratch1, c->as_jobject());
+          if (UseCompressedOops && !wide) {
+            __ encode_heap_oop(rscratch1);
+            null_check_here = code_offset();
+            __ movl(as_Address_lo(addr), rscratch1);
+          } else {
+            null_check_here = code_offset();
+            __ movptr(as_Address_lo(addr), rscratch1);
+            if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+              __ append_fieldset_event(as_Address(addr), rscratch1,
+                                       rscratch1, false, tmp->as_register_lo(), false, false);
+            }
+          }
+#else
+          __ movoop(as_Address(addr), c->as_jobject());
+#endif
+        }
+      }
+      if (info != NULL) {
+        add_debug_info_for_null_check(null_check_here, info);
+      }
+    }
+
+    if (patch_code != lir_patch_none) {
+      patching_epilog(patch, patch_code, addr->base()->as_register(), info);
+    }
+  } else {
+    move_op(src, dest, type, patch_code, info, pop_fpu_stack, wide, true);
   }
 }
 
@@ -1067,6 +1161,11 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
         __ movl(as_Address(to_addr), compressed_src);
       } else {
         __ movptr(as_Address(to_addr), src->as_register());
+        // if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+        //   printf("1082: %s\n", src->as_register()->name());
+        //   __ append_fieldset_event(as_Address(to_addr), src->as_register(), 
+        //                            rscratch1, false, rscratch2, false, false);
+        // }
       }
       break;
     case T_METADATA:
@@ -1680,6 +1779,7 @@ void LIR_Assembler::emit_alloc_obj(LIR_OpAllocObj* op) {
                      op->object_size(),
                      op->klass()->as_register(),
                      *op->stub()->entry());
+  
   __ bind(*op->stub()->continuation());
 }
 
@@ -3187,7 +3287,53 @@ void LIR_Assembler::emit_arraycopy(LIR_OpArrayCopy* op) {
   int flags = op->flags();
   BasicType basic_type = default_type != NULL ? default_type->element_type()->basic_type() : T_ILLEGAL;
   if (is_reference_type(basic_type)) basic_type = T_OBJECT;
+  if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+    Address __mem = Address(r15_thread, (int)JavaThread::heap_events_offset());
+    Register cntr_reg = rscratch1;
 
+    __ movq(cntr_reg, __mem);
+    __ leaq(cntr_reg, Address(cntr_reg, 2));
+    __ movq(__mem, cntr_reg);
+    __ subq(cntr_reg, 1);
+    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
+
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset());
+
+    uint64_t encoded = Universe::encode_heap_event_src(Universe::CopyArray, 0);
+    __ addq(src, src_pos);
+    __ shlq(src, 15);
+    __ orq(src, (int32_t)encoded);
+    __ movq(__mem, src);
+    __ shrq(src, 15);
+    __ subq(src, src_pos);
+    
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
+    __ addq(dst, dst_pos);
+    __ movq(__mem, dst);
+    __ subq(dst, dst_pos);
+
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 16);
+
+    encoded = Universe::encode_heap_event_src(Universe::CopyArrayLength, 0);
+    __ shlq(length, 15);
+    __ movq(__mem, length);
+    __ shrq(length, 15);
+
+    int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
+    __ subq(cntr_reg, maxval);
+    __ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+    Label not_equal;
+    __ jcc(Assembler::Condition::less, not_equal);
+    __ pushaq();
+    if (CheckHeapEventGraphWithHeap) {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    }  else {
+      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    }
+    __ popaq();
+    //__ movq($mem$$Address, 0);
+    __ bind(not_equal);
+  }
   // if we don't know anything, just go through the generic arraycopy
   if (default_type == NULL) {
     // save outgoing arguments on stack in case call to System.arraycopy is needed

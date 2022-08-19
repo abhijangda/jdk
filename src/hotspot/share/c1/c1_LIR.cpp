@@ -460,7 +460,21 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
 
       break;
     }
+    case lir_store_heap_event:
+    {
+      assert(op->as_Op1() != NULL, "must be");
+      LIR_Op1* op1 = (LIR_Op1*)op;
 
+      if (op1->_info)                     do_info(op1->_info);
+      assert(op1->_opr->is_valid(), "must be");
+      do_input(op1->_opr);
+      do_temp(op1->_opr);
+      assert(op1->_result->is_valid(), "must be");
+      do_output(op1->_result);
+      assert(op1->_tmp->is_valid(), "must be");
+      do_temp(op1->_tmp);
+      break;
+    }
     case lir_return:
     {
       assert(op->as_OpReturn() != NULL, "must be");

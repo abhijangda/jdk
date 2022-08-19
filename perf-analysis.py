@@ -6,13 +6,14 @@ num_runs = 4
 base_jvm_path = "java"
 build = "release"
 modified_jvm_path = "taskset -c 10,11,12,13,14,15,16,17,18,19,20,21,22,23 ~/jdk/build/linux-x86_64-server-%s/jdk/bin/java"%build
-max_heap_events = str(4*1024*1024)
+#lusearch fixes with -XX:+UnlockDiagnosticVMOptions -XX:-InlineArrayCopy -XX:-InlineClassNatives -XX:-InlineMathNatives -XX:-InlineNatives -XX:-InlineObjectCopy -XX:-InlineObjectHash -XX:-                  InlineReflectionGetCallerClass -XX:-InlineSynchronizedMethods -XX:-InlineThreadNatives -XX:-InlineUnsafeOps -XX:+IncrementalInline -XX:+IncrementalInlineMH -XX:+IncrementalInlineVirtual
 config = "-XX:+TieredCompilation -XX:+UseInterpreter"
+#"-XX:+UnlockDiagnosticVMOptions -XX:-InlineArrayCopy -XX:-InlineClassNatives -XX:-InlineMathNatives -XX:-InlineNatives -XX:-InlineObjectCopy -XX:-InlineObjectHash -XX:-InlineReflectionGetCallerClass -XX:-InlineSynchronizedMethods -XX:-InlineThreadNatives -XX:-InlineUnsafeOps -XX:+IncrementalInline -XX:+IncrementalInlineMH -XX:+IncrementalInlineVirtual"
 inline_copy = "-XX:+UnlockDiagnosticVMOptions -XX:-InlineObjectCopy"
 jvm_command = modified_jvm_path + f" -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:-DoEscapeAnalysis -XX:MetaspaceSize=16384m"
 dacapo_args = "-jar dacapo-9.12-MR1-bach.jar %s -n1 -t1"
 
-instrument_args = f"-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -XX:MaxHeapEvents={max_heap_events}"
+instrument_args = "-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -XX:MaxHeapEvents=%s"
 
 all_benchs = "avrora fop h2 jython luindex lusearch sunflow xalan pmd".split() #h2 batik eclipse tomcat tradebeans tradesoap
 
@@ -55,7 +56,8 @@ for bench in all_benchs:
     all_bench_times[bench]["baseline"].append(float(t))
     print (bench, t)
 
-  c = bench_c + " " + instrument_args + " " + bench_args 
+  max_heap_events = str(4*1024*1024)
+  c = bench_c + " " + instrument_args%max_heap_events + " " + bench_args
   print("Instrument", c)
   for i in range(num_runs):
     print ("exec", i)

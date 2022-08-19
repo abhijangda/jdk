@@ -738,8 +738,15 @@ class CheckGraph : public ObjectClosure {
 const void* CheckGraph::INVALID_PTR = (void*)0xbaadbabebaadbabe;
 const oop CheckGraph::INVALID_OOP = oop((oopDesc*)INVALID_PTR);
 
+void Universe::transfer_events_to_gpu_list_head() {
+  // sem_post(&cuda_semaphore);
+  Universe::HeapEvent* events = *all_heap_events.head()->data();
+  printf("Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)events);
+  *(uint64_t*)events = 0;
+}
+
 void Universe::transfer_events_to_gpu() {
-  sem_post(&cuda_semaphore);
+  // sem_post(&cuda_semaphore);
   Universe::HeapEvent* events = Universe::get_heap_events_ptr();
   printf("Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)events);
   *(uint64_t*)events = 0;
@@ -786,17 +793,17 @@ void Universe::add_heap_events(Universe::HeapEventType event_type1, Universe::He
   // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
   if (CheckHeapEventGraphWithHeap)
     Universe::lock_mutex_heap_event();
-  HeapEvent* heap_events = Universe::get_heap_events_ptr();//cur_thread->heap_events;
+  Universe::HeapEvent* heap_events = (CheckHeapEventGraphWithHeap) ? Universe::get_heap_events_ptr() : *all_heap_events.head()->data() ; //(Universe::HeapEvent*)(((char*)curr_thread) + 2048);
   uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
   // Universe::heap_event_counter++;
   // if (event.src == 0x0) {
   //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);
   // }
   #ifndef PRODUCT
-  if (all_heap_events.find(heap_events) == NULL) {
-    printf("835: heap_events %p\n", heap_events);
-    abort();
-  }
+  // if (all_heap_events.find(heap_events) == NULL) {
+  //   printf("835: heap_events %p\n", heap_events);
+  //   abort();
+  // }
   #endif
   if (*heap_event_counter_ptr + 2 > MaxHeapEvents) {
     if (CheckHeapEventGraphWithHeap)
@@ -816,7 +823,7 @@ void Universe::add_heap_events(Universe::HeapEventType event_type1, Universe::He
     if (CheckHeapEventGraphWithHeap)
       Universe::verify_heap_graph();
     else
-      Universe::transfer_events_to_gpu();
+      Universe::transfer_events_to_gpu_list_head();
     
   }
   if (CheckHeapEventGraphWithHeap)
@@ -825,44 +832,33 @@ void Universe::add_heap_events(Universe::HeapEventType event_type1, Universe::He
 
 void Universe::add_heap_event(Universe::HeapEventType event_type, Universe::HeapEvent event) {
   if (!InstrumentHeapEvents) return;
-  // JavaThread* cur_thread = JavaThread::current();
-  // assert(cur_thread->heap_events, "");
-  HeapEvent* heap_events = Universe::get_heap_events_ptr();//cur_thread->heap_events;
-  uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
-  // if (!cur_thread->heap_events) return;
-  // printf("sizeof Universe::heap_events %ld\n", sizeof(Universe::heap_events));
+
   if (CheckHeapEventGraphWithHeap)
     Universe::lock_mutex_heap_event();
-  // Universe::heap_event_counter++;
-  // if (event.src == 0x0) {
-  //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);
-  // }  
+  
   #ifndef PRODUCT
-  if (all_heap_events.find(heap_events) == NULL) {
-    printf("835: heap_events %p\n", heap_events);
-    abort();
-  }
-  #endif
-
-  // if (event_type == Universe::FieldSet) {
-  //   printf("src 0x%lx dst 0x%lx\n", event.src, event.dst);
+  // if (all_heap_events.find(heap_events) == NULL) {
+  //   printf("835: heap_events %p\n", heap_events);
+  //   abort();
   // }
-  event = encode_heap_event(event_type, event);
-
+  #endif
+  
+  // Thread* curr_thread = Thread::current();
+  Universe::HeapEvent* heap_events = (CheckHeapEventGraphWithHeap) ? Universe::get_heap_events_ptr() : *all_heap_events.head()->data() ; //(Universe::HeapEvent*)(((char*)curr_thread) + 2048);
+  uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
+  
   uint64_t v = *heap_event_counter_ptr;
-  // printf("v %ld\n", v);
+  event.src = ((uint64_t)event_type) | (event.src << 15);
   (&heap_events[1])[v] = event;
   *heap_event_counter_ptr = v + 1;
-  // if (event.heap_event_type == 0) {
-  //   printf("new object at %ld\n");
-  // }
-  if (*heap_event_counter_ptr >= MaxHeapEvents) {
+
+  if (v + 1 >= MaxHeapEvents) {
     if (CheckHeapEventGraphWithHeap)
       Universe::verify_heap_graph();
     else
-      Universe::transfer_events_to_gpu();
-    
+      Universe::transfer_events_to_gpu_list_head();  
   }
+
   if (CheckHeapEventGraphWithHeap)
     Universe::unlock_mutex_heap_event();
 }
@@ -966,6 +962,8 @@ void Universe::verify_heap_graph() {
   //Update heap hash table
   unordered_set<uint64_t> event_threads;
   printf("Check Shadow Graph is_verify_cause_full_gc %d\n", is_verify_cause_full_gc);
+  uint64_t num_field_sets = 0;
+  uint64_t num_new_obj = 0;
 
   map<oopDesc*, oopDesc*> old_to_new_objects;
   printf("Creating Nodes\n");
@@ -988,6 +986,10 @@ void Universe::verify_heap_graph() {
       //                                              event.heap_event_type, obj);
       // }
       HeapEventType heap_event_type = decode_heap_event_type(event);
+      // if (heap_event_type == Universe::NewObject || heap_event_type == Universe::NewArray)
+      //   num_new_obj += 1;
+      // else if (heap_event_type == Universe::FieldSet)
+      //   num_field_sets += 1;
       // if (heap_events_size < 16*1024*1024) {
       //   uint64_t size = decode_heap_event_src(event);
       //   printf("het %ld src 0x%lx 0x%lx\n", heap_event_type, size, event.dst);
@@ -1009,6 +1011,7 @@ void Universe::verify_heap_graph() {
   }
 
   printf("Nodes created: %ld\nCreating Edges\n", ObjectNode::oop_to_obj_node.size());
+  // printf("newobj %ld fieldsets %ld\n", num_new_obj, num_field_sets);
   //Go through events in the order they are created
   Universe::HeapEvent* reverse_events[all_heap_events.size()];
   auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head());
@@ -1204,7 +1207,7 @@ void Universe::verify_heap_graph() {
       }
     } 
   }
-
+  
   //Update object values in each field/element to new objects
   if (old_to_new_objects.size() > 0) {
     for (auto& obj_node : ObjectNode::oop_to_obj_node) {

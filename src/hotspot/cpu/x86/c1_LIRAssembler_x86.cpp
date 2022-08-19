@@ -966,7 +966,7 @@ void LIR_Assembler::reg2stack(LIR_Opr src, LIR_Opr dest, BasicType type, bool po
 }
 
 void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
-  if (InstrumentHeapEvents) {
+  if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
     assert(counter->is_cpu_register(), "");
     assert(max_events->is_constant(), "");
     
@@ -1032,10 +1032,10 @@ void LIR_Assembler::store_heap_event(LIR_Opr src, LIR_Opr dest, BasicType type, 
         __ movl(as_Address(addr), compressed_src);
       } else {
         __ movptr(as_Address(addr), src->as_register());
-        // if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+        if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
           __ append_fieldset_event(as_Address(addr), src->as_register(), 
                                   rscratch1, false, tmp->as_register_lo(), false, false);
-        // }
+        }
       }
       if (info != NULL) {
         add_debug_info_for_null_check(null_check_here, info);
@@ -1072,8 +1072,10 @@ void LIR_Assembler::store_heap_event(LIR_Opr src, LIR_Opr dest, BasicType type, 
           } else {
             null_check_here = code_offset();
             __ movptr(as_Address_lo(addr), rscratch1);
-            __ append_fieldset_event(as_Address(addr), rscratch1,
-                                     rscratch1, false, tmp->as_register_lo(), false, false);
+            if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+              __ append_fieldset_event(as_Address(addr), rscratch1,
+                                       rscratch1, false, tmp->as_register_lo(), false, false);
+            }
           }
 #else
           __ movoop(as_Address(addr), c->as_jobject());

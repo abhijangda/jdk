@@ -6106,7 +6106,7 @@ instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP
 
     int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
     __ subq(cntr_reg, maxval);
-    __ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+    //__ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();
@@ -6195,7 +6195,7 @@ instruct incrCntrAndStoreHeapEventIntReg(memory cntr_mem, rRegI sz, any_RegP obj
     
     int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
     __ subq(cntr_reg, maxval);
-    __ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+    //__ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();
@@ -6239,7 +6239,7 @@ instruct incrCntrAndStoreHeapEventLongReg(memory cntr_mem, rRegL sz, any_RegP ob
     
     uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
     __ subq(cntr_reg, maxval);
-    __ mov64(cntr_reg, JavaThread::heap_events_offset());
+    //__ mov64(cntr_reg, JavaThread::heap_events_offset());
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();
@@ -6286,7 +6286,7 @@ instruct incrCntrAndStoreHeapEventFieldSet(memory cntr_mem, any_RegP val, any_Re
     
     uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
     __ subq(cntr_reg, maxval);
-    __ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+    //__ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();
@@ -6343,7 +6343,7 @@ instruct incrCntrAndStoreCopyArrayEventConstOffsets(memory cntr_mem, any_RegP sr
 
     int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
     __ subq(cntr_reg, maxval);
-    __ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+    //__ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();
@@ -6404,7 +6404,7 @@ instruct incrCntrAndStoreCopyArrayEvent(memory cntr_mem, any_RegP src_array, rRe
 
     int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
     __ subq(cntr_reg, maxval);
-    __ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+    //__ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
     Label not_equal;
     __ jcc(Assembler::Condition::less, not_equal);
     __ pushaq();

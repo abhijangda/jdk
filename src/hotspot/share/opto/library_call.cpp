@@ -4190,7 +4190,7 @@ bool LibraryCallKit::inline_unsafe_copyMemory() {
       flags |= RC_NARROW_MEM; // narrow in memory
     }
   }
-  printf("4194\n");
+  //printf("4194\n");
   // Call it.  Note that the length argument is not scaled.
   make_runtime_call(flags,
                     OptoRuntime::fast_arraycopy_Type(),

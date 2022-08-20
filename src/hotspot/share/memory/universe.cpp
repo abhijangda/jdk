@@ -741,14 +741,14 @@ const oop CheckGraph::INVALID_OOP = oop((oopDesc*)INVALID_PTR);
 void Universe::transfer_events_to_gpu_list_head() {
   // sem_post(&cuda_semaphore);
   Universe::HeapEvent* events = *all_heap_events.head()->data();
-  printf("Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)events);
+  printf("744: Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)events);
   *(uint64_t*)events = 0;
 }
 
 void Universe::transfer_events_to_gpu() {
   // sem_post(&cuda_semaphore);
   Universe::HeapEvent* events = Universe::get_heap_events_ptr();
-  printf("Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)events);
+  //fprintf(stderr, "T\n");
   *(uint64_t*)events = 0;
 }
 
@@ -832,7 +832,7 @@ void Universe::add_heap_events(Universe::HeapEventType event_type1, Universe::He
 
 void Universe::add_heap_event(Universe::HeapEventType event_type, Universe::HeapEvent event) {
   if (!InstrumentHeapEvents) return;
-
+  
   if (CheckHeapEventGraphWithHeap)
     Universe::lock_mutex_heap_event();
   

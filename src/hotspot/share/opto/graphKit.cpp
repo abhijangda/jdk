@@ -1157,7 +1157,9 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   uint64_t offset = JavaThread::heap_events_offset();
   uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(offset);//(uint64_t*)*Universe::all_heap_events.tail()->data();
   
-  if (CheckHeapEventGraphWithHeap)
+  const bool C2HeapEventLock = true;
+
+  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
     lock_unlock_heap_event(true);
   
   bool is_unsafe = true;
@@ -1186,7 +1188,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
     make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
   }*/
 
-  if (CheckHeapEventGraphWithHeap)
+  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
     lock_unlock_heap_event(false);
 }
 
@@ -1195,8 +1197,8 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
     return;
   if (!C2InstrumentHeapEvents) 
     return;
-
-  if (CheckHeapEventGraphWithHeap)
+  bool C2HeapEventLock = true;
+  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
     lock_unlock_heap_event(true);
 
   bool is_unsafe = true;
@@ -1265,7 +1267,7 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
 
   make_transfer_event(ctrl, node_cntr_addr, idx, (MaxHeapEvents*sizeof(Universe::HeapEvent)));
   #endif
-  if (CheckHeapEventGraphWithHeap)
+  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
     lock_unlock_heap_event(false);
 }
 

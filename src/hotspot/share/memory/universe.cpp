@@ -739,14 +739,14 @@ const void* CheckGraph::INVALID_PTR = (void*)0xbaadbabebaadbabe;
 const oop CheckGraph::INVALID_OOP = oop((oopDesc*)INVALID_PTR);
 
 void Universe::transfer_events_to_gpu_list_head() {
-  // sem_post(&cuda_semaphore);
+  sem_post(&cuda_semaphore);
   Universe::HeapEvent* events = *all_heap_events.head()->data();
   printf("744: Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)events);
   *(uint64_t*)events = 0;
 }
 
 void Universe::transfer_events_to_gpu() {
-  // sem_post(&cuda_semaphore);
+  sem_post(&cuda_semaphore);
   Universe::HeapEvent* events = Universe::get_heap_events_ptr();
   //fprintf(stderr, "T\n");
   *(uint64_t*)events = 0;
@@ -1254,7 +1254,6 @@ void __checkCudaErrors( CUresult err, const char *file, const int line )
 
 void* cumemcpy_func(void* arg)
 {
-  return NULL;
   CUdevice   device;
   CUcontext  context;
   CUstream   stream;
@@ -1268,7 +1267,7 @@ void* cumemcpy_func(void* arg)
 
   while(true) {
     sem_wait(&Universe::cuda_semaphore);
-
+    printf("Transferring\n");
     checkCudaErrors(cuMemcpyHtoDAsync(d_heap_events, h_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent), stream));
   }
 }

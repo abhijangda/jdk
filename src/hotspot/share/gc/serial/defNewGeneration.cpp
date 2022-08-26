@@ -60,6 +60,7 @@
 #include "utilities/copy.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/stack.inline.hpp"
+#include "memory/universe.hpp"
 
 //
 // DefNewGeneration functions.

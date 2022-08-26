@@ -231,7 +231,39 @@ class Universe: AllStatic {
   static void transfer_events_to_gpu_list_head();
   static sem_t cuda_semaphore;
   static void add_heap_events(Universe::HeapEventType event_type1, Universe::HeapEvent event1, Universe::HeapEventType event_type2, Universe::HeapEvent event2);
-  static void add_heap_event(Universe::HeapEventType event_type, Universe::HeapEvent event);
+  static inline __attribute__((always_inline)) void add_heap_event(Universe::HeapEventType event_type, const Universe::HeapEvent event) {
+    if (!InstrumentHeapEvents) return;
+    
+    if (CheckHeapEventGraphWithHeap)
+      Universe::lock_mutex_heap_event();
+    
+    #ifndef PRODUCT
+    // if (all_heap_events.find(heap_events) == NULL) {
+    //   printf("835: heap_events %p\n", heap_events);
+    //   abort();
+    // }
+    #endif
+    
+    // Thread* curr_thread = Thread::current();
+    Universe::HeapEvent* heap_events = (CheckHeapEventGraphWithHeap) ? Universe::get_heap_events_ptr() : *all_heap_events.head()->data() ; //(Universe::HeapEvent*)(((char*)curr_thread) + 2048);
+    uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
+    
+    const uint64_t v = *heap_event_counter_ptr;
+    const uint64_t event_src = ((uint64_t)event_type) | (event.src << 15);
+    (&heap_events[1])[v].src = event_src;
+    (&heap_events[1])[v].dst = event.dst;
+    *heap_event_counter_ptr = v + 1;
+
+    if (v + 1 >= MaxHeapEvents) {
+      if (CheckHeapEventGraphWithHeap)
+        Universe::verify_heap_graph();
+      else
+        Universe::transfer_events_to_gpu_list_head();  
+    }
+
+    if (CheckHeapEventGraphWithHeap)
+      Universe::unlock_mutex_heap_event();
+  }
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();
   static void print_heap_event_counter();

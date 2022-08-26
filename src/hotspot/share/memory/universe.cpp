@@ -830,39 +830,6 @@ void Universe::add_heap_events(Universe::HeapEventType event_type1, Universe::He
     Universe::unlock_mutex_heap_event();
 }
 
-void Universe::add_heap_event(Universe::HeapEventType event_type, Universe::HeapEvent event) {
-  if (!InstrumentHeapEvents) return;
-  
-  if (CheckHeapEventGraphWithHeap)
-    Universe::lock_mutex_heap_event();
-  
-  #ifndef PRODUCT
-  // if (all_heap_events.find(heap_events) == NULL) {
-  //   printf("835: heap_events %p\n", heap_events);
-  //   abort();
-  // }
-  #endif
-  
-  // Thread* curr_thread = Thread::current();
-  Universe::HeapEvent* heap_events = (CheckHeapEventGraphWithHeap) ? Universe::get_heap_events_ptr() : *all_heap_events.head()->data() ; //(Universe::HeapEvent*)(((char*)curr_thread) + 2048);
-  uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
-  
-  uint64_t v = *heap_event_counter_ptr;
-  event.src = ((uint64_t)event_type) | (event.src << 15);
-  (&heap_events[1])[v] = event;
-  *heap_event_counter_ptr = v + 1;
-
-  if (v + 1 >= MaxHeapEvents) {
-    if (CheckHeapEventGraphWithHeap)
-      Universe::verify_heap_graph();
-    else
-      Universe::transfer_events_to_gpu_list_head();  
-  }
-
-  if (CheckHeapEventGraphWithHeap)
-    Universe::unlock_mutex_heap_event();
-}
-
 uint64_t Universe::heap_event_mask() {
   ShouldNotReachHere();
   return (~0L) >> (64-16);

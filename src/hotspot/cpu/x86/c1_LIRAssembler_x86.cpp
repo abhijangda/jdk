@@ -1034,7 +1034,7 @@ void LIR_Assembler::store_heap_event(LIR_Opr src, LIR_Opr dest, BasicType type, 
         __ movptr(as_Address(addr), src->as_register());
         if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
           __ append_fieldset_event(as_Address(addr), src->as_register(), 
-                                  rscratch1, false, tmp->as_register_lo(), false, false);
+                                   rscratch1, false, tmp->as_register_lo(), false, false);
         }
       }
       if (info != NULL) {
@@ -1052,8 +1052,10 @@ void LIR_Assembler::store_heap_event(LIR_Opr src, LIR_Opr dest, BasicType type, 
           __ xorptr(rscratch1, rscratch1);
           null_check_here = code_offset();
           __ movptr(as_Address(addr), rscratch1);
-          __ append_fieldset_event(as_Address(addr), 0L,
-                                   rscratch1, false, tmp->as_register_lo(), false, false);
+          if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+            __ append_fieldset_event(as_Address(addr), 0L,
+                                     rscratch1, false, tmp->as_register_lo(), false, false);
+          }
 #else
           __ movptr(as_Address(addr), NULL_WORD);
 #endif
@@ -3287,7 +3289,7 @@ void LIR_Assembler::emit_arraycopy(LIR_OpArrayCopy* op) {
   int flags = op->flags();
   BasicType basic_type = default_type != NULL ? default_type->element_type()->basic_type() : T_ILLEGAL;
   if (is_reference_type(basic_type)) basic_type = T_OBJECT;
-  if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
+  if (is_reference_type(basic_type) && InstrumentHeapEvents && C1InstrumentHeapEvents) {
     Address __mem = Address(r15_thread, (int)JavaThread::heap_events_offset());
     Register cntr_reg = rscratch1;
 
@@ -3298,26 +3300,26 @@ void LIR_Assembler::emit_arraycopy(LIR_OpArrayCopy* op) {
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
 
     __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset());
-
-    uint64_t encoded = Universe::encode_heap_event_src(Universe::CopyArray, 0);
+    
     __ addq(src, src_pos);
-    __ shlq(src, 15);
-    __ orq(src, (int32_t)encoded);
     __ movq(__mem, src);
-    __ shrq(src, 15);
     __ subq(src, src_pos);
     
     __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
+    uint64_t encoded = Universe::encode_heap_event_dst(Universe::CopyArray, 0);
     __ addq(dst, dst_pos);
+    __ shlq(dst, 15);
+    __ orq(dst, (int32_t)encoded);
     __ movq(__mem, dst);
+    __ shrq(dst, 15);
     __ subq(dst, dst_pos);
 
     __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 16);
-
-    encoded = Universe::encode_heap_event_src(Universe::CopyArrayLength, 0);
-    __ shlq(length, 15);
     __ movq(__mem, length);
-    __ shrq(length, 15);
+
+    // encoded = Universe::encode_heap_event_dst(Universe::CopyArrayLength, 0);
+    // __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 24);
+    // __ movq(__mem, encoded);
 
     int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
     __ subq(cntr_reg, maxval);

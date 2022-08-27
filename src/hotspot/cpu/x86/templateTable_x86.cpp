@@ -3996,11 +3996,11 @@ void TemplateTable::_new() {
     //
     // rdx: instance size in bytes
     if (InstrumentHeapEvents) {
-      __ movq(r11, rdx);
-      __ shrq(r11, 3); //rdx is instance size in bits
+      __ movq(r8, rdx);
+      __ shrq(r8, 3); //rdx is instance size in bits
     }
     __ eden_allocate(thread, rax, rdx, 0, rbx, slow_case);
-    __ append_newobj_event(rax, r11, r12, true, r10, true, true);
+    __ append_newobj_event(rax, r8, r9, true, r10, true, true);
   }
 
   // If UseTLAB or allow_shared_alloc are true, the object is created above and

@@ -835,23 +835,27 @@ uint64_t Universe::heap_event_mask() {
   return (~0L) >> (64-16);
 }
 
-uint64_t Universe::encode_heap_event_src(HeapEventType event_type, uint64_t src){
-  return ((uint64_t)event_type) | (src << 15);
+uint64_t Universe::encode_heap_event_dst(HeapEventType event_type, uint64_t dst){
+  return ((uint64_t)event_type) | (dst << 15);
 }
 
 Universe::HeapEvent Universe::encode_heap_event(Universe::HeapEventType event_type, Universe::HeapEvent event) {
-  return HeapEvent{encode_heap_event_src(event_type, event.src), event.dst};
+  return HeapEvent{event.src, encode_heap_event_dst(event_type, event.dst)};
 }
 
 Universe::HeapEventType Universe::decode_heap_event_type(Universe::HeapEvent event) {
   //Obtain the least significant 16-bits and return those as HeapEventType
   uint64_t mask = (1UL << 15) - 1;
-  return (HeapEventType) (event.src & mask);
+  return (HeapEventType) (event.dst & mask);
 }
 
-uint64_t Universe::decode_heap_event_src(HeapEvent event) {
-  //Obtain the Most significant 48 bits as source
-  return (event.src >> 15);
+uint64_t Universe::decode_heap_event_dst(HeapEvent event) {
+  //Obtain the Most significant 48 bits as dest
+  return (event.dst >> 15);
+}
+
+Universe::HeapEvent Universe::decode_heap_event(Universe::HeapEvent event) {
+  return HeapEvent{event.src, decode_heap_event_dst(event)};
 }
 
 static pthread_mutex_t heap_events_list_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -964,14 +968,17 @@ void Universe::verify_heap_graph() {
       
       if (heap_event_type == Universe::NewObject || 
           heap_event_type == Universe::NewArray) {
-        oopDesc* obj = (oopDesc*)event.dst;
+        HeapEvent event2 = decode_heap_event(event);
+        oopDesc* obj = (oopDesc*)event2.dst;
         
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
         if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
         }
-        uint64_t size = decode_heap_event_src(event);
-        ObjectNode obj_node = ObjectNode(obj, size, heap_event_type, 0);
+        // if (event2.src == 1) {
+        //   printf("979\n");
+        // }
+        ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
       }
     }
@@ -996,10 +1003,11 @@ void Universe::verify_heap_graph() {
     
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
+      ((HeapEvent*)heap_events_start)[event_iter] = HeapEvent{0,0};
       HeapEventType heap_event_type = decode_heap_event_type(event);
-      event.src = decode_heap_event_src(event);
-
-      if (heap_event_type == Universe::NewObject || 
+      event = decode_heap_event(event);
+      
+      if (heap_event_type == Universe::NewObject ||
           heap_event_type == Universe::NewArray) {
             continue;
         // oopDesc* obj = (oopDesc*)event.dst;
@@ -1077,7 +1085,6 @@ void Universe::verify_heap_graph() {
         oopDesc* obj_dst_start = (oopDesc*)event.dst;
 
         HeapEvent length_event = heap_events_start[event_iter+1];
-        length_event.src = decode_heap_event_src(length_event);
         objArrayOop obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
         objArrayOop obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
         
@@ -1087,7 +1094,7 @@ void Universe::verify_heap_graph() {
         //No need to consider objArrayOop::base() in offset calculation
         HeapEvent offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
                              (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
-        // if (checking > 1) printf("src %p %ld dst %p %ld length %ld\n", obj_src, offsets.src, obj_dst, offsets.dst, length_event.src);
+        // printf("src %p %ld dst %p %ld length %ld\n", (oopDesc*)obj_src, offsets.src, (oopDesc*)obj_dst, offsets.dst, length_event.src);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
         auto obj_dst_node_iter = ObjectNode::oop_to_obj_node.find(obj_dst);
 

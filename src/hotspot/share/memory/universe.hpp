@@ -217,10 +217,11 @@ class Universe: AllStatic {
     uint64_t dst;
   };
   static uint64_t heap_event_mask();
-  static uint64_t encode_heap_event_src(HeapEventType event_type, uint64_t src);
+  static uint64_t encode_heap_event_dst(HeapEventType event_type, uint64_t src);
   static HeapEvent encode_heap_event(HeapEventType event_type, HeapEvent event);
   static HeapEventType decode_heap_event_type(HeapEvent event);
-  static uint64_t decode_heap_event_src(HeapEvent event);
+  static uint64_t decode_heap_event_dst(HeapEvent event);
+  static HeapEvent decode_heap_event(Universe::HeapEvent event);
   static void add_heap_event_ptr(Universe::HeapEvent* ptr);
   static void remove_heap_event_ptr(Universe::HeapEvent* ptr);
   static void copy_heap_events(Universe::HeapEvent* ptr);
@@ -249,9 +250,7 @@ class Universe: AllStatic {
     uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
     
     const uint64_t v = *heap_event_counter_ptr;
-    const uint64_t event_src = ((uint64_t)event_type) | (event.src << 15);
-    (&heap_events[1])[v].src = event_src;
-    (&heap_events[1])[v].dst = event.dst;
+    (&heap_events[1])[v] = encode_heap_event(event_type, event);
     *heap_event_counter_ptr = v + 1;
 
     if (v + 1 >= MaxHeapEvents) {

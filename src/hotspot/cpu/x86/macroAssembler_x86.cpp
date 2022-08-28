@@ -4688,8 +4688,10 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
 {
   if (!InstrumentHeapEvents) return;
   if (!InterpreterInstrumentHeapEvents) return;
+  assert(temp1 != temp2, "");
   if (src_or_obj_size.is_register()) {
     assert(src_or_obj_size.as_register() != temp2, "");
+    // assert(src_or_obj_size.as_register() != temp1, "");
     if (src_or_obj_size.as_register() == temp1 && dst_or_new_obj.is_address()) {
       assert(temp1 == rscratch1, "");
     }
@@ -4718,22 +4720,36 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
   Address heap_event_addr = Address(r15_thread, temp2, Address::times_1, (int)JavaThread::heap_events_offset());
   
   if (src_or_obj_size.is_register()) {
-    shlq(src_or_obj_size.as_register(), 15);
-    orq(src_or_obj_size.as_register(), (int32_t)event_type);
+    // shlq(src_or_obj_size.as_register(), 15);
+    // orq(src_or_obj_size.as_register(), (int32_t)event_type);
     movq(heap_event_addr, src_or_obj_size.as_register());
-    shrq(src_or_obj_size.as_register(), 15);
+    // shrq(src_or_obj_size.as_register(), 15);
   } else {
     uint64_t const_src = (uint64_t)src_or_obj_size.as_constant();
-    const_src = Universe::encode_heap_event_src(event_type, const_src);
+    // if (Universe::checking > 1) {
+    //   printf("const_src %ld\n", const_src);
+    // }
+    if (const_src == 1 && event_type == Universe::NewObject) {
+      printf("4732 %ld\n", const_src);
+      printf("4733\n");
+      // mov64(temp1, (int64_t)const_src);
+    }
+    //const is int32 right?
+    // const_src = Universe::encode_heap_event_src(event_type, const_src);
     mov64(temp1, (int64_t)const_src);
     //TODO: Move imm64 directly to memory?
     movq(heap_event_addr, temp1);
   }
   heap_event_addr = Address(r15_thread, temp2, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
   if (dst_or_new_obj.is_register()) {
+    shlq(dst_or_new_obj.as_register(), 15);
+    orq(dst_or_new_obj.as_register(), (int32_t)event_type);
     movq(heap_event_addr, dst_or_new_obj.as_register());
+    shrq(dst_or_new_obj.as_register(), 15);
   } else {
     leaq(temp1, dst_or_new_obj.as_address());
+    shlq(temp1, 15);
+    orq(temp1, (int32_t)event_type);
     movq(heap_event_addr, temp1);
   }
   subq(temp2, MaxHeapEvents*sizeof(Universe::HeapEvent));

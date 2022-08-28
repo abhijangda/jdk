@@ -975,9 +975,9 @@ void Universe::verify_heap_graph() {
         if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
         }
-        if (event2.src == 1) {
-          printf("979\n");
-        }
+        // if (event2.src == 1) {
+        //   printf("979\n");
+        // }
         ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
       }
@@ -1000,13 +1000,14 @@ void Universe::verify_heap_graph() {
     // printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, get_heap_events_ptr());
     *(uint64_t*)th_heap_events = 0;
     HeapEvent* heap_events_start = &th_heap_events[1];
-    continue;
+    
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
+      ((HeapEvent*)heap_events_start)[event_iter] = HeapEvent{0,0};
       HeapEventType heap_event_type = decode_heap_event_type(event);
       event = decode_heap_event(event);
-
-      if (heap_event_type == Universe::NewObject || 
+      
+      if (heap_event_type == Universe::NewObject ||
           heap_event_type == Universe::NewArray) {
             continue;
         // oopDesc* obj = (oopDesc*)event.dst;
@@ -1188,7 +1189,7 @@ void Universe::verify_heap_graph() {
     }
   }
   printf("event_threads.size() %ld\n", event_threads.size());
-  CheckGraph check_graph(true, false, false, false);
+  CheckGraph check_graph(true, true, true, true);
   Universe::heap()->object_iterate(&check_graph);
 
   size_t num_objects = ObjectNode::oop_to_obj_node.size();

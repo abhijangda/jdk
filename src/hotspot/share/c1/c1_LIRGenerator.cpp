@@ -1862,7 +1862,8 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
       __ shift_left(tmp2, 15, tmp2);
       __ logical_or(tmp2, LIR_OprFact::longConst((int32_t)event_type), tmp2);
       __ store(tmp2, heap_events_addr_dst);
-    } else if (event_type == Universe::NewObject || event_type == Universe::NewArray) {      
+    } else if (event_type == Universe::NewObject || event_type == Universe::NewArray) {   
+      ShouldNotReachHere();
       //Not updated
       // if (src_or_obj_size.is_constant()) {
       //   LIR_Const* lirconst =  src_or_obj_size.pointer()->as_constant();

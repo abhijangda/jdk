@@ -3801,6 +3801,24 @@ operand vlRegD() %{
    interface(REG_INTER);
 %}
 
+// 128-bit vector register operands
+operand vecXReg() %{
+   constraint(ALLOC_IN_RC(vectorx_reg));
+   match(VecX);
+
+   format %{ %}
+   interface(REG_INTER);
+%}
+
+// 128-bit vector register operands
+operand vlVecXReg() %{
+   constraint(ALLOC_IN_RC(vectorx_reg_vlbwdq));
+   match(VecX);
+
+   format %{ %}
+   interface(REG_INTER);
+%}
+
 //----------Memory Operands----------------------------------------------------
 // Direct Memory Operand
 // operand direct(immP addr)
@@ -6476,7 +6494,7 @@ instruct storeHeapEventLongReg(memory mem, rRegL sz, any_RegP obj)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, legRegD tmp_vec1)
+instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, vecXReg tmp_vec1)
 %{
   match(Set field (StoreHeapEvent field val)); //(Binary val (Binary cntr_addr cntr))));
   effect(TEMP cntr_addr, TEMP tmp_vec1);
@@ -6530,7 +6548,7 @@ instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, le
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, legRegD tmp_vec1)
+instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, vecXReg tmp_vec1)
 %{
   match(Set field (StoreHeapEvent field val)); //(Binary val (Binary cntr_addr cntr))));
   effect(TEMP cntr_addr, TEMP tmp_vec1);

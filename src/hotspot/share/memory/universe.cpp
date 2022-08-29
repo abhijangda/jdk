@@ -1085,6 +1085,7 @@ void Universe::verify_heap_graph() {
         oopDesc* obj_dst_start = (oopDesc*)event.dst;
 
         HeapEvent length_event = heap_events_start[event_iter+1];
+        event_iter = event_iter + 1;
         objArrayOop obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
         objArrayOop obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
         
@@ -1178,6 +1179,8 @@ void Universe::verify_heap_graph() {
             ObjectNode::oop_to_obj_node.erase(first_obj_iter, last_obj_iter);
           }
         }
+      } else {
+        printf("Unknown event %ld\n", heap_event_type);
       }
     } 
   }

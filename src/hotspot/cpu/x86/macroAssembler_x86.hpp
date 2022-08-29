@@ -1194,6 +1194,7 @@ public:
 
   // Move Aligned Double Quadword
   void movdqa(XMMRegister dst, Address src)       { Assembler::movdqa(dst, src); }
+  void movdqa(Address dst, XMMRegister src)       { Assembler::movdqa(dst, src); }
   void movdqa(XMMRegister dst, XMMRegister src)   { Assembler::movdqa(dst, src); }
   void movdqa(XMMRegister dst, AddressLiteral src);
 

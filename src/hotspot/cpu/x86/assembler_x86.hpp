@@ -1564,6 +1564,7 @@ private:
   // Move Aligned Double Quadword
   void movdqa(XMMRegister dst, XMMRegister src);
   void movdqa(XMMRegister dst, Address src);
+  void movdqa(Address dst, XMMRegister src);
 
   // Move Unaligned Double Quadword
   void movdqu(Address     dst, XMMRegister src);

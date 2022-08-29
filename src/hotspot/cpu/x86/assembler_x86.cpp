@@ -2920,6 +2920,16 @@ void Assembler::movdqa(XMMRegister dst, Address src) {
   emit_operand(dst, src);
 }
 
+void Assembler::movdqa(Address dst, XMMRegister src) {
+  NOT_LP64(assert(VM_Version::supports_sse2(), ""));
+  InstructionMark im(this);
+  InstructionAttr attributes(AVX_128bit, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ true);
+  attributes.set_address_attributes(/* tuple_type */ EVEX_FVM, /* input_size_in_bits */ EVEX_NObit);
+  simd_prefix(src, xnoreg, dst, VEX_SIMD_66, VEX_OPCODE_0F, &attributes);
+  emit_int8(0x7F);
+  emit_operand(src, dst);
+}
+
 void Assembler::movdqu(XMMRegister dst, Address src) {
   NOT_LP64(assert(VM_Version::supports_sse2(), ""));
   InstructionMark im(this);

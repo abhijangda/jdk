@@ -3801,6 +3801,24 @@ operand vlRegD() %{
    interface(REG_INTER);
 %}
 
+// 128-bit vector register operands
+operand vecXReg() %{
+   constraint(ALLOC_IN_RC(vectorx_reg));
+   match(VecX);
+
+   format %{ %}
+   interface(REG_INTER);
+%}
+
+// 128-bit vector register operands
+operand vlVecXReg() %{
+   constraint(ALLOC_IN_RC(vectorx_reg_vlbwdq));
+   match(VecX);
+
+   format %{ %}
+   interface(REG_INTER);
+%}
+
 //----------Memory Operands----------------------------------------------------
 // Direct Memory Operand
 // operand direct(immP addr)
@@ -6476,27 +6494,30 @@ instruct storeHeapEventLongReg(memory mem, rRegL sz, any_RegP obj)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, rRegL cntr)
+instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, vecXReg tmp_vec1)
 %{
   match(Set field (StoreHeapEvent field val)); //(Binary val (Binary cntr_addr cntr))));
-  effect(TEMP cntr_addr, TEMP cntr);
+  effect(TEMP cntr_addr, TEMP tmp_vec1);
   //TODO: Specialize for constant vals
   ins_cost(125); // XXX
   format %{ "movq    $field, $val\t# long" %}
   ins_encode %{
     __ movq($field$$Address, $val$$constant);
-    
+  
     if (!C2InstrumentHeapEvents) return;
 
-    Register cntr_reg = $cntr$$Register;
     Register cntr_addr_reg = $cntr_addr$$Register;
-    Register val_reg = $val$$Register;
+    Register cntr_reg = cntr_addr_reg;
+
+    __ movq(cntr_addr_reg, $val$$constant);
+    __ movq($tmp_vec1$$XMMRegister, cntr_addr_reg);
+    __ leaq(cntr_addr_reg, $field$$Address);
+    __ shlq(cntr_addr_reg, 15);
+    uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+    __ orq(cntr_addr_reg, (int32_t)encoded);
+    __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
+
     Address field_addr = $field$$Address;
-    assert(val_reg != cntr_addr_reg, "sanity");
-    assert(cntr_addr_reg != cntr_reg, "sanity");
-    assert(val_reg != cntr_addr_reg, "sanity");
-    assert(field_addr.base() != cntr_addr_reg, "sanity");
-    assert(field_addr.base() != cntr_reg, "sanity");
 
     Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
     
@@ -6506,16 +6527,9 @@ instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, rR
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
 
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-    __ movq(__mem, $val$$constant);
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
-    //TODO: Anyway to remove this extra reg use
-    uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-
-    __ leaq(cntr_addr_reg, $field$$Address);
-    __ shlq(cntr_addr_reg, 15);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
-    __ movq(__mem, cntr_addr_reg);
-    __ shrq(cntr_addr_reg, 15);
+    
+    
+    __ movdqa(__mem, $tmp_vec1$$XMMRegister);
 
     int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
     __ subq(cntr_reg, maxval);
@@ -6534,10 +6548,10 @@ instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, rR
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, rRegL cntr)
+instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, vecXReg tmp_vec1)
 %{
   match(Set field (StoreHeapEvent field val)); //(Binary val (Binary cntr_addr cntr))));
-  effect(TEMP cntr_addr, TEMP cntr);
+  effect(TEMP cntr_addr, TEMP tmp_vec1);
   //TODO: Specialize for constant vals
   ins_cost(125); // XXX
   format %{ "movq    $field, $val\t# long" %}
@@ -6546,15 +6560,15 @@ instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, rRe
     
     if (!C2InstrumentHeapEvents) return;
     
-    Register cntr_reg = $cntr$$Register;
     Register cntr_addr_reg = $cntr_addr$$Register;
-    Register val_reg = $val$$Register;
-    Address field_addr = $field$$Address;
-    assert(val_reg != cntr_addr_reg, "sanity");
-    assert(cntr_addr_reg != cntr_reg, "sanity");
-    assert(val_reg != cntr_addr_reg, "sanity");
-    assert(field_addr.base() != cntr_addr_reg, "sanity");
-    assert(field_addr.base() != cntr_reg, "sanity");
+    Register cntr_reg = cntr_addr_reg;
+
+    __ movq($tmp_vec1$$XMMRegister, $val$$Register);
+    __ leaq(cntr_addr_reg, $field$$Address);
+    __ shlq(cntr_addr_reg, 15);
+    uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+    __ orq(cntr_addr_reg, (int32_t)encoded);
+    __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
     
@@ -6564,17 +6578,8 @@ instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, rRe
     __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
 
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-    
-    __ movq(__mem, $val$$Register);
-    
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
-    uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    //TODO: Anyway to remove this extra reg use
-    __ leaq(cntr_addr_reg, $field$$Address);
-    __ shlq(cntr_addr_reg, 15);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
-    __ movq(__mem, cntr_addr_reg);
-    __ shrq(cntr_addr_reg, 15);
+
+    __ movdqa(__mem, $tmp_vec1$$XMMRegister);
 
     int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
     __ subq(cntr_reg, maxval);

@@ -2652,7 +2652,7 @@ uint StoreNode::hash() const {
 // When a store immediately follows a relevant allocation/initialization,
 // try to capture it into the initialization, or hoist it above.
 Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (this->Opcode() == Op_TransferEvents || this->Opcode() == Op_StoreHeapEvent || Opcode() == Op_IncrCntrAndStoreHeapEvent || 
+  if (this->Opcode() == Op_TransferEvents || Opcode() == Op_IncrCntrAndStoreHeapEvent || 
       this->Opcode() == Op_IncrCntrAndStoreCopyArrayEvent)
     return NULL;
   Node* p = MemNode::Ideal_common(phase, can_reshape);
@@ -2734,6 +2734,8 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       }
     }
   }
+
+  
 
   return NULL;                  // No further progress
 }

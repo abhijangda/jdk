@@ -2377,6 +2377,14 @@ void Matcher::find_shared_post_visit(Node* n, uint opcode) {
         n->set_req(MemNode::OopStore, pair2);
         n->del_req(MemNode::OopStore+1);
       } else if (n->req() == 4) {
+      } else if (n->req() > 6) {
+        Node* pair = n->in(n->req() - 1);
+        for (int i = n->req() - 2; i >= 3; i--) {
+          pair = new BinaryNode(n->in(i), pair);
+
+          n->set_req(i, pair);
+          n->del_req(i+1);
+        }
       } else {
         printf("2379: Wrong case: %d\n", n->req());
       }

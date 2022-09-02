@@ -2097,6 +2097,128 @@ void PhasePeephole::print_statistics() {
 #endif
 
 
+// //=============================================================================
+// #ifndef PRODUCT
+// uint PhasePeephole::_total_peepholes = 0;
+// #endif
+//------------------------------PhasePeephole----------------------------------
+PhaseFuseHeapEvents::PhaseFuseHeapEvents(PhaseGVN* igvn, Unique_Node_List* worklist)
+  : PhaseTransform(FuseHeapEvents), _worklist(worklist), _igvn(igvn) {
+  
+}
+
+#ifndef PRODUCT
+//------------------------------~PhasePeephole---------------------------------
+PhaseFuseHeapEvents::~PhaseFuseHeapEvents() {
+  //_total_peepholes += count_peepholes();
+}
+#endif
+
+static bool remove_nodes = false;
+
+void traverse(Node_List& visited, Node* n, PhaseGVN* igvn, Unique_Node_List* worklist, GrowableArray<StoreHeapEventNode*>& nodes_to_fuse, Node* parent, int in_index, int indent) {
+  if (visited[n->_idx] != NULL) {
+    return;
+  }
+  
+  visited.map(n->_idx, (Node*)true);
+
+  for (int i = 0; i < indent; i++) {
+    printf(" ");
+  }
+  printf("%p %s\n", n, n->node_name());
+
+  int cnt = n->req();
+  for( int i = 0; i < cnt; i++ ) {          // For all inputs do
+    Node *input = n->in(i);
+    if( input != NULL ) {                    // Ignore NULLs
+      traverse(visited, input, igvn, worklist, nodes_to_fuse, n, i, indent + 1);
+    }
+  }
+  
+  for(int i = cnt - 1; i >= 0; i--) {          // For all inputs do
+    Node *input = n->in(i);
+    if( input != NULL ) {                    // Ignore NULLs
+      if (input->Opcode() == Op_StoreHeapEvent) {
+        printf("StoreHeapEvent %d %p cntrl %p\n", input->_idx, input, input->in(MemNode::Control));
+        if (!remove_nodes) {
+          nodes_to_fuse.push((StoreHeapEventNode*)input);
+        } else {
+          if (nodes_to_fuse.at(0) != input) {
+            printf("remove\n");
+            ((StoreHeapEventNode*)n)->set_none_event_type();
+            // n->set_req(i, igvn->makecon(TypeRawPtr::make((address)0x1)));
+            // parent->del_req(in_index);
+          }
+        }
+      }
+    }
+  }
+}
+
+//------------------------------transform--------------------------------------
+Node *PhaseFuseHeapEvents::transform( Node *n ) {
+  GrowableArray <Node *> trstack(1);
+  Node_List visited(_arena);
+  GrowableArray<StoreHeapEventNode*> nodes_to_fuse;
+  remove_nodes = false;
+  nodes_to_fuse.clear();
+  traverse(visited, n, _igvn, _worklist, nodes_to_fuse, NULL, 0, 0);
+
+  remove_nodes = true;
+  if (remove_nodes) {
+    for (int i = 1; i < nodes_to_fuse.length(); i++) {
+      nodes_to_fuse.at(0)->fuse(nodes_to_fuse.at(i));
+    }
+  }
+  
+  visited.clear();
+  traverse(visited, n, _igvn, _worklist, nodes_to_fuse, NULL, 0, 0);
+
+  remove_nodes = false;
+  visited.clear();
+  nodes_to_fuse.clear();
+  traverse(visited, n, _igvn, _worklist, nodes_to_fuse, NULL, 0, 0);
+
+  /*
+  trstack.push(n);           // Process children of cloned node
+  while ( trstack.is_nonempty() ) {
+    Node *n = trstack.pop();
+    if (visited[n->_idx] != NULL) {
+      continue;
+    }
+    printf("%p %s\n", n, n->node_name());
+    visited.map(n->_idx, (Node*)true);
+    if (n->Opcode() == Op_StoreHeapEvent) {
+      nodes_to_fuse.push((StoreHeapEventNode*)n);
+      printf("StoreHeapEvent %d cntrl %p\n", n->_idx, n->in(MemNode::Control));
+    }
+    uint cnt = n->req();
+    for( uint i = 0; i < cnt; i++ ) {          // For all inputs do
+      Node *input = n->in(i);
+      if( input != NULL ) {                    // Ignore NULLs
+        trstack.push(input);
+      }
+    }
+  }*/
+  return NULL;
+}
+
+//------------------------------do_transform-----------------------------------
+void PhaseFuseHeapEvents::do_transform() {
+  // C->set_root( transform(C->root())->as_Root() );
+  assert( C->top(),  "missing TOP node" );
+  assert( C->root(), "missing root" );
+  transform(C->root());
+}
+
+// //------------------------------print_statistics-------------------------------
+// #ifndef PRODUCT
+// void PhasePeephole::print_statistics() {
+//   tty->print_cr("Peephole: peephole rules applied: %d",  _total_peepholes);
+// }
+// #endif
+
 //=============================================================================
 //------------------------------set_req_X--------------------------------------
 void Node::set_req_X( uint i, Node *n, PhaseIterGVN *igvn ) {

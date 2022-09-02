@@ -46,6 +46,7 @@ public:
     Parser,                           // Parse bytecodes
     Remove_Useless,                   // Remove useless nodes
     Remove_Useless_And_Renumber_Live, // First, remove useless nodes from the graph. Then, renumber live nodes.
+    FuseHeapEvents,
     Optimistic,                       // Optimistic analysis phase
     GVN,                              // Pessimistic global value numbering phase
     Ins_Select,                       // Instruction selection phase

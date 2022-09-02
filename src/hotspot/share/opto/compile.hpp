@@ -419,6 +419,62 @@ class Compile : public Phase {
 
   GrowableArray<RuntimeStub*>   _native_invokers;
 
+  bool method_found3_() {
+    if (_method == NULL)
+      return false;
+    if (_method->holder() == NULL)
+      return false;
+    if (_method->name()->get_symbol() == NULL)
+      return false;
+    
+    Symbol* holder_symbol = _method->holder()->name()->get_symbol();
+    // printf("holder_symbol %p\n", holder_symbol);
+    if (holder_symbol == NULL) return false;
+    Symbol* method_symbol = _method->name()->get_symbol();
+    // printf("method_sysmbol %p\n", method_symbol);
+    if (method_symbol == NULL) return false;
+    const char* holder_name = holder_symbol->as_utf8();
+    const char* method_name = method_symbol->as_utf8();
+    //printf("%s::%s\n", holder_name, method_name);
+    
+    bool found = //strstr(holder_name, "org/h2/command/") != NULL || 
+                 //strstr(holder_name, "org/h2/engine/") != NULL  || 
+                 //strstr(holder_name, "org/h2/expression/") != NULL || 
+                 //strstr(holder_name, "org/h2/table/") != NULL || 
+                 strstr(holder_name, "org/h2/index/TreeIndex") != NULL || 
+                //  strstr(holder_name, "org/h2/index/Base") != NULL || 
+                //  strstr(holder_name, "org/h2/index/Scan") != NULL || 
+                //  strstr(holder_name, "org/h2/index/Tree") != NULL || 
+                //  strstr(holder_name, "org/h2/index/View") != NULL || 
+                 //strstr(holder_name, "org/h2/index/Meta") != NULL || 
+                 //strstr(holder_name, "org/h2/index/MultiVersionIndex") != NULL || 
+                // strstr(holder_name, "org/h2/index/MultiVersionCursor") != NULL || 
+                // strstr(holder_name, "Cursor") != NULL || 
+                //  strstr(holder_name, "org/h2/index/BaseIndex") != NULL || 
+                //  strstr(holder_name, "org/h2/index/MultiVersionIndex") != NULL || 
+                //  strstr(holder_name, "org/h2/index/ScanIndex") != NULL || 
+                 false;
+    if (found) {
+      found = (
+                // strcmp(method_name, "add") == 0 ||
+                // strcmp(method_name, "find") == 0 ||
+                // strcmp(method_name, "remove") == 0 ||
+                strcmp(method_name, "<init>") == 0 ||
+                // strcmp(method_name, "loadNext") == 0 ||
+                // strcmp(method_name, "find") == 0 ||
+                false
+                );
+        // if (found == false) {
+        //   printf("%s::%s\n", holder_name, method_name);
+        // }
+    }
+
+    if (found) {
+      printf("%s::%s\n", holder_name, method_name);
+    }
+    return found;
+  }
+
   // Inlining may not happen in parse order which would make
   // PrintInlining output confusing. Keep track of PrintInlining
   // pieces in order.

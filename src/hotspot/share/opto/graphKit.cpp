@@ -63,6 +63,10 @@ GraphKit::GraphKit(JVMState* jvms)
   _exceptions = jvms->map()->next_exception();
   if (_exceptions != NULL)  jvms->map()->set_next_exception(NULL);
   set_jvms(jvms);
+  _method_found2 = method_found2_();
+  // _method_found3 = method_found3_();
+  // if(_method_found3)
+  //   printf("_method_found3 %d\n", _method_found3);
 }
 
 // Private constructor for parser.
@@ -70,7 +74,9 @@ GraphKit::GraphKit()
   : Phase(Phase::Parser),
     _env(C->env()),
     _gvn(*C->initial_gvn()),
-    _barrier_set(BarrierSet::barrier_set()->barrier_set_c2())
+    _barrier_set(BarrierSet::barrier_set()->barrier_set_c2()),
+    _method_found2(false),
+    _method_found3(false)
 {
   _exceptions = NULL;
   set_map(NULL);
@@ -1156,11 +1162,12 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   if (!C2InstrumentHeapEvents) return;
   uint64_t offset = JavaThread::heap_events_offset();
   uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(offset);//(uint64_t*)*Universe::all_heap_events.tail()->data();
-  
+  if (method_found2()) return;
   const bool C2HeapEventLock = true;
-
+  // if (method_found()) return;
   if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
     lock_unlock_heap_event(true);
+  
   
   bool is_unsafe = true;
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
@@ -1752,7 +1759,7 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
   } else if (require_atomic_access && bt == T_DOUBLE) {
     st = StoreDNode::make_atomic(ctl, mem, adr, adr_type, val, mo);
   } else {
-    bool store_heap = is_reference_type(bt) && InstrumentHeapEvents && use_store_heap_event() &&
+    bool store_heap = is_reference_type(bt) && InstrumentHeapEvents && use_store_heap_event() && !method_found2() &&
                       !adr->bottom_type()->is_ptr_to_narrowoop() &&
                       !(adr->bottom_type()->is_ptr_to_narrowklass() ||
                           (UseCompressedClassPointers && val->bottom_type()->isa_klassptr() &&

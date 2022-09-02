@@ -774,6 +774,12 @@ protected:
   virtual uint size_of() const {return sizeof(*this);}
   Universe::HeapEventType _event_type;
 public:
+  enum { Control,               // When is it safe to do this load?
+         Memory,                // Chunk of memory is being loaded from
+         Address,               // Actually address, derived from base
+         ValueIn,               // Value to store
+         OopStore,              // Preceeding oop store, only in StoreCM
+  };
   StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, MemOrd mo, Universe::HeapEventType event_type)
     : StoreNode(c, mem, adr, at, size, mo), _event_type(event_type) {}
   StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, MemOrd mo, Universe::HeapEventType event_type)
@@ -783,6 +789,10 @@ public:
     {
       add_req(cntr_idx);
     }
+  void set_none_event_type() {_event_type = Universe::None;}
+  void fuse(StoreHeapEventNode* node) {
+    add_req(node->in(Address)); add_req(node->in(ValueIn));
+  }
   virtual int Opcode() const;
   virtual BasicType memory_type() const { return T_ADDRESS; }
   Universe::HeapEventType event_type() {return _event_type;}

@@ -647,13 +647,17 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
           if( cnt == 0 ) {
             assert( n->req() == 1, "No data inputs expected" );
             in = parent_ctrl; // replaced by top
-          } else {
+            igvn->replace_node(n, in);
+          } else if (n->req() == 2 &&  n->in(1) != NULL) {
             assert( n->req() == 2 &&  n->in(1) != NULL, "Only one data input expected" );
             in = n->in(1);               // replaced by unique input
             if( n->as_Phi()->is_unsafe_data_reference(in) )
               in = phase->C->top();      // replaced by top
+            igvn->replace_node(n, in);
+          } else {
+            n->del_req(0);
+            //igvn->remove_dead_node(n);
           }
-          igvn->replace_node(n, in);
         }
         else if( n->is_Region() ) { // Update all incoming edges
           assert(n != this, "Must be removed from DefUse edges");

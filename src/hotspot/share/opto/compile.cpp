@@ -718,7 +718,10 @@ Compile::Compile( ciEnv* ci_env, ciMethod* target, int osr_bci,
       return;
     }
     GraphKit kit(jvms);
-
+    bool f = method_found3_();
+    if (f) {
+      printf("f %d\n", f);
+    }
     if (!kit.stopped()) {
       // Accept return values, and transfer control we know not where.
       // This is done by a special, unique ReturnNode bound to root.
@@ -741,6 +744,13 @@ Compile::Compile( ciEnv* ci_env, ciMethod* target, int osr_bci,
     if (failing())  return;
 
     print_method(PHASE_BEFORE_REMOVEUSELESS, 3);
+
+    if(InstrumentHeapEvents && C2InstrumentHeapEvents && f) {
+      printf("756\n");
+      // TracePhase tp("peephole", &timers[_t_peephole]);
+      PhaseFuseHeapEvents p(initial_gvn(), &for_igvn);
+      p.do_transform();
+    }
 
     // Remove clutter produced by parsing.
     if (!failing()) {

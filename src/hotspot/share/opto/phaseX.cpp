@@ -2140,7 +2140,7 @@ void traverse(Node_List& visited, Node* n, PhaseGVN* igvn, Unique_Node_List* wor
     Node *input = n->in(i);
     if( input != NULL ) {                    // Ignore NULLs
       if (input->Opcode() == Op_StoreHeapEvent) {
-        printf("StoreHeapEvent %d %p cntrl %p\n", input->_idx, input, input->in(MemNode::Control));
+        printf("%d: StoreHeapEvent %d %p cntrl %p\n", i, input->_idx, input, input->in(MemNode::Control));
         if (!remove_nodes) {
           nodes_to_fuse.push((StoreHeapEventNode*)input);
         } else {
@@ -2164,7 +2164,7 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
   remove_nodes = false;
   nodes_to_fuse.clear();
   traverse(visited, n, _igvn, _worklist, nodes_to_fuse, NULL, 0, 0);
-
+  return NULL;
   remove_nodes = true;
   if (remove_nodes) {
     for (int i = 1; i < nodes_to_fuse.length(); i++) {

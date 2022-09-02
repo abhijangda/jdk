@@ -34,6 +34,15 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <sys/mman.h>
+#include <unistd.h>
+
+#include <vector>
+#include <limits>
+#include <unordered_map>
+#include <map>
+#include <set>
+#include <unordered_set>
+#include <algorithm>
 
 // Universe is a name space holding known system classes and objects in the VM.
 //
@@ -96,6 +105,22 @@ class Universe: AllStatic {
   friend void  universe_post_module_init();
 
  private:
+  template <class T>
+  struct STLAllocator {
+    typedef T value_type;
+
+    STLAllocator() {}
+
+    template <class U> constexpr STLAllocator (const STLAllocator <U>& src) noexcept {}
+    template <class U>
+    bool operator==(const STLAllocator <U>& u) { return true; }
+    template <class U>
+    bool operator!=(const STLAllocator <U>& u) { return false; }
+
+    T* allocate(size_t n);  
+    void deallocate(T* p, size_t n) noexcept;
+  };
+
   // Known classes in the VM
   static Klass* _typeArrayKlassObjs[T_LONG+1];
   static Klass* _objectArrayKlassObj;
@@ -194,23 +219,177 @@ class Universe: AllStatic {
   static uintptr_t _verify_oop_bits;
 
  public:
- static uint32_t checking;
+  class MmapHeap {
+    //PAGE_SIZE is 4096
+    const int PAGE_SIZE;
+    uint8_t* alloc_ptr;
+    size_t curr_ptr;
+    const size_t ALLOC_SIZE;
+    const size_t LARGE_OBJ_SIZE;
 
- enum HeapEventType {
-  None = 0,
-  FieldSet = 1L<<0,
-  NewObject = 1L<<1,
-  NewArray = 1L << 2,
-  ArrayElemSet = 1L << 3,
-  CopyObject = 1L << 4,
-  CopyArray = 1L << 5,
-  CopyArrayOffsets = 1L << 6,
-  CopyArrayLength = 1L << 7,
-  MoveObject = 1L << 8,
-  ClearContiguousSpace = 1L << 9,
-  Dummy = 1L << 10,
-  LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
- };
+    struct ListNode {
+      ListNode* next;
+      size_t size;
+    };
+    
+    // 2^3 = 8
+    static const int LOG_MIN_SMALL_OBJ_SIZE = 3; 
+    // 2^22 = 4*1024*1024
+    static const int LOG_MAX_SMALL_OBJ_SIZE = 22;
+    // free_list for small objects
+    ListNode* free_lists[LOG_MAX_SMALL_OBJ_SIZE];
+
+    public:
+    MmapHeap() : PAGE_SIZE(getpagesize()), ALLOC_SIZE(256*1024*PAGE_SIZE), LARGE_OBJ_SIZE(4*1024*1024) {
+      alloc_ptr = NULL;
+      curr_ptr = 0;
+      for (int i = 0; i < LOG_MAX_SMALL_OBJ_SIZE; i++)
+        free_lists[i] = NULL;
+    };
+
+    size_t remaining_size_in_curr_alloc() const {
+      if (alloc_ptr == NULL) return 0;
+      return ALLOC_SIZE - curr_ptr;
+    }
+
+    bool is_power_of_2(size_t x) const {
+      return (x != 0) && ((x & (x - 1)) == 0);
+    }
+
+    int32_t ilog2(uint64_t x) {
+      return sizeof(uint64_t) * 8 - __builtin_clzl(x) - 1;
+    }
+
+    uint32_t next_power_of_2(uint32_t v) const {
+      v--;
+      v |= v >> 1;
+      v |= v >> 2;
+      v |= v >> 4;
+      v |= v >> 8;
+      v |= v >> 16;
+      v++;
+
+      return v;
+    }
+
+    uint64_t next_power_of_2(uint64_t v) const {
+      v--;
+      v |= v >> 1;
+      v |= v >> 2;
+      v |= v >> 4;
+      v |= v >> 8;
+      v |= v >> 16;
+      v |= v >> 32;
+      v++;
+
+      return v;
+    }
+
+    size_t adjust_size(size_t sz) const {
+      sz = std::max(sz, sizeof(ListNode));
+      if (!is_power_of_2(sz)) {
+        sz = next_power_of_2(sz);
+      }
+
+      return sz;
+    }
+
+    size_t multiple_of_page_size(size_t sz) const {
+      return ((sz + PAGE_SIZE - 1)/PAGE_SIZE)*PAGE_SIZE;
+    }
+
+    void* malloc(size_t sz) {
+      if (sz == 0) return NULL;
+      
+      sz = adjust_size(sz);
+
+      if (sz >= LARGE_OBJ_SIZE) {
+        printf("sz %ld multiple_of_page_size(sz) %ld\n", sz, multiple_of_page_size(sz));
+        sz = multiple_of_page_size(sz);
+        return Universe::mmap(sz);
+      }
+      if (alloc_ptr == NULL) {
+        alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
+      }
+
+      int log_size = ilog2(sz);
+      assert(log_size < LOG_MAX_SMALL_OBJ_SIZE, "sanity '%d' '%ld' < '%d'", log_size, sz, LOG_MAX_SMALL_OBJ_SIZE);
+      if (free_lists[log_size] != NULL) {
+        ListNode* ptr = free_lists[log_size];
+        free_lists[log_size] = ptr->next;
+
+        if (ptr != NULL) {
+          if (ptr->size < sz)
+            printf("ptr %p ptr->size %ld sz %ld\n", ptr, ptr->size, sz);
+          return (void*)ptr;
+        }
+      }
+      
+      if (remaining_size_in_curr_alloc() >= sz) {
+        void* ptr = (void*)(alloc_ptr + curr_ptr);
+        curr_ptr += sz;
+        assert(curr_ptr <= ALLOC_SIZE, "%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
+        return ptr;
+      }
+      
+      alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
+      curr_ptr = sz;
+      if (curr_ptr > ALLOC_SIZE) {
+        printf("%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
+      }
+      return (void*)alloc_ptr;
+    }
+
+    void free(void* p, size_t sz) {
+      if (sz == 0) return;
+      if (p == NULL) return;
+      
+      sz = adjust_size(sz);
+
+      if (sz >= LARGE_OBJ_SIZE) {
+        sz = multiple_of_page_size(sz);
+        munmap(p, sz);
+        return;
+      }
+
+      int log_size = ilog2(sz);
+      if (log_size < LOG_MAX_SMALL_OBJ_SIZE) {
+        ListNode* new_head = (ListNode*)p;
+        new_head->next = free_lists[log_size];
+        new_head->size = sz;
+        free_lists[log_size] = new_head;
+      }
+    }
+  };
+
+  template <typename K, typename V>
+  using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, STLAllocator<std::pair<const K, V>>>;
+  template <typename K>
+  using set = std::set<K, std::less<K>, STLAllocator<const K>>;
+  template <typename K>
+  using unordered_set = std::unordered_set<K, std::hash<K>, std::equal_to<K>, STLAllocator<const K>>;
+  template <typename K, typename V>
+  using map = std::map<K, V, std::less<K>, STLAllocator<std::pair<const K, V>>>;
+  template <typename V>
+  using vector = std::vector<V, STLAllocator<V>>;
+
+  static uint32_t checking;
+
+  enum HeapEventType {
+    None = 0,
+    FieldSet = 1L<<0,
+    NewObject = 1L<<1,
+    NewArray = 1L << 2,
+    ArrayElemSet = 1L << 3,
+    CopyObject = 1L << 4,
+    CopyArray = 1L << 5,
+    CopyArrayOffsets = 1L << 6,
+    CopyArrayLength = 1L << 7,
+    MoveObject = 1L << 8,
+    ClearContiguousSpace = 1L << 9,
+    Dummy = 1L << 10,
+    LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
+  };
   static bool is_verify_cause_full_gc;
   struct HeapEvent {
     uint64_t src;

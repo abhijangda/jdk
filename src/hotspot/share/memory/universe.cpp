@@ -95,17 +95,8 @@ LinkedListImpl<Universe::HeapEvent*> Universe::all_heap_events;
 bool Universe::enable_transfer_events = false;
 sem_t Universe::cuda_semaphore;
 
-#include<vector>
-#include<limits>
-#include<unordered_map>
-#include<map>
-#include<set>
-#include<unordered_set>
-#include<algorithm>
-
 #include <sys/mman.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/syscall.h>
 #include <string.h>
 #define gettid() syscall(SYS_gettid)
@@ -120,185 +111,18 @@ void init_lock () {
   }
 }
 
-
-class MmapHeap {
-  //PAGE_SIZE is 4096
-  const int PAGE_SIZE;
-  uint8_t* alloc_ptr;
-  size_t curr_ptr;
-  const size_t ALLOC_SIZE;
-  const size_t LARGE_OBJ_SIZE;
-
-  struct ListNode {
-    ListNode* next;
-    size_t size;
-  };
-  
-  // 2^3 = 8
-  static const int LOG_MIN_SMALL_OBJ_SIZE = 3; 
-  // 2^22 = 4*1024*1024
-  static const int LOG_MAX_SMALL_OBJ_SIZE = 22;
-  // free_list for small objects
-  ListNode* free_lists[LOG_MAX_SMALL_OBJ_SIZE];
-
-  public:
-  MmapHeap() : PAGE_SIZE(getpagesize()), ALLOC_SIZE(256*1024*PAGE_SIZE), LARGE_OBJ_SIZE(4*1024*1024) {
-    alloc_ptr = NULL;
-    curr_ptr = 0;
-    for (int i = 0; i < LOG_MAX_SMALL_OBJ_SIZE; i++)
-      free_lists[i] = NULL;
-  };
-
-  size_t remaining_size_in_curr_alloc() const {
-    if (alloc_ptr == NULL) return 0;
-    return ALLOC_SIZE - curr_ptr;
-  }
-
-  bool is_power_of_2(size_t x) const {
-    return (x != 0) && ((x & (x - 1)) == 0);
-  }
-
-  int32_t ilog2(uint64_t x) {
-    return sizeof(uint64_t) * 8 - __builtin_clzl(x) - 1;
-  }
-
-  uint32_t next_power_of_2(uint32_t v) const {
-    v--;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v++;
-
-    return v;
-  }
-
-  uint64_t next_power_of_2(uint64_t v) const {
-    v--;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v |= v >> 32;
-    v++;
-
-    return v;
-  }
-
-  size_t adjust_size(size_t sz) const {
-    sz = std::max(sz, sizeof(ListNode));
-    if (!is_power_of_2(sz)) {
-      sz = next_power_of_2(sz);
-    }
-
-    return sz;
-  }
-
-  size_t multiple_of_page_size(size_t sz) const {
-    return ((sz + PAGE_SIZE - 1)/PAGE_SIZE)*PAGE_SIZE;
-  }
-
-  void* malloc(size_t sz) {
-    if (sz == 0) return NULL;
-    
-    sz = adjust_size(sz);
-
-    if (sz >= LARGE_OBJ_SIZE) {
-      printf("sz %ld multiple_of_page_size(sz) %ld\n", sz, multiple_of_page_size(sz));
-      sz = multiple_of_page_size(sz);
-      return Universe::mmap(sz);
-    }
-    if (alloc_ptr == NULL) {
-      alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
-    }
-
-    int log_size = ilog2(sz);
-    assert(log_size < LOG_MAX_SMALL_OBJ_SIZE, "sanity '%d' '%ld' < '%d'", log_size, sz, LOG_MAX_SMALL_OBJ_SIZE);
-    if (free_lists[log_size] != NULL) {
-      ListNode* ptr = free_lists[log_size];
-      free_lists[log_size] = ptr->next;
-
-      if (ptr != NULL) {
-        if (ptr->size < sz)
-          printf("ptr %p ptr->size %ld sz %ld\n", ptr, ptr->size, sz);
-        return (void*)ptr;
-      }
-    }
-    
-    if (remaining_size_in_curr_alloc() >= sz) {
-      void* ptr = (void*)(alloc_ptr + curr_ptr);
-      curr_ptr += sz;
-      assert(curr_ptr <= ALLOC_SIZE, "%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
-      return ptr;
-    }
-    
-    alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
-    curr_ptr = sz;
-    if (curr_ptr > ALLOC_SIZE) {
-      printf("%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
-    }
-    return (void*)alloc_ptr;
-  }
-
-  void free(void* p, size_t sz) {
-    if (sz == 0) return;
-    if (p == NULL) return;
-    
-    sz = adjust_size(sz);
-
-    if (sz >= LARGE_OBJ_SIZE) {
-      sz = multiple_of_page_size(sz);
-      munmap(p, sz);
-      return;
-    }
-
-    int log_size = ilog2(sz);
-    if (log_size < LOG_MAX_SMALL_OBJ_SIZE) {
-      ListNode* new_head = (ListNode*)p;
-      new_head->next = free_lists[log_size];
-      new_head->size = sz;
-      free_lists[log_size] = new_head;
-    }
-  }
-};
-
-static MmapHeap mmap_heap;
+static Universe::MmapHeap mmap_heap;
 
 template <class T>
-struct STLAllocator {
-  typedef T value_type;
+T* Universe::STLAllocator<T>::allocate(size_t n) {
+  //os::malloc in works in DEBUG but not in PRODUCT build.
+  return (T*)mmap_heap.malloc(n*sizeof(T));
+}
 
-  STLAllocator() {}
-
-  template <class U> constexpr STLAllocator (const STLAllocator <U>& src) noexcept {}
-  
-  T* allocate(size_t n) {
-    //os::malloc in works in DEBUG but not in PRODUCT build.
-    return (T*)mmap_heap.malloc(n*sizeof(T));
-  }
- 
-  void deallocate(T* p, size_t n) noexcept {
-    mmap_heap.free(p, n * sizeof(T));
-  }
-};
-
-template <class T, class U>
-bool operator==(const STLAllocator <T>&, const STLAllocator <U>&) { return true; }
-template <class T, class U>
-bool operator!=(const STLAllocator <T>&, const STLAllocator <U>&) { return false; }
-
-template <typename K, typename V>
-using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, STLAllocator<std::pair<const K, V>>>;
-template <typename K>
-using set = std::set<K, std::less<K>, STLAllocator<const K>>;
-template <typename K>
-using unordered_set = std::unordered_set<K, std::hash<K>, std::equal_to<K>, STLAllocator<const K>>;
-template <typename K, typename V>
-using map = std::map<K, V, std::less<K>, STLAllocator<std::pair<const K, V>>>;
-template <typename V>
-using vector = std::vector<V, STLAllocator<V>>;
+template <class T>
+void Universe::STLAllocator<T>::deallocate(T* p, size_t n) noexcept {
+  mmap_heap.free(p, n * sizeof(T));
+}
 
 template<typename T, uint64_t MAX_SIZE>
 class MmapArray {
@@ -358,10 +182,10 @@ class ObjectNode {
   size_t      _size;
   Universe::HeapEventType _type;
   uint64_t    _id;
-  unordered_map<uint64_t, FieldEdge> _fields;
+  Universe::unordered_map<uint64_t, FieldEdge> _fields;
   
   public:
-  static map<oopDesc*, ObjectNode> oop_to_obj_node;
+  static Universe::map<oopDesc*, ObjectNode> oop_to_obj_node;
   ObjectNode() : _obj(NULL), _size(0), _type(Universe::None), _id(0) {}
   ObjectNode(oop obj, size_t size, Universe::HeapEventType type, uint64_t id) : _obj(obj), _size(size), _type(type), _id(id) {
     assert(_type != Universe::None, "");
@@ -394,13 +218,13 @@ class ObjectNode {
     }
   }
 
-  const unordered_map<uint64_t, FieldEdge>& fields() const {return _fields;}
+  const Universe::unordered_map<uint64_t, FieldEdge>& fields() const {return _fields;}
   void update_or_add_field(void* address, oop val, uint64_t id) {
     uint64_t off = (uint64_t)address - start_address();
     _fields[off] = FieldEdge(val, off, id);
   }
 
-  void update_field_vals(const map<oopDesc*, oopDesc*>& old_to_newobjs) {
+  void update_field_vals(const Universe::map<oopDesc*, oopDesc*>& old_to_newobjs) {
     for (auto& it : _fields) {
       if (old_to_newobjs.count(it.second.val()) > 0)
         it.second.set_val(old_to_newobjs.at(it.second.val()));
@@ -424,7 +248,7 @@ class ObjectNode {
   }
 };
 
-map<oopDesc*, ObjectNode> ObjectNode::oop_to_obj_node;
+Universe::map<oopDesc*, ObjectNode> ObjectNode::oop_to_obj_node;
 uint32_t Universe::checking = 0;
 
 template<typename T>
@@ -479,7 +303,7 @@ class CheckGraph : public ObjectClosure {
   int num_statics_checked;
   int num_oops;
   int num_fields;
-  unordered_set<HeapWord*> static_fields_checked;
+  Universe::unordered_set<HeapWord*> static_fields_checked;
 
   CheckGraph(bool check_objects, bool check_object_fields, bool check_array_elements, bool check_static_fields) {
     _check_objects = check_objects;

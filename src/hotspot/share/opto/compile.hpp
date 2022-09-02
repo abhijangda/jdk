@@ -441,7 +441,7 @@ class Compile : public Phase {
                  //strstr(holder_name, "org/h2/engine/") != NULL  || 
                  //strstr(holder_name, "org/h2/expression/") != NULL || 
                  //strstr(holder_name, "org/h2/table/") != NULL || 
-                 strstr(holder_name, "org/h2/index/TreeIndex") != NULL || 
+                 strstr(holder_name, "org/h2/index/ScanIndex") != NULL || 
                 //  strstr(holder_name, "org/h2/index/Base") != NULL || 
                 //  strstr(holder_name, "org/h2/index/Scan") != NULL || 
                 //  strstr(holder_name, "org/h2/index/Tree") != NULL || 

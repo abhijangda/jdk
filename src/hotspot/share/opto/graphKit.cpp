@@ -1165,10 +1165,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   if (method_found2()) return;
   const bool C2HeapEventLock = true;
   // if (method_found()) return;
-  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
-    lock_unlock_heap_event(true);
-  
-  
+
   bool is_unsafe = true;
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
   int adr_type = Compile::AliasIdxRaw;
@@ -1194,20 +1191,16 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
     make_store_event(ctrl, addr, size_or_new_val, new_obj_or_field, event_type);
     make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
   }*/
-
-  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
-    lock_unlock_heap_event(false);
 }
 
 void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_offset, Node* src_offset, Node* count) {
   if (!InstrumentHeapEvents)
     return;
+  
   if (!C2InstrumentHeapEvents) 
     return;
-  bool C2HeapEventLock = true;
-  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
-    lock_unlock_heap_event(true);
 
+  bool C2HeapEventLock = true;
   bool is_unsafe = true;
   uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(JavaThread::heap_events_offset());
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
@@ -1274,8 +1267,6 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
 
   make_transfer_event(ctrl, node_cntr_addr, idx, (MaxHeapEvents*sizeof(Universe::HeapEvent)));
   #endif
-  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
-    lock_unlock_heap_event(false);
 }
 
 Node* GraphKit::make_transfer_event(Node* ctrl, Node* mem_adr, Node* cntr, uint64_t maxval) {
@@ -1767,14 +1758,8 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
     if (store_heap) {
       assert(C->get_alias_index(adr_type) != Compile::AliasIdxRaw ||
              ctl != NULL, "raw memory operations should have control edge");
-      if (CheckHeapEventGraphWithHeap)
-        lock_unlock_heap_event(true);
-
       //TODO: If this could be removed due to optimizations then handle FieldSet event 
       st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, mo, Universe::FieldSet);
-    
-      if (CheckHeapEventGraphWithHeap)
-        lock_unlock_heap_event(false);
     } else {
       if (InstrumentHeapEvents && is_reference_type(bt)) {
         //It looks like this is rarely called

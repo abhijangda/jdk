@@ -105,22 +105,6 @@ class Universe: AllStatic {
   friend void  universe_post_module_init();
 
  private:
-  template <class T>
-  struct STLAllocator {
-    typedef T value_type;
-
-    STLAllocator() {}
-
-    template <class U> constexpr STLAllocator (const STLAllocator <U>& src) noexcept {}
-    template <class U>
-    bool operator==(const STLAllocator <U>& u) { return true; }
-    template <class U>
-    bool operator!=(const STLAllocator <U>& u) { return false; }
-
-    T* allocate(size_t n);  
-    void deallocate(T* p, size_t n) noexcept;
-  };
-
   // Known classes in the VM
   static Klass* _typeArrayKlassObjs[T_LONG+1];
   static Klass* _objectArrayKlassObj;
@@ -219,6 +203,23 @@ class Universe: AllStatic {
   static uintptr_t _verify_oop_bits;
 
  public:
+  
+ template <class T>
+  struct STLAllocator {
+    typedef T value_type;
+
+    STLAllocator() {}
+
+    template <class U> constexpr STLAllocator (const STLAllocator <U>& src) noexcept {}
+    template <class U>
+    bool operator==(const STLAllocator <U>& u) { return true; }
+    template <class U>
+    bool operator!=(const STLAllocator <U>& u) { return false; }
+
+    T* allocate(size_t n) {return (T*)mmap_heap.malloc(n*sizeof(T));}
+    void deallocate(T* p, size_t n) noexcept {mmap_heap.free(p, n * sizeof(T));}
+  };
+
   class MmapHeap {
     //PAGE_SIZE is 4096
     const int PAGE_SIZE;
@@ -362,6 +363,7 @@ class Universe: AllStatic {
     }
   };
 
+  static Universe::MmapHeap mmap_heap;
   template <typename K, typename V>
   using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, STLAllocator<std::pair<const K, V>>>;
   template <typename K>

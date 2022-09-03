@@ -785,10 +785,9 @@ public:
   StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, MemOrd mo, Universe::HeapEventType event_type)
     : StoreNode(c, mem, adr, at, size, obj, mo), _event_type(event_type) {}
   StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* cntr_addr, Node* cntr_idx, MemOrd mo, Universe::HeapEventType event_type)
-    : StoreNode(c, mem, adr, at, size, cntr_addr, mo), _event_type(event_type) 
-    {
-      add_req(cntr_idx);
-    }
+    : StoreNode(c, mem, adr, at, size, cntr_addr, mo), _event_type(event_type) {
+    add_req(cntr_idx);
+  }
   void set_none_event_type() {_event_type = Universe::None;}
   void fuse(StoreHeapEventNode* node) {
     add_req(node->in(Address)); add_req(node->in(ValueIn));

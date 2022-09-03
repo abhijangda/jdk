@@ -111,18 +111,18 @@ void init_lock () {
   }
 }
 
-static Universe::MmapHeap mmap_heap;
+Universe::MmapHeap Universe::mmap_heap;
 
-template <class T>
-T* Universe::STLAllocator<T>::allocate(size_t n) {
-  //os::malloc in works in DEBUG but not in PRODUCT build.
-  return (T*)mmap_heap.malloc(n*sizeof(T));
-}
+// template <class T>
+// T* Universe::STLAllocator<T>::allocate(size_t n) {
+//   //os::malloc in works in DEBUG but not in PRODUCT build.
+//   return (T*)mmap_heap.malloc(n*sizeof(T));
+// }
 
-template <class T>
-void Universe::STLAllocator<T>::deallocate(T* p, size_t n) noexcept {
-  mmap_heap.free(p, n * sizeof(T));
-}
+// template <class T>
+// void Universe::STLAllocator<T>::deallocate(T* p, size_t n) {
+//   mmap_heap.free(p, n * sizeof(T));
+// }
 
 template<typename T, uint64_t MAX_SIZE>
 class MmapArray {

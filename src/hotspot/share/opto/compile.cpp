@@ -2086,6 +2086,7 @@ void Compile::Optimize() {
   // Iterative Global Value Numbering, including ideal transforms
   // Initialize IterGVN with types and values from parse-time GVN
   PhaseIterGVN igvn(initial_gvn());
+  igvn.found_method = method_found3_();
 #ifdef ASSERT
   _modified_nodes = new (comp_arena()) Unique_Node_List(comp_arena());
 #endif

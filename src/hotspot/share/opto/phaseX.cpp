@@ -967,6 +967,7 @@ PhaseIterGVN::PhaseIterGVN(PhaseIterGVN* igvn) : PhaseGVN(igvn),
                                                  _worklist(igvn->_worklist)
 {
   _iterGVN = true;
+  found_method = false;
 }
 
 //------------------------------PhaseIterGVN-----------------------------------
@@ -981,6 +982,7 @@ PhaseIterGVN::PhaseIterGVN(PhaseGVN* gvn) : PhaseGVN(gvn),
                                             _worklist(*C->for_igvn())
 {
   _iterGVN = true;
+  found_method = false;
   uint max;
 
   // Dead nodes in the hash table inherited from GVN were not treated as
@@ -2122,51 +2124,144 @@ typedef Universe::unordered_map<Node*, Universe::vector<StoreHeapEventNode*>> Co
 
 #define MAX_FUSE 3
 
-void traverse(Node_List& visited, Node* n, PhaseGVN* igvn, Unique_Node_List* worklist, CommonControlNodes& nodes_to_fuse, Node* parent, int in_index, int indent) {
+void topological_sort(Node_List& visited, Node* n, PhaseGVN* igvn, CommonControlNodes& nodes_to_fuse, int indent) {
   if (visited[n->_idx] != NULL) {
     return;
   }
   
   visited.map(n->_idx, (Node*)true);
 
-  /*for (int i = 0; i < indent; i++) {
-    printf(" ");
+  int cnt = n->outcnt();
+  for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
+    Node* output = n->fast_out(i); 
+    if( output != NULL ) {                    // Ignore NULLs
+      topological_sort(visited, output, igvn, nodes_to_fuse, indent + 1);
+    }
   }
+  
   if (n->Opcode() == Op_StoreHeapEvent) {
-    printf("%p(%p) %s\n", n, n->in(MemNode::Control), n->node_name());
-  } else {
-    printf("%p %s\n", n, n->node_name());
-  }*/
-
-  if (n->Opcode() == Op_StoreHeapEvent) {
-    if (!remove_nodes) {
+    if (nodes_to_fuse.find(n->in(MemNode::Control)) == nodes_to_fuse.end()) {
       nodes_to_fuse.insert(std::make_pair(n->in(MemNode::Control), Universe::vector<StoreHeapEventNode*>()));
-      nodes_to_fuse[n->in(MemNode::Control)].push_back((StoreHeapEventNode*)n);
-    } else {
-      bool is_input = false;
-      for (uint j = 0; j < nodes_to_fuse[n->in(MemNode::Control)].size(); j += MAX_FUSE) {
-        if (nodes_to_fuse[n->in(MemNode::Control)][j] == n) {
-          is_input = true;
-          break;
+    }
+    nodes_to_fuse[n->in(MemNode::Control)].push_back((StoreHeapEventNode*)n);
+  }
+}
+
+void traverse(Node_List& visited, Node* n, PhaseGVN* igvn, Unique_Node_List* worklist, CommonControlNodes& nodes_to_fuse, Node* parent, int in_index, int indent) {
+  // printf("visited[n->_idx] %p n %p\n", visited[n->_idx], n);
+  if (visited[n->_idx] != NULL) {
+    return;
+  }
+  
+  visited.map(n->_idx, (Node*)true);
+
+  if (true) {
+    for (int i = 0; i < indent; i++) {
+      printf(" ");
+    }
+    
+    printf("%d %s [", n->_idx, n->node_name());
+    for (uint i = 0; i < n->req(); i++) {
+      if (n->in(i) != NULL)
+        printf("%d(%d) ", n->in(i)->_idx, i);
+    }
+    printf("]\n");
+  }
+
+  // if (n->Opcode() == Op_StoreHeapEvent) {
+  //   if (!remove_nodes) {
+  //     nodes_to_fuse.insert(std::make_pair(n->in(MemNode::Control), Universe::vector<StoreHeapEventNode*>()));
+  //     nodes_to_fuse[n->in(MemNode::Control)].push_back((StoreHeapEventNode*)n);
+  //   } else {
+  //     bool is_input = false;
+  //     for (uint j = 0; j < nodes_to_fuse[n->in(MemNode::Control)].size(); j += MAX_FUSE) {
+  //       if (nodes_to_fuse[n->in(MemNode::Control)][j] == n) {
+  //         is_input = true;
+  //         break;
+  //       }
+  //     }
+
+  //     if (!is_input) {
+  //       // printf("remove\n");
+  //       ((StoreHeapEventNode*)n)->set_none_event_type();
+  //       // n->set_req(i, igvn->makecon(TypeRawPtr::make((address)0x1)));
+  //       // parent->del_req(in_index);
+  //     }
+  //   }
+  // }
+
+  int cnt = n->outcnt();
+  for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
+    Node* output = n->fast_out(i); 
+    if( output != NULL ) {                    // Ignore NULLs
+      traverse(visited, output, igvn, worklist, nodes_to_fuse, n, 0, indent + 1);
+    }
+  }
+  // for( i = 0; i < cnt; i++ ) {          // For all inputs do
+  //   Node *input = n->out(i);
+  //   if( input != NULL ) {                    // Ignore NULLs
+  //     traverse(visited, input, igvn, worklist, nodes_to_fuse, n, i, indent + 1);
+  //   }
+  // }
+}
+
+bool PhaseFuseHeapEvents::is_reachable(Node* n1, Node* n2, Node* control) {
+  GrowableArray <Node *> trstack(1);
+  Node_List visited(_arena);
+
+  // printf("Control: %d %s\n", control->_idx, control->node_name());
+  
+  trstack.push(n1);
+  while ( trstack.is_nonempty() ) {
+    Node *n = trstack.pop();
+    if (visited[n->_idx] != NULL) {
+      continue;
+    }
+
+    visited.map(n->_idx, (Node*)true);
+
+    for (uint i = 0; i < n->req(); i++) {
+      Node* in = n->in(i);
+      bool push_in = in != NULL;
+      push_in = push_in && in != control && in->Opcode() != Op_Root && in->Opcode() != Op_Region;
+
+      push_in = push_in && n->match_edge(i);
+
+      if (push_in) {
+        // printf("2222: %d %s for %d %s %d\n", in->_idx, in->node_name(), n->_idx, n->node_name(), i);
+        if (in == n2) {
+          return true;
         }
-      }
 
-      if (!is_input) {
-        // printf("remove\n");
-        ((StoreHeapEventNode*)n)->set_none_event_type();
-        // n->set_req(i, igvn->makecon(TypeRawPtr::make((address)0x1)));
-        // parent->del_req(in_index);
+        trstack.push(in);
       }
     }
   }
 
-  int cnt = n->req();
-  for( int i = 0; i < cnt; i++ ) {          // For all inputs do
-    Node *input = n->in(i);
-    if( input != NULL ) {                    // Ignore NULLs
-      traverse(visited, input, igvn, worklist, nodes_to_fuse, n, i, indent + 1);
-    }
-  }
+  return false;
+  // trstack.push(n1);
+  // while ( trstack.is_nonempty() ) {
+  //   Node *n = trstack.pop();
+  //   if (visited[n->_idx] != NULL) {
+  //     continue;
+  //   }
+
+  //   visited.map(n->_idx, (Node*)true);
+  //   printf("2217: n %d %s\n", n->_idx, n->node_name());
+  //   int cnt = n->outcnt();
+  //   for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
+  //     Node* output = n->fast_out(i); 
+  //     if( output != NULL ) {                    // Ignore NULLs
+  //       printf("2222: %d %s for %d %s\n", output->_idx, output->node_name(), n->_idx, n->node_name());
+  //       if (output  == n2) {
+  //         return true;
+  //       }
+  //       trstack.push(output);
+  //     }
+  //   }
+  // }
+
+  // return false;
 }
 
 //------------------------------transform--------------------------------------
@@ -2174,26 +2269,67 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
   GrowableArray <Node *> trstack(1);
   Node_List visited(_arena);
   CommonControlNodes nodes_to_fuse;
+  Universe::unordered_map<Node*, std::pair<Node*, uint>> node_to_parent;
+
   remove_nodes = false;
   nodes_to_fuse.clear();
-  traverse(visited, n, _igvn, _worklist, nodes_to_fuse, NULL, 0, 0);
+  // traverse(visited, n, _igvn, _worklist, nodes_to_fuse, NULL, 0, 0);
+  visited.clear();
+  topological_sort(visited, n, _igvn, nodes_to_fuse, 0);
   
-  remove_nodes = true;
-  if (remove_nodes) {
-    for (auto iter : nodes_to_fuse) {
-      // printf("2187 %ld\n", iter.second.size());
-      for (uint i = 0; i < iter.second.size(); i += MAX_FUSE) {
-        for (uint j = 1; j < MIN(MAX_FUSE, iter.second.size() - i); j++) {
-          // printf("Fusing %d with %d '%p' '%p'\n", i + j, i, iter.second[i], iter.second[i+j]);
-          iter.second[i]->fuse(iter.second[i + j]);
-          iter.second[i + j]->set_none_event_type();
-        }
+  for (auto iter : nodes_to_fuse) {
+    // printf("2187 %ld\n", iter.second.size());
+    StoreHeapEventNode* fuse_with = *(iter.second.rbegin());
+    int counter = 0;
+    for (auto it = iter.second.begin(); it != iter.second.end(); it++, counter++) {
+      if (counter%MAX_FUSE == 0) {
+        fuse_with = *it;
+        continue;
       }
-      for (uint i = 0; i < iter.second.size(); i += MAX_FUSE) {
-        printf("%d: Fusing %d nodes with control %p\n", i, (iter.second[i]->req() - 2)/2, iter.first);
+      StoreHeapEventNode* candidate = *it;
+      if (is_reachable(candidate, fuse_with, fuse_with->in(MemNode::Control))) {
+        // printf("Node %d %s reaches with %d %s\n", fuse_with->_idx, fuse_with->node_name(), candidate->_idx, candidate->node_name());
+        continue;
       }
+      fuse_with->fuse(candidate);
+      candidate->set_none_event_type();
+      C->record_for_igvn(candidate);
+      // printf("Fusing %p(%d) with %p(%d)\n", candidate, candidate->_idx, fuse_with, fuse_with->_idx);
     }
+
+    // for (uint i = 0; i < iter.second.size(); i += MAX_FUSE) {
+    //   for (uint j = 1; j < MIN(MAX_FUSE, iter.second.size() - i); j++) {
+    //     printf("Fusing %d with %d '%p' '%p'\n", i + j, i, iter.second[i], iter.second[i+j]);
+    //     StoreHeapEventNode* candidate = ((StoreHeapEventNode*)iter.second[i + j]);
+    //     if (is_reachable(candidate, iter.second[i]) || is_reachable(iter.second[i], candidate))
+    //       continue;
+
+    //     iter.second[i]->fuse(candidate);
+    //     candidate->set_none_event_type();
+    //     Node* parent = node_to_parent[candidate].first;
+    //     parent->replace_edge(candidate, candidate->to_storep(*_igvn), _igvn);
+        
+    //     //Create a StoreP and replace candidate with StoreP while add StoreP's args to fused.
+    //     // if (parent->Opcode() != Op_Phi) {
+    //     //   printf("removing from parent %p (%d) at %d\n", parent, parent->req(), node_to_parent[candidate].second);
+    //     //   if (parent->req() == 4) {
+    //     //     printf("%p %p %p\n", parent->in(0), parent->in(1), parent->in(2));
+    //     //   }
+    //     //   parent->del_req(node_to_parent[candidate].second);
+
+    //     //   if (parent->Opcode() == Op_Phi && parent->req() <= 2) {
+    //     //     printf("removing parent %p from %p\n", parent, node_to_parent[parent].first);
+    //     //     node_to_parent[parent].first->del_req(node_to_parent[parent].second);
+    //     //   }
+    //     // }
+    //   }
+    // }
+    // for (uint i = 0; i < iter.second.size(); i += MAX_FUSE) {
+    //   printf("%d: Fusing %d nodes with control %p %s\n", i, (iter.second[i]->req() - 2)/2, iter.first, iter.first->node_name());
+    // }
   }
+  
+  return NULL;
   
   // visited.clear();
   // traverse(visited, n, _igvn, _worklist, nodes_to_fuse, NULL, 0, 0);
@@ -2202,28 +2338,7 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
   // visited.clear();
   // nodes_to_fuse.clear();
   // traverse(visited, n, _igvn, _worklist, nodes_to_fuse, NULL, 0, 0);
-  
-  /*
-  trstack.push(n);           // Process children of cloned node
-  while ( trstack.is_nonempty() ) {
-    Node *n = trstack.pop();
-    if (visited[n->_idx] != NULL) {
-      continue;
-    }
-    printf("%p %s\n", n, n->node_name());
-    visited.map(n->_idx, (Node*)true);
-    if (n->Opcode() == Op_StoreHeapEvent) {
-      nodes_to_fuse.push((StoreHeapEventNode*)n);
-      printf("StoreHeapEvent %d cntrl %p\n", n->_idx, n->in(MemNode::Control));
-    }
-    uint cnt = n->req();
-    for( uint i = 0; i < cnt; i++ ) {          // For all inputs do
-      Node *input = n->in(i);
-      if( input != NULL ) {                    // Ignore NULLs
-        trstack.push(input);
-      }
-    }
-  }*/
+
   return NULL;
 }
 

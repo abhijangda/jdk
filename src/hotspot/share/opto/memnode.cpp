@@ -2655,6 +2655,18 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   if (this->Opcode() == Op_TransferEvents || Opcode() == Op_IncrCntrAndStoreHeapEvent || 
       this->Opcode() == Op_IncrCntrAndStoreCopyArrayEvent)
     return NULL;
+  
+
+  if (this->Opcode() == Op_StoreHeapEvent) {
+    //Convert a StoreHeapEvent with None type to a StorePNode
+    if (((StoreHeapEventNode*)this)->event_type() == Universe::None) {
+      Node* ret =  ((StoreHeapEventNode*)this)->to_storep(*phase);
+      // printf("event_type() %ld %p %d ==> %p %d %s\n", ((StoreHeapEventNode*)this)->event_type(), this, _idx, ret, ret->_idx, ret->node_name());
+      return ret;
+    }
+
+    return NULL;
+  }
   Node* p = MemNode::Ideal_common(phase, can_reshape);
   if (p)  return (p == NodeSentinel) ? NULL : p;
 
@@ -2738,6 +2750,17 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   
 
   return NULL;                  // No further progress
+}
+StorePNode* StoreHeapEventNode::to_storep(PhaseGVN& gvn) {
+  StoreNode* st = StoreNode::make(gvn, in(0), in(1), in(2), adr_type(), in(3), T_ADDRESS, mo());
+  
+  assert(st->Opcode() == Op_StoreP, "Always get StoreP for T_ADDRESS");
+
+  if (is_unaligned_access()) st->set_unaligned_access();
+  if (is_mismatched_access()) st->set_mismatched_access();
+  if (is_unsafe_access()) st->set_unsafe_access();
+  
+  return (StorePNode*)(st);
 }
 
 //------------------------------Value-----------------------------------------

@@ -6628,10 +6628,9 @@ instruct storeHeapEventFieldSetTwo(memory field1, any_RegP val1, memory field2, 
   ins_cost(125); // XXX
   format %{ "movq    $field1, $val1\t# long" %}
   ins_encode %{
-    printf("6614\n");
     __ movq($field1$$Address, $val1$$Register);
     __ movq($field2$$Address, $val2$$Register);
-return;
+
     if (!C2InstrumentHeapEvents) return;
     __ gen_lock_heap_event_mutex();
 
@@ -6701,11 +6700,10 @@ instruct storeHeapEventFieldSetThree(memory field1, any_RegP val1, memory field2
   ins_cost(125); // XXX
   format %{ "movq    $field1, $val1\t# long" %}
   ins_encode %{
-    printf("6664\n");
     __ movq($field1$$Address, $val1$$Register);
     __ movq($field2$$Address, $val2$$Register);
     __ movq($field3$$Address, $val3$$Register);
-    return;
+    
     __ gen_lock_heap_event_mutex();
 
     Register cntr_addr_reg = $cntr_addr$$Register;

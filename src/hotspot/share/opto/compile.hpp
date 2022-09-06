@@ -420,6 +420,7 @@ class Compile : public Phase {
   GrowableArray<RuntimeStub*>   _native_invokers;
 
   bool method_found3_() {
+    return true;
     if (_method == NULL)
       return false;
     if (_method->holder() == NULL)
@@ -444,12 +445,11 @@ class Compile : public Phase {
     bool found = //strstr(holder_name, "org/h2/command/") != NULL || 
                  //strstr(holder_name, "org/h2/engine/") != NULL  || 
                  //strstr(holder_name, "org/h2/expression/") != NULL || 
-                 //strstr(holder_name, "org/h2/table/") != NULL || 
-                 strstr(holder_name, "org/h2/command/dml/Select") != NULL || 
-                 strstr(holder_name, "org/h2/table/TableFilter") != NULL || 
-
-                //  strstr(holder_name, "org/h2/index/Scan") != NULL || 
-                //  strstr(holder_name, "org/h2/index/Tree") != NULL || 
+                //  strstr(holder_name, "org/apache/derbyTesting/system/oe/model/Address") != NULL ||
+                // strstr(holder_name, "org/h2/command/dml/Select") != NULL || 
+                //  strstr(holder_name, "org/h2/table/TableFilter") != NULL || 
+                // strstr(holder_name, "org/h2/index/ScanCursor") != NULL || 
+                // strstr(holder_name, "org/h2/index/TreeIndex") != NULL || 
                 //  strstr(holder_name, "org/h2/index/View") != NULL || 
                  //strstr(holder_name, "org/h2/index/Meta") != NULL || 
                  //strstr(holder_name, "org/h2/index/MultiVersionIndex") != NULL || 
@@ -459,25 +459,27 @@ class Compile : public Phase {
                 //  strstr(holder_name, "org/h2/index/MultiVersionIndex") != NULL || 
                 //  strstr(holder_name, "org/h2/index/ScanIndex") != NULL || 
                  false;
-    // if (found) {
-    //   found = (
-    //             // strcmp(method_name, "add") == 0 ||
-    //             // strcmp(method_name, "find") == 0 ||
-    //             // strcmp(method_name, "remove") == 0 ||
-    //             strcmp(method_name, "putVal") == 0 ||
-    //             // strcmp(method_name, "loadNext") == 0 ||
-    //             // strcmp(method_name, "find") == 0 ||
-    //             false
-    //             );
-    //     // if (found == false) {
-    //     //   printf("%s::%s\n", holder_name, method_name);
-    //     // }
-    // }
+    if (found) {
+      found = (
+                // strcmp(method_name, "clear") == 0 ||
+                // strcmp(method_name, "remove") == 0 ||
+                // strcmp(method_name, "queryFlat") == 0 ||
+                // strcmp(method_name, "find") == 0 ||
+                // strcmp(method_name, "remove") == 0 ||
+                // strcmp(method_name, "putVal") == 0 ||
+                // strcmp(method_name, "loadNext") == 0 ||
+                // strcmp(method_name, "find") == 0 ||
+                false
+                );
+        // if (found == false) {
+        //   printf("%s::%s\n", holder_name, method_name);
+        // }
+    }
 
-    // if (found) {
-    //   printf("%s::%s(%s)\n", holder_name, method_name, method_sig_name);
-    // }
-    return found;
+    if (!found) {
+      printf("%s::%s(%s)\n", holder_name, method_name, method_sig_name);
+    }
+    return !found;
   }
 
   // Inlining may not happen in parse order which would make

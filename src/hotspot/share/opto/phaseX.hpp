@@ -464,7 +464,7 @@ protected:
 public:
   PhaseIterGVN(PhaseIterGVN* igvn); // Used by CCP constructor
   PhaseIterGVN(PhaseGVN* gvn); // Used after Parser
-
+  bool found_method;
   // Idealize new Node 'n' with respect to its inputs and its value
   virtual Node *transform( Node *a_node );
   virtual void record_for_igvn(Node *n) { }
@@ -640,6 +640,7 @@ public:
 
   // Do any transformation after analysis
   void          do_transform();
+  bool is_reachable(Node* n1, Node* n2, Node* control);
 };
 
 #endif // SHARE_OPTO_PHASEX_HPP

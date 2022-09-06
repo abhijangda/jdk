@@ -368,6 +368,7 @@ protected:
   DUIterator refresh_out_pos(DUIterator i) const { return i; }
 
   // Reference to the i'th output Node.  Error if out of bounds.
+  Node*    out(int i) const { assert(i < _outcnt, "oob"); return _out[i]; }
   Node*    out(DUIterator i) const { assert(i < _outcnt, "oob"); return _out[i]; }
   // Does the node have an out at this position?  (Used for iteration.)
   bool has_out(DUIterator i) const { return i < _outcnt; }

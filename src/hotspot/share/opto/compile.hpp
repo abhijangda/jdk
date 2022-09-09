@@ -420,7 +420,6 @@ class Compile : public Phase {
   GrowableArray<RuntimeStub*>   _native_invokers;
 
   bool method_found3_() {
-    return true;
     if (_method == NULL)
       return false;
     if (_method->holder() == NULL)
@@ -442,7 +441,10 @@ class Compile : public Phase {
     const char* method_sig_name = method_sig->as_utf8();
     // printf("%s::%s(%s)\n", holder_name, method_name, method_sig_name);
     // return true;
-    bool found = //strstr(holder_name, "org/h2/command/") != NULL || 
+    bool found = 
+            strstr(holder_name, "org/sunflow/core/light/TriangleMeshLight$TriangleLight") != NULL || //Fusing shadowRay with other StoreHeapEvent is giving problem
+                  //strstr(holder_name, "org/sunflow/core/shader/MirrorShader") != NULL ||
+    //strstr(holder_name, "org/h2/command/") != NULL || 
                  //strstr(holder_name, "org/h2/engine/") != NULL  || 
                  //strstr(holder_name, "org/h2/expression/") != NULL || 
                 //  strstr(holder_name, "org/apache/derbyTesting/system/oe/model/Address") != NULL ||
@@ -459,24 +461,24 @@ class Compile : public Phase {
                 //  strstr(holder_name, "org/h2/index/MultiVersionIndex") != NULL || 
                 //  strstr(holder_name, "org/h2/index/ScanIndex") != NULL || 
                  false;
-    if (found) {
-      found = (
-                // strcmp(method_name, "clear") == 0 ||
-                // strcmp(method_name, "remove") == 0 ||
-                // strcmp(method_name, "queryFlat") == 0 ||
-                // strcmp(method_name, "find") == 0 ||
-                // strcmp(method_name, "remove") == 0 ||
-                // strcmp(method_name, "putVal") == 0 ||
-                // strcmp(method_name, "loadNext") == 0 ||
-                // strcmp(method_name, "find") == 0 ||
-                false
-                );
-        // if (found == false) {
-        //   printf("%s::%s\n", holder_name, method_name);
-        // }
-    }
+    // if (found) {
+    //   found = (
+    //             // strcmp(method_name, "clear") == 0 ||
+    //             // strcmp(method_name, "remove") == 0 ||
+    //             // strcmp(method_name, "queryFlat") == 0 ||
+    //             // strcmp(method_name, "find") == 0 ||
+    //             // strcmp(method_name, "remove") == 0 ||
+    //             // strcmp(method_name, "putVal") == 0 ||
+    //             // strcmp(method_name, "loadNext") == 0 ||
+    //             // strcmp(method_name, "find") == 0 ||
+    //             false
+    //             );
+    //     // if (found == false) {
+    //     //   printf("%s::%s\n", holder_name, method_name);
+    //     // }
+    // }
 
-    if (!found) {
+    if (found) {
       printf("%s::%s(%s)\n", holder_name, method_name, method_sig_name);
     }
     return !found;

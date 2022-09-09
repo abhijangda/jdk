@@ -2680,7 +2680,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   {
     Node* st = mem;
     // If Store 'st' has more than one use, we cannot fold 'st' away.
-    // For example, 'st' might be the final state at a conditional
+    // For example, 'st' might be the final( state at a conditional
     // return.  Or, 'st' might be used by some node which is live at
     // the same time 'st' is live, which might be unschedulable.  So,
     // require exactly ONE user until such time as we clone 'mem' for
@@ -2690,6 +2690,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       // Looking at a dead closed cycle of memory?
       assert(st != st->in(MemNode::Memory), "dead loop in StoreNode::Ideal");
       assert(Opcode() == st->Opcode() ||
+             (Opcode() == Op_StoreP && st->Opcode() == Op_StoreHeapEvent) ||
              st->Opcode() == Op_StoreVector ||
              Opcode() == Op_StoreVector ||
              st->Opcode() == Op_StoreVectorScatter ||

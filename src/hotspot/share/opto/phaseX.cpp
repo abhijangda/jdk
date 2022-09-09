@@ -2122,7 +2122,7 @@ PhaseFuseHeapEvents::~PhaseFuseHeapEvents() {
 static bool remove_nodes = false;
 typedef Universe::unordered_map<Node*, Universe::vector<StoreHeapEventNode*>> CommonControlNodes;
 
-#define MAX_FUSE 3
+#define MAX_FUSE 4
 
 void topological_sort(Node_List& visited, Node* n, PhaseGVN* igvn, CommonControlNodes& nodes_to_fuse, int indent) {
   if (visited[n->_idx] != NULL) {
@@ -2281,12 +2281,20 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
     // printf("2187 %ld\n", iter.second.size());
     StoreHeapEventNode* fuse_with = *(iter.second.rbegin());
     int counter = 0;
+    // if (iter.second.size() >= 4) continue;
+    // visited.clear();
+    // traverse(visited, iter.first, _igvn, _worklist, nodes_to_fuse, NULL, 0, 0);
+    // iter.first->dump(2);
+    // printf("\n\n\n\n\n");
     for (auto it = iter.second.begin(); it != iter.second.end(); it++, counter++) {
       if (counter%MAX_FUSE == 0) {
         fuse_with = *it;
         continue;
       }
       StoreHeapEventNode* candidate = *it;
+      if (candidate->_idx > fuse_with->_idx) {
+        continue;
+      }
       if (is_reachable(candidate, fuse_with, fuse_with->in(MemNode::Control))) {
         // printf("Node %d %s reaches with %d %s\n", fuse_with->_idx, fuse_with->node_name(), candidate->_idx, candidate->node_name());
         continue;
@@ -2294,9 +2302,19 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
       fuse_with->fuse(candidate);
       candidate->set_none_event_type();
       C->record_for_igvn(candidate);
-      // printf("Fusing %p(%d) with %p(%d)\n", candidate, candidate->_idx, fuse_with, fuse_with->_idx);
+      // printf("Fusing %p(%d) with %p(%d) ctrl %s %d\n", candidate, candidate->_idx, fuse_with, fuse_with->_idx, iter.first->node_name(), iter.first->_idx);
+      // candidate->dump(1);
+
+      // if ((counter+1)%MAX_FUSE == 0) {
+      //   printf("====Fuse With=====\n");
+      //   fuse_with->dump(1);
+      // }
     }
 
+    // printf("====Fuse With=====\n");
+    // fuse_with->dump(1);
+
+    // printf("\n\n\n\n\n");
     // for (uint i = 0; i < iter.second.size(); i += MAX_FUSE) {
     //   for (uint j = 1; j < MIN(MAX_FUSE, iter.second.size() - i); j++) {
     //     printf("Fusing %d with %d '%p' '%p'\n", i + j, i, iter.second[i], iter.second[i+j]);

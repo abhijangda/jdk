@@ -233,18 +233,17 @@ class Universe: AllStatic {
       size_t size;
     };
     
-    // 2^3 = 8
-    static const int LOG_MIN_SMALL_OBJ_SIZE = 3; 
-    // 2^22 = 4*1024*1024
-    static const int LOG_MAX_SMALL_OBJ_SIZE = 22;
+    // 2^20 = 4*1024*1024
+    static const int LOG_MAX_SMALL_OBJ_SIZE = 20;
     // free_list for small objects
-    ListNode* free_lists[LOG_MAX_SMALL_OBJ_SIZE];
+    ListNode* free_lists[LOG_MAX_SMALL_OBJ_SIZE + 1];
+    static pthread_mutex_t lock;
 
     public:
-    MmapHeap() : PAGE_SIZE(getpagesize()), ALLOC_SIZE(256*1024*PAGE_SIZE), LARGE_OBJ_SIZE(4*1024*1024) {
+    MmapHeap() : PAGE_SIZE(getpagesize()), ALLOC_SIZE(256*1024*PAGE_SIZE), LARGE_OBJ_SIZE(1<<20) {
       alloc_ptr = NULL;
       curr_ptr = 0;
-      for (int i = 0; i < LOG_MAX_SMALL_OBJ_SIZE; i++)
+      for (int i = 0; i < LOG_MAX_SMALL_OBJ_SIZE + 1; i++)
         free_lists[i] = NULL;
     };
 
@@ -258,7 +257,9 @@ class Universe: AllStatic {
     }
 
     int32_t ilog2(uint64_t x) {
-      return sizeof(uint64_t) * 8 - __builtin_clzl(x) - 1;
+      int32_t log = sizeof(uint64_t) * 8 - __builtin_clzl(x) - 1;
+      assert(1UL<<log == x, "sanity");
+      return log;
     }
 
     uint32_t next_power_of_2(uint32_t v) const {
@@ -300,66 +301,75 @@ class Universe: AllStatic {
     }
 
     void* malloc(size_t sz) {
-      if (sz == 0) return NULL;
-      
+      // if (sz == 0) return NULL;
+      pthread_mutex_lock(&lock);
+      void* ptr = NULL;
       sz = adjust_size(sz);
 
       if (sz >= LARGE_OBJ_SIZE) {
-        printf("sz %ld multiple_of_page_size(sz) %ld\n", sz, multiple_of_page_size(sz));
+        // printf("sz %ld multiple_of_page_size(sz) %ld\n", sz, multiple_of_page_size(sz));
         sz = multiple_of_page_size(sz);
-        return Universe::mmap(sz);
-      }
-      if (alloc_ptr == NULL) {
-        alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
-      }
+        ptr = Universe::mmap(sz);
+      } else {      
+        if (alloc_ptr == NULL) {
+          alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
+          curr_ptr = 0;
+        }
 
-      int log_size = ilog2(sz);
-      assert(log_size < LOG_MAX_SMALL_OBJ_SIZE, "sanity '%d' '%ld' < '%d'", log_size, sz, LOG_MAX_SMALL_OBJ_SIZE);
-      if (free_lists[log_size] != NULL) {
-        ListNode* ptr = free_lists[log_size];
-        free_lists[log_size] = ptr->next;
+        int log_size = ilog2(sz);
+        assert(log_size < LOG_MAX_SMALL_OBJ_SIZE, "sanity '%d' '%ld' < '%d'", log_size, sz, LOG_MAX_SMALL_OBJ_SIZE);
+        if (free_lists[log_size] != NULL) {
+          ListNode* list_head = free_lists[log_size];
+          free_lists[log_size] = list_head->next;
 
-        if (ptr != NULL) {
-          if (ptr->size < sz)
-            printf("ptr %p ptr->size %ld sz %ld\n", ptr, ptr->size, sz);
-          return (void*)ptr;
+          if (list_head != NULL) {
+            if (list_head->size < sz)
+              printf("ptr %p ptr->size %ld sz %ld log_size %d\n", ptr, list_head->size, sz, log_size);
+            ptr = list_head;
+          }
+        }
+        
+        if (ptr == NULL) {
+          if (remaining_size_in_curr_alloc() >= sz) {
+            ptr = (void*)(alloc_ptr + curr_ptr);
+            curr_ptr += sz;
+            assert(curr_ptr <= ALLOC_SIZE, "%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
+          } else {
+            alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
+            curr_ptr = sz;
+            if (curr_ptr > ALLOC_SIZE) {
+              printf("%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
+            }
+            ptr = alloc_ptr;
+          }
         }
       }
-      
-      if (remaining_size_in_curr_alloc() >= sz) {
-        void* ptr = (void*)(alloc_ptr + curr_ptr);
-        curr_ptr += sz;
-        assert(curr_ptr <= ALLOC_SIZE, "%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
-        return ptr;
-      }
-      
-      alloc_ptr = (uint8_t*)Universe::mmap(ALLOC_SIZE);
-      curr_ptr = sz;
-      if (curr_ptr > ALLOC_SIZE) {
-        printf("%ld <= %ld\n", curr_ptr, ALLOC_SIZE);
-      }
-      return (void*)alloc_ptr;
+
+      pthread_mutex_unlock(&lock);
+
+      return ptr;
     }
 
     void free(void* p, size_t sz) {
-      if (sz == 0) return;
+      // if (sz == 0) return;
       if (p == NULL) return;
       
       sz = adjust_size(sz);
+      pthread_mutex_lock(&lock);
 
       if (sz >= LARGE_OBJ_SIZE) {
         sz = multiple_of_page_size(sz);
         munmap(p, sz);
-        return;
+      } else {
+        int log_size = ilog2(sz);
+        if (log_size < LOG_MAX_SMALL_OBJ_SIZE) {
+          ListNode* new_head = (ListNode*)p;
+          new_head->next = free_lists[log_size];
+          new_head->size = sz;
+          free_lists[log_size] = new_head;
+        }
       }
-
-      int log_size = ilog2(sz);
-      if (log_size < LOG_MAX_SMALL_OBJ_SIZE) {
-        ListNode* new_head = (ListNode*)p;
-        new_head->next = free_lists[log_size];
-        new_head->size = sz;
-        free_lists[log_size] = new_head;
-      }
+      pthread_mutex_unlock(&lock);
     }
   };
 

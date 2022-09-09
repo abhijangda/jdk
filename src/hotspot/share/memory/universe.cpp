@@ -111,6 +111,7 @@ void init_lock () {
   }
 }
 
+pthread_mutex_t Universe::MmapHeap::lock = PTHREAD_MUTEX_INITIALIZER;
 Universe::MmapHeap Universe::mmap_heap;
 
 // template <class T>

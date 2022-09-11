@@ -1174,9 +1174,11 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   //                        LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
 
   // ((LoadLNode*)cnt)->is_heap_event_cntr_load = true;
-  if (event_type == Universe::NewObject) {
-    // new_obj_or_field->dump(0);
-  }
+  // if (event_type == Universe::NewObject) {
+  //   new_obj_or_field->dump(0);
+  //   new_obj_or_field->in(1)->dump(0);
+  //   new_obj_or_field->in(1)->in(0)->dump(0);
+  // }
   make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, NULL);
   //TODO: For FieldSet should only be called for Atomic FieldSet
   
@@ -1763,6 +1765,9 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
              ctl != NULL, "raw memory operations should have control edge");
       //TODO: If this could be removed due to optimizations then handle FieldSet event 
       st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, mo, Universe::FieldSet);
+      // if (val->is_CheckCastPP() && val->in(1)->is_Proj()) {
+      //   val->in(1)->in(0)->dump(0);
+      // }
     } else {
       if (InstrumentHeapEvents && is_reference_type(bt)) {
         //It looks like this is rarely called

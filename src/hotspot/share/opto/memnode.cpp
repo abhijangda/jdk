@@ -2667,8 +2667,6 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       }
 
       return NULL;
-    } else {
-      return NULL;
     }
   }
   Node* p = MemNode::Ideal_common(phase, can_reshape);

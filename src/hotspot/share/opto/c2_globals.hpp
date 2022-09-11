@@ -740,6 +740,11 @@
                                                                             \
   product(bool, C2InstrumentHeapEvents, true,                               \
           "Instrument heap events in C2 compiler")                          \
+  product(bool, C2FuseStoreHeapEvents, true,                                \
+          "Fuse multiple Store Heap Events")                                \
+  product(uint, C2MaxStoreHeapEventsToFuse, 2,                              \
+          "Maximum Store Heap Events to fuse")                              \
+  product(bool, PrintC2FuseStoreHeapEvents, false, "")                      \
   develop(bool, StressArrayCopyMacroNode, false,                            \
           "Perform ArrayCopy load/store replacement during IGVN only")      \
                                                                             \

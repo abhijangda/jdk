@@ -718,7 +718,7 @@ Compile::Compile( ciEnv* ci_env, ciMethod* target, int osr_bci,
       return;
     }
     GraphKit kit(jvms);
-    bool f = method_found3_();
+    
     if (!kit.stopped()) {
       // Accept return values, and transfer control we know not where.
       // This is done by a special, unique ReturnNode bound to root.
@@ -742,7 +742,7 @@ Compile::Compile( ciEnv* ci_env, ciMethod* target, int osr_bci,
 
     print_method(PHASE_BEFORE_REMOVEUSELESS, 3);
 
-    if(InstrumentHeapEvents && C2InstrumentHeapEvents && f) {
+    if(InstrumentHeapEvents && C2InstrumentHeapEvents && C2FuseStoreHeapEvents) {
       // TracePhase tp("peephole", &timers[_t_peephole]);
       PhaseFuseHeapEvents p(initial_gvn(), &for_igvn);
       p.do_transform();
@@ -2086,7 +2086,7 @@ void Compile::Optimize() {
   // Iterative Global Value Numbering, including ideal transforms
   // Initialize IterGVN with types and values from parse-time GVN
   PhaseIterGVN igvn(initial_gvn());
-  igvn.found_method = method_found3_();
+  // igvn.found_method = method_found3_();
 #ifdef ASSERT
   _modified_nodes = new (comp_arena()) Unique_Node_List(comp_arena());
 #endif

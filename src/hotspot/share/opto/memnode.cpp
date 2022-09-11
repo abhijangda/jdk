@@ -2657,7 +2657,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     return NULL;
   
 
-  if (this->Opcode() == Op_StoreHeapEvent) {
+  if (this->Opcode() == Op_StoreHeapEvent && C2FuseStoreHeapEvents) {
     //Convert a StoreHeapEvent with None type to a StorePNode
     if (((StoreHeapEventNode*)this)->event_type() == Universe::None) {
       Node* ret =  ((StoreHeapEventNode*)this)->to_storep(*phase);

@@ -420,6 +420,7 @@ class Compile : public Phase {
   GrowableArray<RuntimeStub*>   _native_invokers;
 
   bool method_found3_() {
+    ShouldNotReachHere();
     if (_method == NULL)
       return false;
     if (_method->holder() == NULL)

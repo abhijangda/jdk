@@ -2131,14 +2131,14 @@ void topological_sort(Node_List& visited, Node* n, PhaseGVN* igvn, CommonControl
   int cnt = n->outcnt();
   for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
     Node* output = n->fast_out(i); 
-    if( output != NULL ) {                    // Ignore NULLs
+    if(output != NULL) {                    // Ignore NULLs
       topological_sort(visited, output, igvn, nodes_to_fuse, indent + 1);
     }
   }
   
   if (n->Opcode() == Op_StoreHeapEvent) {
     if (nodes_to_fuse.find(n->in(MemNode::Control)) == nodes_to_fuse.end()) {
-      nodes_to_fuse.insert(std::make_pair(n->in(MemNode::Control), Universe::vector<StoreHeapEventNode*>()));
+      nodes_to_fuse.insert(std::make_pair(n->in(MemNode::Control), Universe::vector<StoreHeapEventNode*>(16)));
     }
     nodes_to_fuse[n->in(MemNode::Control)].push_back((StoreHeapEventNode*)n);
   }
@@ -2165,13 +2165,10 @@ void traverse(Node_List& visited, Node* n, PhaseGVN* igvn, Unique_Node_List* wor
   }
 }
 
-bool PhaseFuseHeapEvents::is_reachable(Node* start, Node* end, Node* control) {
-  GrowableArray <Node *> trstack(1);
-  Node_List visited(_arena);
- 
-  trstack.push(start);
-  while ( trstack.is_nonempty() ) {
-    Node *n = trstack.pop();
+bool PhaseFuseHeapEvents::is_reachable(GrowableArray<Node*>& stack, Node_List& visited, Node* start, Node* end, Node* control) { 
+  stack.push(start);
+  while (stack.is_nonempty()) {
+    Node *n = stack.pop();
     if (visited[n->_idx] != NULL) {
       continue;
     }
@@ -2191,7 +2188,7 @@ bool PhaseFuseHeapEvents::is_reachable(Node* start, Node* end, Node* control) {
           return true;
         }
 
-        trstack.push(in);
+        stack.push(in);
       }
     }
   }
@@ -2211,6 +2208,8 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
   topological_sort(visited, n, _igvn, nodes_to_fuse, 0);
   
   debug_only(int num_nodes_fused = 0;)
+  visited.clear();
+
   for (auto iter : nodes_to_fuse) {
     StoreHeapEventNode* fuse_with = NULL;
     
@@ -2223,15 +2222,15 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
       }
 
       StoreHeapEventNode* candidate = *it;
-
+      
       // if (candidate->_idx > fuse_with->_idx) {
       //   continue;
       // }
 
-      if (is_reachable(candidate, fuse_with, fuse_with->in(MemNode::Control))) {
+      if (is_reachable(trstack, visited, candidate, fuse_with, fuse_with->in(MemNode::Control))) {
         continue;
       }
-
+      visited.clear();
       fuse_with->fuse(candidate);
       candidate->set_none_event_type();
       C->record_for_igvn(candidate);

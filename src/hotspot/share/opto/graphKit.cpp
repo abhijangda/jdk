@@ -1174,6 +1174,9 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   //                        LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
 
   // ((LoadLNode*)cnt)->is_heap_event_cntr_load = true;
+  if (event_type == Universe::NewObject) {
+    // new_obj_or_field->dump(0);
+  }
   make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, NULL);
   //TODO: For FieldSet should only be called for Atomic FieldSet
   

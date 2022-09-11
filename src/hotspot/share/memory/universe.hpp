@@ -43,6 +43,7 @@
 #include <set>
 #include <unordered_set>
 #include <algorithm>
+#include <deque>
 
 // Universe is a name space holding known system classes and objects in the VM.
 //
@@ -384,6 +385,8 @@ class Universe: AllStatic {
   using map = std::map<K, V, std::less<K>, STLAllocator<std::pair<const K, V>>>;
   template <typename V>
   using vector = std::vector<V, STLAllocator<V>>;
+  template<class T> 
+  using deque = std::deque<T, STLAllocator<T>>;
 
   static uint32_t checking;
 

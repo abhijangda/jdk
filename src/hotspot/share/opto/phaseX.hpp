@@ -640,7 +640,7 @@ public:
 
   // Do any transformation after analysis
   void          do_transform();
-  bool is_reachable(Node* n1, Node* n2, Node* control);
+  bool is_reachable(GrowableArray<Node*>& stack, Node_List& visited, Node* start, Node* end, Node* control);
 };
 
 #endif // SHARE_OPTO_PHASEX_HPP

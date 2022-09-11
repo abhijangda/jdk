@@ -2236,7 +2236,8 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
       candidate->set_none_event_type();
       C->record_for_igvn(candidate);
 
-      printf("Fusing %p(%d) with %p(%d) ctrl %s %d\n", candidate, candidate->_idx, fuse_with, fuse_with->_idx, iter.first->node_name(), iter.first->_idx);
+      if (PrintC2FuseStoreHeapEvents)
+        printf("Fusing %p(%d) with %p(%d) ctrl %s %d\n", candidate, candidate->_idx, fuse_with, fuse_with->_idx, iter.first->node_name(), iter.first->_idx);
       debug_only(num_nodes_fused++;)
     }
   }

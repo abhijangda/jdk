@@ -6901,6 +6901,7 @@ instruct storeHeapEventFieldSetFive(memory field1, any_RegP val1, memory field2,
   ins_cost(125); // XXX
   format %{ "movq    $field1, $val1\t# long" %}
   ins_encode %{
+    ShouldNotReachHere();
     __ movq($field1$$Address, $val1$$Register);
     __ movq($field2$$Address, $val2$$Register);
     __ movq($field3$$Address, $val3$$Register);
@@ -6919,6 +6920,7 @@ instruct storeHeapEventFieldSetSix(memory field1, any_RegP val1, memory field2, 
   ins_cost(125); // XXX
   format %{ "movq    $field1, $val1\t# long" %}
   ins_encode %{
+    ShouldNotReachHere();
     __ movq($field1$$Address, $val1$$Register);
     __ movq($field2$$Address, $val2$$Register);
     __ movq($field3$$Address, $val3$$Register);

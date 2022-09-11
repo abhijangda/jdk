@@ -2652,20 +2652,24 @@ uint StoreNode::hash() const {
 // When a store immediately follows a relevant allocation/initialization,
 // try to capture it into the initialization, or hoist it above.
 Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (this->Opcode() == Op_TransferEvents || Opcode() == Op_IncrCntrAndStoreHeapEvent || 
+  if (this->Opcode() == Op_TransferEvents || Opcode() == Op_IncrCntrAndStoreHeapEvent || this->Opcode() == Op_StoreHeapEvent ||
       this->Opcode() == Op_IncrCntrAndStoreCopyArrayEvent)
     return NULL;
   
 
-  if (this->Opcode() == Op_StoreHeapEvent && C2FuseStoreHeapEvents) {
-    //Convert a StoreHeapEvent with None type to a StorePNode
-    if (((StoreHeapEventNode*)this)->event_type() == Universe::None) {
-      Node* ret =  ((StoreHeapEventNode*)this)->to_storep(*phase);
-      // printf("event_type() %ld %p %d ==> %p %d %s\n", ((StoreHeapEventNode*)this)->event_type(), this, _idx, ret, ret->_idx, ret->node_name());
-      return ret;
-    }
+  if (this->Opcode() == Op_StoreHeapEvent) {
+    if (C2FuseStoreHeapEvents) {
+      //Convert a StoreHeapEvent with None type to a StorePNode
+      if (((StoreHeapEventNode*)this)->event_type() == Universe::None) {
+        Node* ret =  ((StoreHeapEventNode*)this)->to_storep(*phase);
+        // printf("event_type() %ld %p %d ==> %p %d %s\n", ((StoreHeapEventNode*)this)->event_type(), this, _idx, ret, ret->_idx, ret->node_name());
+        return ret;
+      }
 
-    return NULL;
+      return NULL;
+    } else {
+      return NULL;
+    }
   }
   Node* p = MemNode::Ideal_common(phase, can_reshape);
   if (p)  return (p == NodeSentinel) ? NULL : p;

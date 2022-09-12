@@ -2658,24 +2658,37 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   
 
   if (this->Opcode() == Op_StoreHeapEvent) {
-    if (C2FuseStoreHeapEvents) {
-      //Convert a StoreHeapEvent with None type to a StorePNode
-      if (((StoreHeapEventNode*)this)->event_type() == Universe::None) {
-        Node* ret =  ((StoreHeapEventNode*)this)->to_storep(*phase);
-        // printf("event_type() %ld %p %d ==> %p %d %s\n", ((StoreHeapEventNode*)this)->event_type(), this, _idx, ret, ret->_idx, ret->node_name());
-        return ret;
-      }
+    //Convert a StoreHeapEvent with None type to a StorePNode
+    if (((StoreHeapEventNode*)this)->event_type() == Universe::None) {
+      printf("Change StoreHeapEvent with None event type %d to StoreP\n", this->_idx);
+      Node* ret =  ((StoreHeapEventNode*)this)->to_storep(*phase);
+      // printf("event_type() %ld %p %d ==> %p %d %s\n", ((StoreHeapEventNode*)this)->event_type(), this, _idx, ret, ret->_idx, ret->node_name());
+      return ret;
+    }
+    
+    // Back-to-back stores to same address? First, if both are a StoreHeapEvent
+    // then set it to none event type and record the event for a later IGVN phase
+    
+    Node* mem = in(MemNode::Memory);
 
+    if (mem->Opcode() == Op_StoreHeapEvent && mem->outcnt() == 1 && Opcode() == Op_StoreHeapEvent && mem->in(MemNode::Address)->_idx == in(MemNode::Address)->_idx) {
+      printf("Back to back StoreHeapEvent %d %d\n", mem->_idx, mem->outcnt());
+      ((StoreHeapEventNode*)mem)->set_none_event_type();
+      phase->C->record_for_igvn(mem);
       return NULL;
     }
-  }
+    
+    return NULL;
+  } 
+
   Node* p = MemNode::Ideal_common(phase, can_reshape);
   if (p)  return (p == NodeSentinel) ? NULL : p;
 
   Node* mem     = in(MemNode::Memory);
   Node* address = in(MemNode::Address);
   Node* value   = in(MemNode::ValueIn);
-  // Back-to-back stores to same address?  Fold em up.  Generally
+  
+  // Back-to-back stores to same address? Fold em up.  Generally
   // unsafe if I have intervening uses...  Also disallowed for StoreCM
   // since they must follow each StoreP operation.  Redundant StoreCMs
   // are eliminated just before matching in final_graph_reshape.
@@ -2717,7 +2730,6 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       st = st->in(MemNode::Memory);
     }
   }
-
 
   // Capture an unaliased, unconditional, simple store into an initializer.
   // Or, if it is independent of the allocation, hoist it above the allocation.

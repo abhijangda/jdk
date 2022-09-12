@@ -1763,10 +1763,17 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
     if (store_heap) {
       assert(C->get_alias_index(adr_type) != Compile::AliasIdxRaw ||
              ctl != NULL, "raw memory operations should have control edge");
-      //TODO: If this could be removed due to optimizations then handle FieldSet event 
       st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, mo, Universe::FieldSet);
       // if (val->is_CheckCastPP() && val->in(1)->is_Proj()) {
       //   val->in(1)->in(0)->dump(0);
+      // }
+      // printf("1770\n");
+      // if (mem->Opcode() == Op_StoreHeapEvent) {
+      //   assert(mem->in(MemNode::Address) == adr, "");
+      //   printf("\n\n");
+      //   mem->dump(0);
+      //   st->dump(0);
+      //   printf("\n\n");
       // }
     } else {
       if (InstrumentHeapEvents && is_reference_type(bt)) {

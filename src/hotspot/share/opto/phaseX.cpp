@@ -2136,7 +2136,7 @@ void topological_sort(Node_List& visited, Node* n, PhaseGVN* igvn, CommonControl
     }
   }
   
-  if (n->Opcode() == Op_StoreHeapEvent) {
+  if (n->Opcode() == Op_StoreHeapEvent && ((StoreHeapEventNode*)n)->event_type() != Universe::None) {
     if (nodes_to_fuse.find(n->in(MemNode::Control)) == nodes_to_fuse.end()) {
       nodes_to_fuse.insert(std::make_pair(n->in(MemNode::Control), Universe::vector<StoreHeapEventNode*>()));
     }

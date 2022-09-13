@@ -274,6 +274,32 @@ class Compile : public Phase {
     trapHistLength = MethodData::_trap_hist_limit
   };
 
+  void method_name(char *buf) {
+    if (_method == NULL) {
+      buf[0] = 0;
+      return;
+    }
+    if (_method->holder() == NULL) {
+      buf[0] = 0;
+      return;
+    }
+    if (_method->name()->get_symbol() == NULL) {
+      buf[0] = 0;
+      return;
+    }
+    
+    Symbol* holder_symbol = _method->holder()->name()->get_symbol();
+    // printf("holder_symbol %p\n", holder_symbol);
+    if (holder_symbol == NULL) {buf[0] = 0; return;}
+    Symbol* method_symbol = _method->name()->get_symbol();
+    // printf("method_sysmbol %p\n", method_symbol);
+    if (method_symbol == NULL) {buf[0] = 0; return;}
+    Symbol* method_sig = _method->signature()->as_symbol()->get_symbol();
+    if (method_sig == NULL) {buf[0] = 0; return;}
+
+    sprintf(buf, "%s::%s::%s", holder_symbol->as_utf8(), method_symbol->as_utf8(), method_sig->as_utf8());
+  }
+  
  private:
   // Fixed parameters to this compilation.
   const int             _compile_id;

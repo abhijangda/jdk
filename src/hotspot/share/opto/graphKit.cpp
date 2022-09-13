@@ -1750,6 +1750,7 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
   debug_only(adr_type = C->get_adr_type(adr_idx));
   Node *mem = memory(adr_idx);
   Node* st;
+  bool ff = false;
   if (require_atomic_access && bt == T_LONG) {
     st = StoreLNode::make_atomic(ctl, mem, adr, adr_type, val, mo);
   } else if (require_atomic_access && bt == T_DOUBLE) {
@@ -1775,6 +1776,15 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
       //   st->dump(0);
       //   printf("\n\n");
       // }
+      Node* k =st;
+      // if (k->Opcode() == Op_StoreHeapEvent && mem->Opcode() == Op_StoreHeapEvent && 
+      //   k->in(MemNode::Address)->_idx == mem->in(MemNode::Address)->_idx) {
+      //   printf("1781: %d outcnt %d %d", k->_idx, mem->_idx, mem->outcnt());
+      //   printf("\n");
+      //   mem->dump(0);
+      //   st->dump(0);
+      //   ff = true;
+      // }
     } else {
       if (InstrumentHeapEvents && is_reference_type(bt)) {
         //It looks like this is rarely called
@@ -1793,6 +1803,12 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
     st->as_Store()->set_unsafe_access();
   }
   st = _gvn.transform(st);
+  // Node* k =st;
+  // if (ff) {
+  //   printf("1808: event type %ld\n", ((StoreHeapEventNode*)mem)->event_type());
+  //   mem->dump(0);
+  //   st->dump(0);
+  // }
   set_memory(st, adr_idx);
   // Back-to-back stores can only remove intermediate store with DU info
   // so push on worklist for optimizer.

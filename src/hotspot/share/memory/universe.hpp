@@ -406,6 +406,7 @@ class Universe: AllStatic {
     LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
   };
   static bool is_verify_cause_full_gc;
+  static bool is_verify_from_exit;
   struct HeapEvent {
     uint64_t src;
     uint64_t dst;

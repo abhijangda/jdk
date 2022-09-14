@@ -736,6 +736,7 @@ oopDesc* oop_for_address(Map& oop_map, oopDesc* field) {
 }
 
 bool Universe::is_verify_cause_full_gc = false;
+bool Universe::is_verify_from_exit = false;
 
 void Universe::verify_heap_graph() {
 
@@ -757,7 +758,7 @@ void Universe::verify_heap_graph() {
   int zero_event_types = 0;
   //Update heap hash table
   unordered_set<uint64_t> event_threads;
-  printf("Check Shadow Graph is_verify_cause_full_gc %d\n", is_verify_cause_full_gc);
+  printf("Check Shadow Graph is_verify_cause_full_gc %d is_verify_from_exit %d\n", is_verify_cause_full_gc, is_verify_from_exit);
   uint64_t num_field_sets = 0;
   uint64_t num_new_obj = 0;
 
@@ -1018,7 +1019,12 @@ void Universe::verify_heap_graph() {
   }
   printf("event_threads.size() %ld\n", event_threads.size());
   CheckGraph check_graph(true, true, true, true);
-  Universe::heap()->object_iterate(&check_graph);
+  if (not CheckHeapEventGraphOnlyBeforeExit || Universe::is_verify_from_exit) {
+    Universe::heap()->object_iterate(&check_graph);
+  } else {
+    printf("Only Check Heap Graph before exit\n");
+    check_graph.num_found = check_graph.num_not_found = check_graph.num_src_not_correct = -1;
+  }
 
   size_t num_objects = ObjectNode::oop_to_obj_node.size();
   size_t num_fields = 0;

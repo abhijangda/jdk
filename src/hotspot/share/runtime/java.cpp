@@ -467,6 +467,12 @@ void before_exit(JavaThread* thread) {
   Universe::heap()->stop();
 
   // Print GC/heap related information.
+  if (CheckHeapEventGraphWithHeap) {
+    //Check HeapEvent Graph before exiting
+    Universe::is_verify_from_exit = true;
+    Universe::verify_heap_graph();
+  }
+
   Log(gc, heap, exit) log;
   if (log.is_info()) {
     ResourceMark rm;

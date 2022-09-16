@@ -653,6 +653,7 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
             if( n->as_Phi()->is_unsafe_data_reference(in) )
               in = phase->C->top();      // replaced by top
           }
+          
           igvn->replace_node(n, in);
         }
         else if( n->is_Region() ) { // Update all incoming edges

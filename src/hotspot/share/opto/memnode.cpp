@@ -1353,7 +1353,12 @@ Node* StoreNode::convert_to_reinterpret_store(PhaseGVN& gvn, Node* val, const Ty
   BasicType bt = vt->basic_type();
   assert(has_reinterpret_variant(vt), "no reinterpret variant: %s %s", Name(), type2name(bt));
   StoreNode* st = StoreNode::make(gvn, in(MemNode::Control), in(MemNode::Memory), in(MemNode::Address), raw_adr_type(), val, bt, _mo);
-
+  if (Opcode() == Op_StoreHeapEvent && st->Opcode() != Op_StoreHeapEvent) {
+    printf("To Fix: 1357\n");
+  }
+  if (Opcode() == Op_StoreHeapEvent && st->Opcode() == Op_StoreHeapEvent && st->req() != req()) {
+    printf("To Fix: 1360\n");
+  }
   bool is_mismatched = is_mismatched_access();
   const TypeRawPtr* raw_type = gvn.type(in(MemNode::Memory))->isa_rawptr();
   if (raw_type == NULL) {
@@ -2652,23 +2657,55 @@ uint StoreNode::hash() const {
 // When a store immediately follows a relevant allocation/initialization,
 // try to capture it into the initialization, or hoist it above.
 Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (this->Opcode() == Op_TransferEvents || this->Opcode() == Op_StoreHeapEvent || Opcode() == Op_IncrCntrAndStoreHeapEvent || 
+  if (this->Opcode() == Op_TransferEvents || Opcode() == Op_IncrCntrAndStoreHeapEvent ||
       this->Opcode() == Op_IncrCntrAndStoreCopyArrayEvent)
     return NULL;
-  Node* p = MemNode::Ideal_common(phase, can_reshape);
-  if (p)  return (p == NodeSentinel) ? NULL : p;
+  
+
+  if (this->Opcode() == Op_StoreHeapEvent) {
+    //Convert a StoreHeapEvent with None type to a StorePNode
+    if (((StoreHeapEventNode*)this)->event_type() == Universe::None) {
+      // printf("Change StoreHeapEvent with None event type %d to StoreP\n", this->_idx);
+      Node* ret =  ((StoreHeapEventNode*)this)->to_storep(*phase);
+      // printf("event_type() %ld %p %d ==> %p %d %s\n", ((StoreHeapEventNode*)this)->event_type(), this, _idx, ret, ret->_idx, ret->node_name());
+      return ret;
+    }
+    
+    // Back-to-back stores to same address? First, if both are a StoreHeapEvent
+    // then set it to none event type and record the event for a later IGVN phase
+    
+    Node* mem = in(MemNode::Memory);
+
+    if (mem->Opcode() == Op_StoreHeapEvent && mem->outcnt() == 1 && Opcode() == Op_StoreHeapEvent && mem->in(MemNode::Address)->_idx == in(MemNode::Address)->_idx) {
+      printf("Back to back StoreHeapEvent %d %d\n", mem->_idx, mem->outcnt());
+      // char buf[1024];
+      // phase->C->method_name(buf);
+      // printf("%s\n", buf);
+      // mem->dump(0);
+      // dump(0);
+      ((StoreHeapEventNode*)mem)->set_none_event_type();
+      phase->C->record_for_igvn(mem);
+      return NULL;
+    }
+  } 
+
+  if (this->Opcode() != Op_StoreHeapEvent) {
+    Node* p = MemNode::Ideal_common(phase, can_reshape);
+    if (p)  return (p == NodeSentinel) ? NULL : p;
+  }
 
   Node* mem     = in(MemNode::Memory);
   Node* address = in(MemNode::Address);
   Node* value   = in(MemNode::ValueIn);
-  // Back-to-back stores to same address?  Fold em up.  Generally
-  // unsafe if I have intervening uses...  Also disallowed for StoreCM
-  // since they must follow each StoreP operation.  Redundant StoreCMs
-  // are eliminated just before matching in final_graph_reshape.
-  {
+    
+  if (this->Opcode() != Op_StoreHeapEvent) {
+    // Back-to-back stores to same address? Fold em up.  Generally
+    // unsafe if I have intervening uses...  Also disallowed for StoreCM
+    // since they must follow each StoreP operation.  Redundant StoreCMs
+    // are eliminated just before matching in final_graph_reshape.
     Node* st = mem;
     // If Store 'st' has more than one use, we cannot fold 'st' away.
-    // For example, 'st' might be the final state at a conditional
+    // For example, 'st' might be the final( state at a conditional
     // return.  Or, 'st' might be used by some node which is live at
     // the same time 'st' is live, which might be unschedulable.  So,
     // require exactly ONE user until such time as we clone 'mem' for
@@ -2678,15 +2715,16 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       // Looking at a dead closed cycle of memory?
       assert(st != st->in(MemNode::Memory), "dead loop in StoreNode::Ideal");
       assert(Opcode() == st->Opcode() ||
-             st->Opcode() == Op_StoreVector ||
-             Opcode() == Op_StoreVector ||
-             st->Opcode() == Op_StoreVectorScatter ||
-             Opcode() == Op_StoreVectorScatter ||
-             phase->C->get_alias_index(adr_type()) == Compile::AliasIdxRaw ||
-             (Opcode() == Op_StoreL && st->Opcode() == Op_StoreI) || // expanded ClearArrayNode
-             (Opcode() == Op_StoreI && st->Opcode() == Op_StoreL) || // initialization by arraycopy
-             (is_mismatched_access() || st->as_Store()->is_mismatched_access()),
-             "no mismatched stores, except on raw memory: %s %s", NodeClassNames[Opcode()], NodeClassNames[st->Opcode()]);
+              (Opcode() == Op_StoreP && st->Opcode() == Op_StoreHeapEvent) ||
+              st->Opcode() == Op_StoreVector ||
+              Opcode() == Op_StoreVector ||
+              st->Opcode() == Op_StoreVectorScatter ||
+              Opcode() == Op_StoreVectorScatter ||
+              phase->C->get_alias_index(adr_type()) == Compile::AliasIdxRaw ||
+              (Opcode() == Op_StoreL && st->Opcode() == Op_StoreI) || // expanded ClearArrayNode
+              (Opcode() == Op_StoreI && st->Opcode() == Op_StoreL) || // initialization by arraycopy
+              (is_mismatched_access() || st->as_Store()->is_mismatched_access()),
+              "no mismatched stores, except on raw memory: %s %s", NodeClassNames[Opcode()], NodeClassNames[st->Opcode()]);
 
       if (st->in(MemNode::Address)->eqv_uncast(address) &&
           st->as_Store()->memory_size() <= this->memory_size()) {
@@ -2703,21 +2741,24 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     }
   }
 
-
   // Capture an unaliased, unconditional, simple store into an initializer.
   // Or, if it is independent of the allocation, hoist it above the allocation.
-  if (ReduceFieldZeroing && /*can_reshape &&*/
-      mem->is_Proj() && mem->in(0)->is_Initialize()) {
-    InitializeNode* init = mem->in(0)->as_Initialize();
-    intptr_t offset = init->can_capture_store(this, phase, can_reshape);
-    if (offset > 0) {
-      Node* moved = init->capture_store(this, offset, phase, can_reshape);
-      // If the InitializeNode captured me, it made a raw copy of me,
-      // and I need to disappear.
-      if (moved != NULL) {
-        // %%% hack to ensure that Ideal returns a new node:
-        mem = MergeMemNode::make(mem);
-        return mem;             // fold me away
+  if (this->Opcode() != Op_StoreHeapEvent) {
+    // Cannnot do this with StoreHeapEvent because otherwise a
+    // IncrCntrAndStoreHeapEvent needs to be generated which will be more inefficient
+    if (ReduceFieldZeroing && /*can_reshape &&*/
+        mem->is_Proj() && mem->in(0)->is_Initialize()) {
+      InitializeNode* init = mem->in(0)->as_Initialize();
+      intptr_t offset = init->can_capture_store(this, phase, can_reshape);
+      if (offset > 0) {
+        Node* moved = init->capture_store(this, offset, phase, can_reshape);
+        // If the InitializeNode captured me, it made a raw copy of me,
+        // and I need to disappear.
+        if (moved != NULL) {
+          // %%% hack to ensure that Ideal returns a new node:
+          mem = MergeMemNode::make(mem);
+          return mem;             // fold me away
+        }
       }
     }
   }
@@ -2736,6 +2777,17 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   }
 
   return NULL;                  // No further progress
+}
+StorePNode* StoreHeapEventNode::to_storep(PhaseGVN& gvn) {
+  StoreNode* st = StoreNode::make(gvn, in(0), in(1), in(2), adr_type(), in(3), T_ADDRESS, mo());
+  
+  assert(st->Opcode() == Op_StoreP, "Always get StoreP for T_ADDRESS");
+
+  if (is_unaligned_access()) st->set_unaligned_access();
+  if (is_mismatched_access()) st->set_mismatched_access();
+  if (is_unsafe_access()) st->set_unsafe_access();
+  
+  return (StorePNode*)(st);
 }
 
 //------------------------------Value-----------------------------------------
@@ -4071,7 +4123,6 @@ Node* InitializeNode::capture_store(StoreNode* st, intptr_t start,
   new_st->set_req(MemNode::Memory,  prev_mem);
   new_st->set_req(MemNode::Address, make_raw_address(start, phase));
   new_st = phase->transform(new_st);
-
   // At this point, new_st might have swallowed a pre-existing store
   // at the same offset, or perhaps new_st might have disappeared,
   // if it redundantly stored the same value (or zero to fresh memory).

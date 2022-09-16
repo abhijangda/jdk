@@ -53,7 +53,6 @@ private:
 
   DEBUG_ONLY(bool sid_ok();)
 
-  Symbol* get_symbol() const { return _symbol; }
 
   const char* type_string() { return "ciSymbol"; }
 
@@ -66,6 +65,7 @@ private:
   static ciSymbol* make_impl(const char* s);
 
 public:
+  Symbol* get_symbol() const { return _symbol; }
   // The enumeration ID from vmSymbols, or vmSymbolID::NO_SID if none.
   vmSymbolID sid() const { return _sid; }
 

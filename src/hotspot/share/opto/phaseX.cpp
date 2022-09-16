@@ -40,6 +40,9 @@
 #include "opto/rootnode.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/powerOfTwo.hpp"
+#include "memory/universe.hpp"
+
+#include <utility>
 
 //=============================================================================
 #define NODE_HASH_MINIMUM_SIZE    255
@@ -964,6 +967,7 @@ PhaseIterGVN::PhaseIterGVN(PhaseIterGVN* igvn) : PhaseGVN(igvn),
                                                  _worklist(igvn->_worklist)
 {
   _iterGVN = true;
+  found_method = false;
 }
 
 //------------------------------PhaseIterGVN-----------------------------------
@@ -978,6 +982,7 @@ PhaseIterGVN::PhaseIterGVN(PhaseGVN* gvn) : PhaseGVN(gvn),
                                             _worklist(*C->for_igvn())
 {
   _iterGVN = true;
+  found_method = false;
   uint max;
 
   // Dead nodes in the hash table inherited from GVN were not treated as
@@ -2096,6 +2101,166 @@ void PhasePeephole::print_statistics() {
 }
 #endif
 
+
+// //=============================================================================
+// #ifndef PRODUCT
+// uint PhasePeephole::_total_peepholes = 0;
+// #endif
+//------------------------------PhasePeephole----------------------------------
+PhaseFuseHeapEvents::PhaseFuseHeapEvents(PhaseGVN* igvn, Unique_Node_List* worklist)
+  : PhaseTransform(FuseHeapEvents), _worklist(worklist), _igvn(igvn) {
+  
+}
+
+#ifndef PRODUCT
+//------------------------------~PhasePeephole---------------------------------
+PhaseFuseHeapEvents::~PhaseFuseHeapEvents() {
+  //_total_peepholes += count_peepholes();
+}
+#endif
+
+typedef Universe::unordered_map<Node*, Universe::vector<StoreHeapEventNode*>> CommonControlNodes;
+
+void topological_sort(Node_List& visited, Node* n, PhaseGVN* igvn, CommonControlNodes& nodes_to_fuse, int indent) {
+  if (visited[n->_idx] != NULL) {
+    return;
+  }
+  
+  visited.map(n->_idx, (Node*)true);
+
+  int cnt = n->outcnt();
+  for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
+    Node* output = n->fast_out(i); 
+    if(output != NULL) {                    // Ignore NULLs
+      topological_sort(visited, output, igvn, nodes_to_fuse, indent + 1);
+    }
+  }
+  
+  if (n->Opcode() == Op_StoreHeapEvent && ((StoreHeapEventNode*)n)->event_type() != Universe::None) {
+    if (nodes_to_fuse.find(n->in(MemNode::Control)) == nodes_to_fuse.end()) {
+      nodes_to_fuse.insert(std::make_pair(n->in(MemNode::Control), Universe::vector<StoreHeapEventNode*>()));
+    }
+    nodes_to_fuse[n->in(MemNode::Control)].push_back((StoreHeapEventNode*)n);
+  }
+}
+
+void traverse(Node_List& visited, Node* n, PhaseGVN* igvn, Unique_Node_List* worklist, CommonControlNodes& nodes_to_fuse, Node* parent, int in_index, int indent) {
+  if (visited[n->_idx] != NULL) {
+    return;
+  }
+  
+  visited.map(n->_idx, (Node*)true);
+
+  for (int i = 0; i < indent; i++) {
+    printf(" ");
+  }
+    
+  debug_only(n->dump(0);)
+
+  for(uint i = 0; i < n->req(); i++ ) {          // For all inputs do
+    Node *input = n->in(i);
+    if( input != NULL ) {                    // Ignore NULLs
+      traverse(visited, input, igvn, worklist, nodes_to_fuse, n, i, indent + 1);
+    }
+  }
+}
+
+bool PhaseFuseHeapEvents::is_reachable(GrowableArray<Node*>& stack, Node_List& visited, Node* start, Node* end, Node* control) { 
+  stack.push(start);
+  while (stack.is_nonempty()) {
+    Node *n = stack.pop();
+    if (visited[n->_idx] != NULL) {
+      continue;
+    }
+
+    visited.map(n->_idx, (Node*)true);
+
+    for (uint i = 0; i < n->req(); i++) {
+      Node* in = n->in(i);
+      bool push_in = in != NULL;
+      push_in = push_in && in != control && in->Opcode() != Op_Root && in->Opcode() != Op_Region;
+
+      push_in = push_in && n->match_edge(i);
+
+      if (push_in) {
+        // printf("2222: %d %s for %d %s %d\n", in->_idx, in->node_name(), n->_idx, n->node_name(), i);
+        if (in == end) {
+          return true;
+        }
+
+        stack.push(in);
+      }
+    }
+  }
+
+  return false;
+}
+
+//------------------------------transform--------------------------------------
+Node *PhaseFuseHeapEvents::transform( Node *n ) {
+  GrowableArray <Node *> trstack(1);
+  Node_List visited(_arena);
+  CommonControlNodes nodes_to_fuse;
+  Universe::unordered_map<Node*, std::pair<Node*, uint>> node_to_parent;
+
+  nodes_to_fuse.clear();
+  visited.clear();
+  topological_sort(visited, n, _igvn, nodes_to_fuse, 0);
+  
+  debug_only(int num_nodes_fused = 0;)
+  visited.clear();
+
+  for (auto iter : nodes_to_fuse) {
+    StoreHeapEventNode* fuse_with = NULL;
+    
+    int counter = 0;
+
+    for (auto it = iter.second.begin(); it != iter.second.end(); it++, counter++) {
+      if (counter%C2MaxStoreHeapEventsToFuse == 0) {
+        fuse_with = *it;
+        continue;
+      }
+
+      StoreHeapEventNode* candidate = *it;
+
+      // if (candidate->_idx > fuse_with->_idx) {
+      //   continue;
+      // }
+
+      if (is_reachable(trstack, visited, candidate, fuse_with, fuse_with->in(MemNode::Control))) {
+        continue;
+      }
+      visited.clear();
+      fuse_with->fuse(candidate);
+      candidate->set_none_event_type();
+      C->record_for_igvn(candidate);
+
+      if (PrintC2FuseStoreHeapEvents)
+        printf("Fusing %p(%d) with %p(%d) ctrl %s %d\n", candidate, candidate->_idx, fuse_with, fuse_with->_idx, iter.first->node_name(), iter.first->_idx);
+      debug_only(num_nodes_fused++;)
+    }
+  }
+  
+  debug_only(if (num_nodes_fused > 0) printf("%d\n", num_nodes_fused);)
+
+  return NULL;
+}
+
+//------------------------------do_transform-----------------------------------
+void PhaseFuseHeapEvents::do_transform() {
+  if (!C2FuseStoreHeapEvents)
+    return;
+  assert( C->top(),  "missing TOP node" );
+  assert( C->root(), "missing root" );
+  transform(C->root());
+}
+
+// //------------------------------print_statistics-------------------------------
+// #ifndef PRODUCT
+// void PhasePeephole::print_statistics() {
+//   tty->print_cr("Peephole: peephole rules applied: %d",  _total_peepholes);
+// }
+// #endif
 
 //=============================================================================
 //------------------------------set_req_X--------------------------------------

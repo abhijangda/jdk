@@ -464,7 +464,7 @@ protected:
 public:
   PhaseIterGVN(PhaseIterGVN* igvn); // Used by CCP constructor
   PhaseIterGVN(PhaseGVN* gvn); // Used after Parser
-
+  bool found_method;
   // Idealize new Node 'n' with respect to its inputs and its value
   virtual Node *transform( Node *a_node );
   virtual void record_for_igvn(Node *n) { }
@@ -624,6 +624,23 @@ public:
 
   static void print_statistics();
 #endif
+};
+
+//------------------------------PhaseFuseHeapEvents----------------------------------
+// Phase for fusing several heap events into a single.
+class PhaseFuseHeapEvents : public PhaseTransform {
+  Unique_Node_List* _worklist;       // Iterative worklist
+  PhaseGVN* _igvn;
+  // Recursive traversal of program.  Pure function is unused in this phase
+  virtual Node *transform( Node *n );
+
+public:
+  PhaseFuseHeapEvents(PhaseGVN* igvn, Unique_Node_List* worklist);
+  NOT_PRODUCT( ~PhaseFuseHeapEvents(); )
+
+  // Do any transformation after analysis
+  void          do_transform();
+  bool is_reachable(GrowableArray<Node*>& stack, Node_List& visited, Node* start, Node* end, Node* control);
 };
 
 #endif // SHARE_OPTO_PHASEX_HPP

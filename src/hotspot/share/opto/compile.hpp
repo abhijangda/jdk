@@ -274,6 +274,32 @@ class Compile : public Phase {
     trapHistLength = MethodData::_trap_hist_limit
   };
 
+  void method_name(char *buf) {
+    if (_method == NULL) {
+      buf[0] = 0;
+      return;
+    }
+    if (_method->holder() == NULL) {
+      buf[0] = 0;
+      return;
+    }
+    if (_method->name()->get_symbol() == NULL) {
+      buf[0] = 0;
+      return;
+    }
+    
+    Symbol* holder_symbol = _method->holder()->name()->get_symbol();
+    // printf("holder_symbol %p\n", holder_symbol);
+    if (holder_symbol == NULL) {buf[0] = 0; return;}
+    Symbol* method_symbol = _method->name()->get_symbol();
+    // printf("method_sysmbol %p\n", method_symbol);
+    if (method_symbol == NULL) {buf[0] = 0; return;}
+    Symbol* method_sig = _method->signature()->as_symbol()->get_symbol();
+    if (method_sig == NULL) {buf[0] = 0; return;}
+
+    sprintf(buf, "%s::%s::%s", holder_symbol->as_utf8(), method_symbol->as_utf8(), method_sig->as_utf8());
+  }
+  
  private:
   // Fixed parameters to this compilation.
   const int             _compile_id;
@@ -418,6 +444,72 @@ class Compile : public Phase {
   uint                          _number_of_mh_late_inlines; // number of method handle late inlining still pending
 
   GrowableArray<RuntimeStub*>   _native_invokers;
+
+  bool method_found3_() {
+    ShouldNotReachHere();
+    if (_method == NULL)
+      return false;
+    if (_method->holder() == NULL)
+      return false;
+    if (_method->name()->get_symbol() == NULL)
+      return false;
+    
+    Symbol* holder_symbol = _method->holder()->name()->get_symbol();
+    // printf("holder_symbol %p\n", holder_symbol);
+    if (holder_symbol == NULL) return false;
+    Symbol* method_symbol = _method->name()->get_symbol();
+    // printf("method_sysmbol %p\n", method_symbol);
+    if (method_symbol == NULL) return false;
+    Symbol* method_sig = _method->signature()->as_symbol()->get_symbol();
+    if (method_sig == NULL) return false;
+
+    const char* holder_name = holder_symbol->as_utf8();
+    const char* method_name = method_symbol->as_utf8();
+    const char* method_sig_name = method_sig->as_utf8();
+    // printf("%s::%s(%s)\n", holder_name, method_name, method_sig_name);
+    // return true;
+    bool found = 
+            strstr(holder_name, "org/sunflow/core/light/TriangleMeshLight$TriangleLight") != NULL || //Fusing shadowRay with other StoreHeapEvent is giving problem
+                  //strstr(holder_name, "org/sunflow/core/shader/MirrorShader") != NULL ||
+    //strstr(holder_name, "org/h2/command/") != NULL || 
+                 //strstr(holder_name, "org/h2/engine/") != NULL  || 
+                 //strstr(holder_name, "org/h2/expression/") != NULL || 
+                //  strstr(holder_name, "org/apache/derbyTesting/system/oe/model/Address") != NULL ||
+                // strstr(holder_name, "org/h2/command/dml/Select") != NULL || 
+                //  strstr(holder_name, "org/h2/table/TableFilter") != NULL || 
+                // strstr(holder_name, "org/h2/index/ScanCursor") != NULL || 
+                // strstr(holder_name, "org/h2/index/TreeIndex") != NULL || 
+                //  strstr(holder_name, "org/h2/index/View") != NULL || 
+                 //strstr(holder_name, "org/h2/index/Meta") != NULL || 
+                 //strstr(holder_name, "org/h2/index/MultiVersionIndex") != NULL || 
+                // strstr(holder_name, "org/h2/index/MultiVersionCursor") != NULL || 
+                // strstr(holder_name, "Cursor") != NULL || 
+                //  strstr(holder_name, "org/h2/index/BaseIndex") != NULL || 
+                //  strstr(holder_name, "org/h2/index/MultiVersionIndex") != NULL || 
+                //  strstr(holder_name, "org/h2/index/ScanIndex") != NULL || 
+                 false;
+    // if (found) {
+    //   found = (
+    //             // strcmp(method_name, "clear") == 0 ||
+    //             // strcmp(method_name, "remove") == 0 ||
+    //             // strcmp(method_name, "queryFlat") == 0 ||
+    //             // strcmp(method_name, "find") == 0 ||
+    //             // strcmp(method_name, "remove") == 0 ||
+    //             // strcmp(method_name, "putVal") == 0 ||
+    //             // strcmp(method_name, "loadNext") == 0 ||
+    //             // strcmp(method_name, "find") == 0 ||
+    //             false
+    //             );
+    //     // if (found == false) {
+    //     //   printf("%s::%s\n", holder_name, method_name);
+    //     // }
+    // }
+
+    if (found) {
+      printf("%s::%s(%s)\n", holder_name, method_name, method_sig_name);
+    }
+    return !found;
+  }
 
   // Inlining may not happen in parse order which would make
   // PrintInlining output confusing. Keep track of PrintInlining

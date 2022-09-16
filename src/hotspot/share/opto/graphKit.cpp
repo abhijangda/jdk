@@ -63,6 +63,10 @@ GraphKit::GraphKit(JVMState* jvms)
   _exceptions = jvms->map()->next_exception();
   if (_exceptions != NULL)  jvms->map()->set_next_exception(NULL);
   set_jvms(jvms);
+  _method_found2 = method_found2_();
+  // _method_found3 = method_found3_();
+  // if(_method_found3)
+  //   printf("_method_found3 %d\n", _method_found3);
 }
 
 // Private constructor for parser.
@@ -70,7 +74,9 @@ GraphKit::GraphKit()
   : Phase(Phase::Parser),
     _env(C->env()),
     _gvn(*C->initial_gvn()),
-    _barrier_set(BarrierSet::barrier_set()->barrier_set_c2())
+    _barrier_set(BarrierSet::barrier_set()->barrier_set_c2()),
+    _method_found2(false),
+    _method_found3(false)
 {
   _exceptions = NULL;
   set_map(NULL);
@@ -1156,12 +1162,10 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   if (!C2InstrumentHeapEvents) return;
   uint64_t offset = JavaThread::heap_events_offset();
   uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(offset);//(uint64_t*)*Universe::all_heap_events.tail()->data();
-  
+  if (method_found2()) return;
   const bool C2HeapEventLock = true;
+  // if (method_found()) return;
 
-  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
-    lock_unlock_heap_event(true);
-  
   bool is_unsafe = true;
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
   int adr_type = Compile::AliasIdxRaw;
@@ -1170,6 +1174,11 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   //                        LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
 
   // ((LoadLNode*)cnt)->is_heap_event_cntr_load = true;
+  // if (event_type == Universe::NewObject) {
+  //   new_obj_or_field->dump(0);
+  //   new_obj_or_field->in(1)->dump(0);
+  //   new_obj_or_field->in(1)->in(0)->dump(0);
+  // }
   make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, NULL);
   //TODO: For FieldSet should only be called for Atomic FieldSet
   
@@ -1187,20 +1196,16 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
     make_store_event(ctrl, addr, size_or_new_val, new_obj_or_field, event_type);
     make_transfer_event(ctrl, node_cntr_addr, idx, MaxHeapEvents*sizeof(Universe::HeapEvent));
   }*/
-
-  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
-    lock_unlock_heap_event(false);
 }
 
 void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_offset, Node* src_offset, Node* count) {
   if (!InstrumentHeapEvents)
     return;
+  
   if (!C2InstrumentHeapEvents) 
     return;
-  bool C2HeapEventLock = true;
-  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
-    lock_unlock_heap_event(true);
 
+  bool C2HeapEventLock = true;
   bool is_unsafe = true;
   uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(JavaThread::heap_events_offset());
   Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
@@ -1267,8 +1272,6 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
 
   make_transfer_event(ctrl, node_cntr_addr, idx, (MaxHeapEvents*sizeof(Universe::HeapEvent)));
   #endif
-  if (CheckHeapEventGraphWithHeap && C2HeapEventLock)
-    lock_unlock_heap_event(false);
 }
 
 Node* GraphKit::make_transfer_event(Node* ctrl, Node* mem_adr, Node* cntr, uint64_t maxval) {
@@ -1747,12 +1750,13 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
   debug_only(adr_type = C->get_adr_type(adr_idx));
   Node *mem = memory(adr_idx);
   Node* st;
+  bool ff = false;
   if (require_atomic_access && bt == T_LONG) {
     st = StoreLNode::make_atomic(ctl, mem, adr, adr_type, val, mo);
   } else if (require_atomic_access && bt == T_DOUBLE) {
     st = StoreDNode::make_atomic(ctl, mem, adr, adr_type, val, mo);
   } else {
-    bool store_heap = is_reference_type(bt) && InstrumentHeapEvents && use_store_heap_event() &&
+    bool store_heap = is_reference_type(bt) && InstrumentHeapEvents && use_store_heap_event() && !method_found2() &&
                       !adr->bottom_type()->is_ptr_to_narrowoop() &&
                       !(adr->bottom_type()->is_ptr_to_narrowklass() ||
                           (UseCompressedClassPointers && val->bottom_type()->isa_klassptr() &&
@@ -1760,14 +1764,27 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
     if (store_heap) {
       assert(C->get_alias_index(adr_type) != Compile::AliasIdxRaw ||
              ctl != NULL, "raw memory operations should have control edge");
-      if (CheckHeapEventGraphWithHeap)
-        lock_unlock_heap_event(true);
-
-      //TODO: If this could be removed due to optimizations then handle FieldSet event 
       st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, mo, Universe::FieldSet);
-    
-      if (CheckHeapEventGraphWithHeap)
-        lock_unlock_heap_event(false);
+      // if (val->is_CheckCastPP() && val->in(1)->is_Proj()) {
+      //   val->in(1)->in(0)->dump(0);
+      // }
+      // printf("1770\n");
+      // if (mem->Opcode() == Op_StoreHeapEvent) {
+      //   assert(mem->in(MemNode::Address) == adr, "");
+      //   printf("\n\n");
+      //   mem->dump(0);
+      //   st->dump(0);
+      //   printf("\n\n");
+      // }
+      Node* k =st;
+      // if (k->Opcode() == Op_StoreHeapEvent && mem->Opcode() == Op_StoreHeapEvent && 
+      //   k->in(MemNode::Address)->_idx == mem->in(MemNode::Address)->_idx) {
+      //   printf("1781: %d outcnt %d %d", k->_idx, mem->_idx, mem->outcnt());
+      //   printf("\n");
+      //   mem->dump(0);
+      //   st->dump(0);
+      //   ff = true;
+      // }
     } else {
       if (InstrumentHeapEvents && is_reference_type(bt)) {
         //It looks like this is rarely called
@@ -1786,6 +1803,12 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
     st->as_Store()->set_unsafe_access();
   }
   st = _gvn.transform(st);
+  // Node* k =st;
+  // if (ff) {
+  //   printf("1808: event type %ld\n", ((StoreHeapEventNode*)mem)->event_type());
+  //   mem->dump(0);
+  //   st->dump(0);
+  // }
   set_memory(st, adr_idx);
   // Back-to-back stores can only remove intermediate store with DU info
   // so push on worklist for optimizer.

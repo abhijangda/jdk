@@ -588,6 +588,7 @@ public:
     return _mo == release;
   }
 
+  inline MemOrd mo() {return _mo;}
   // Conservatively release stores of object references in order to
   // ensure visibility of object initialization.
   static inline MemOrd release_if_reference(const BasicType t) {
@@ -765,61 +766,6 @@ public:
 #endif
 };
 
-class StoreHeapEventNode : public StoreNode {
-protected:
-  virtual bool cmp( const Node &n ) const {
-    return StoreNode::cmp(n);
-  }
-  virtual uint hash() const { return StoreNode::hash(); }
-  virtual uint size_of() const {return sizeof(*this);}
-  Universe::HeapEventType _event_type;
-public:
-  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, MemOrd mo, Universe::HeapEventType event_type)
-    : StoreNode(c, mem, adr, at, size, mo), _event_type(event_type) {}
-  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, MemOrd mo, Universe::HeapEventType event_type)
-    : StoreNode(c, mem, adr, at, size, obj, mo), _event_type(event_type) {}
-  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* cntr_addr, Node* cntr_idx, MemOrd mo, Universe::HeapEventType event_type)
-    : StoreNode(c, mem, adr, at, size, cntr_addr, mo), _event_type(event_type) 
-    {
-      add_req(cntr_idx);
-    }
-  virtual int Opcode() const;
-  virtual BasicType memory_type() const { return T_ADDRESS; }
-  Universe::HeapEventType event_type() {return _event_type;}
-  void set_event_type(Universe::HeapEventType t) {_event_type = t;}
-#ifndef PRODUCT
-  virtual void dump_spec(outputStream *st) const {
-    StoreNode::dump_spec(st);
-    st->print(" StoreHeapEventNode");
-  }
-#endif
-};
-
-class TransferEventsNode : public StoreLNode {
-  protected:
-  virtual bool cmp( const Node &n ) const {
-    return max_val() == ((TransferEventsNode&)n).max_val() && StoreNode::cmp(n);
-  }
-  virtual uint hash() const { return StoreNode::hash() + (uint)max_val(); }
-private:
-  uint64_t _max_val;
-public:
-  TransferEventsNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, uint64_t max_val)
-    : StoreLNode(c, mem, adr, at, val, MemOrd::unordered), _max_val(max_val)
-    {}
-  virtual uint size_of() const {return sizeof(*this);}
-  virtual int Opcode() const;
-  virtual BasicType memory_type() const { return T_LONG; }
-  uint64_t max_val() const {return _max_val;}
-  void set_max_val(uint64_t v) {_max_val = v;}
-#ifndef PRODUCT
-  virtual void dump_spec(outputStream *st) const {
-    StoreNode::dump_spec(st);
-    st->print(" TransferEvents");
-  }
-#endif
-};
-
 //------------------------------StoreFNode-------------------------------------
 // Store float to memory
 class StoreFNode : public StoreNode {
@@ -865,6 +811,72 @@ public:
     : StoreNode(c, mem, adr, at, val, mo) {}
   virtual int Opcode() const;
   virtual BasicType memory_type() const { return T_ADDRESS; }
+};
+
+
+class StoreHeapEventNode : public StoreNode {
+protected:
+  virtual bool cmp( const Node &n ) const {
+    return StoreNode::cmp(n);
+  }
+  virtual uint hash() const { return StoreNode::hash(); }
+  virtual uint size_of() const {return sizeof(*this);}
+  Universe::HeapEventType _event_type;
+public:
+  enum { Control,               // When is it safe to do this load?
+         Memory,                // Chunk of memory is being loaded from
+         Address,               // Actually address, derived from base
+         ValueIn,               // Value to store
+         OopStore,              // Preceeding oop store, only in StoreCM
+  };
+  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, MemOrd mo, Universe::HeapEventType event_type)
+    : StoreNode(c, mem, adr, at, size, mo), _event_type(event_type) {}
+  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* obj, MemOrd mo, Universe::HeapEventType event_type)
+    : StoreNode(c, mem, adr, at, size, obj, mo), _event_type(event_type) {}
+  StoreHeapEventNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *size, Node* cntr_addr, Node* cntr_idx, MemOrd mo, Universe::HeapEventType event_type)
+    : StoreNode(c, mem, adr, at, size, cntr_addr, mo), _event_type(event_type) {
+    add_req(cntr_idx);
+  }
+  void set_none_event_type() {_event_type = Universe::None;}
+  void fuse(StoreHeapEventNode* node) {
+    add_req(node->in(Address)); add_req(node->in(ValueIn));
+  }
+  virtual int Opcode() const;
+  virtual BasicType memory_type() const { return T_ADDRESS; }
+  Universe::HeapEventType event_type() {return _event_type;}
+  void set_event_type(Universe::HeapEventType t) {_event_type = t;}
+  StorePNode* to_storep(PhaseGVN& gvn);
+#ifndef PRODUCT
+  virtual void dump_spec(outputStream *st) const {
+    StoreNode::dump_spec(st);
+    st->print(" StoreHeapEventNode");
+  }
+#endif
+};
+
+class TransferEventsNode : public StoreLNode {
+  protected:
+  virtual bool cmp( const Node &n ) const {
+    return max_val() == ((TransferEventsNode&)n).max_val() && StoreNode::cmp(n);
+  }
+  virtual uint hash() const { return StoreNode::hash() + (uint)max_val(); }
+private:
+  uint64_t _max_val;
+public:
+  TransferEventsNode(Node *c, Node *mem, Node *adr, const TypePtr* at, Node *val, uint64_t max_val)
+    : StoreLNode(c, mem, adr, at, val, MemOrd::unordered), _max_val(max_val)
+    {}
+  virtual uint size_of() const {return sizeof(*this);}
+  virtual int Opcode() const;
+  virtual BasicType memory_type() const { return T_LONG; }
+  uint64_t max_val() const {return _max_val;}
+  void set_max_val(uint64_t v) {_max_val = v;}
+#ifndef PRODUCT
+  virtual void dump_spec(outputStream *st) const {
+    StoreNode::dump_spec(st);
+    st->print(" TransferEvents");
+  }
+#endif
 };
 
 //------------------------------StoreNNode-------------------------------------

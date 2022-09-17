@@ -4743,13 +4743,15 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
   heap_event_addr = Address(r15_thread, temp2, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
   if (dst_or_new_obj.is_register()) {
     shlq(dst_or_new_obj.as_register(), 15);
-    orq(dst_or_new_obj.as_register(), (int32_t)event_type);
+    if (event_type != 0)
+      orq(dst_or_new_obj.as_register(), (int32_t)event_type);
     movq(heap_event_addr, dst_or_new_obj.as_register());
     shrq(dst_or_new_obj.as_register(), 15);
   } else {
     leaq(temp1, dst_or_new_obj.as_address());
     shlq(temp1, 15);
-    orq(temp1, (int32_t)event_type);
+    if (event_type != 0)
+      orq(temp1, (int32_t)event_type);
     movq(heap_event_addr, temp1);
   }
   subq(temp2, MaxHeapEvents*sizeof(Universe::HeapEvent));

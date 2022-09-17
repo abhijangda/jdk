@@ -6118,10 +6118,11 @@ instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());    
     __ movq(__mem, ((size_t)$sz$$constant)/8);
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
-    
-    uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
     __ shlq($obj$$Register, 15);
-    __ orq($obj$$Register, (int32_t)encoded_dst);
+    if (event_type() != 0) {
+      uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq($obj$$Register, (int32_t)encoded_dst);
+    }
     __ movq(__mem, $obj$$Register);
     __ shrq($obj$$Register, 15);
 
@@ -6165,9 +6166,11 @@ instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP ob
     __ movq(__mem, $sz$$constant);
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
     
-    uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
     __ shlq($obj$$Register, 15);
-    __ orq($obj$$Register, (int32_t)encoded_dst);
+    if (event_type() != 0) {
+      uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq($obj$$Register, (int32_t)encoded_dst);
+    }
     __ movq(__mem, $obj$$Register);
     __ shrq($obj$$Register, 15);
 
@@ -6214,9 +6217,11 @@ instruct incrCntrAndStoreHeapEventIntReg(memory cntr_mem, rRegI sz, any_RegP obj
     
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
 
-    uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
     __ shlq($obj$$Register, 15);
-    __ orq($obj$$Register, (int32_t)encoded_dst);
+    if (event_type() != 0) {
+      uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq($obj$$Register, (int32_t)encoded_dst);
+    }
     __ movq(__mem, $obj$$Register);
     __ shrq($obj$$Register, 15);
 
@@ -6262,9 +6267,12 @@ instruct incrCntrAndStoreHeapEventLongReg(memory cntr_mem, rRegL sz, any_RegP ob
     __ shlq($sz$$Register, 3);
     
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
-    uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
+    
     __ shlq($obj$$Register, 15);
-    __ orq($obj$$Register, (int32_t)encoded_dst);
+    if (event_type() != 0) {
+      uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq($obj$$Register, (int32_t)encoded_dst);
+    }
     __ movq(__mem, $obj$$Register);
     __ shrq($obj$$Register, 15);
 
@@ -6305,9 +6313,12 @@ instruct incrCntrAndStoreHeapEventFieldSet(memory cntr_mem, any_RegP val, any_Re
     __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset());
     __ movq(__mem, $val$$Register);
     __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
-    uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+    
     __ shlq($obj$$Register, 15);
-    __ orq($obj$$Register, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq($obj$$Register, (int32_t)encoded);
+    }
     __ movq(__mem, $obj$$Register);
     __ shrq($obj$$Register, 15);
     
@@ -6528,8 +6539,10 @@ instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, ve
     __ movq($tmp_vec1$$XMMRegister, cntr_addr_reg);
     __ leaq(cntr_addr_reg, $field$$Address);
     __ shlq(cntr_addr_reg, 15);
-    uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     Address field_addr = $field$$Address;
@@ -6586,8 +6599,10 @@ instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, vec
     __ movq($tmp_vec1$$XMMRegister, $val$$Register);
     __ leaq(cntr_addr_reg, $field$$Address);
     __ shlq(cntr_addr_reg, 15);
-    uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
@@ -6640,8 +6655,10 @@ instruct storeHeapEventFieldSetTwo(memory field1, any_RegP val1, memory field2, 
     __ movq($tmp_vec1$$XMMRegister, $val2$$Register);
     __ leaq(cntr_addr_reg, $field2$$Address);
     __ shlq(cntr_addr_reg, 15);
-    uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
@@ -6658,8 +6675,10 @@ instruct storeHeapEventFieldSetTwo(memory field1, any_RegP val1, memory field2, 
     __ movq($tmp_vec1$$XMMRegister, $val1$$Register);
     __ leaq(cntr_addr_reg, $field1$$Address);
     __ shlq(cntr_addr_reg, 15);
-    encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     __mem = Address(r15_thread, JavaThread::heap_events_offset());
@@ -6712,8 +6731,10 @@ instruct storeHeapEventFieldSetThree(memory field1, any_RegP val1, memory field2
     __ movq($tmp_vec1$$XMMRegister, $val1$$Register);
     __ leaq(cntr_addr_reg, $field1$$Address);
     __ shlq(cntr_addr_reg, 15);
-    uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
@@ -6730,8 +6751,10 @@ instruct storeHeapEventFieldSetThree(memory field1, any_RegP val1, memory field2
     __ movq($tmp_vec1$$XMMRegister, $val2$$Register);
     __ leaq(cntr_addr_reg, $field2$$Address);
     __ shlq(cntr_addr_reg, 15);
-    encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     __mem = Address(r15_thread, JavaThread::heap_events_offset());
@@ -6748,8 +6771,10 @@ instruct storeHeapEventFieldSetThree(memory field1, any_RegP val1, memory field2
     __ movq($tmp_vec1$$XMMRegister, $val3$$Register);
     __ leaq(cntr_addr_reg, $field3$$Address);
     __ shlq(cntr_addr_reg, 15);
-    encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     __mem = Address(r15_thread, JavaThread::heap_events_offset());
@@ -6805,8 +6830,10 @@ instruct storeHeapEventFieldSetFour(memory field1, any_RegP val1, memory field2,
     __ movq($tmp_vec1$$XMMRegister, $val4$$Register);
     __ leaq(cntr_addr_reg, $field4$$Address);
     __ shlq(cntr_addr_reg, 15);
-    uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
@@ -6823,8 +6850,10 @@ instruct storeHeapEventFieldSetFour(memory field1, any_RegP val1, memory field2,
     __ movq($tmp_vec1$$XMMRegister, $val3$$Register);
     __ leaq(cntr_addr_reg, $field3$$Address);
     __ shlq(cntr_addr_reg, 15);
-    encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     __mem = Address(r15_thread, JavaThread::heap_events_offset());
@@ -6841,8 +6870,10 @@ instruct storeHeapEventFieldSetFour(memory field1, any_RegP val1, memory field2,
     __ movq($tmp_vec1$$XMMRegister, $val2$$Register);
     __ leaq(cntr_addr_reg, $field2$$Address);
     __ shlq(cntr_addr_reg, 15);
-    encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     __mem = Address(r15_thread, JavaThread::heap_events_offset());
@@ -6859,8 +6890,10 @@ instruct storeHeapEventFieldSetFour(memory field1, any_RegP val1, memory field2,
     __ movq($tmp_vec1$$XMMRegister, $val1$$Register);
     __ leaq(cntr_addr_reg, $field1$$Address);
     __ shlq(cntr_addr_reg, 15);
-    encoded = Universe::encode_heap_event_dst(event_type(), 0);
-    __ orq(cntr_addr_reg, (int32_t)encoded);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
     __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
 
     __mem = Address(r15_thread, JavaThread::heap_events_offset());

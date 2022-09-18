@@ -4754,19 +4754,22 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
       orq(temp1, (int32_t)event_type);
     movq(heap_event_addr, temp1);
   }
-  subq(temp2, MaxHeapEvents*sizeof(Universe::HeapEvent));
-  Label not_equal;
-  jcc(Assembler::Condition::less, not_equal);
-  pushaq();
-  
-  if (CheckHeapEventGraphWithHeap)
-    call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-  else 
-    call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-    
-  popaq();
-  bind(not_equal);
-  
+
+  if (!UseMprotectForHeapGraphCheck) {
+    subq(temp2, MaxHeapEvents*sizeof(Universe::HeapEvent));
+    Label not_equal;
+    jcc(Assembler::Condition::less, not_equal);
+    pushaq();
+
+    if (CheckHeapEventGraphWithHeap)
+      call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    else 
+      call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+
+    popaq();
+    bind(not_equal);
+  }
+
   gen_unlock_heap_event_mutex();
 
   if (preserve_flags) 

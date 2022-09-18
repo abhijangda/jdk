@@ -186,13 +186,13 @@ void* Thread::allocate(size_t size, bool throw_excpt, MEMFLAGS flags) {
   bool is_javathread = size == sizeof(JavaThread);
   if (InstrumentHeapEvents) {
     printf("186: size %ld\n", size);
-    size += JavaThread::heap_events_offset() + (256+MaxHeapEvents)*sizeof(Universe::HeapEvent);
+    size += Universe::heap_events_buf_size();
     printf("189: size %ld\n", size);
   }
   void* p = throw_excpt ? AllocateHeap(size, flags, CURRENT_PC)
                        : AllocateHeap(size, flags, CURRENT_PC, AllocFailStrategy::RETURN_NULL);
   if (InstrumentHeapEvents) {
-    size -= JavaThread::heap_events_offset() + (256+MaxHeapEvents)*sizeof(Universe::HeapEvent);
+    size -= Universe::heap_events_buf_size();
     *(uint64_t*)(((char*)p) + JavaThread::heap_events_offset()) = 0;
     Universe::HeapEvent* he = (Universe::HeapEvent*)(((char*)p) + JavaThread::heap_events_offset());
     printf("199: thread %p heap_events %p num %ld\n", p, he, Universe::all_heap_events.size());

@@ -2063,6 +2063,7 @@ const intx ObjectAlignmentInBytes = 8;
                "Print Number of Objects created")             \
                                                                             \
   product(bool, CheckHeapEventGraphOnlyBeforeExit, true, "")            \
+  product(bool, UseMprotectForHeapGraphCheck, true, "") \
   product(bool, OffloadGCToGPU, false,                                       \
                 "Transfer heap events to GPU and run GC on GPU")            \
   product(bool, InterpreterInstrumentHeapEvents, true,                      \

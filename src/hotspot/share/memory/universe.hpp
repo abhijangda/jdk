@@ -445,14 +445,17 @@ class Universe: AllStatic {
     uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
     
     const uint64_t v = *heap_event_counter_ptr;
-    (&heap_events[1])[v] = encode_heap_event(event_type, event);
     *heap_event_counter_ptr = v + 1;
+    // printf("449: v %ld\n", v);
+    (&heap_events[1])[v] = encode_heap_event(event_type, event);
 
-    if (v + 1 >= MaxHeapEvents) {
-      if (CheckHeapEventGraphWithHeap)
-        Universe::verify_heap_graph();
-      else
-        Universe::transfer_events_to_gpu_list_head();  
+    if (!UseMprotectForHeapGraphCheck) {
+      if (v + 1 >= MaxHeapEvents) {
+        if (CheckHeapEventGraphWithHeap)
+          Universe::verify_heap_graph();
+        else
+          Universe::transfer_events_to_gpu_list_head();  
+      }
     }
 
     if (CheckHeapEventGraphWithHeap)
@@ -463,6 +466,7 @@ class Universe: AllStatic {
   static void print_heap_event_counter();
   static HeapEvent* get_heap_events_ptr();
   static void verify_heap_graph();
+  static void process_heap_event(Universe::HeapEvent event);
   static void verify_heap_graph_for_copy_array();
   static void* mmap(size_t sz) {
     void* ptr = ::mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
@@ -474,6 +478,20 @@ class Universe: AllStatic {
     
     return ptr;
   }
+  static void mprotect(void* ptr, size_t len, int prot) {
+    if (((uint64_t)ptr) % 4096 != 0) {
+      printf("mprotect failed: '%p' does not point to a page\n", ptr);
+      abort();
+    }
+
+    int r = ::mprotect(ptr, len, prot);
+    if (r == -1) {
+      perror("mprotect failed:");
+      abort();
+    }
+  }
+  static size_t heap_events_buf_size();
+  static bool handle_heap_events_sigsegv(int sig, siginfo_t* info);
 
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;
 

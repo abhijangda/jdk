@@ -635,6 +635,11 @@ int JVM_HANDLE_XXX_SIGNAL(int sig, siginfo_t* info,
     signal_was_handled = PosixSignals::chained_handler(sig, info, ucVoid);
   }
 
+  if (!signal_was_handled) {
+    //Handle signal for heap events buffer
+    signal_was_handled = Universe::handle_heap_events_sigsegv(sig, info);
+  }
+
   // Invoke fatal error handling.
   if (!signal_was_handled && abort_if_unrecognized) {
     // Extract pc from context for the error handler to display.

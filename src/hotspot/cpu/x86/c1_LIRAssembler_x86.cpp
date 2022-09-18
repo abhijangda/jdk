@@ -969,7 +969,9 @@ void LIR_Assembler::transfer_events(LIR_Opr counter, LIR_Opr max_events) {
   if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
     assert(counter->is_cpu_register(), "");
     assert(max_events->is_constant(), "");
-    
+    if (UseMprotectForHeapGraphCheck)
+      return;
+      
     Register reg = counter->as_register_lo();
     __ subq(reg, max_events->as_jlong());
     Label not_equal;
@@ -3321,20 +3323,22 @@ void LIR_Assembler::emit_arraycopy(LIR_OpArrayCopy* op) {
     // __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 24);
     // __ movq(__mem, encoded);
 
-    int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-    __ subq(cntr_reg, maxval);
-    __ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-    Label not_equal;
-    __ jcc(Assembler::Condition::less, not_equal);
-    __ pushaq();
-    if (CheckHeapEventGraphWithHeap) {
-      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-    }  else {
-      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    if (!UseMprotectForHeapGraphCheck) {
+      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
+      __ subq(cntr_reg, maxval);
+      __ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+      Label not_equal;
+      __ jcc(Assembler::Condition::less, not_equal);
+      __ pushaq();
+      if (CheckHeapEventGraphWithHeap) {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+      }  else {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+      }
+      __ popaq();
+      //__ movq($mem$$Address, 0);
+      __ bind(not_equal);
     }
-    __ popaq();
-    //__ movq($mem$$Address, 0);
-    __ bind(not_equal);
   }
   // if we don't know anything, just go through the generic arraycopy
   if (default_type == NULL) {

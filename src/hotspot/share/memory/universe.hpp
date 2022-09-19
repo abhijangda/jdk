@@ -424,6 +424,7 @@ class Universe: AllStatic {
   static pthread_mutex_t mutex_heap_event;
   static bool enable_transfer_events;
   static void transfer_events_to_gpu();
+  static void transfer_events_to_gpu_no_zero();
   static void transfer_events_to_gpu_list_head();
   static sem_t cuda_semaphore;
   static void add_heap_events(Universe::HeapEventType event_type1, Universe::HeapEvent event1, Universe::HeapEventType event_type2, Universe::HeapEvent event2);

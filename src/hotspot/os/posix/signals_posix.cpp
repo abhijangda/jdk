@@ -583,9 +583,12 @@ int JVM_HANDLE_XXX_SIGNAL(int sig, siginfo_t* info,
   //  Note: this may cause us to longjmp away. Do not use any code before this
   //  point which really needs any form of epilogue code running, eg RAII objects.
   os::ThreadCrashProtection::check_crash_protection(sig, t);
-
   bool signal_was_handled = false;
-
+  
+  if (!signal_was_handled) {
+    //Handle signal for heap events buffer
+    signal_was_handled = Universe::handle_heap_events_sigsegv(sig, info);
+  }
   // Handle assertion poison page accesses.
 #ifdef CAN_SHOW_REGISTERS_ON_ASSERT
   if (!signal_was_handled &&
@@ -633,11 +636,6 @@ int JVM_HANDLE_XXX_SIGNAL(int sig, siginfo_t* info,
   // Give the chained signal handler - should it exist - a shot.
   if (!signal_was_handled) {
     signal_was_handled = PosixSignals::chained_handler(sig, info, ucVoid);
-  }
-
-  if (!signal_was_handled) {
-    //Handle signal for heap events buffer
-    signal_was_handled = Universe::handle_heap_events_sigsegv(sig, info);
   }
 
   // Invoke fatal error handling.

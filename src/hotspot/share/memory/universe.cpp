@@ -570,6 +570,10 @@ void Universe::transfer_events_to_gpu_list_head() {
   *(uint64_t*)events = 0;
 }
 
+void Universe::transfer_events_to_gpu_no_zero() {
+  sem_post(&cuda_semaphore);
+}
+
 void Universe::transfer_events_to_gpu() {
   sem_post(&cuda_semaphore);
   Universe::HeapEvent* events = Universe::get_heap_events_ptr();
@@ -702,7 +706,7 @@ void Universe::add_heap_event_ptr(Universe::HeapEvent* ptr) {
   pthread_mutex_lock(&heap_events_list_lock);
   uint64_t second_part = ((uint64_t)(ptr + MaxHeapEvents)/4096)*4096;
   printf("703: 0x%lx\n", second_part);
-  Universe::mprotect((void*)second_part, MaxHeapEvents*sizeof(Universe::HeapEvent), PROT_READ);
+  Universe::mprotect((void*)second_part, 4096, PROT_READ); //MaxHeapEvents*sizeof(Universe::HeapEvent)
   //memset last page to zeros
   memset((char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent), 0, 4096);
   all_heap_events.add(ptr);
@@ -735,7 +739,46 @@ bool Universe::handle_heap_events_sigsegv(int sig, siginfo_t* info) {
     return false;
 
   Universe::HeapEvent* sig_addr = (Universe::HeapEvent*)info->si_addr;
+  if ((uint64_t)sig_addr < 0x10000)
+    return false;
+  HeapEvent* heap_events_ptr = Universe::get_heap_events_ptr();
+  void* end_heap_events_buff = (char*)heap_events_ptr + heap_events_buf_size();
+  if (heap_events_ptr < sig_addr && sig_addr <= end_heap_events_buff) {
+    uint64_t second_part = ((uint64_t)(heap_events_ptr + MaxHeapEvents)/4096)*4096;
+    if (second_part == (size_t)sig_addr) {
+      //TODO: make a template mprotect
+      //TODO: Only set the page starting at second_part to PROT_READ
+      Universe::mprotect((void*)second_part, 4096, PROT_READ|PROT_WRITE);
+      if (CheckHeapEventGraphWithHeap) {
+        //Call verify_heap_graph when second part is filled
+        // Universe::HeapEvent* last_event = (char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent);
+        // Universe::verify_heap_graph(last_event);
+      }
+      else {
+        Universe::transfer_events_to_gpu_no_zero();
+      }
+      Universe::mprotect((char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent), 4096, PROT_READ);
+      // printf("759: changing permissions of %p\n", sig_addr);
+      return true;
+    } else if (second_part + MaxHeapEvents*sizeof(Universe::HeapEvent) == (size_t)sig_addr) {
+      Universe::mprotect((char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent), 4096, PROT_READ|PROT_WRITE);
+      if (CheckHeapEventGraphWithHeap)
+        Universe::verify_heap_graph();
+      else {
+        Universe::transfer_events_to_gpu_no_zero();
+        *(uint64_t*)heap_events_ptr = 0;
+        //fprintf(stderr, "T\n");
+        // *(uint64_t*)events = 0;
+      }
+      Universe::mprotect((void*)second_part, 4096, PROT_READ);
+      // printf("772: changing permissions of %p\n", sig_addr);
+      return true;
+    } else {
+      return false;
+    }
+  }
 
+  printf("738: sigaddr %p\n", sig_addr);
   for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
        !heap_events_iter.is_empty(); heap_events_iter.next()) {
     void* end_heap_events_buff = (char*)*heap_events_iter + heap_events_buf_size();
@@ -752,7 +795,7 @@ bool Universe::handle_heap_events_sigsegv(int sig, siginfo_t* info) {
           // Universe::verify_heap_graph(last_event);
         }
         else {
-          Universe::transfer_events_to_gpu();
+          Universe::transfer_events_to_gpu_no_zero();
         }
         Universe::mprotect((char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent), 4096, PROT_READ);
         printf("744 changing permissions of %p\n", sig_addr);
@@ -761,8 +804,12 @@ bool Universe::handle_heap_events_sigsegv(int sig, siginfo_t* info) {
         Universe::mprotect((char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent), 4096, PROT_READ|PROT_WRITE);
         if (CheckHeapEventGraphWithHeap)
           Universe::verify_heap_graph();
-        else
-          Universe::transfer_events_to_gpu();
+        else {
+          Universe::transfer_events_to_gpu_no_zero();
+          *(uint64_t*)*heap_events_iter = 0;
+          //fprintf(stderr, "T\n");
+          // *(uint64_t*)events = 0;
+        }
         Universe::mprotect((void*)second_part, MaxHeapEvents*sizeof(Universe::HeapEvent), PROT_READ);
         printf("749 changing permissions of %p\n", sig_addr);
         return true;

@@ -56,7 +56,7 @@ for bench in all_benchs:
     all_bench_times[bench]["baseline"].append(float(t))
     print (bench, t)
 
-  max_heap_events = str(4*1024*1024)
+  max_heap_events = str(2*1024*1024)
   c = bench_c + " " + instrument_args%max_heap_events + " " + bench_args
   print("Instrument", c)
   for i in range(num_runs):

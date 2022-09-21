@@ -1160,6 +1160,7 @@ void GraphKit::lock_unlock_heap_event(bool lock) {
 void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_obj_or_field, Node* size_or_new_val) {
   if (!InstrumentHeapEvents) return;
   if (!C2InstrumentHeapEvents) return;
+  
   // if (event_type == Universe::NewObject) return;
   uint64_t offset = JavaThread::heap_events_offset();
   uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(offset);//(uint64_t*)*Universe::all_heap_events.tail()->data();
@@ -1211,8 +1212,8 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
 
   bool C2HeapEventLock = true;
   bool is_unsafe = true;
-  uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(JavaThread::heap_events_offset());
-  Node* node_cntr_addr = makecon(TypeRawPtr::make((address)ptr_event_ctr));
+  Node* jthread = _gvn.transform(new ThreadLocalNode());
+  Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());
   int adr_type = Compile::AliasIdxRaw;
   Node* ctrl = control();
   

@@ -1104,7 +1104,7 @@ bool PhaseMacroExpand::eliminate_boxing_node(CallStaticJavaNode *boxing) {
   }
 
   process_users_of_allocation(boxing);
-
+  printf("1107\n");
 #ifndef PRODUCT
   if (PrintEliminateAllocations) {
     tty->print("++++ Eliminated: %d ", boxing->_idx);
@@ -1221,7 +1221,7 @@ void PhaseMacroExpand::expand_allocate_common(
 
   // We need a Region and corresponding Phi's to merge the slow-path and fast-path results.
   // they will not be used if "always_slow" is set
-  enum { slow_result_path = 1, fast_result_path = 2 };
+  enum { slow_result_path = 1, fast_result_path = 2, new_obj_event = 3};
   Node *result_region = NULL;
   Node *result_phi_rawmem = NULL;
   Node *result_phi_rawoop = NULL;
@@ -1359,6 +1359,8 @@ void PhaseMacroExpand::expand_allocate_common(
       expand_dtrace_alloc_probe(alloc, fast_oop, fast_oop_ctrl, fast_oop_rawmem);
 
       result_phi_rawoop->init_req(fast_result_path, fast_oop);
+      // if (incr_cntr_st)
+      //   result_phi_rawoop->add_req(incr_cntr_st);
     } else {
       assert (initial_slow_test != NULL, "sanity");
       fast_oop_ctrl   = toobig_false;
@@ -1495,6 +1497,20 @@ void PhaseMacroExpand::expand_allocate_common(
   result_phi_rawmem->init_req(slow_result_path, _callprojs.fallthrough_memproj);
   transform_later(result_phi_rawmem);
   transform_later(result_phi_i_o);
+
+  // if (InstrumentHeapEvents && C2InstrumentHeapEvents && length == NULL) {
+  //   Node* jthread = new ThreadLocalNode();
+  //   Node* node_cntr_addr = basic_plus_adr(jthread, (int)JavaThread::heap_events_offset());
+  //   transform_later(jthread);
+
+  //   const TypePtr* adr_type = node_cntr_addr->bottom_type()->is_ptr();
+    
+  //   Node* incr_cntr_st = new IncrCntrAndStoreHeapEventNode(result_region, mem, node_cntr_addr, adr_type, size_in_bytes, result_phi_rawoop, Universe::NewObject);
+  //   transform_later(incr_cntr_st);
+  //   // result_phi_rawoop->add_req(st);
+  //   if (mem->is_MergeMem())
+  //     mem->as_MergeMem()->set_memory_at(Compile::AliasIdxRaw, incr_cntr_st);
+  // }
   // This completes all paths into the result merge point
 }
 

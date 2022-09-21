@@ -13,7 +13,7 @@ inline_copy = "-XX:+UnlockDiagnosticVMOptions -XX:-InlineObjectCopy"
 jvm_command = modified_jvm_path + f" -XX:ActiveProcessorCount=1 -XX:-UseTLAB -XX:-UseCompressedOops -XX:+UseSerialGC -XX:-UseCompressedClassPointers -Xlog:gc* -XX:NewSize=32769m -XX:MaxNewSize=32769m -Xms32769m -Xmx32769m -XX:+DisableExplicitGC -XX:-DoEscapeAnalysis -XX:MetaspaceSize=16384m"
 dacapo_args = "-jar dacapo-9.12-MR1-bach.jar %s -n1 -t1"
 
-instrument_args = "-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -XX:MaxHeapEvents=%s -XX:+C2FuseStoreHeapEvents -XX:+DisableCardMarkStores"
+instrument_args = "-XX:+InstrumentHeapEvents -XX:-CheckHeapEventGraphWithHeap -XX:MaxHeapEvents=%s -XX:+C2FuseStoreHeapEvents -XX:+DisableCardMarkStores -XX:+UseMprotectForHeapGraphCheck"
 
 all_benchs = "avrora fop h2 jython luindex lusearch sunflow xalan pmd".split() #h2 batik eclipse tomcat tradebeans tradesoap
 

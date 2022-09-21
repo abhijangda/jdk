@@ -43,6 +43,9 @@ void CardTableBarrierSetC1::post_barrier(LIRAccess& access, LIR_Opr addr, LIR_Op
     return;
   }
 
+  // if (DisableCardMarkStores)
+  //   return;
+
   BarrierSet* bs = BarrierSet::barrier_set();
   CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
   CardTable* ct = ctbs->card_table();

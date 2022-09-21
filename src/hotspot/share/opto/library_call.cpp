@@ -1425,7 +1425,7 @@ bool LibraryCallKit::inline_string_toBytesU() {
     AllocateArrayNode* alloc = tightly_coupled_allocation(newcopy);
     guarantee(alloc != NULL, "created above");
     if (InstrumentHeapEvents) {
-      append_heap_event(Universe::NewObject, newcopy, size);
+      append_heap_event(Universe::NewPrimitiveArray, newcopy, size);
     }
 
     // Calculate starting addresses.
@@ -3682,7 +3682,7 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
         if (InstrumentHeapEvents) {
           const TypeKlassPtr* tk = _gvn.type(klass_node)->is_klassptr();
           if (tk->klass()->is_type_array_klass()) {
-            append_heap_event(Universe::NewObject, newcopy, length);
+            append_heap_event(Universe::NewPrimitiveArray, newcopy, length);
           } else if (tk->klass()->is_obj_array_klass()) {
             append_heap_event(Universe::NewArray, newcopy, length);
           } else {

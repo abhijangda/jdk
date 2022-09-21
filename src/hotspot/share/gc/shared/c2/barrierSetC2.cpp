@@ -725,7 +725,7 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* si
   }
 }
 
-Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobig_false, Node* size_in_bytes,
+Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobig_false, Node* size_in_bytes, Node* length,
                                  Node*& i_o, Node*& needgc_ctrl,
                                  Node*& fast_oop_ctrl, Node*& fast_oop_rawmem,
                                  intx prefetch_lines) const {
@@ -773,7 +773,13 @@ Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobi
 
   macro->transform_later(old_eden_top);
   // Add to heap top to get a new heap top
-  Node *new_eden_top = new AddPNode(macro->top(), old_eden_top, size_in_bytes);
+  Node *new_eden_top;
+  if (false && InstrumentHeapEvents && C2InstrumentHeapEvents && length == NULL) {
+    // printf("length %p\n", length);
+    new_eden_top = new AddPAndAllocObjNode(macro->top(), old_eden_top, size_in_bytes, Universe::NewObject);
+  } else {
+    new_eden_top = new AddPNode(macro->top(), old_eden_top, size_in_bytes);
+  }
   macro->transform_later(new_eden_top);
   // Check for needing a GC; compare against heap end
   Node *needgc_cmp = new CmpPNode(new_eden_top, eden_end);

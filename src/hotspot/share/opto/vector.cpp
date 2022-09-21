@@ -368,6 +368,7 @@ Node* PhaseVector::expand_vbox_alloc_node(VectorBoxAllocateNode* vbox_alloc,
   const TypeKlassPtr* array_klass = TypeKlassPtr::make(ciTypeArrayKlass::make(bt));
   Node* arr = kit.new_array(kit.makecon(array_klass), kit.intcon(num_elem), 1);
   if (InstrumentHeapEvents) {
+    //TODO: Use Universe::NewPrimitiveArray??
     if (is_reference_type(bt)) {
       kit.append_heap_event(Universe::NewObject, arr, kit.intcon(num_elem));
     } else {

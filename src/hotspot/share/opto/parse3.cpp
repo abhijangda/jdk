@@ -294,7 +294,7 @@ void Parse::do_newarray(BasicType elem_type) {
   const TypeKlassPtr* array_klass = TypeKlassPtr::make(ciTypeArrayKlass::make(elem_type));
   Node*   obj = new_array(makecon(array_klass), count_val, 1);
   if (InstrumentHeapEvents) {
-    append_heap_event(Universe::NewObject, obj, count_val);
+    append_heap_event(Universe::NewPrimitiveArray, obj, count_val);
   }
   // Push resultant oop onto stack
   push(obj);
@@ -309,7 +309,7 @@ Node* Parse::expand_multianewarray(ciArrayKlass* array_klass, Node* *lengths, in
 
   if (InstrumentHeapEvents) {
     if (array_klass->is_type_array_klass()) {
-      append_heap_event(Universe::NewObject, array, length);
+      append_heap_event(Universe::NewPrimitiveArray, array, length);
     } else if (array_klass->is_obj_array_klass()) {
       append_heap_event(Universe::NewArray, array, length);
     } else {

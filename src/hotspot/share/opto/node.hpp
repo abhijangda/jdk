@@ -38,6 +38,7 @@
 class AbstractLockNode;
 class AddNode;
 class AddPNode;
+class AddPAndAllocObjNode;
 class AliasInfo;
 class AllocateArrayNode;
 class AllocateNode;

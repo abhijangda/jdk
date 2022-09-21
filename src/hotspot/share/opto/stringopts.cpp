@@ -1716,7 +1716,7 @@ Node* PhaseStringOpts::allocate_byte_array(GraphKit& kit, IdealKit* ideal, Node*
     byte_array = kit.new_array(__ makecon(TypeKlassPtr::make(ciTypeArrayKlass::make(T_BYTE))),
                                length, 1);
     if (InstrumentHeapEvents) {
-      kit.append_heap_event(Universe::NewObject, byte_array, length);
+      kit.append_heap_event(Universe::NewPrimitiveArray, byte_array, length);
     }
   }
 

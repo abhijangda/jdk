@@ -6097,18 +6097,125 @@ instruct transferEvents(memory mem, rRegL src)
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP obj)
+instruct addPAndAllocObj_rReg(rRegP dst, rRegL src, rRegL tmp1, rFlagsReg cr)
+%{
+  match(Set dst (AddPAndAllocObj dst src));
+  effect(KILL cr, TEMP tmp1);
+
+  format %{ "addq    $dst, $src\t# ptr" %}
+  ins_encode %{
+    __ gen_lock_heap_event_mutex();
+    Register cntr_reg = $tmp1$$Register;
+    Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+    
+    __ movq(cntr_reg, __mem);
+    __ leaq(cntr_reg, Address(cntr_reg, 1));
+    __ movq(__mem, cntr_reg);
+    
+    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
+    
+    __ shrq($src$$Register, 3); //Convert to # of bytes.
+    __ movq(__mem, $src$$Register);
+    __ shlq($src$$Register, 3);
+    
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
+    
+    __ shlq($dst$$Register, 15);
+    if (Universe::NewObject != 0) {
+      uint64_t encoded_dst = Universe::encode_heap_event_dst(Universe::NewObject, 0);
+      __ orq($dst$$Register, (int32_t)encoded_dst);
+    }
+    __ movq(__mem, $dst$$Register);
+    __ shrq($dst$$Register, 15);
+
+    if (!UseMprotectForHeapGraphCheck) {
+      uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
+      __ subq(cntr_reg, maxval);
+      //__ mov64(cntr_reg, JavaThread::heap_events_offset());
+      Label not_equal;
+      __ jcc(Assembler::Condition::less, not_equal);
+      __ pushaq();
+      if (CheckHeapEventGraphWithHeap) {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+      }  else {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+      }
+      __ popaq();
+      //__ movq($mem$$Address, 0);
+      __ bind(not_equal);
+    }
+    __ gen_unlock_heap_event_mutex();
+
+    __ addq($dst$$Register, $src$$Register);
+  %}
+  ins_pipe(ialu_reg_reg);
+%}
+
+instruct addPAndAllocObj_rReg_imm(rRegP dst, immL32 src, rRegL tmp1, rFlagsReg cr)
+%{
+  match(Set dst (AddPAndAllocObj dst src));
+  effect(KILL cr, TEMP tmp1);
+
+  format %{ "addq    $dst, $src\t# ptr" %}
+  ins_encode %{
+    __ gen_lock_heap_event_mutex();
+
+    Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+    Register cntr_reg = $tmp1$$Register;
+    __ movq(cntr_reg, __mem);
+    __ leaq(cntr_reg, Address(cntr_reg, 1));
+    __ movq(__mem, cntr_reg);
+
+    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
+    
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());    
+    __ movq(__mem, ((size_t)$src$$constant)/8);
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
+    __ shlq($dst$$Register, 15);
+    if (Universe::NewObject != 0) {
+      uint64_t encoded_dst = Universe::encode_heap_event_dst(Universe::NewObject, 0);
+      __ orq($dst$$Register, (int32_t)encoded_dst);
+    }
+    __ movq(__mem, $dst$$Register);
+    __ shrq($dst$$Register, 15);
+
+    if (!UseMprotectForHeapGraphCheck) {
+      int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
+      __ subq(cntr_reg, maxval);
+      //__ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+      Label not_equal;
+      __ jcc(Assembler::Condition::less, not_equal);
+      __ pushaq();
+      if (CheckHeapEventGraphWithHeap) {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+      }  else {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+      }
+      __ popaq();
+      //__ movq($mem$$Address, 0);
+      __ bind(not_equal);
+    }      
+    __ gen_unlock_heap_event_mutex();
+    
+    __ addq($dst$$Register, $src$$constant);
+  %}
+  ins_pipe( ialu_reg );
+%}
+
+instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP obj, rRegL tmp1)
 %{
   match(Set cntr_mem (IncrCntrAndStoreHeapEvent cntr_mem (Binary sz obj)));
+  effect (TEMP tmp1);
 
   ins_cost(125); // XXX
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
-    Register cntr_reg = $cntr_mem$$Address.base();
-    
+    Register cntr_reg = $tmp1$$Register;
+    assert($cntr_mem$$Address.index() == noreg, "");
     __ gen_lock_heap_event_mutex();
 
-    Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+    Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
 
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
@@ -6148,16 +6255,19 @@ instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP obj)
+instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP obj, rRegL tmp1)
 %{
   match(Set cntr_mem (IncrCntrAndStoreHeapEvent cntr_mem (Binary sz obj)));
+  effect (TEMP tmp1);
 
   ins_cost(125); // XXX
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
+    Register cntr_reg = $tmp1$$Register;
+    assert($cntr_mem$$Address.index() == noreg, "");
     __ gen_lock_heap_event_mutex();
-    Register cntr_reg = $cntr_mem$$Address.base();
-    Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+
+    Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
         
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
@@ -6198,16 +6308,19 @@ instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP ob
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct incrCntrAndStoreHeapEventIntReg(memory cntr_mem, rRegI sz, any_RegP obj)
+instruct incrCntrAndStoreHeapEventIntReg(memory cntr_mem, rRegI sz, any_RegP obj, rRegL tmp1)
 %{
   match(Set cntr_mem (IncrCntrAndStoreHeapEvent cntr_mem (Binary sz obj)));
+  effect (TEMP tmp1);
 
   ins_cost(125); // XXX
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
+    Register cntr_reg = $tmp1$$Register;
+    assert($cntr_mem$$Address.index() == noreg, "");
     __ gen_lock_heap_event_mutex();
-    Register cntr_reg = $cntr_mem$$Address.base();
-    Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+
+    Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
     
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
@@ -6251,16 +6364,19 @@ instruct incrCntrAndStoreHeapEventIntReg(memory cntr_mem, rRegI sz, any_RegP obj
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct incrCntrAndStoreHeapEventLongReg(memory cntr_mem, rRegL sz, any_RegP obj)
+instruct incrCntrAndStoreHeapEventLongReg(memory cntr_mem, rRegL sz, any_RegP obj, rRegL tmp1)
 %{
   match(Set cntr_mem (IncrCntrAndStoreHeapEvent cntr_mem (Binary sz obj)));
+  effect (TEMP tmp1);
 
   ins_cost(125); // XXX
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
+    Register cntr_reg = $tmp1$$Register;
+    assert($cntr_mem$$Address.index() == noreg, "");
     __ gen_lock_heap_event_mutex();
-    Register cntr_reg = $cntr_mem$$Address.base();
-    Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+
+    Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
     
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
@@ -6304,15 +6420,19 @@ instruct incrCntrAndStoreHeapEventLongReg(memory cntr_mem, rRegL sz, any_RegP ob
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct incrCntrAndStoreHeapEventFieldSet(memory cntr_mem, any_RegP val, any_RegP obj)
+instruct incrCntrAndStoreHeapEventFieldSet(memory cntr_mem, any_RegP val, any_RegP obj, rRegL tmp1)
 %{
   match(Set cntr_mem (IncrCntrAndStoreHeapEvent cntr_mem (Binary val obj)));
+  effect (TEMP tmp1);
+
   ins_cost(125); // XXX
   format %{ "movq    $cntr_mem, $obj\t# long" %}
   ins_encode %{
+    Register cntr_reg = $tmp1$$Register;
+    assert($cntr_mem$$Address.index() == noreg, "");
     __ gen_lock_heap_event_mutex();
-    Address __mem = Address(r15_thread, (int)JavaThread::heap_events_offset());
-    Register cntr_reg = $cntr_mem$$Address.base();
+
+    Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
     
     __ movq(cntr_reg, __mem);
     __ leaq(cntr_reg, Address(cntr_reg, 1));
@@ -6819,20 +6939,21 @@ instruct storeHeapEventFieldSetThree(memory field1, any_RegP val1, memory field2
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
 
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
-
-    int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-    __ subq(cntr_reg, maxval);
-    Label not_equal;
-    __ jcc(Assembler::Condition::less, not_equal);
-    __ pushaq();
-    if (CheckHeapEventGraphWithHeap) {
-      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-    }  else {
-      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    if (!UseMprotectForHeapGraphCheck) {
+      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
+      __ subq(cntr_reg, maxval);
+      Label not_equal;
+      __ jcc(Assembler::Condition::less, not_equal);
+      __ pushaq();
+      if (CheckHeapEventGraphWithHeap) {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+      }  else {
+          __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+      }
+      __ popaq();
+      //__ movq($mem$$Address, 0);
+      __ bind(not_equal);
     }
-    __ popaq();
-    //__ movq($mem$$Address, 0);
-    __ bind(not_equal);
     __ gen_unlock_heap_event_mutex();
   %}
 
@@ -6940,19 +7061,21 @@ instruct storeHeapEventFieldSetFour(memory field1, any_RegP val1, memory field2,
 
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
 
-    int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-    __ subq(cntr_reg, maxval);
-    Label not_equal;
-    __ jcc(Assembler::Condition::less, not_equal);
-    __ pushaq();
-    if (CheckHeapEventGraphWithHeap) {
-      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-    }  else {
-      __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+    if (!UseMprotectForHeapGraphCheck) {
+      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
+      __ subq(cntr_reg, maxval);
+      Label not_equal;
+      __ jcc(Assembler::Condition::less, not_equal);
+      __ pushaq();
+      if (CheckHeapEventGraphWithHeap) {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+      }  else {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+      }
+      __ popaq();
+      //__ movq($mem$$Address, 0);
+      __ bind(not_equal);
     }
-    __ popaq();
-    //__ movq($mem$$Address, 0);
-    __ bind(not_equal);
     __ gen_unlock_heap_event_mutex();
   %}
 
@@ -8582,6 +8705,19 @@ instruct leaP_rReg_imm(rRegP dst, rRegP src0, immL32 src1)
   ins_cost(110);
   format %{ "leaq    $dst, [$src0 + $src1]\t# ptr" %}
   ins_encode %{
+    __ leaq($dst$$Register, Address($src0$$Register, $src1$$constant));
+  %}
+  ins_pipe(ialu_reg_reg);
+%}
+
+instruct leaPAndAllocObj_rReg_imm(rRegP dst, rRegP src0, immL32 src1)
+%{
+  match(Set dst (AddPAndAllocObj src0 src1));
+
+  ins_cost(110);
+  format %{ "leaq    $dst, [$src0 + $src1]\t# ptr" %}
+  ins_encode %{
+    abort();
     __ leaq($dst$$Register, Address($src0$$Register, $src1$$constant));
   %}
   ins_pipe(ialu_reg_reg);

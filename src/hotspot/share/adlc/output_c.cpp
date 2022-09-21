@@ -4241,7 +4241,7 @@ void ArchDesc::identify_cisc_spill_instructions() {
       // Ensure that match field is defined.
       if ( oper->_matrule != NULL )  {
         MatchRule &mrule = *oper->_matrule;
-        if( strcmp(mrule._opType,"AddP") == 0 ) {
+        if( strcmp(mrule._opType,"AddP") == 0 || strcmp(mrule._opType,"AddPAndAllocObj") == 0 ) {
           MatchNode *left = mrule._lChild;
           MatchNode *right= mrule._rChild;
           if( left != NULL && right != NULL ) {

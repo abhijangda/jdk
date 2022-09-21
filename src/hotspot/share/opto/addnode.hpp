@@ -29,6 +29,8 @@
 #include "opto/opcodes.hpp"
 #include "opto/type.hpp"
 
+#include "memory/universe.hpp"
+
 // Portions of code courtesy of Clifford Click
 
 class PhaseTransform;
@@ -176,6 +178,19 @@ public:
 
   // Do not match base-ptr edge
   virtual uint match_edge(uint idx) const;
+};
+
+class AddPAndAllocObjNode : public AddPNode {
+private:
+  Universe::HeapEventType _event_type;
+
+public:
+  AddPAndAllocObjNode( Node *base, Node *ptr, Node *off, Universe::HeapEventType event_type ) : AddPNode(base,ptr,off), _event_type(event_type) 
+  {}
+
+  void set_event_type(Universe::HeapEventType event_type) {_event_type = event_type;}
+  Universe::HeapEventType event_type() {return _event_type;}
+  virtual int Opcode() const;
 };
 
 //------------------------------OrINode----------------------------------------

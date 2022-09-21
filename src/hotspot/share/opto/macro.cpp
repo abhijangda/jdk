@@ -1337,10 +1337,10 @@ void PhaseMacroExpand::expand_allocate_common(
 
       intx prefetch_lines = length != NULL ? AllocatePrefetchLines : AllocateInstancePrefetchLines;
       BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
-      Node* fast_oop = bs->obj_allocate(this, mem, toobig_false, size_in_bytes, i_o, needgc_ctrl,
+      Node* fast_oop = bs->obj_allocate(this, mem, toobig_false, size_in_bytes, length, i_o, needgc_ctrl,
                                         fast_oop_ctrl, fast_oop_rawmem,
                                         prefetch_lines);
-
+      
       if (initial_slow_test != NULL) {
         // This completes all paths into the slow merge point
         slow_region->init_req(need_gc_path, needgc_ctrl);

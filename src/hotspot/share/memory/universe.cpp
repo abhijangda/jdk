@@ -197,7 +197,7 @@ class ObjectNode {
   size_t size() const {return _size;}
   Universe::HeapEventType type() const {return _type;}
   uint64_t start_address() const {
-    if (_type == Universe::NewObject) {
+    if (_type == Universe::NewObject || _type == Universe::NewPrimitiveArray) {
       instanceOopDesc* iobj = (instanceOopDesc*)(oopDesc*)_obj;
       return (uint64_t)(char*)iobj;
     } else if (_type == Universe::NewArray) {
@@ -208,7 +208,7 @@ class ObjectNode {
     }
   }
   void* end() const {
-    if (_type == Universe::NewObject) {
+    if (_type == Universe::NewObject || _type == Universe::NewPrimitiveArray) {
       instanceOopDesc* iobj = (instanceOopDesc*)(oopDesc*)_obj;
       return (void*)((char*)iobj + iobj->base_offset_in_bytes() + size()*HeapWordSize);
     } else if (_type == Universe::NewArray) {
@@ -741,6 +741,7 @@ bool Universe::handle_heap_events_sigsegv(int sig, siginfo_t* info) {
   Universe::HeapEvent* sig_addr = (Universe::HeapEvent*)info->si_addr;
   if ((uint64_t)sig_addr < 0x10000)
     return false;
+
   HeapEvent* heap_events_ptr = Universe::get_heap_events_ptr();
   void* end_heap_events_buff = (char*)heap_events_ptr + heap_events_buf_size();
   if (heap_events_ptr < sig_addr && sig_addr <= end_heap_events_buff) {
@@ -847,12 +848,14 @@ bool Universe::is_verify_from_exit = false;
 void Universe::process_heap_event(Universe::HeapEvent event) {
   HeapEventType heap_event_type = decode_heap_event_type(event);      
   if (heap_event_type == Universe::NewObject || 
-      heap_event_type == Universe::NewArray) {
+      heap_event_type == Universe::NewArray || 
+      heap_event_type == Universe::NewPrimitiveArray) {
     HeapEvent event2 = decode_heap_event(event);
     oopDesc* obj = (oopDesc*)event2.dst;
     
     auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
     if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
+      printf("858: Replacing %p from old size %ld event %ld to new size %ld event %ld\n", obj, obj_src_node_iter->second.size(), obj_src_node_iter->second.type(), event2.src, heap_event_type);
       ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
     }
 
@@ -902,6 +905,14 @@ void Universe::verify_heap_graph() {
     *(uint64_t*)th_heap_events += 4096/sizeof(HeapEvent);
   }
 
+  Universe::HeapEvent* reverse_events[all_heap_events.size()];
+  auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head());
+
+  for (uint i = 0; i < all_heap_events.size(); i++) {
+    reverse_events[all_heap_events.size() - i - 1] = *heap_events_iter;
+    heap_events_iter.next();
+  }
+
   for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
        !heap_events_iter.is_empty(); heap_events_iter.next()) {
     auto th_heap_events = *heap_events_iter;
@@ -918,20 +929,31 @@ void Universe::verify_heap_graph() {
 
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
-      Universe::process_heap_event(event);
+      HeapEventType heap_event_type = decode_heap_event_type(event);      
+      if (heap_event_type == Universe::NewObject || 
+          heap_event_type == Universe::NewArray || 
+          heap_event_type == Universe::NewPrimitiveArray) {
+        HeapEvent event2 = decode_heap_event(event);
+        oopDesc* obj = (oopDesc*)event2.dst;
+        
+        auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
+        if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
+          // char class_name[1024];
+          // get_oop_klass_name(oop(obj), class_name);
+          // printf("858: Replacing %p ('%s') from old size %ld event %ld to new size %ld event %ld event_iter %ld\n", obj, class_name, obj_src_node_iter->second.size(), obj_src_node_iter->second.type(), event2.src, heap_event_type, event_iter);
+          ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
+        }
+
+        ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
+        ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
+      }
     }
   }
 
   printf("Nodes created: %ld\nCreating Edges\n", ObjectNode::oop_to_obj_node.size());
   // printf("newobj %ld fieldsets %ld\n", num_new_obj, num_field_sets);
   //Go through events in the order they are created
-  Universe::HeapEvent* reverse_events[all_heap_events.size()];
-  auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head());
   
-  for (uint i = 0; i < all_heap_events.size(); i++) {
-    reverse_events[all_heap_events.size() - i - 1] = *heap_events_iter;
-    heap_events_iter.next();
-  }
   for (uint i = 0; i < all_heap_events.size(); i++) {
     auto th_heap_events = reverse_events[i];
     const size_t heap_events_size = *(const uint64_t*)th_heap_events;
@@ -948,7 +970,8 @@ void Universe::verify_heap_graph() {
       event = decode_heap_event(event);
       
       if (heap_event_type == Universe::NewObject ||
-          heap_event_type == Universe::NewArray) {
+          heap_event_type == Universe::NewArray ||
+          heap_event_type == Universe::NewPrimitiveArray) {
             continue;
         // oopDesc* obj = (oopDesc*)event.dst;
         // if (ObjectNode::oop_to_obj_node.find(obj) == ObjectNode::oop_to_obj_node.end()) {
@@ -993,6 +1016,7 @@ void Universe::verify_heap_graph() {
         if (obj_dst_node_iter == ObjectNode::oop_to_obj_node.end() ||
             obj_src_node_iter == ObjectNode::oop_to_obj_node.end()) {
             printf("didn't find %p %p\n", (void*)obj_src, (void*)obj_dst);
+            continue;
         }
 
         if (obj_dst_node_iter != ObjectNode::oop_to_obj_node.end() && 
@@ -1191,6 +1215,7 @@ void* cumemcpy_func(void* arg)
   while(true) {
     sem_wait(&Universe::cuda_semaphore);
     printf("Transferring\n");
+    
     checkCudaErrors(cuMemcpyHtoDAsync(d_heap_events, h_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent), stream));
   }
 }

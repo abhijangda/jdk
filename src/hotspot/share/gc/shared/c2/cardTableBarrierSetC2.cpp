@@ -66,6 +66,9 @@ void CardTableBarrierSetC2::post_barrier(GraphKit* kit,
     }
   }
 
+  if (DisableCardMarkStores)
+    return;
+
   if (use_ReduceInitialCardMarks()
       && obj == kit->just_allocated_object(kit->control())) {
     // We can skip marks on a freshly-allocated object in Eden.
@@ -129,6 +132,8 @@ void CardTableBarrierSetC2::clone(GraphKit* kit, Node* src, Node* dst, Node* siz
   BarrierSetC2::clone(kit, src, dst, size, is_array);
   const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
 
+  if (DisableCardMarkStores)
+    return;
   // If necessary, emit some card marks afterwards.  (Non-arrays only.)
   bool card_mark = !is_array && !use_ReduceInitialCardMarks();
   if (card_mark) {

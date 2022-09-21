@@ -586,6 +586,8 @@ Node *Node::clone() const {
     ((StoreHeapEventNode*)n)->set_event_type(((StoreHeapEventNode*)this)->event_type());
   } else if (Opcode() == Op_IncrCntrAndStoreHeapEvent) {
     ((IncrCntrAndStoreHeapEventNode*)n)->set_event_type(((IncrCntrAndStoreHeapEventNode*)this)->event_type());
+  } else if (Opcode() == Op_AddPAndAllocObj) {
+    ((AddPAndAllocObjNode*)n)->set_event_type(((AddPAndAllocObjNode*)this)->event_type());
   }
 
   return n;                     // Return the clone

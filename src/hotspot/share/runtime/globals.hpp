@@ -2064,6 +2064,7 @@ const intx ObjectAlignmentInBytes = 8;
                                                                             \
   product(bool, CheckHeapEventGraphOnlyBeforeExit, true, "")            \
   product(bool, UseMprotectForHeapGraphCheck, true, "") \
+  product(bool, DisableCardMarkStores, false, "") \
   product(bool, OffloadGCToGPU, false,                                       \
                 "Transfer heap events to GPU and run GC on GPU")            \
   product(bool, InterpreterInstrumentHeapEvents, true,                      \

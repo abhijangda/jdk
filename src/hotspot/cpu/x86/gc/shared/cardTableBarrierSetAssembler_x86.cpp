@@ -88,6 +88,8 @@ __ BIND(L_done);
 void CardTableBarrierSetAssembler::store_check(MacroAssembler* masm, Register obj, Address dst) {
   // Does a store check for the oop in register obj. The content of
   // register obj is destroyed afterwards.
+  if (DisableCardMarkStores)
+    return;
   BarrierSet* bs = BarrierSet::barrier_set();
 
   CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);

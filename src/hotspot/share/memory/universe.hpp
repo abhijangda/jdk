@@ -403,6 +403,7 @@ class Universe: AllStatic {
     MoveObject = 1L << 8,
     ClearContiguousSpace = 1L << 9,
     Dummy = 1L << 10,
+    NewPrimitiveArray = 1L << 11,
     LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
   };
   static bool is_verify_cause_full_gc;

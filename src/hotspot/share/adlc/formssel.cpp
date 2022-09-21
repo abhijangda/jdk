@@ -3565,8 +3565,13 @@ int MatchNode::needs_ideal_memory_edge(FormDict &globals) const {
 // post-matching.
 int MatchNode::needs_base_oop_edge() const {
   if( !strcmp(_opType,"AddP") ) return 1;
+  if( !strcmp(_opType,"AddPAndAllocObj") ) return 1;
   if( strcmp(_opType,"Set") ) return 0;
-  return !strcmp(_rChild->_opType,"AddP");
+  if (strcmp(_rChild->_opType,"AddP") == 0)
+    return 1;
+  if (strcmp(_rChild->_opType,"AddPAndAllocObj") == 0)
+    return 1;
+  return 0;
 }
 
 int InstructForm::needs_base_oop_edge(FormDict &globals) const {

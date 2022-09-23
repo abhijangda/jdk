@@ -563,20 +563,29 @@ class CheckGraph : public ObjectClosure {
 const void* CheckGraph::INVALID_PTR = (void*)0xbaadbabebaadbabe;
 const oop CheckGraph::INVALID_OOP = oop((oopDesc*)INVALID_PTR);
 
+Universe::EventsToTransfer Universe::events_to_transfer;
+
 void Universe::transfer_events_to_gpu_list_head() {
-  sem_post(&cuda_semaphore);
   Universe::HeapEvent* events = *all_heap_events.head()->data();
-  printf("744: Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)events);
+  events_to_transfer.length = *(uint64_t*)events;
+  events_to_transfer.events = events + 1;
+  sem_post(&cuda_semaphore);
+  // printf("744: Transferring Events to GPU *cur_thread::heap_event_counter_ptr %ld\n", *(uint64_t*)events);
   *(uint64_t*)events = 0;
 }
 
-void Universe::transfer_events_to_gpu_no_zero() {
+void Universe::transfer_events_to_gpu_no_zero(HeapEvent* events, size_t length) {
+  events_to_transfer.length = length;
+  events_to_transfer.events = events;
+  // printf("580 %ld %p\n", length, events);
   sem_post(&cuda_semaphore);
 }
 
 void Universe::transfer_events_to_gpu() {
-  sem_post(&cuda_semaphore);
   Universe::HeapEvent* events = Universe::get_heap_events_ptr();
+  events_to_transfer.length = *(uint64_t*)events;
+  events_to_transfer.events = events + 1;
+  sem_post(&cuda_semaphore);
   //fprintf(stderr, "T\n");
   *(uint64_t*)events = 0;
 }
@@ -730,7 +739,7 @@ Universe::HeapEvent* Universe::get_heap_events_ptr() {
 size_t Universe::heap_events_buf_size() {
   int PAGE_SIZE = 4096;
   size_t size = JavaThread::heap_events_offset() + (MaxHeapEvents)*sizeof(Universe::HeapEvent)*2 + PAGE_SIZE + PAGE_SIZE;
-
+  
   return size;
 }
 
@@ -750,13 +759,15 @@ bool Universe::handle_heap_events_sigsegv(int sig, siginfo_t* info) {
       //TODO: make a template mprotect
       //TODO: Only set the page starting at second_part to PROT_READ
       Universe::mprotect((void*)second_part, 4096, PROT_READ|PROT_WRITE);
+  
       if (CheckHeapEventGraphWithHeap) {
         //Call verify_heap_graph when second part is filled
         // Universe::HeapEvent* last_event = (char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent);
         // Universe::verify_heap_graph(last_event);
       }
       else {
-        Universe::transfer_events_to_gpu_no_zero();
+        size_t length = (second_part - (uint64_t)heap_events_ptr)/sizeof(HeapEvent);
+        Universe::transfer_events_to_gpu_no_zero(heap_events_ptr, length);
       }
       Universe::mprotect((char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent), 4096, PROT_READ);
       // printf("759: changing permissions of %p\n", sig_addr);
@@ -766,7 +777,7 @@ bool Universe::handle_heap_events_sigsegv(int sig, siginfo_t* info) {
       if (CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
       else {
-        Universe::transfer_events_to_gpu_no_zero();
+        Universe::transfer_events_to_gpu_no_zero((HeapEvent*)second_part, MaxHeapEvents);
         *(uint64_t*)heap_events_ptr = 0;
         //fprintf(stderr, "T\n");
         // *(uint64_t*)events = 0;
@@ -796,7 +807,8 @@ bool Universe::handle_heap_events_sigsegv(int sig, siginfo_t* info) {
           // Universe::verify_heap_graph(last_event);
         }
         else {
-          Universe::transfer_events_to_gpu_no_zero();
+          size_t length = (second_part - (uint64_t)*heap_events_iter)/sizeof(HeapEvent);
+          Universe::transfer_events_to_gpu_no_zero(*heap_events_iter, length);
         }
         Universe::mprotect((char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent), 4096, PROT_READ);
         printf("744 changing permissions of %p\n", sig_addr);
@@ -806,7 +818,7 @@ bool Universe::handle_heap_events_sigsegv(int sig, siginfo_t* info) {
         if (CheckHeapEventGraphWithHeap)
           Universe::verify_heap_graph();
         else {
-          Universe::transfer_events_to_gpu_no_zero();
+          Universe::transfer_events_to_gpu_no_zero((HeapEvent*)second_part, MaxHeapEvents);
           *(uint64_t*)*heap_events_iter = 0;
           //fprintf(stderr, "T\n");
           // *(uint64_t*)events = 0;
@@ -1192,11 +1204,20 @@ extern CUdeviceptr d_heap_events;
 void __checkCudaErrors( CUresult err, const char *file, const int line )
 {
   if( CUDA_SUCCESS != err) {
+    const char * errstr;
+    cuGetErrorString(err, &errstr);
     fprintf(stderr,
-            "CUDA Driver API error = %04d from file <%s>, line %i.\n",
-            err, file, line );
+            "CUDA Driver API error = %04d '%s' from file <%s>, line %i.\n",
+            err, errstr, file, line );
+    
     exit(-1);
   }
+}
+
+void* Universe::cudaAllocHost(size_t size) {
+  void* p;
+  checkCudaErrors(::cuMemAllocHost((void**)&p, size));
+  return p;
 }
 
 void* cumemcpy_func(void* arg)
@@ -1209,14 +1230,37 @@ void* cumemcpy_func(void* arg)
   checkCudaErrors(cuDeviceGet(&device, 0));
   checkCudaErrors(cuCtxCreate(&context, 0, device));
   checkCudaErrors(cuStreamCreate(&stream, CU_STREAM_NON_BLOCKING));
-  checkCudaErrors(cuMemAlloc(&d_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent)));
+  checkCudaErrors(cuMemAlloc(&d_heap_events, MaxHeapEvents * 2 * sizeof(Universe::HeapEvent)));
   checkCudaErrors(cuMemAllocHost((void**)&h_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent)));
 
+  Universe::vector<Universe::HeapEvent*> is_registered;
   while(true) {
     sem_wait(&Universe::cuda_semaphore);
-    printf("Transferring\n");
-    
-    checkCudaErrors(cuMemcpyHtoDAsync(d_heap_events, h_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent), stream));
+    #ifndef PRODUCT
+      printf("Transferring %ld from %p\n", Universe::events_to_transfer.length, Universe::events_to_transfer.events);
+    #else
+      // printf("Transferring\n");
+    #endif
+
+    bool found = false;
+    for (auto ptr : is_registered) {
+      if (ptr <= Universe::events_to_transfer.events && Universe::events_to_transfer.events <= ptr + MaxHeapEvents*2) {
+        found = true;
+        break;
+      }
+    } 
+
+    if (!found) {
+      Universe::HeapEvent* page_start = (Universe::HeapEvent*)(((uint64_t)Universe::events_to_transfer.events/4096)*4096);
+      // printf("1246: %p page start %p %ld %ld\n", Universe::events_to_transfer.events, page_start, Universe::events_to_transfer.length, MaxHeapEvents);
+      checkCudaErrors(cuMemHostRegister(page_start,
+                                        MaxHeapEvents * 2 * sizeof(Universe::HeapEvent),
+                                        CU_MEMHOSTREGISTER_PORTABLE));
+      is_registered.push_back(page_start);
+    }
+
+    checkCudaErrors(cuMemcpyHtoD(d_heap_events, Universe::events_to_transfer.events, Universe::events_to_transfer.length * sizeof(Universe::HeapEvent) - 1024));
+    // checkCudaErrors(cuMemcpyHtoDAsync(d_heap_events, h_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent), stream));
   }
 }
 

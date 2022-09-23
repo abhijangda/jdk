@@ -191,7 +191,10 @@ void* Thread::allocate(size_t size, bool throw_excpt, MEMFLAGS flags) {
   }
   void* p = throw_excpt ? AllocateHeap(size, flags, CURRENT_PC)
                        : AllocateHeap(size, flags, CURRENT_PC, AllocFailStrategy::RETURN_NULL);
-  if (InstrumentHeapEvents) {
+  if (InstrumentHeapEvents) {    
+    // if (mlock(p, size) == -1) {
+    //   perror("Error locking\n");
+    // }
     size -= Universe::heap_events_buf_size();
     *(uint64_t*)(((char*)p) + JavaThread::heap_events_offset()) = 0;
     Universe::HeapEvent* he = (Universe::HeapEvent*)(((char*)p) + JavaThread::heap_events_offset());

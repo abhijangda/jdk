@@ -412,6 +412,13 @@ class Universe: AllStatic {
     uint64_t src;
     uint64_t dst;
   };
+  struct EventsToTransfer {
+    HeapEvent* events;
+    size_t length;
+  };
+
+  static EventsToTransfer events_to_transfer;
+
   static uint64_t heap_event_mask();
   static uint64_t encode_heap_event_dst(HeapEventType event_type, uint64_t src);
   static HeapEvent encode_heap_event(HeapEventType event_type, HeapEvent event);
@@ -425,7 +432,7 @@ class Universe: AllStatic {
   static pthread_mutex_t mutex_heap_event;
   static bool enable_transfer_events;
   static void transfer_events_to_gpu();
-  static void transfer_events_to_gpu_no_zero();
+  static void transfer_events_to_gpu_no_zero(HeapEvent* events, size_t length);
   static void transfer_events_to_gpu_list_head();
   static sem_t cuda_semaphore;
   static void add_heap_events(Universe::HeapEventType event_type1, Universe::HeapEvent event1, Universe::HeapEventType event_type2, Universe::HeapEvent event2);
@@ -463,6 +470,7 @@ class Universe: AllStatic {
     if (CheckHeapEventGraphWithHeap)
       Universe::unlock_mutex_heap_event();
   }
+  static void* cudaAllocHost(size_t size);
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();
   static void print_heap_event_counter();

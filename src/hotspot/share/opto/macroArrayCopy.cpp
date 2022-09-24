@@ -1243,15 +1243,33 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   Node* dest_offset = ac->in(ArrayCopyNode::DestPos);
   Node* length = ac->in(ArrayCopyNode::Length);
   MergeMemNode* merge_mem = NULL;
+  
+  // if (copy_type == T_OBJECT) {
+  if (false) {
+    Node* jthread = new ThreadLocalNode();
+    transform_later(jthread);
+    Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());
+    const TypePtr* adr_type = C->get_adr_type(Compile::AliasIdxRaw);
+    // assert (out_mem->is_MergeMem(), "sanity");
+    Node* mem = ac->in(TypeFunc::Memory);
+    merge_mem = MergeMemNode::make(mem);
+    transform_later(merge_mem);
+    Node* raw_mem = merge_mem->memory_at(Compile::AliasIdxRaw);
+    Node* st = new IncrCntrAndStoreCopyArrayEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, src_offset, dest, dest_offset, length);
+    transform_later(st);
+    merge_mem->set_memory_at(Compile::AliasIdxRaw, st);
+  }
 
   if (ac->is_clonebasic()) {
     BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
     bs->clone_at_expansion(this, ac);
     return;
   } else if (ac->is_copyof() || ac->is_copyofrange() || ac->is_clone_oop_array()) {
-    Node* mem = ac->in(TypeFunc::Memory);
-    merge_mem = MergeMemNode::make(mem);
-    transform_later(merge_mem);
+    if (merge_mem == NULL) {
+      Node* mem = ac->in(TypeFunc::Memory);
+      merge_mem = MergeMemNode::make(mem);
+      transform_later(merge_mem);
+    }
 
     AllocateArrayNode* alloc = NULL;
     if (ac->is_alloc_tightly_coupled()) {

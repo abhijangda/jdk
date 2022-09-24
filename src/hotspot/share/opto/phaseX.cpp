@@ -1362,7 +1362,17 @@ void PhaseIterGVN::remove_globally_dead_node( Node *dead ) {
   };
   assert(_stack.is_empty(), "not empty");
   _stack.push(dead, PROCESS_INPUTS);
+  // if (dead->Opcode() == Op_Allocate) {
+  //   char buf[1024];
+  //   C->method_name(buf);
 
+  //   if (strstr(buf, "java/util/HashMap::newNode")) {
+  //     printf("1368: %s\n", buf);
+
+  //     // dead->dump();
+  //   }
+  //   // dead->dump();
+  // }
   while (_stack.is_nonempty()) {
     dead = _stack.node();
     if (dead->Opcode() == Op_SafePoint) {

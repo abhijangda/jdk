@@ -941,6 +941,9 @@ public:
   bool _is_allocation_MemBar_redundant;
 
   virtual uint size_of() const; // Size is bigger
+  IncrCntrAndStoreHeapEventNode* _heap_event_store;
+  IncrCntrAndStoreHeapEventNode* heap_event_store() {return _heap_event_store;}
+  void set_heap_event_store(IncrCntrAndStoreHeapEventNode* n) {_heap_event_store = n;}
   AllocateNode(Compile* C, const TypeFunc *atype, Node *ctrl, Node *mem, Node *abio,
                Node *size, Node *klass_node, Node *initial_test);
   // Expansion modifies the JVMState, so we need to deep clone it

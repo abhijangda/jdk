@@ -1157,15 +1157,15 @@ void GraphKit::lock_unlock_heap_event(bool lock) {
     make_runtime_call(RC_LEAF, tf, (address)Universe::unlock_mutex_heap_event, "unlock_mutex_heap_event", NULL);
 }
 
-void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_obj_or_field, Node* size_or_new_val) {
-  if (!InstrumentHeapEvents) return;
-  if (!C2InstrumentHeapEvents) return;
+Node* GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_obj_or_field, Node* size_or_new_val) {
+  if (!InstrumentHeapEvents) return NULL;
+  if (!C2InstrumentHeapEvents) return NULL;
   
-  // if (event_type == Universe::NewObject) return;
+  if (event_type == Universe::NewObject) return NULL;
   uint64_t offset = JavaThread::heap_events_offset();
   uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(offset);//(uint64_t*)*Universe::all_heap_events.tail()->data();
 
-  if (method_found2()) return;
+  if (method_found2()) return NULL;
   const bool C2HeapEventLock = true;
   // if (method_found()) return;
 
@@ -1184,7 +1184,7 @@ void GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_o
   //   new_obj_or_field->in(1)->dump(0);
   //   new_obj_or_field->in(1)->in(0)->dump(0);
   // }
-  make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, NULL);
+  return make_store_event(ctrl, node_cntr_addr, size_or_new_val, new_obj_or_field, event_type, NULL);
   //TODO: For FieldSet should only be called for Atomic FieldSet
   
   /*else {
@@ -1209,7 +1209,7 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
   
   if (!C2InstrumentHeapEvents) 
     return;
-
+  // return;
   bool C2HeapEventLock = true;
   bool is_unsafe = true;
   Node* jthread = _gvn.transform(new ThreadLocalNode());
@@ -4060,7 +4060,7 @@ Node* GraphKit::new_instance(Node* klass_node,
                                          initial_slow_test);
   
   Node* obj = set_output_for_allocation(alloc, oop_type, deoptimize_on_exception);
-  append_heap_event(Universe::NewObject, obj, size);
+  alloc->set_heap_event_store((IncrCntrAndStoreHeapEventNode*)append_heap_event(Universe::NewObject, obj, size));
   return obj;
 }
 

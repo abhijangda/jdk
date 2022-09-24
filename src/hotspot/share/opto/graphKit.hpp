@@ -313,7 +313,7 @@ class GraphKit : public Phase {
   }
   Node* basic_plus_adr(Node* base, Node* ptr, Node* offset);
 
-  void append_heap_event(Universe::HeapEventType event_type, Node* obj, Node* size);
+  Node* append_heap_event(Universe::HeapEventType event_type, Node* obj, Node* size);
   void append_copy_array(Node* dst_array, Node* src_array, Node* dst_offset, Node* src_offset, Node* count);
   Node* make_store_event(Node* ctl, Node* mem_adr, Node *size_in_bytes, Node* new_obj, Universe::HeapEventType event_type, Node* idx = nullptr);
   Node* make_store_array_copy_event(Node* ctl, Node* mem_adr, Node *src_array, Node *src_offset, Node *dst_array, Node *dst_offset, Node *count);

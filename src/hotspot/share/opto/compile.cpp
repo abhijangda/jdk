@@ -304,6 +304,7 @@ void Compile::identify_useful_nodes(Unique_Node_List &useful) {
     assert( next < unique(), "Unique useful nodes < total nodes");
     Node *n  = useful.at(next);
     uint max = n->len();
+    Node* store_heap_event = NULL;
     for( uint i = 0; i < max; ++i ) {
       Node *m = n->in(i);
       if (not_a_node(m))  continue;
@@ -361,6 +362,8 @@ void Compile::remove_useless_nodes(GrowableArray<Node*>& node_list, Unique_Node_
   for (int i = node_list.length() - 1; i >= 0; i--) {
     Node* n = node_list.at(i);
     if (!useful.member(n)) {
+      if (n->Opcode() != Op_SubTypeCheck)
+        printf("364: %s\n", n->node_name());
       node_list.delete_at(i); // replaces i-th with last element which is known to be useful (already processed)
     }
   }

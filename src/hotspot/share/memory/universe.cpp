@@ -257,10 +257,14 @@ static T min(T a1, T a2) { return (a1 < a2) ? a1 : a2;}
 template<typename T>
 static T max(T a1, T a2) { return (a1 > a2) ? a1 : a2;}
 
-static char* get_oop_klass_name(oop obj_, char buf[]) 
-{
-  if (obj_->klass() != NULL && (uint64_t)obj_->klass() != 0xbaadbabebaadbabe && obj_->klass()->is_klass())
-    obj_->klass()->name()->as_C_string(buf, 1024);
+static char* get_klass_name(Klass* klass, char buf[]) {
+  if (klass != NULL && (uint64_t)klass != 0xbaadbabebaadbabe && klass->is_klass())
+    klass->name()->as_C_string(buf, 1024);
+  return buf;
+}
+
+static char* get_oop_klass_name(oop obj_, char buf[]) {
+  get_klass_name(obj_->klass(), buf);
   return buf;
 }
 
@@ -2227,6 +2231,23 @@ class ObjectCount : public ObjectClosure {
   uint64_t count(){return _count;}
 };
 
+class ObjectClasses : public ObjectClosure {
+  public:
+  Universe::unordered_map<Klass*, int> all_klasses;
+
+  ObjectClasses() {}
+
+  virtual void do_object(oop obj) {
+    if (obj != NULL && (uint64_t)(void*)obj != 0xbaadbabebaadbabe) {
+      if (all_klasses.find(obj->klass()) == all_klasses.end()) {
+        all_klasses[obj->klass()] = 0;
+      }
+
+      all_klasses[obj->klass()] += 1;
+    }
+  }
+};
+
 void Universe::print_on(outputStream* st) {
   GCMutexLocker hl(Heap_lock); // Heap_lock might be locked by caller thread.
   st->print_cr("Heap");
@@ -2235,6 +2256,14 @@ void Universe::print_on(outputStream* st) {
     ObjectCount obj_count;
     Universe::heap()->object_iterate(&obj_count);
     st->print("Number of Object: %ld\n", obj_count.count());
+    return;
+    ObjectClasses obj_classes;
+    heap()->object_iterate(&obj_classes);
+
+    for (auto k : obj_classes.all_klasses) {
+      char buf[1024];
+      st->print("%s: %d\n", get_klass_name(k.first, buf), k.second);
+    }
   }
 }
 

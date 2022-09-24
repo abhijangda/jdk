@@ -774,7 +774,7 @@ Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobi
   macro->transform_later(old_eden_top);
   // Add to heap top to get a new heap top
   Node *new_eden_top;
-  if (false && InstrumentHeapEvents && C2InstrumentHeapEvents && length == NULL) {
+  if (InstrumentHeapEvents && C2InstrumentHeapEvents && length == NULL) {
     // printf("length %p\n", length);
     new_eden_top = new AddPAndAllocObjNode(macro->top(), old_eden_top, size_in_bytes, Universe::NewObject);
   } else {

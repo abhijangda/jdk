@@ -1071,7 +1071,7 @@ void Universe::verify_heap_graph() {
         objArrayOop obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
         
         if (obj_src == NULL or obj_dst == NULL) {
-          printf("Didn't find \n");
+          printf("1074: Didn't find \n");
         }
         //No need to consider objArrayOop::base() in offset calculation
         HeapEvent offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
@@ -1082,8 +1082,17 @@ void Universe::verify_heap_graph() {
 
         if (obj_dst_node_iter == ObjectNode::oop_to_obj_node.end() ||
             obj_src_node_iter == ObjectNode::oop_to_obj_node.end()) {
-            printf("didn't find %p %p\n", (void*)obj_src, (void*)obj_dst);
+            printf("1085: didn't find %p %p\n", (void*)obj_src, (void*)obj_dst);
         }
+
+        if (obj_dst_node_iter->second.type() != Universe::NewArray) {
+          printf("1089: Destination is not object array but is '%ld'\n", obj_dst_node_iter->second.type());
+        }
+
+        if (obj_src_node_iter->second.type() != Universe::NewArray) {
+          printf("1093: Source is not object array but is '%ld'\n", obj_src_node_iter->second.type());
+        }
+
         if (obj_src != obj_dst || (obj_src == obj_dst && offsets.src >= offsets.dst)) {
           //Non overlapping arrays, so copy forward
           for (uint i = 0; i < length_event.src; i++) {

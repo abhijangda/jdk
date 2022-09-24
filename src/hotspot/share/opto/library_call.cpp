@@ -3679,8 +3679,8 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
 
       if (!stopped()) {
         newcopy = new_array(klass_node, length, 0);  // no arguments to push
+        const TypeKlassPtr* tk = _gvn.type(klass_node)->is_klassptr();
         if (InstrumentHeapEvents) {
-          const TypeKlassPtr* tk = _gvn.type(klass_node)->is_klassptr();
           if (tk->klass()->is_type_array_klass()) {
             append_heap_event(Universe::NewPrimitiveArray, newcopy, length);
           } else if (tk->klass()->is_obj_array_klass()) {
@@ -3704,9 +3704,9 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
           assert(validated, "shouldn't transform if all arguments not validated");
           set_all_memory(n);
         }
-        if (InstrumentHeapEvents) {
+        if (InstrumentHeapEvents && tk->klass()->is_obj_array_klass()) {
           // printf("3708\n");
-          // append_copy_array(newcopy, original, intcon(0), start, moved);
+          append_copy_array(newcopy, original, intcon(0), start, moved);
         }
       }
     }
@@ -4346,8 +4346,8 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
           result_i_o ->set_req(_objArray_path, i_o());
           result_mem ->set_req(_objArray_path, reset_memory());
           if (InstrumentHeapEvents) {
-            printf("4348\n");
-            // append_copy_array(alloc_obj, obj, intcon(0), intcon(0), obj_length);
+            // printf("4348\n");
+            append_copy_array(alloc_obj, obj, intcon(0), intcon(0), obj_length);
           }
         }
       }
@@ -4839,6 +4839,9 @@ bool LibraryCallKit::inline_arraycopy() {
 
     const TypeKlassPtr* dest_klass_t = _gvn.type(dest_klass)->is_klassptr();
     const Type *toop = TypeOopPtr::make_from_klass(dest_klass_t->klass());
+    if (dest_klass_t->klass()->is_obj_array_klass()) {
+      reference_type = true;
+    }
     src = _gvn.transform(new CheckCastPPNode(control(), src, toop));
   }
 
@@ -4865,8 +4868,8 @@ bool LibraryCallKit::inline_arraycopy() {
     set_all_memory(n);
   }
   clear_upper_avx();
-  if (InstrumentHeapEvents){
-    // append_copy_array(dest, src, dest_offset, src_offset, length);
+  if (InstrumentHeapEvents && reference_type){
+    append_copy_array(dest, src, dest_offset, src_offset, length);
   }
 
   return true;

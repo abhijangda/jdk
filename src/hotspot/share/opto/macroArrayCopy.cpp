@@ -1245,7 +1245,7 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   MergeMemNode* merge_mem = NULL;
   
   // if (copy_type == T_OBJECT) {
-  if (false) {
+  if (ac->store_heap_event()) {
     Node* jthread = new ThreadLocalNode();
     transform_later(jthread);
     Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());
@@ -1263,7 +1263,7 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   if (ac->is_clonebasic()) {
     BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
     bs->clone_at_expansion(this, ac);
-    printf("1266\n");
+    // printf("1266\n");
     return;
   } else if (ac->is_copyof() || ac->is_copyofrange() || ac->is_clone_oop_array()) {
     if (merge_mem == NULL) {
@@ -1386,7 +1386,7 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
     transform_later(merge_mem);
   }
 
-  if (false) {
+  if (ac->store_heap_event()) {
     Node* jthread = new ThreadLocalNode();
     transform_later(jthread);
     Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());

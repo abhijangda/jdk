@@ -64,6 +64,7 @@ private:
   bool _has_negative_length_guard;
 
   bool _arguments_validated;
+  bool _store_heap_event;
 
   static const TypeFunc* arraycopy_type() {
     const Type** fields = TypeTuple::fields(ParmLimit - TypeFunc::Parms);
@@ -144,7 +145,8 @@ public:
                              bool has_negative_length_guard,
                              Node* src_klass = NULL, Node* dest_klass = NULL,
                              Node* src_length = NULL, Node* dest_length = NULL);
-
+  void set_store_heap_event() {_store_heap_event = true;}
+  bool store_heap_event() {return _store_heap_event;}
   void connect_outputs(GraphKit* kit, bool deoptimize_on_exception = false);
 
   bool is_arraycopy()             const  { assert(_kind != None, "should bet set"); return _kind == ArrayCopy; }

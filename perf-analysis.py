@@ -5,7 +5,7 @@ num_runs = 4
 
 base_jvm_path = "java"
 build = "release"
-cores = "taskset -c 10,11,12,13,14,15,16,17,18,19,20,21,22,23 "
+cores =  "" #"taskset -c 10,11,12,13,14,15,16,17,18,19,20,21,22,23 "
 modified_jvm_path = cores + "~/jdk/build/linux-x86_64-server-%s/jdk/bin/java"%build
 #lusearch fixes with -XX:+UnlockDiagnosticVMOptions -XX:-InlineArrayCopy -XX:-InlineClassNatives -XX:-InlineMathNatives -XX:-InlineNatives -XX:-InlineObjectCopy -XX:-InlineObjectHash -XX:-                  InlineReflectionGetCallerClass -XX:-InlineSynchronizedMethods -XX:-InlineThreadNatives -XX:-InlineUnsafeOps -XX:+IncrementalInline -XX:+IncrementalInlineMH -XX:+IncrementalInlineVirtual
 config = "-XX:+TieredCompilation -XX:+UseInterpreter"

@@ -3684,7 +3684,7 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
           if (tk->klass()->is_type_array_klass()) {
             append_heap_event(Universe::NewPrimitiveArray, newcopy, length);
           } else if (tk->klass()->is_obj_array_klass()) {
-            append_heap_event(Universe::NewArray, newcopy, length);
+            // append_heap_event(Universe::NewArray, newcopy, length);
           } else {
             printf("3695\n");
           }
@@ -4323,9 +4323,6 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       Node* obj_size  = NULL;
       Node* alloc_obj = new_array(obj_klass, obj_length, 0, &obj_size, /*deoptimize_on_exception=*/true);
 
-      //TODO: Always an ObjectArray? 
-      append_heap_event(Universe::NewArray, alloc_obj, obj_length);
-
       BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
       if (bs->array_copy_requires_gc_barriers(true, T_OBJECT, true, false, BarrierSetC2::Parsing)) {
         // If it is an oop array, it requires very special treatment,
@@ -4351,7 +4348,11 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
             ac->set_store_heap_event();
             // append_copy_array(alloc_obj, obj, intcon(0), intcon(0), obj_length);
           }
+        } else {
+          append_heap_event(Universe::NewArray, alloc_obj, obj_length);
         }
+      } else {
+        append_heap_event(Universe::NewArray, alloc_obj, obj_length);
       }
       // Otherwise, there are no barriers to worry about.
       // (We can dispense with card marks if we know the allocation
@@ -4872,6 +4873,9 @@ bool LibraryCallKit::inline_arraycopy() {
   clear_upper_avx();
   if (InstrumentHeapEvents && reference_type){
     ac->set_store_heap_event();
+    // if (alloc != NULL) {
+    //   ac->set_alloc_length(length);
+    // }
     // append_copy_array(dest, src, dest_offset, src_offset, length);
   }
 

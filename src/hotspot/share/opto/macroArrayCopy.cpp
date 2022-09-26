@@ -1245,22 +1245,26 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   MergeMemNode* merge_mem = NULL;
   
   // if (copy_type == T_OBJECT) {
-  if (ac->store_heap_event()) {
-    Node* jthread = new ThreadLocalNode();
-    transform_later(jthread);
-    Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());
-    const TypePtr* adr_type = C->get_adr_type(Compile::AliasIdxRaw);
-    // assert (out_mem->is_MergeMem(), "sanity");
-    Node* mem = ac->in(TypeFunc::Memory);
-    merge_mem = MergeMemNode::make(mem);
-    transform_later(merge_mem);
-    Node* raw_mem = merge_mem->memory_at(Compile::AliasIdxRaw);
-    Node* st = new IncrCntrAndStoreCopyArrayEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, src_offset, dest, dest_offset, length);
-    transform_later(st);
-    merge_mem->set_memory_at(Compile::AliasIdxRaw, st);
-  }
-
   if (ac->is_clonebasic()) {
+    if (ac->store_heap_event()) {
+      Node* jthread = new ThreadLocalNode();
+      transform_later(jthread);
+      Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());
+      const TypePtr* adr_type = C->get_adr_type(Compile::AliasIdxRaw);
+      // assert (out_mem->is_MergeMem(), "sanity");
+      Node* mem = ac->in(TypeFunc::Memory);
+      merge_mem = MergeMemNode::make(mem);
+      transform_later(merge_mem);
+      Node* raw_mem = merge_mem->memory_at(Compile::AliasIdxRaw);
+      Node* st;
+      st = new IncrCntrAndStoreCopyArrayEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, src_offset, dest, dest_offset, length);
+      // if (ac->alloc_length() != NULL) {
+      //   printf("1261: %p %s\n", ac->alloc_length(), ac->alloc_length()->node_name());
+      //   st->add_req(ac->alloc_length());
+      // }
+      transform_later(st);
+      merge_mem->set_memory_at(Compile::AliasIdxRaw, st);
+    }
     BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
     bs->clone_at_expansion(this, ac);
     // printf("1266\n");
@@ -1276,6 +1280,26 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
     if (ac->is_alloc_tightly_coupled()) {
       alloc = AllocateArrayNode::Ideal_array_allocation(dest, &_igvn);
       assert(alloc != NULL, "expect alloc");
+    }
+
+    if (ac->store_heap_event()) {
+      Node* jthread = new ThreadLocalNode();
+      transform_later(jthread);
+      Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());
+      const TypePtr* adr_type = C->get_adr_type(Compile::AliasIdxRaw);
+      // assert (out_mem->is_MergeMem(), "sanity");
+      Node* mem = ac->in(TypeFunc::Memory);
+      merge_mem = MergeMemNode::make(mem);
+      transform_later(merge_mem);
+      Node* raw_mem = merge_mem->memory_at(Compile::AliasIdxRaw);
+      Node* st;
+      st = new IncrCntrAndStoreCopyArrayEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, src_offset, dest, dest_offset, length);
+      if (alloc != NULL) {
+        //  printf("1261: %p %s\n", ac->alloc_length(), ac->alloc_length()->node_name());
+        st->add_req(alloc->in(AllocateArrayNode::ALength));
+      }
+      transform_later(st);
+      merge_mem->set_memory_at(Compile::AliasIdxRaw, st);
     }
 
     const TypePtr* adr_type = _igvn.type(dest)->is_oopptr()->add_offset(Type::OffsetBot);
@@ -1335,6 +1359,24 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
 
       merge_mem = MergeMemNode::make(mem);
       transform_later(merge_mem);
+      if (ac->store_heap_event()) {
+        Node* jthread = new ThreadLocalNode();
+        transform_later(jthread);
+        Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());
+        const TypePtr* adr_type = C->get_adr_type(Compile::AliasIdxRaw);
+        // assert (out_mem->is_MergeMem(), "sanity");
+        // Node* mem = ac->in(TypeFunc::Memory);
+        // merge_mem = MergeMemNode::make(mem);
+        // transform_later(merge_mem);
+        Node* raw_mem = merge_mem->memory_at(Compile::AliasIdxRaw);
+        Node* st = new IncrCntrAndStoreCopyArrayEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, src_offset, dest, dest_offset, length);
+        if (alloc != NULL) {
+          //  printf("1261: %p %s\n", ac->alloc_length(), ac->alloc_length()->node_name());
+          st->add_req(alloc->in(AllocateArrayNode::ALength));
+        }
+        transform_later(st);
+        merge_mem->set_memory_at(Compile::AliasIdxRaw, st);
+      }
     }
 
     // Call StubRoutines::generic_arraycopy stub.
@@ -1397,6 +1439,10 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
     // transform_later(merge_mem);
     Node* raw_mem = merge_mem->memory_at(Compile::AliasIdxRaw);
     Node* st = new IncrCntrAndStoreCopyArrayEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, src_offset, dest, dest_offset, length);
+    if (alloc != NULL) {
+      //  printf("1261: %p %s\n", ac->alloc_length(), ac->alloc_length()->node_name());
+      st->add_req(alloc->in(AllocateArrayNode::ALength));
+    }
     transform_later(st);
     merge_mem->set_memory_at(Compile::AliasIdxRaw, st);
   }

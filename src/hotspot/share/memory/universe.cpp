@@ -346,6 +346,9 @@ class CheckGraph : public ObjectClosure {
               }
               num_src_not_correct++;
             }
+            if (oop_obj_node_pair->second.type() != Universe::NewObject) {
+              printf("Wrong obj type '%ld' instead of NewObject\n", oop_obj_node_pair->second.type());
+            }
           } else if (klass->id() == ObjArrayKlassID) {
             objArrayOop array = (objArrayOop)obj;
             if ((size_t)array->length() != oop_obj_node_pair->second.size()) {
@@ -353,6 +356,14 @@ class CheckGraph : public ObjectClosure {
                 printf("Array length mismatch for '%p': %d != %ld\n", (oopDesc*)obj, array->length(), oop_obj_node_pair->second.size());
               }
               num_src_not_correct++;
+
+              if (oop_obj_node_pair->second.type() != Universe::NewArray) {
+                printf("Wrong obj type '%ld' instead of ObjArrayKlass\n", oop_obj_node_pair->second.type());
+              }
+            }
+          } else if (klass->id() == TypeArrayKlassID) {
+            if (oop_obj_node_pair->second.type() != Universe::NewPrimitiveArray) {
+              printf("Wrong obj type '%ld' instead of NewPrimitiveArray\n", oop_obj_node_pair->second.type());
             }
           }
         } else {
@@ -984,7 +995,7 @@ void Universe::verify_heap_graph() {
       ((HeapEvent*)heap_events_start)[event_iter] = HeapEvent{0,0};
       HeapEventType heap_event_type = decode_heap_event_type(event);
       event = decode_heap_event(event);
-      
+      continue;
       if (heap_event_type == Universe::NewObject ||
           heap_event_type == Universe::NewArray ||
           heap_event_type == Universe::NewPrimitiveArray) {
@@ -1085,12 +1096,13 @@ void Universe::verify_heap_graph() {
             printf("1085: didn't find %p %p\n", (void*)obj_src, (void*)obj_dst);
         }
 
-        if (obj_dst_node_iter->second.type() != Universe::NewArray) {
-          printf("1089: Destination is not object array but is '%ld'\n", obj_dst_node_iter->second.type());
-        }
-
-        if (obj_src_node_iter->second.type() != Universe::NewArray) {
-          printf("1093: Source is not object array but is '%ld'\n", obj_src_node_iter->second.type());
+        if (obj_dst_node_iter->second.type() != Universe::NewArray || 
+            obj_src_node_iter->second.type() != Universe::NewArray) {
+          char buf[1024];
+          printf("Destination of class type '%s' is not object array but is '%ld' ", 
+                 get_oop_klass_name(obj_src_node_iter->first, buf), obj_dst_node_iter->second.type());
+          printf("Source of class type '%s' is not object array but is '%ld'\n", 
+                 get_oop_klass_name(obj_src_node_iter->first, buf), obj_src_node_iter->second.type());
         }
 
         if (obj_src != obj_dst || (obj_src == obj_dst && offsets.src >= offsets.dst)) {

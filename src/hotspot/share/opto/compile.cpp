@@ -362,7 +362,7 @@ void Compile::remove_useless_nodes(GrowableArray<Node*>& node_list, Unique_Node_
   for (int i = node_list.length() - 1; i >= 0; i--) {
     Node* n = node_list.at(i);
     if (!useful.member(n)) {
-      if (n->Opcode() != Op_SubTypeCheck)
+      if (n->Opcode() != Op_SubTypeCheck && n->Opcode() != Op_Allocate && n->Opcode() != Op_ArrayCopy && n->Opcode() != Op_CastII && n->Opcode() != Op_SqrtD)
         printf("364: %s\n", n->node_name());
       node_list.delete_at(i); // replaces i-th with last element which is known to be useful (already processed)
     }

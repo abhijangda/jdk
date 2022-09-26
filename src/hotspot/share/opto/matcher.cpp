@@ -2392,23 +2392,33 @@ void Matcher::find_shared_post_visit(Node* n, uint opcode) {
       break;
     }
     case Op_IncrCntrAndStoreCopyArrayEvent: {
-      Node* src_array = n->in(IncrCntrAndStoreCopyArrayEventNode::SrcArray);
-      Node* src_offset = n->in(IncrCntrAndStoreCopyArrayEventNode::SrcOffset);
-      Node* dst_array = n->in(IncrCntrAndStoreCopyArrayEventNode::DstArray);
-      Node* dst_offset = n->in(IncrCntrAndStoreCopyArrayEventNode::DstOffset);
-      Node* count = n->in(IncrCntrAndStoreCopyArrayEventNode::Count);
+      if (n->req() == IncrCntrAndStoreCopyArrayEventNode::Count + 1) {
+        Node* src_array = n->in(IncrCntrAndStoreCopyArrayEventNode::SrcArray);
+        Node* src_offset = n->in(IncrCntrAndStoreCopyArrayEventNode::SrcOffset);
+        Node* dst_array = n->in(IncrCntrAndStoreCopyArrayEventNode::DstArray);
+        Node* dst_offset = n->in(IncrCntrAndStoreCopyArrayEventNode::DstOffset);
+        Node* count = n->in(IncrCntrAndStoreCopyArrayEventNode::Count);
 
-      Node* pair1 = new BinaryNode(dst_offset, count);
-      Node* pair2 = new BinaryNode(dst_array, pair1);
-      Node* pair3 = new BinaryNode(src_offset, pair2);
-      Node* pair4 = new BinaryNode(src_array, pair3);
+        Node* pair1 = new BinaryNode(dst_offset, count);
+        Node* pair2 = new BinaryNode(dst_array, pair1);
+        Node* pair3 = new BinaryNode(src_offset, pair2);
+        Node* pair4 = new BinaryNode(src_array, pair3);
 
-      n->set_req(IncrCntrAndStoreCopyArrayEventNode::SrcArray, pair4);
+        n->set_req(IncrCntrAndStoreCopyArrayEventNode::SrcArray, pair4);
 
-      n->del_req(IncrCntrAndStoreCopyArrayEventNode::Count);
-      n->del_req(IncrCntrAndStoreCopyArrayEventNode::DstOffset);
-      n->del_req(IncrCntrAndStoreCopyArrayEventNode::DstArray);
-      n->del_req(IncrCntrAndStoreCopyArrayEventNode::SrcOffset);
+        n->del_req(IncrCntrAndStoreCopyArrayEventNode::Count);
+        n->del_req(IncrCntrAndStoreCopyArrayEventNode::DstOffset);
+        n->del_req(IncrCntrAndStoreCopyArrayEventNode::DstArray);
+        n->del_req(IncrCntrAndStoreCopyArrayEventNode::SrcOffset);
+      } else {
+        Node* pair = n->in(n->req() - 1);
+        for (int i = n->req() - 2; i >= 3; i--) {
+          pair = new BinaryNode(n->in(i), pair);
+
+          n->set_req(i, pair);
+          n->del_req(i+1);
+        }
+      }
 
       break;
     }

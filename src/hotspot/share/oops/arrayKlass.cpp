@@ -132,7 +132,11 @@ objArrayOop ArrayKlass::allocate_arrayArray(int n, int length, TRAPS) {
   objArrayOop o = (objArrayOop)Universe::heap()->array_allocate(ak, size, length,
                                                                 /* do_zero */ true, CHECK_NULL);
   // initialization to NULL not necessary, area already cleared
-  Universe::add_heap_event(Universe::NewArray, Universe::HeapEvent{(uint64_t)length, (uint64_t)(void*)o});
+  if (ak->is_typeArray_klass()) {
+    Universe::add_heap_event(Universe::NewPrimitiveArray, Universe::HeapEvent{(uint64_t)length, (uint64_t)(void*)o});
+  } else {
+    Universe::add_heap_event(Universe::NewArray, Universe::HeapEvent{(uint64_t)length, (uint64_t)(void*)o});
+  }
   return o;
 }
 

@@ -92,7 +92,7 @@ typeArrayOop TypeArrayKlass::allocate_common(int length, bool do_zero, TRAPS) {
   size_t size = typeArrayOopDesc::object_size(layout_helper(), length);
   typeArrayOop r = (typeArrayOop)Universe::heap()->array_allocate(this, size, length,
                                                         do_zero, CHECK_NULL);
-  Universe::add_heap_event(Universe::NewObject, Universe::HeapEvent{(uint64_t)length, (uint64_t)(void*)r});
+  Universe::add_heap_event(Universe::NewPrimitiveArray, Universe::HeapEvent{(uint64_t)length, (uint64_t)(void*)r});
   return r;
 }
 
@@ -101,7 +101,7 @@ oop TypeArrayKlass::multi_allocate(int rank, jint* last_size, TRAPS) {
   assert(rank == 1, "just checking");
   int length = *last_size;
   oop r = allocate(length, THREAD);
-  Universe::add_heap_event(Universe::NewObject, Universe::HeapEvent{(uint64_t)length, (uint64_t)(void*)r});
+  Universe::add_heap_event(Universe::NewPrimitiveArray, Universe::HeapEvent{(uint64_t)length, (uint64_t)(void*)r});
   return r;
 }
 

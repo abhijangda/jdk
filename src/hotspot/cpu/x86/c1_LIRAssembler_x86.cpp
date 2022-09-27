@@ -1812,6 +1812,7 @@ void LIR_Assembler::emit_alloc_array(LIR_OpAllocArray* op) {
                       len,
                       tmp1,
                       tmp2,
+                      op->type(),
                       arrayOopDesc::header_size(op->type()),
                       array_element_size(op->type()),
                       op->klass()->as_register(),

@@ -3507,8 +3507,14 @@ bool LibraryCallKit::inline_unsafe_newArray(bool uninitialized) {
     // It could be a dynamic mix of int[], boolean[], Object[], etc.
     Node* obj = new_array(klass_node, count_val, 0);  // no arguments to push
     if (InstrumentHeapEvents) {
-      append_heap_event(Universe::NewArray, obj, count_val);
-      //TODO: What if klass_node is not a object? Generate reflection code?
+      const TypeKlassPtr* tk = _gvn.type(klass_node)->is_klassptr();
+      if (tk->klass()->is_type_array_klass()) {
+        append_heap_event(Universe::NewPrimitiveArray, obj, count_val);
+      } else if (tk->klass()->is_obj_array_klass()) {
+        append_heap_event(Universe::NewArray, obj, count_val);
+      } else {
+        printf("3695\n");
+      }
     }
     result_reg->init_req(_normal_path, control());
     result_val->init_req(_normal_path, obj);
@@ -4349,10 +4355,16 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
             // append_copy_array(alloc_obj, obj, intcon(0), intcon(0), obj_length);
           }
         } else {
+          printf("4352\n");
           append_heap_event(Universe::NewArray, alloc_obj, obj_length);
         }
       } else {
-        append_heap_event(Universe::NewArray, alloc_obj, obj_length);
+        //Above condition is always true for Object
+        const TypeKlassPtr* tk = _gvn.type(obj_klass)->is_klassptr();
+        if (tk->klass()->is_obj_array_klass()) 
+          append_heap_event(Universe::NewArray, alloc_obj, obj_length);
+        else
+          append_heap_event(Universe::NewPrimitiveArray, alloc_obj, obj_length);
       }
       // Otherwise, there are no barriers to worry about.
       // (We can dispense with card marks if we know the allocation
@@ -5085,7 +5097,7 @@ bool LibraryCallKit::inline_multiplyToLen() {
        Node * narr = new_array(klass_node, zlen, 1);
        if (InstrumentHeapEvents) {
          //Always an integer.
-         append_heap_event(Universe::NewArray, narr, zlen);
+         append_heap_event(Universe::NewPrimitiveArray, narr, zlen);
        }
        // Update IdealKit memory and control from graphKit.
        __ sync_kit(this);

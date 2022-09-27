@@ -362,7 +362,7 @@ class MacroAssembler: public Assembler {
                           Register tmp1, bool preserve_tmp1, 
                           Register tmp2, bool preserve_tmp2,
                           bool preserve_flags = false);
-  void append_newarray_event(Register obj, RegisterOrConstant size, 
+  void append_newarray_event(Universe::HeapEventType arraytype, Register obj, RegisterOrConstant size, 
                              Register tmp1, bool preserve_tmp1, 
                              Register tmp2, bool preserve_tmp2,
                              bool preserve_flags = false);

@@ -363,7 +363,9 @@ class CheckGraph : public ObjectClosure {
             }
           } else if (klass->id() == TypeArrayKlassID) {
             if (oop_obj_node_pair->second.type() != Universe::NewPrimitiveArray) {
-              printf("Wrong obj type '%ld' instead of NewPrimitiveArray\n", oop_obj_node_pair->second.type());
+              char buf[1024];
+              get_oop_klass_name(obj, buf);
+              printf("Wrong obj type '%ld' instead of NewPrimitiveArray '%s'\n", oop_obj_node_pair->second.type(), buf);
             }
           }
         } else {
@@ -970,7 +972,7 @@ void Universe::verify_heap_graph() {
           // printf("858: Replacing %p ('%s') from old size %ld event %ld to new size %ld event %ld event_iter %ld\n", obj, class_name, obj_src_node_iter->second.size(), obj_src_node_iter->second.type(), event2.src, heap_event_type, event_iter);
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
         }
-
+        
         ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
       }
@@ -995,7 +997,7 @@ void Universe::verify_heap_graph() {
       ((HeapEvent*)heap_events_start)[event_iter] = HeapEvent{0,0};
       HeapEventType heap_event_type = decode_heap_event_type(event);
       event = decode_heap_event(event);
-      continue;
+      
       if (heap_event_type == Universe::NewObject ||
           heap_event_type == Universe::NewArray ||
           heap_event_type == Universe::NewPrimitiveArray) {
@@ -1099,10 +1101,10 @@ void Universe::verify_heap_graph() {
         if (obj_dst_node_iter->second.type() != Universe::NewArray || 
             obj_src_node_iter->second.type() != Universe::NewArray) {
           char buf[1024];
-          printf("Destination of class type '%s' is not object array but is '%ld' ", 
-                 get_oop_klass_name(obj_src_node_iter->first, buf), obj_dst_node_iter->second.type());
-          printf("Source of class type '%s' is not object array but is '%ld'\n", 
-                 get_oop_klass_name(obj_src_node_iter->first, buf), obj_src_node_iter->second.type());
+          // printf("Destination of class type '%s' is not object array but is '%ld' ", 
+          //        get_oop_klass_name(obj_src_node_iter->first, buf), obj_dst_node_iter->second.type());
+          // printf("Source of class type '%s' is not object array but is '%ld'\n", 
+          //        get_oop_klass_name(obj_src_node_iter->first, buf), obj_src_node_iter->second.type());
         }
 
         if (obj_src != obj_dst || (obj_src == obj_dst && offsets.src >= offsets.dst)) {
@@ -1194,7 +1196,7 @@ void Universe::verify_heap_graph() {
     }
   }
   printf("event_threads.size() %ld\n", event_threads.size());
-  CheckGraph check_graph(true, true, true, true);
+  CheckGraph check_graph(true, false, false, false);
   if (not CheckHeapEventGraphOnlyBeforeExit || Universe::is_verify_from_exit) {
     Universe::heap()->object_iterate(&check_graph);
   } else {

@@ -674,7 +674,7 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
     if (obj->klass()->id() == ObjArrayKlassID)
       Universe::add_heap_event(Universe::NewArray, Universe::HeapEvent{event_size, (uint64_t)(void*) new_obj_oop});
     else
-      Universe::add_heap_event(Universe::NewObject, Universe::HeapEvent{event_size, (uint64_t)(void*) new_obj_oop});  
+      Universe::add_heap_event(Universe::NewPrimitiveArray, Universe::HeapEvent{event_size, (uint64_t)(void*) new_obj_oop});  
   } else {
     new_obj_oop = Universe::heap()->obj_allocate(klass, size, CHECK_NULL);
     event_size = size;

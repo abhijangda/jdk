@@ -1246,7 +1246,7 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   
   // if (copy_type == T_OBJECT) {
   if (ac->is_clonebasic()) {
-    if (ac->store_heap_event()) {
+    if (ac->store_heap_event() && false) {
       Node* jthread = new ThreadLocalNode();
       transform_later(jthread);
       Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());
@@ -1282,7 +1282,7 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
       assert(alloc != NULL, "expect alloc");
     }
 
-    if (ac->store_heap_event()) {
+    if (ac->store_heap_event()  && false) {
       Node* jthread = new ThreadLocalNode();
       transform_later(jthread);
       Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());
@@ -1359,7 +1359,7 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
 
       merge_mem = MergeMemNode::make(mem);
       transform_later(merge_mem);
-      if (ac->store_heap_event()) {
+      if (ac->store_heap_event() && false) {
         Node* jthread = new ThreadLocalNode();
         transform_later(jthread);
         Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());
@@ -1428,7 +1428,7 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
     transform_later(merge_mem);
   }
 
-  if (ac->store_heap_event()) {
+  if (ac->store_heap_event() && false) {
     Node* jthread = new ThreadLocalNode();
     transform_later(jthread);
     Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)JavaThread::heap_events_offset());

@@ -243,7 +243,7 @@ void C1_MacroAssembler::initialize_object(Register obj, Register klass, Register
   verify_oop(obj);
 }
 
-void C1_MacroAssembler::allocate_array(Register obj, Register len, Register t1, Register t2, int header_size, Address::ScaleFactor f, Register klass, Label& slow_case) {
+void C1_MacroAssembler::allocate_array(Register obj, Register len, Register t1, Register t2, BasicType bt, int header_size, Address::ScaleFactor f, Register klass, Label& slow_case) {
   assert(obj == rax, "obj must be in rax, for cmpxchg");
   assert_different_registers(obj, len, t1, t2, klass);
 
@@ -264,7 +264,10 @@ void C1_MacroAssembler::allocate_array(Register obj, Register len, Register t1, 
   initialize_header(obj, klass, len, t1, t2);
   if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
     // printf("t1 %s t2 %s len %s obj %s\n", t1->name(), t2->name(), len->name(), obj->name());
-    append_newarray_event(obj, len, rscratch2, false, rscratch1, false, false);
+    if (bt == T_OBJECT)
+      append_newarray_event(Universe::NewArray, obj, len, rscratch2, false, rscratch1, false, false);
+    else
+      append_newarray_event(Universe::NewPrimitiveArray, obj, len, rscratch2, false, rscratch1, false, false);
   }
   // clear rest of allocated space
   const Register len_zero = len;

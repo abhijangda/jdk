@@ -1209,7 +1209,7 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
   
   if (!C2InstrumentHeapEvents) 
     return;
-  // return;
+  
   bool C2HeapEventLock = true;
   bool is_unsafe = true;
   Node* jthread = _gvn.transform(new ThreadLocalNode());

@@ -1101,10 +1101,10 @@ void Universe::verify_heap_graph() {
         if (obj_dst_node_iter->second.type() != Universe::NewArray || 
             obj_src_node_iter->second.type() != Universe::NewArray) {
           char buf[1024];
-          // printf("Destination of class type '%s' is not object array but is '%ld' ", 
-          //        get_oop_klass_name(obj_src_node_iter->first, buf), obj_dst_node_iter->second.type());
-          // printf("Source of class type '%s' is not object array but is '%ld'\n", 
-          //        get_oop_klass_name(obj_src_node_iter->first, buf), obj_src_node_iter->second.type());
+          printf("Destination of class type '%s' is not object array but is '%ld' ", 
+                 get_oop_klass_name(obj_src_node_iter->first, buf), obj_dst_node_iter->second.type());
+          printf("Source of class type '%s' is not object array but is '%ld'\n", 
+                 get_oop_klass_name(obj_src_node_iter->first, buf), obj_src_node_iter->second.type());
         }
 
         if (obj_src != obj_dst || (obj_src == obj_dst && offsets.src >= offsets.dst)) {

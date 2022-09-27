@@ -718,7 +718,7 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* si
   
   if (InstrumentHeapEvents) {
     if (is_array) {
-      kit->append_copy_array(dst_base, src_base, offset, offset, payload_size);
+      // kit->append_copy_array(dst_base, src_base, offset, offset, payload_size);
     } else {
       kit->append_heap_event(Universe::CopyObject, dst_base, src_base);
     }

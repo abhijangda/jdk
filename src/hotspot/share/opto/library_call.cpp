@@ -3508,12 +3508,11 @@ bool LibraryCallKit::inline_unsafe_newArray(bool uninitialized) {
     Node* obj = new_array(klass_node, count_val, 0);  // no arguments to push
     if (InstrumentHeapEvents) {
       const TypeKlassPtr* tk = _gvn.type(klass_node)->is_klassptr();
-      if (tk->klass()->is_type_array_klass()) {
-        append_heap_event(Universe::NewPrimitiveArray, obj, count_val);
-      } else if (tk->klass()->is_obj_array_klass()) {
+      if (tk->klass()->is_obj_array_klass()) {
         append_heap_event(Universe::NewArray, obj, count_val);
       } else {
-        printf("3695\n");
+      // if (tk->klass()->is_type_array_klass()) {
+        append_heap_event(Universe::NewPrimitiveArray, obj, count_val);
       }
     }
     result_reg->init_req(_normal_path, control());

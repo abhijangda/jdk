@@ -630,12 +630,12 @@ public:
 // Phase for fusing several heap events into a single.
 class PhaseFuseHeapEvents : public PhaseTransform {
   Unique_Node_List* _worklist;       // Iterative worklist
-  PhaseGVN* _igvn;
+  PhaseIterGVN* _igvn;
   // Recursive traversal of program.  Pure function is unused in this phase
   virtual Node *transform( Node *n );
 
 public:
-  PhaseFuseHeapEvents(PhaseGVN* igvn, Unique_Node_List* worklist);
+  PhaseFuseHeapEvents(PhaseIterGVN* igvn);
   NOT_PRODUCT( ~PhaseFuseHeapEvents(); )
 
   // Do any transformation after analysis

@@ -745,12 +745,6 @@ Compile::Compile( ciEnv* ci_env, ciMethod* target, int osr_bci,
 
     print_method(PHASE_BEFORE_REMOVEUSELESS, 3);
 
-    if(InstrumentHeapEvents && C2InstrumentHeapEvents && C2FuseStoreHeapEvents) {
-      // TracePhase tp("peephole", &timers[_t_peephole]);
-      PhaseFuseHeapEvents p(initial_gvn(), &for_igvn);
-      p.do_transform();
-    }
-
     // Remove clutter produced by parsing.
     if (!failing()) {
       ResourceMark rm;
@@ -2256,6 +2250,14 @@ void Compile::Optimize() {
   }
 
   if (failing())  return;
+
+  {
+    if(InstrumentHeapEvents && C2InstrumentHeapEvents && C2FuseStoreHeapEvents) {
+      // TracePhase tp("peephole", &timers[_t_peephole]);
+      PhaseFuseHeapEvents p(&igvn);
+      p.do_transform();
+    }
+  }
 
   C->clear_major_progress(); // ensure that major progress is now clear
 

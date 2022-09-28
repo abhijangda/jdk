@@ -2667,26 +2667,26 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     if (((StoreHeapEventNode*)this)->event_type() == Universe::None) {
       // printf("Change StoreHeapEvent with None event type %d to StoreP\n", this->_idx);
       Node* ret =  ((StoreHeapEventNode*)this)->to_storep(*phase);
-      // printf("event_type() %ld %p %d ==> %p %d %s\n", ((StoreHeapEventNode*)this)->event_type(), this, _idx, ret, ret->_idx, ret->node_name());
+      printf("event_type() %ld %p %d ==> %p %d %s\n", ((StoreHeapEventNode*)this)->event_type(), this, _idx, ret, ret->_idx, ret->node_name());
       return ret;
     }
     
-    // Back-to-back stores to same address? First, if both are a StoreHeapEvent
+    // Back-to-back stores to same address? If both are a StoreHeapEvent
     // then set it to none event type and record the event for a later IGVN phase
     
     Node* mem = in(MemNode::Memory);
 
-    if (mem->Opcode() == Op_StoreHeapEvent && mem->outcnt() == 1 && Opcode() == Op_StoreHeapEvent && mem->in(MemNode::Address)->_idx == in(MemNode::Address)->_idx) {
-      printf("Back to back StoreHeapEvent %d %d\n", mem->_idx, mem->outcnt());
-      // char buf[1024];
-      // phase->C->method_name(buf);
-      // printf("%s\n", buf);
-      // mem->dump(0);
-      // dump(0);
-      ((StoreHeapEventNode*)mem)->set_none_event_type();
-      phase->C->record_for_igvn(mem);
-      return NULL;
-    }
+    // if (mem->Opcode() == Op_StoreHeapEvent && mem->outcnt() == 1 && Opcode() == Op_StoreHeapEvent && mem->in(MemNode::Address)->_idx == in(MemNode::Address)->_idx) {
+    //   printf("Back to back StoreHeapEvent %d %d\n", mem->_idx, mem->outcnt());
+    //   // char buf[1024];
+    //   // phase->C->method_name(buf);
+    //   // printf("%s\n", buf);
+    //   // mem->dump(0);
+    //   // dump(0);
+    //   ((StoreHeapEventNode*)mem)->set_none_event_type();
+    //   phase->C->record_for_igvn(mem);
+    //   return NULL;
+    // }
   } 
 
   if (this->Opcode() != Op_StoreHeapEvent) {
@@ -2698,7 +2698,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   Node* address = in(MemNode::Address);
   Node* value   = in(MemNode::ValueIn);
     
-  if (this->Opcode() != Op_StoreHeapEvent) {
+  if (true || this->Opcode() != Op_StoreHeapEvent) {
     // Back-to-back stores to same address? Fold em up.  Generally
     // unsafe if I have intervening uses...  Also disallowed for StoreCM
     // since they must follow each StoreP operation.  Redundant StoreCMs

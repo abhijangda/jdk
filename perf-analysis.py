@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-num_runs = 4
+num_runs = 5
 
 base_jvm_path = "java"
 build = "release"

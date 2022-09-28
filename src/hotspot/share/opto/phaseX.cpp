@@ -2117,8 +2117,8 @@ void PhasePeephole::print_statistics() {
 // uint PhasePeephole::_total_peepholes = 0;
 // #endif
 //------------------------------PhasePeephole----------------------------------
-PhaseFuseHeapEvents::PhaseFuseHeapEvents(PhaseGVN* igvn, Unique_Node_List* worklist)
-  : PhaseTransform(FuseHeapEvents), _worklist(worklist), _igvn(igvn) {
+PhaseFuseHeapEvents::PhaseFuseHeapEvents(PhaseIterGVN* igvn)
+  : PhaseTransform(FuseHeapEvents), _igvn(igvn) {
   
 }
 
@@ -2242,8 +2242,13 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
       }
       visited.clear();
       fuse_with->fuse(candidate);
-      candidate->set_none_event_type();
-      C->record_for_igvn(candidate);
+      // candidate->set_none_event_type();
+      Node* storep = candidate->to_storep(*_igvn);
+      // candidate->replace_by(storep);
+      // _igvn->
+      // C->record_for_igvn(candidate);
+      _igvn->register_new_node_with_optimizer(storep, candidate);
+      // _igvn.register_new_node_with_optimizer(fuse);
 
       if (PrintC2FuseStoreHeapEvents)
         printf("Fusing %p(%d) with %p(%d) ctrl %s %d\n", candidate, candidate->_idx, fuse_with, fuse_with->_idx, iter.first->node_name(), iter.first->_idx);
@@ -2262,7 +2267,13 @@ void PhaseFuseHeapEvents::do_transform() {
     return;
   assert( C->top(),  "missing TOP node" );
   assert( C->root(), "missing root" );
+  _igvn->set_delay_transform(true);
   transform(C->root());
+
+  _igvn->set_delay_transform(false);
+  _igvn->optimize();
+  if (C->failing())  return;
+  _igvn->set_delay_transform(false);
 }
 
 // //------------------------------print_statistics-------------------------------

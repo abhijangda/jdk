@@ -6917,8 +6917,10 @@ instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, ve
   format %{ "movq    $field, $val\t# long" %}
   ins_encode %{
     __ movq($field$$Address, $val$$constant);
-    if (event_type() == Universe::None)
+    if (event_type() == Universe::None) {
+      printf("6921: None event\n");
       return;
+    }
     if (!C2InstrumentHeapEvents) return;
     __ gen_lock_heap_event_mutex();
     Register cntr_addr_reg = $cntr_addr$$Register;
@@ -6980,6 +6982,7 @@ instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, vec
     __ movq($field$$Address, $val$$Register);
     
     if (event_type() == Universe::None) {
+      printf("6985: None event\n");
       return;
     }
     

@@ -1340,7 +1340,22 @@ void PhaseMacroExpand::expand_allocate_common(
       Node* fast_oop = bs->obj_allocate(this, mem, toobig_false, size_in_bytes, length, i_o, needgc_ctrl,
                                         fast_oop_ctrl, fast_oop_rawmem,
                                         prefetch_lines);
-      
+      if (InstrumentHeapEvents && C2InstrumentHeapEvents && length == NULL) {
+        Node* jthread = new ThreadLocalNode();
+        transform_later(jthread);
+        Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)(JavaThread::heap_events_offset()));
+        int adr_idx = Compile::AliasIdxRaw;
+        const TypePtr* adr_type = C->get_adr_type(adr_idx);
+        fast_oop_rawmem = MergeMemNode::make(fast_oop_rawmem);
+        transform_later(fast_oop_rawmem);
+        // Node *mem = memory(adr_idx);
+        Node *st1;
+        
+        st1 = new IncrCntrAndStoreHeapEventNode(fast_oop_ctrl, fast_oop_rawmem->as_MergeMem()->memory_at(Compile::AliasIdxRaw), node_cntr_addr, adr_type, size_in_bytes, fast_oop, Universe::NewObject);
+        
+        transform_later(st1);
+        fast_oop_rawmem->as_MergeMem()->set_memory_at(adr_idx, st1);
+      }
       if (initial_slow_test != NULL) {
         // This completes all paths into the slow merge point
         slow_region->init_req(need_gc_path, needgc_ctrl);

@@ -958,11 +958,12 @@ void Universe::verify_heap_graph() {
 
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
-      HeapEventType heap_event_type = decode_heap_event_type(event);      
+      HeapEventType heap_event_type = decode_heap_event_type(event);
+      HeapEvent event2 = decode_heap_event(event);
       if (heap_event_type == Universe::NewObject || 
           heap_event_type == Universe::NewArray || 
           heap_event_type == Universe::NewPrimitiveArray) {
-        HeapEvent event2 = decode_heap_event(event);
+        
         oopDesc* obj = (oopDesc*)event2.dst;
         
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);

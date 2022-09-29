@@ -3292,7 +3292,7 @@ void LIR_Assembler::emit_arraycopy(LIR_OpArrayCopy* op) {
   int flags = op->flags();
   BasicType basic_type = default_type != NULL ? default_type->element_type()->basic_type() : T_ILLEGAL;
   if (is_reference_type(basic_type)) basic_type = T_OBJECT;
-  if (is_reference_type(basic_type) && InstrumentHeapEvents && C1InstrumentHeapEvents) {
+  if ((is_reference_type(basic_type) || basic_type == T_ILLEGAL) && InstrumentHeapEvents && C1InstrumentHeapEvents) {
     Address __mem = Address(r15_thread, (int)JavaThread::heap_events_offset());
     Register cntr_reg = rscratch1;
 

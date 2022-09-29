@@ -365,7 +365,7 @@ class CheckGraph : public ObjectClosure {
             if (oop_obj_node_pair->second.type() != Universe::NewPrimitiveArray) {
               char buf[1024];
               get_oop_klass_name(obj, buf);
-              printf("Wrong obj type '%ld' instead of NewPrimitiveArray '%s'\n", oop_obj_node_pair->second.type(), buf);
+              // printf("Wrong obj type '%ld' instead of NewPrimitiveArray '%s'\n", oop_obj_node_pair->second.type(), buf);
             }
           }
         } else {
@@ -1197,7 +1197,7 @@ void Universe::verify_heap_graph() {
     }
   }
   printf("event_threads.size() %ld\n", event_threads.size());
-  CheckGraph check_graph(true, false, false, false);
+  CheckGraph check_graph(true, true, true, true);
   if (not CheckHeapEventGraphOnlyBeforeExit || Universe::is_verify_from_exit) {
     Universe::heap()->object_iterate(&check_graph);
   } else {

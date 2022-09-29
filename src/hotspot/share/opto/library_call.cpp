@@ -3507,12 +3507,21 @@ bool LibraryCallKit::inline_unsafe_newArray(bool uninitialized) {
     // It could be a dynamic mix of int[], boolean[], Object[], etc.
     Node* obj = new_array(klass_node, count_val, 0);  // no arguments to push
     if (InstrumentHeapEvents) {
-      const TypeKlassPtr* tk = _gvn.type(klass_node)->is_klassptr();
-      if (tk->klass()->is_obj_array_klass()) {
-        append_heap_event(Universe::NewArray, obj, count_val);
+      jint  layout_con = Klass::_lh_neutral_value;
+      Node* layout_val = get_layout_helper(klass_node, layout_con);
+      int   layout_is_con = (layout_val == NULL);
+
+      if (layout_is_con) {
+        const TypeKlassPtr* tk = _gvn.type(klass_node)->isa_klassptr();
+        if (tk->klass()->is_obj_array_klass()) {
+          append_heap_event(Universe::NewArray, obj, count_val);
+        } else {
+        // // if (tk->klass()->is_type_array_klass()) {
+          append_heap_event(Universe::NewPrimitiveArray, obj, count_val);
+        }
       } else {
-      // if (tk->klass()->is_type_array_klass()) {
-        append_heap_event(Universe::NewPrimitiveArray, obj, count_val);
+        printf("3523\n");
+        append_heap_event(Universe::NewArray, obj, count_val);
       }
     }
     result_reg->init_req(_normal_path, control());

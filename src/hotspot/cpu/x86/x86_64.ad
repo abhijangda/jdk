@@ -7042,6 +7042,85 @@ instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, vec
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
+instruct storeHeapEventFieldSetAndNewObj(memory field1, any_RegP val1, any_RegP obj, rRegL size, rRegL cntr_addr, vecXReg tmp_vec1)
+%{
+  match(Set field1 (StoreHeapEvent field1 (Binary val1 (Binary obj size))));
+  effect(TEMP cntr_addr, TEMP tmp_vec1);
+
+  //TODO: Specialize for constant vals
+  ins_cost(125); // XXX
+  format %{ "movq    $field1, $val1\t# long" %}
+  ins_encode %{
+    __ movq($field1$$Address, $val1$$Register);
+    //__ movq($field2$$Address, $val2$$Register);
+
+    if (!C2InstrumentHeapEvents) return;
+    __ gen_lock_heap_event_mutex();
+
+    Register cntr_addr_reg = $cntr_addr$$Register;
+    Register cntr_reg = cntr_addr_reg;
+    
+    __ shrq($size$$Register, 3);
+    __ movq($tmp_vec1$$XMMRegister, $size$$Register);
+    __ shlq($size$$Register, 3);
+    __ shlq($obj$$Register, 15);
+    if (fuse_event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(fuse_event_type(), 0);
+      __ orq($obj$$Register, (int32_t)encoded);
+    }
+    __ pinsrq($tmp_vec1$$XMMRegister, $obj$$Register, 1);
+    __ shrq($obj$$Register, 15);
+
+    Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
+    
+    __ movq(cntr_reg, __mem);
+    __ leaq(cntr_reg, Address(cntr_reg, 1));
+    __ movq(__mem, cntr_reg);
+    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
+
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
+
+    __ movdqa(__mem, $tmp_vec1$$XMMRegister);
+
+    __ movq($tmp_vec1$$XMMRegister, $val1$$Register);
+    __ leaq(cntr_addr_reg, $field1$$Address);
+    __ shlq(cntr_addr_reg, 15);
+    if (event_type() != 0) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+      __ orq(cntr_addr_reg, (int32_t)encoded);
+    }
+    __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
+
+    __mem = Address(r15_thread, JavaThread::heap_events_offset());
+    
+    __ movq(cntr_reg, __mem);
+    __ leaq(cntr_reg, Address(cntr_reg, 1));
+    __ movq(__mem, cntr_reg);
+    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
+
+    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
+
+    __ movdqa(__mem, $tmp_vec1$$XMMRegister);
+    if (!UseMprotectForHeapGraphCheck) {
+      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
+      __ subq(cntr_reg, maxval);
+      Label not_equal;
+      __ jcc(Assembler::Condition::less, not_equal);
+      __ pushaq();
+      if (CheckHeapEventGraphWithHeap) {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+      }  else {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+      }
+      __ popaq();
+      //__ movq($mem$$Address, 0);
+      __ bind(not_equal);
+    }
+    __ gen_unlock_heap_event_mutex();
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
 instruct storeHeapEventFieldSetTwo(memory field1, any_RegP val1, memory field2, any_RegP val2, rRegL cntr_addr, vecXReg tmp_vec1)
 %{
   match(Set field1 (StoreHeapEvent field1 (Binary val1 (Binary field2 val2))));

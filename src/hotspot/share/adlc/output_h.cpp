@@ -1542,6 +1542,7 @@ void ArchDesc::declareClasses(FILE *fp) {
     }
     if(strstr(instr->_ident, "storeHeapEvent") || strstr(instr->_ident, "incrCntrAndStoreHeapEvent")) {
       fprintf(fp,"  Universe::HeapEventType _event_type;\n");
+      fprintf(fp,"  Universe::HeapEventType _fuse_event_type;\n");
     }
     if ( instr->is_ideal_jump() ) {
       fprintf(fp, "  GrowableArray<Label*> _index2label;\n");
@@ -1553,8 +1554,10 @@ void ArchDesc::declareClasses(FILE *fp) {
       fprintf(fp,"  void set_max_val(uint64_t n){_max_val = n;}\n");
     } 
     if(strstr(instr->_ident, "storeHeapEvent") || strstr(instr->_ident, "incrCntrAndStoreHeapEvent")) {
-      fprintf(fp,"  Universe::HeapEventType event_type () const {return _event_type;}\n");
+      fprintf(fp,"  Universe::HeapEventType event_type() const {return _event_type;}\n");
       fprintf(fp,"  void set_event_type(Universe::HeapEventType n){_event_type = n;}\n");
+      fprintf(fp,"  Universe::HeapEventType fuse_event_type() const {return _fuse_event_type;}\n");
+      fprintf(fp,"  void set_fuse_event_type(Universe::HeapEventType n){_fuse_event_type = n;}\n");
     }
 
     Attribute *att = instr->_attribs;

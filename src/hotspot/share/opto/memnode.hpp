@@ -822,6 +822,7 @@ protected:
   virtual uint hash() const { return StoreNode::hash(); }
   virtual uint size_of() const {return sizeof(*this);}
   Universe::HeapEventType _event_type;
+  Universe::HeapEventType _fused_events[1];
 public:
   enum { Control,               // When is it safe to do this load?
          Memory,                // Chunk of memory is being loaded from
@@ -839,12 +840,16 @@ public:
   }
   void set_none_event_type() {_event_type = Universe::None;}
   void fuse(StoreHeapEventNode* node) {
+    _fused_events[0] = Universe::FieldSet; 
     add_req(node->in(Address)); add_req(node->in(ValueIn));
   }
+  void fuse(AllocateNode* node, PhaseIterGVN* igvn);
   virtual int Opcode() const;
   virtual BasicType memory_type() const { return T_ADDRESS; }
   Universe::HeapEventType event_type() {return _event_type;}
   void set_event_type(Universe::HeapEventType t) {_event_type = t;}
+  Universe::HeapEventType fuse_event_type() {return _fused_events[0];}
+  void set_fuse_event_type(Universe::HeapEventType t) {_fused_events[0] = t;}
   StorePNode* to_storep(PhaseGVN& gvn);
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const {

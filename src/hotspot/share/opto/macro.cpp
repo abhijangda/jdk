@@ -1340,7 +1340,7 @@ void PhaseMacroExpand::expand_allocate_common(
       Node* fast_oop = bs->obj_allocate(this, mem, toobig_false, size_in_bytes, length, i_o, needgc_ctrl,
                                         fast_oop_ctrl, fast_oop_rawmem,
                                         prefetch_lines);
-      if (InstrumentHeapEvents && C2InstrumentHeapEvents && length == NULL) {
+      if (InstrumentHeapEvents && C2InstrumentHeapEvents && length == NULL && !alloc->added_heap_event()) {
         Node* jthread = new ThreadLocalNode();
         transform_later(jthread);
         Node* node_cntr_addr = basic_plus_adr(top(), jthread, (int)(JavaThread::heap_events_offset()));

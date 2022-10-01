@@ -1370,6 +1370,16 @@ Node* StoreNode::convert_to_reinterpret_store(PhaseGVN& gvn, Node* val, const Ty
   return st;
 }
 
+void StoreHeapEventNode::fuse(AllocateNode* node, PhaseIterGVN* igvn) {
+  _fused_events[0] = Universe::NewObject; 
+  add_req(node->output_obj());
+  // if (igvn->type(node->in(AllocateNode::AllocSize))->isa_int()) {
+  //   add_req(igvn->transform(new ConvI2LNode(node->in(AllocateNode::AllocSize))));
+  // } else {
+    add_req(node->in(AllocateNode::AllocSize));
+  // }
+}
+
 // We're loading from an object which has autobox behaviour.
 // If this object is result of a valueOf call we'll have a phi
 // merging a newly allocated object and a load from the cache.
@@ -2698,7 +2708,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   Node* address = in(MemNode::Address);
   Node* value   = in(MemNode::ValueIn);
     
-  if (this->Opcode() != Op_StoreHeapEvent) {
+  if (true || this->Opcode() != Op_StoreHeapEvent) {
     // Back-to-back stores to same address? Fold em up.  Generally
     // unsafe if I have intervening uses...  Also disallowed for StoreCM
     // since they must follow each StoreP operation.  Redundant StoreCMs
@@ -2716,6 +2726,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       assert(st != st->in(MemNode::Memory), "dead loop in StoreNode::Ideal");
       assert(Opcode() == st->Opcode() ||
               (Opcode() == Op_StoreP && st->Opcode() == Op_StoreHeapEvent) ||
+              (Opcode() == Op_StoreHeapEvent && st->Opcode() == Op_StoreP) ||
               st->Opcode() == Op_StoreVector ||
               Opcode() == Op_StoreVector ||
               st->Opcode() == Op_StoreVectorScatter ||
@@ -2741,9 +2752,25 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     }
   }
 
-  // Capture an unaliased, unconditional, simple store into an initializer.
-  // Or, if it is independent of the allocation, hoist it above the allocation.
-  if (this->Opcode() != Op_StoreHeapEvent) {
+  if (C2FuseFieldSetWithNewObjectEvent && Opcode() == Op_StoreHeapEvent && req() <= 4) {
+    if (mem->is_Proj() && mem->in(0)->is_Initialize()) {
+      InitializeNode* init = mem->in(0)->as_Initialize();
+      AllocateNode* alloc = init->allocation();
+      if (alloc->Opcode() == Op_Allocate && !alloc->added_heap_event() && 
+          init->can_capture_store(this, phase, can_reshape)) {
+        ((StoreHeapEventNode*)this)->fuse(alloc, NULL);
+        alloc->set_added_heap_event(true);
+        if (phase->is_IterGVN()) {
+          phase->is_IterGVN()->rehash_node_delayed(this);
+        }
+        if (PrintC2FuseStoreHeapEvents)
+          printf("Fusing NewObject %d with FieldSet %d\n", alloc->_idx, this->_idx);
+        return this;
+      }
+    }
+  } else {
+    // Capture an unaliased, unconditional, simple store into an initializer.
+    // Or, if it is independent of the allocation, hoist it above the allocation.
     // Cannnot do this with StoreHeapEvent because otherwise a
     // IncrCntrAndStoreHeapEvent needs to be generated which will be more inefficient
     if (ReduceFieldZeroing && /*can_reshape &&*/

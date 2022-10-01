@@ -2146,7 +2146,8 @@ void topological_sort(Node_List& visited, Node* n, PhaseGVN* igvn, CommonControl
     }
   }
   
-  if (n->Opcode() == Op_StoreHeapEvent && ((StoreHeapEventNode*)n)->event_type() != Universe::None) {
+  if (n->Opcode() == Op_StoreHeapEvent && ((StoreHeapEventNode*)n)->event_type() != Universe::None &&
+      n->req() <= 4) {
     if (nodes_to_fuse.find(n->in(MemNode::Control)) == nodes_to_fuse.end()) {
       nodes_to_fuse.insert(std::make_pair(n->in(MemNode::Control), Universe::vector<StoreHeapEventNode*>()));
     }
@@ -2220,6 +2221,7 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
   debug_only(int num_nodes_fused = 0;)
   visited.clear();
 
+  //Fuse multiple fieldset store heap event
   for (auto iter : nodes_to_fuse) {
     StoreHeapEventNode* fuse_with = NULL;
     
@@ -2240,22 +2242,34 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
       if (is_reachable(trstack, visited, candidate, fuse_with, fuse_with->in(MemNode::Control))) {
         continue;
       }
+
+      if (C->have_alias_type(candidate->adr_type())) {
+        Compile::AliasType* atp = C->alias_type(candidate->adr_type());
+        if (atp != NULL && atp->field()) {
+          if(strcmp(atp->field()->name()->as_utf8(), "start") == 0 || 
+             strcmp(atp->field()->name()->as_utf8(), "stop") == 0) {
+            candidate->dump();
+            fuse_with->dump();
+            //FIXME: ...
+            continue;
+          }
+        }
+      }
+      
       visited.clear();
       fuse_with->fuse(candidate);
-      // candidate->set_none_event_type();
       Node* storep = candidate->to_storep(*_igvn);
-      // candidate->replace_by(storep);
-      // _igvn->
-      // C->record_for_igvn(candidate);
       _igvn->register_new_node_with_optimizer(storep, candidate);
-      // _igvn.register_new_node_with_optimizer(fuse);
-
-      if (PrintC2FuseStoreHeapEvents)
+      _igvn->record_for_igvn(fuse_with);
+      if (PrintC2FuseStoreHeapEvents) {
         printf("Fusing %p(%d) with %p(%d) ctrl %s %d\n", candidate, candidate->_idx, fuse_with, fuse_with->_idx, iter.first->node_name(), iter.first->_idx);
+        // candidate->dump(0);
+        // fuse_with->dump(0);
+      }
       debug_only(num_nodes_fused++;)
     }
   }
-  
+
   debug_only(if (num_nodes_fused > 0) printf("%d\n", num_nodes_fused);)
 
   return NULL;

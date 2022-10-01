@@ -3872,6 +3872,7 @@ void ArchDesc::buildMachNode(FILE *fp_cpp, InstructForm *inst, const char *inden
     fprintf(fp_cpp, "%s node->set_max_val(((TransferEventsNode*)orig_node)->max_val());\n",indent);
   } else if (strstr(inst->_ident, "storeHeapEvent") == inst->_ident) {
     fprintf(fp_cpp, "%s node->set_event_type(((StoreHeapEventNode*)orig_node)->event_type());\n",indent);
+    fprintf(fp_cpp, "%s node->set_fuse_event_type(((StoreHeapEventNode*)orig_node)->fuse_event_type());\n",indent);
   } else if (strstr(inst->_ident, "incrCntrAndStoreHeapEvent") == inst->_ident) {
     fprintf(fp_cpp, "%s node->set_event_type(((IncrCntrAndStoreHeapEventNode*)orig_node)->event_type());\n",indent);
   }

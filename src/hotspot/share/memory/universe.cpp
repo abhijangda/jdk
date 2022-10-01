@@ -998,7 +998,7 @@ void Universe::verify_heap_graph() {
       ((HeapEvent*)heap_events_start)[event_iter] = HeapEvent{0,0};
       HeapEventType heap_event_type = decode_heap_event_type(event);
       event = decode_heap_event(event);
-      
+
       if (heap_event_type == Universe::NewObject ||
           heap_event_type == Universe::NewArray ||
           heap_event_type == Universe::NewPrimitiveArray) {

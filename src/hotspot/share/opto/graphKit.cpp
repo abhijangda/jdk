@@ -4061,6 +4061,7 @@ Node* GraphKit::new_instance(Node* klass_node,
   
   Node* obj = set_output_for_allocation(alloc, oop_type, deoptimize_on_exception);
   alloc->set_heap_event_store((IncrCntrAndStoreHeapEventNode*)append_heap_event(Universe::NewObject, obj, size));
+  alloc->set_output_obj(obj);
   return obj;
 }
 

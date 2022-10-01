@@ -745,6 +745,8 @@
   product(uint, C2MaxStoreHeapEventsToFuse, 2,                              \
           "Maximum Store Heap Events to fuse")                              \
   product(bool, PrintC2FuseStoreHeapEvents, false, "")                      \
+  product(bool, C2FuseFieldSetWithNewObjectEvent, true,                     \
+         "Fuse FieldSet event with NewObject")                              \
   develop(bool, StressArrayCopyMacroNode, false,                            \
           "Perform ArrayCopy load/store replacement during IGVN only")      \
                                                                             \

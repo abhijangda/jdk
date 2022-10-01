@@ -2252,7 +2252,7 @@ void Compile::Optimize() {
   if (failing())  return;
 
   {
-    if(InstrumentHeapEvents && C2InstrumentHeapEvents && C2FuseStoreHeapEvents) {
+    if (InstrumentHeapEvents && C2InstrumentHeapEvents && C2FuseStoreHeapEvents) {
       // TracePhase tp("peephole", &timers[_t_peephole]);
       PhaseFuseHeapEvents p(&igvn);
       p.do_transform();

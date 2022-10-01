@@ -584,6 +584,7 @@ Node *Node::clone() const {
     ((TransferEventsNode*)n)->set_max_val(((TransferEventsNode*)this)->max_val());
   } else if(Opcode() == Op_StoreHeapEvent) {
     ((StoreHeapEventNode*)n)->set_event_type(((StoreHeapEventNode*)this)->event_type());
+    ((StoreHeapEventNode*)n)->set_fuse_event_type(((StoreHeapEventNode*)this)->fuse_event_type());
   } else if (Opcode() == Op_IncrCntrAndStoreHeapEvent) {
     ((IncrCntrAndStoreHeapEventNode*)n)->set_event_type(((IncrCntrAndStoreHeapEventNode*)this)->event_type());
   } else if (Opcode() == Op_AddPAndAllocObj) {

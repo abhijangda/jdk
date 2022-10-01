@@ -1645,6 +1645,7 @@ AllocateNode::AllocateNode(Compile* C, const TypeFunc *atype,
   _is_scalar_replaceable = false;
   _is_non_escaping = false;
   _is_allocation_MemBar_redundant = false;
+  _added_heap_event = false;
   Node *topnode = C->top();
 
   init_req( TypeFunc::Control  , ctrl );

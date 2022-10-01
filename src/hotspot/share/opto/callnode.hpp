@@ -939,7 +939,13 @@ public:
   bool _is_non_escaping;
   // True when MemBar for new is redundant with MemBar at initialzer exit
   bool _is_allocation_MemBar_redundant;
-
+  
+  bool _added_heap_event;
+  Node* _output_obj;
+  Node* output_obj() {return _output_obj;}
+  void set_output_obj(Node* obj) {_output_obj = obj;}
+  bool added_heap_event() {return _added_heap_event;}
+  void set_added_heap_event(bool v) {_added_heap_event = v;}
   virtual uint size_of() const; // Size is bigger
   IncrCntrAndStoreHeapEventNode* _heap_event_store;
   IncrCntrAndStoreHeapEventNode* heap_event_store() {return _heap_event_store;}

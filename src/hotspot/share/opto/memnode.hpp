@@ -843,6 +843,7 @@ public:
     _fused_events[0] = Universe::FieldSet; 
     add_req(node->in(Address)); add_req(node->in(ValueIn));
   }
+  void fuse(ArrayCopyNode* node);
   void fuse(AllocateNode* node, PhaseIterGVN* igvn);
   virtual int Opcode() const;
   virtual BasicType memory_type() const { return T_ADDRESS; }

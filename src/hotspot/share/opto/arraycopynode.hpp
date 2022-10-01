@@ -65,6 +65,7 @@ private:
 
   bool _arguments_validated;
   bool _store_heap_event;
+  bool _fused_with_fieldset;
   Node* _alloc_length;
 
   static const TypeFunc* arraycopy_type() {
@@ -150,6 +151,8 @@ public:
   bool store_heap_event() {return _store_heap_event;}
   Node* alloc_length() {return _alloc_length;}
   void set_alloc_length(Node* n) {_alloc_length = n;}
+  void set_fused_with_fieldset(bool v) {_fused_with_fieldset = v;}
+  bool fused_with_fieldset() {return _fused_with_fieldset;}
   void connect_outputs(GraphKit* kit, bool deoptimize_on_exception = false);
 
   bool is_arraycopy()             const  { assert(_kind != None, "should bet set"); return _kind == ArrayCopy; }

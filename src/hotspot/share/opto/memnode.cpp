@@ -1371,13 +1371,24 @@ Node* StoreNode::convert_to_reinterpret_store(PhaseGVN& gvn, Node* val, const Ty
 }
 
 void StoreHeapEventNode::fuse(AllocateNode* node, PhaseIterGVN* igvn) {
-  _fused_events[0] = Universe::NewObject; 
-  add_req(node->output_obj());
   // if (igvn->type(node->in(AllocateNode::AllocSize))->isa_int()) {
   //   add_req(igvn->transform(new ConvI2LNode(node->in(AllocateNode::AllocSize))));
   // } else {
+  if (node->Opcode() == Op_Allocate) {
+    add_req(node->output_obj());
     add_req(node->in(AllocateNode::AllocSize));
-  // }
+    _fused_events[0] = Universe::NewObject;
+  }
+}
+
+void StoreHeapEventNode::fuse(ArrayCopyNode* node) {  
+  assert(node->store_heap_event(), "sanity");
+  _fused_events[0] = Universe::NewObject;
+  add_req(node->in(ArrayCopyNode::Src));
+  add_req(node->in(ArrayCopyNode::SrcPos));
+  add_req(node->in(ArrayCopyNode::Dest));
+  add_req(node->in(ArrayCopyNode::DestPos));
+  add_req(node->in(ArrayCopyNode::Length));
 }
 
 // We're loading from an object which has autobox behaviour.
@@ -2766,6 +2777,16 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
         if (PrintC2FuseStoreHeapEvents)
           printf("Fusing NewObject %d with FieldSet %d\n", alloc->_idx, this->_idx);
         return this;
+      }
+    } else if (mem->is_Proj() && mem->in(0)->is_ArrayCopy()) {
+      ArrayCopyNode* ac = mem->in(0)->as_ArrayCopy();
+      if (!ac->is_alloc_tightly_coupled() && ac->store_heap_event()) {
+        printf("Fuse ArrayCopy '%d' with FieldSet '%d'\n", ac->_idx, this->_idx);
+        ((StoreHeapEventNode*)this)->fuse(ac);
+        if (phase->is_IterGVN()) {
+          phase->is_IterGVN()->rehash_node_delayed(this);
+        }
+        ac->set_fused_with_fieldset(true);
       }
     }
   } else {

@@ -40,6 +40,7 @@ ArrayCopyNode::ArrayCopyNode(Compile* C, bool alloc_tightly_coupled, bool has_ne
     _has_negative_length_guard(has_negative_length_guard),
     _arguments_validated(false),
     _store_heap_event(false),
+    _fused_with_fieldset(false),
     _alloc_length(NULL),
     _src_type(TypeOopPtr::BOTTOM),
     _dest_type(TypeOopPtr::BOTTOM) {

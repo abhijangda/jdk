@@ -2248,8 +2248,10 @@ Node *PhaseFuseHeapEvents::transform( Node *n ) {
         if (atp != NULL && atp->field()) {
           if(strcmp(atp->field()->name()->as_utf8(), "start") == 0 || 
              strcmp(atp->field()->name()->as_utf8(), "stop") == 0) {
+            #ifndef PRODUCT
             candidate->dump();
             fuse_with->dump();
+            #endif
             //FIXME: ...
             continue;
           }

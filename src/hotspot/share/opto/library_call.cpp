@@ -3700,7 +3700,7 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
           } else if (tk->klass()->is_obj_array_klass()) {
             // append_heap_event(Universe::NewArray, newcopy, length);
           } else {
-            printf("3695\n");
+            ShouldNotReachHere();
           }
         }
 
@@ -3721,6 +3721,7 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
         if (InstrumentHeapEvents && tk->klass()->is_obj_array_klass()) {
           // printf("3708\n");
           ac->set_store_heap_event();
+          // ac->set_alloc_length(length);
           //append_copy_array(newcopy, original, intcon(0), start, moved);
         }
       }
@@ -4360,6 +4361,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
           if (InstrumentHeapEvents) {
             // printf("4348\n");
             ac->set_store_heap_event();
+            ac->set_alloc_length(obj_length);
             // append_copy_array(alloc_obj, obj, intcon(0), intcon(0), obj_length);
           }
         } else {
@@ -4893,9 +4895,9 @@ bool LibraryCallKit::inline_arraycopy() {
   clear_upper_avx();
   if (InstrumentHeapEvents && reference_type){
     ac->set_store_heap_event();
-    // if (alloc != NULL) {
-    //   ac->set_alloc_length(length);
-    // }
+    if (alloc != NULL) {
+      ac->set_alloc_length(alloc->in(AllocateNode::ALength));
+    }
     // append_copy_array(dest, src, dest_offset, src_offset, length);
   }
 

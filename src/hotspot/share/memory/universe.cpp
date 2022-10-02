@@ -1097,6 +1097,7 @@ void Universe::verify_heap_graph() {
         if (obj_dst_node_iter == ObjectNode::oop_to_obj_node.end() ||
             obj_src_node_iter == ObjectNode::oop_to_obj_node.end()) {
             printf("1085: didn't find %p %p\n", (void*)obj_src, (void*)obj_dst);
+            continue;
         }
 
         if (obj_dst_node_iter->second.type() != Universe::NewArray || 

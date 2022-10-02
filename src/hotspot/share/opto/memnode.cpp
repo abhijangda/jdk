@@ -1383,12 +1383,15 @@ void StoreHeapEventNode::fuse(AllocateNode* node, PhaseIterGVN* igvn) {
 
 void StoreHeapEventNode::fuse(ArrayCopyNode* node) {  
   assert(node->store_heap_event(), "sanity");
-  _fused_events[0] = Universe::NewObject;
+  _fused_events[0] = Universe::CopyArray;
   add_req(node->in(ArrayCopyNode::Src));
   add_req(node->in(ArrayCopyNode::SrcPos));
   add_req(node->in(ArrayCopyNode::Dest));
   add_req(node->in(ArrayCopyNode::DestPos));
   add_req(node->in(ArrayCopyNode::Length));
+  if (node->alloc_length()) {
+    add_req(node->alloc_length());
+  }
 }
 
 // We're loading from an object which has autobox behaviour.
@@ -2719,7 +2722,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   Node* address = in(MemNode::Address);
   Node* value   = in(MemNode::ValueIn);
     
-  if (true || this->Opcode() != Op_StoreHeapEvent) {
+  if (this->Opcode() != Op_StoreHeapEvent) {
     // Back-to-back stores to same address? Fold em up.  Generally
     // unsafe if I have intervening uses...  Also disallowed for StoreCM
     // since they must follow each StoreP operation.  Redundant StoreCMs
@@ -2767,7 +2770,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     if (mem->is_Proj() && mem->in(0)->is_Initialize()) {
       InitializeNode* init = mem->in(0)->as_Initialize();
       AllocateNode* alloc = init->allocation();
-      if (alloc->Opcode() == Op_Allocate && !alloc->added_heap_event() && 
+      if (alloc->Opcode() == Op_Allocate && !alloc->added_heap_event() &&
           init->can_capture_store(this, phase, can_reshape)) {
         ((StoreHeapEventNode*)this)->fuse(alloc, NULL);
         alloc->set_added_heap_event(true);
@@ -2780,13 +2783,19 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       }
     } else if (mem->is_Proj() && mem->in(0)->is_ArrayCopy()) {
       ArrayCopyNode* ac = mem->in(0)->as_ArrayCopy();
-      if (!ac->is_alloc_tightly_coupled() && ac->store_heap_event()) {
-        printf("Fuse ArrayCopy '%d' with FieldSet '%d'\n", ac->_idx, this->_idx);
+      if (ac->store_heap_event() && 
+          (!ac->is_alloc_tightly_coupled() || (ac->is_alloc_tightly_coupled() && ac->alloc_length() != NULL))) {
         ((StoreHeapEventNode*)this)->fuse(ac);
         if (phase->is_IterGVN()) {
           phase->is_IterGVN()->rehash_node_delayed(this);
         }
         ac->set_fused_with_fieldset(true);
+        if (ac->is_alloc_tightly_coupled()) {
+          printf("Fuse ArrayCopy '%d', NewArray, and FieldSet '%d'\n", ac->_idx, this->_idx);
+        } else {
+          printf("Fuse ArrayCopy '%d' with FieldSet '%d'\n", ac->_idx, this->_idx);
+        }
+        return this;
       }
     }
   } else {

@@ -378,9 +378,9 @@ class Universe: AllStatic {
   template <typename K, typename V>
   using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, STLAllocator<std::pair<const K, V>>>;
   template <typename K>
-  using set = std::set<K, std::less<K>, STLAllocator<const K>>;
+  using set = std::set<K, std::less<K>, STLAllocator<K>>;
   template <typename K>
-  using unordered_set = std::unordered_set<K, std::hash<K>, std::equal_to<K>, STLAllocator<const K>>;
+  using unordered_set = std::unordered_set<K, std::hash<K>, std::equal_to<K>, STLAllocator<K>>;
   template <typename K, typename V>
   using map = std::map<K, V, std::less<K>, STLAllocator<std::pair<const K, V>>>;
   template <typename V>

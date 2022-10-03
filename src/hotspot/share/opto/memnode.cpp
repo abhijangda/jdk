@@ -1383,12 +1383,18 @@ void StoreHeapEventNode::fuse(AllocateNode* node, PhaseIterGVN* igvn) {
 
 void StoreHeapEventNode::fuse(ArrayCopyNode* node) {  
   assert(node->store_heap_event(), "sanity");
-  _fused_events[0] = Universe::CopyArray;
-  add_req(node->in(ArrayCopyNode::Src));
-  add_req(node->in(ArrayCopyNode::SrcPos));
-  add_req(node->in(ArrayCopyNode::Dest));
-  add_req(node->in(ArrayCopyNode::DestPos));
-  add_req(node->in(ArrayCopyNode::Length));
+  if (node->is_clone_inst()) {
+    _fused_events[0] = Universe::CopyObject;
+    add_req(node->in(ArrayCopyNode::Src));
+    add_req(node->in(ArrayCopyNode::Dest));
+  } else {
+    _fused_events[0] = Universe::CopyArray;
+    add_req(node->in(ArrayCopyNode::Src));
+    add_req(node->in(ArrayCopyNode::SrcPos));
+    add_req(node->in(ArrayCopyNode::Dest));
+    add_req(node->in(ArrayCopyNode::DestPos));
+    add_req(node->in(ArrayCopyNode::Length));
+  }
   if (node->alloc_length()) {
     add_req(node->alloc_length());
   }
@@ -2783,17 +2789,19 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       }
     } else if (mem->is_Proj() && mem->in(0)->is_ArrayCopy()) {
       ArrayCopyNode* ac = mem->in(0)->as_ArrayCopy();
-      if (ac->store_heap_event() && !ac->is_clone_inst() &&
+      if (ac->store_heap_event() &&
           (!ac->is_alloc_tightly_coupled() || (ac->is_alloc_tightly_coupled() && ac->alloc_length() != NULL))) {
         ((StoreHeapEventNode*)this)->fuse(ac);
         if (phase->is_IterGVN()) {
           phase->is_IterGVN()->rehash_node_delayed(this);
         }
         ac->set_fused_with_fieldset(true);
-        if (ac->is_alloc_tightly_coupled()) {
-          printf("Fuse ArrayCopy '%d', NewArray, and FieldSet '%d'\n", ac->_idx, this->_idx);
-        } else {
-          printf("Fuse ArrayCopy '%d' with FieldSet '%d'\n", ac->_idx, this->_idx);
+        if (PrintC2FuseStoreHeapEvents) {
+          if (ac->is_alloc_tightly_coupled()) {
+            printf("Fuse ArrayCopy '%d', %s, and FieldSet '%d'\n", ac->_idx, (ac->is_clone_inst() ? "NewObject" : "NewArray"), this->_idx);
+          } else {
+            printf("Fuse %sCopy '%d' with FieldSet '%d'\n", (ac->is_clone_inst() ? "Object" : "Array"), ac->_idx, this->_idx);
+          }
         }
         return this;
       }

@@ -2381,14 +2381,24 @@ void Matcher::find_shared_post_visit(Node* n, uint opcode) {
       break;
     }
     case Op_IncrCntrAndStoreHeapEvent: {
-      Node* sz = n->in(MemNode::ValueIn);
-      Node* obj = n->in(MemNode::OopStore);
-      
-      Node* pair1 = new BinaryNode(sz, obj);
+      if (n->req() == MemNode::OopStore) {
+        Node* sz = n->in(MemNode::ValueIn);
+        Node* obj = n->in(MemNode::OopStore);
+        
+        Node* pair1 = new BinaryNode(sz, obj);
 
-      n->set_req(MemNode::ValueIn, pair1);
-    
-      n->del_req(MemNode::OopStore);
+        n->set_req(MemNode::ValueIn, pair1);
+      
+        n->del_req(MemNode::OopStore);
+      } else {
+        Node* pair = n->in(n->req() - 1);
+        for (int i = n->req() - 2; i >= 3; i--) {
+          pair = new BinaryNode(n->in(i), pair);
+
+          n->set_req(i, pair);
+          n->del_req(i+1);
+        }
+      }
       break;
     }
     case Op_IncrCntrAndStoreCopyArrayEvent: {

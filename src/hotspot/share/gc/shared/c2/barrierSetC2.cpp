@@ -712,6 +712,7 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* si
       // kit->append_copy_array(dst_base, src_base, offset, offset, payload_size);
     } else {
       ac->set_store_heap_event();
+      ac->set_alloc_length(size);
       // kit->append_heap_event(Universe::CopyObject, dst_base, src_base);
     }
   }

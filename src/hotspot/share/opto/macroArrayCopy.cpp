@@ -1257,6 +1257,10 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
       Node* st;
       if (ac->is_clone_inst()) {
         st = new IncrCntrAndStoreHeapEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, dest, Universe::CopyObject);
+        if (ac->is_alloc_tightly_coupled()) {
+          //Fuse NewObject/Array with CopyObject/Array
+          st->add_req(ac->alloc_length());
+        }
       } else {
         st = new IncrCntrAndStoreCopyArrayEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, src_offset, dest, dest_offset, length);
       }

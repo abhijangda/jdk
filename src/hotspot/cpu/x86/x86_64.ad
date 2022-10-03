@@ -6472,6 +6472,85 @@ instruct incrCntrAndStoreHeapEventFieldSet(memory cntr_mem, any_RegP val, any_Re
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
+instruct incrCntrAndStoreHeapEventCopyAndNewObject(memory cntr_mem, any_RegP val, any_RegP obj, rRegL obj_size, rRegL tmp1)
+%{
+  match(Set cntr_mem (IncrCntrAndStoreHeapEvent cntr_mem (Binary val (Binary obj obj_size))));
+  effect (TEMP tmp1);
+
+  ins_cost(125); // XXX
+  format %{ "movq    $cntr_mem, $obj\t# long" %}
+  ins_encode %{
+    Register cntr_reg = $tmp1$$Register;
+    assert($cntr_mem$$Address.index() == noreg, "");
+    __ gen_lock_heap_event_mutex();
+
+    Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+    printf("6488: event_type() %ld\n", event_type());
+    assert(event_type() == Universe::CopyObject, "only works when CopyingObject for a NewObject");
+
+    {
+      __ movq(cntr_reg, __mem);
+      __ leaq(cntr_reg, Address(cntr_reg, 1));
+      __ movq(__mem, cntr_reg);
+      
+      __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
+      __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
+      
+      __ shrq($obj_size$$Register, 3); //Convert to # of bytes. //TODO: Do in one instruction
+      __ movq(__mem, $obj_size$$Register);
+      __ shlq($obj_size$$Register, 3);
+      
+      __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
+      
+      __ shlq($obj$$Register, 15);
+      if (Universe::NewObject != 0) {
+        uint64_t encoded_dst = Universe::encode_heap_event_dst(Universe::NewObject, 0);
+        __ orq($obj$$Register, (int32_t)encoded_dst);
+      }
+      __ movq(__mem, $obj$$Register);
+      __ shrq($obj$$Register, 15);
+    }
+    {
+      __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+      __ movq(cntr_reg, __mem);
+      __ leaq(cntr_reg, Address(cntr_reg, 1));
+      __ movq(__mem, cntr_reg);
+
+      __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
+      __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset());
+      __ movq(__mem, $val$$Register);
+      __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
+      
+      __ shlq($obj$$Register, 15);
+      if (event_type() != 0) {
+        uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
+        __ orq($obj$$Register, (int32_t)encoded);
+      }
+      __ movq(__mem, $obj$$Register);
+      __ shrq($obj$$Register, 15);
+    }
+    
+    if (!UseMprotectForHeapGraphCheck) {
+      uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent);
+      __ subq(cntr_reg, maxval);
+      //__ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
+      Label not_equal;
+      __ jcc(Assembler::Condition::less, not_equal);
+      __ pushaq();
+      if (CheckHeapEventGraphWithHeap) {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+      }  else {
+        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+      }
+      __ popaq();
+      //__ movq($mem$$Address, 0);
+      __ bind(not_equal);
+    }      
+    __ gen_unlock_heap_event_mutex();
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
 instruct incrCntrAndStoreCopyArrayEventConstOffsets(memory cntr_mem, any_RegP src_array, immI_0 src_offset, any_RegP dst_array, immI_0 dst_offset, rRegI copy_count, rRegL tmp1)
 %{
   match(Set cntr_mem (IncrCntrAndStoreCopyArrayEvent cntr_mem (Binary src_array (Binary src_offset (Binary dst_array (Binary dst_offset copy_count))))));

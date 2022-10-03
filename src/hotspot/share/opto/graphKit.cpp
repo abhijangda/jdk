@@ -3992,7 +3992,8 @@ Node* GraphKit::set_output_for_allocation(AllocateNode* alloc,
 Node* GraphKit::new_instance(Node* klass_node,
                              Node* extra_slow_test,
                              Node* *return_size_val,
-                             bool deoptimize_on_exception) {
+                             bool deoptimize_on_exception,
+                             bool add_newobj_event) {
   // Compute size in doublewords
   // The size is always an integral number of doublewords, represented
   // as a positive bytewise size stored in the klass's layout_helper.
@@ -4060,7 +4061,8 @@ Node* GraphKit::new_instance(Node* klass_node,
                                          initial_slow_test);
   
   Node* obj = set_output_for_allocation(alloc, oop_type, deoptimize_on_exception);
-  alloc->set_heap_event_store((IncrCntrAndStoreHeapEventNode*)append_heap_event(Universe::NewObject, obj, size));
+  if (add_newobj_event)
+    alloc->set_heap_event_store((IncrCntrAndStoreHeapEventNode*)append_heap_event(Universe::NewObject, obj, size));
   alloc->set_output_obj(obj);
   return obj;
 }

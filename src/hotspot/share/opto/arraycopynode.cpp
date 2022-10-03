@@ -556,10 +556,15 @@ Node *ArrayCopyNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     return NULL;
   }
 
-  Node* mem = try_clone_instance(phase, can_reshape, count);
-  if (mem != NULL) {
-    return (mem == NodeSentinel) ? NULL : mem;
+  if (is_clone_inst()) {
+    //TODO: Uncommenting to ensure that PhaseMacroExpand::expand_arraycopy_node
+    //is called for clone_inst and my life is a little easier
+    return NULL;
   }
+  Node* mem ;//= try_clone_instance(phase, can_reshape, count);
+  // if (mem != NULL) {
+  //   return (mem == NodeSentinel) ? NULL : mem;
+  // }
 
   Node* adr_src = NULL;
   Node* base_src = NULL;

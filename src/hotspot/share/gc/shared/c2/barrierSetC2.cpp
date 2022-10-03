@@ -707,6 +707,14 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* si
   } else {
     ac->set_clone_inst();
   }
+  if (InstrumentHeapEvents) {
+    if (is_array) {
+      // kit->append_copy_array(dst_base, src_base, offset, offset, payload_size);
+    } else {
+      ac->set_store_heap_event();
+      // kit->append_heap_event(Universe::CopyObject, dst_base, src_base);
+    }
+  }
   Node* n = kit->gvn().transform(ac);
   if (n == ac) {
     const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
@@ -714,14 +722,6 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* si
     kit->set_predefined_output_for_runtime_call(ac, ac->in(TypeFunc::Memory), raw_adr_type);
   } else {
     kit->set_all_memory(n);
-  }
-  
-  if (InstrumentHeapEvents) {
-    if (is_array) {
-      // kit->append_copy_array(dst_base, src_base, offset, offset, payload_size);
-    } else {
-      kit->append_heap_event(Universe::CopyObject, dst_base, src_base);
-    }
   }
 }
 

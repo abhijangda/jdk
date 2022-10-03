@@ -1243,7 +1243,6 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   Node* dest_offset = ac->in(ArrayCopyNode::DestPos);
   Node* length = ac->in(ArrayCopyNode::Length);
   MergeMemNode* merge_mem = NULL;
-  
   // if (copy_type == T_OBJECT) {
   if (ac->is_clonebasic()) {
     if (ac->store_heap_event() && !ac->fused_with_fieldset()) {
@@ -1256,9 +1255,14 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
       transform_later(merge_mem);
       Node* raw_mem = merge_mem->memory_at(Compile::AliasIdxRaw);
       Node* st;
-      st = new IncrCntrAndStoreCopyArrayEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, src_offset, dest, dest_offset, length);
+      if (ac->is_clone_inst()) {
+        st = new IncrCntrAndStoreHeapEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, dest, Universe::CopyObject);
+      } else {
+        st = new IncrCntrAndStoreCopyArrayEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, src_offset, dest, dest_offset, length);
+      }
       transform_later(st);
       merge_mem->set_memory_at(Compile::AliasIdxRaw, st);
+      ac->set_req(TypeFunc::Memory, merge_mem);
     }
     BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
     bs->clone_at_expansion(this, ac);

@@ -1042,7 +1042,8 @@ class GraphKit : public Phase {
   Node* new_instance(Node* klass_node,
                      Node* slow_test = NULL,
                      Node* *return_size_val = NULL,
-                     bool deoptimize_on_exception = false);
+                     bool deoptimize_on_exception = false,
+                     bool add_newobj_event = true);
   Node* new_array(Node* klass_node, Node* count_val, int nargs,
                   Node* *return_size_val = NULL,
                   bool deoptimize_on_exception = false);

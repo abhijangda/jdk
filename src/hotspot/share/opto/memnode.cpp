@@ -2783,7 +2783,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       }
     } else if (mem->is_Proj() && mem->in(0)->is_ArrayCopy()) {
       ArrayCopyNode* ac = mem->in(0)->as_ArrayCopy();
-      if (ac->store_heap_event() && 
+      if (ac->store_heap_event() && !ac->is_clone_inst() &&
           (!ac->is_alloc_tightly_coupled() || (ac->is_alloc_tightly_coupled() && ac->alloc_length() != NULL))) {
         ((StoreHeapEventNode*)this)->fuse(ac);
         if (phase->is_IterGVN()) {

@@ -6856,43 +6856,8 @@ instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, vec
     }
     
     if (!C2InstrumentHeapEvents) return;
-    __ gen_lock_heap_event_mutex();
-    Register cntr_addr_reg = $cntr_addr$$Register;
-    Register cntr_reg = cntr_addr_reg;
-
-    __ movq($tmp_vec1$$XMMRegister, $val$$Register);
-    if ($field$$Address.disp() == 0 && $field$$Address.index() == noreg) {
-      Register base = $field$$Address.base();
-      __ shlq(base, 15);
-      if (event_type() != 0) {
-        uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-        __ orq(base, (int32_t)encoded);
-      }
-      __ pinsrq($tmp_vec1$$XMMRegister, base, 1);
-      __ shrq(base, 15);
-    } else {
-      __ leaq(cntr_addr_reg, $field$$Address);
-      __ shlq(cntr_addr_reg, 15);
-      if (event_type() != 0) {
-        uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-        __ orq(cntr_addr_reg, (int32_t)encoded);
-      }
-      __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
-    }
-
-    Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
     
-    __ movq(cntr_reg, __mem);
-    __ leaq(cntr_reg, Address(cntr_reg, 1));
-    __ movq(__mem, cntr_reg);
-    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-
-    __ movdqa(__mem, $tmp_vec1$$XMMRegister);
-
-    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
-    __ gen_unlock_heap_event_mutex();
+    __ append_heap_event(event_type(), $field$$Address, $val$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
   %}
   ins_pipe(ialu_mem_reg); // XXX
 %}

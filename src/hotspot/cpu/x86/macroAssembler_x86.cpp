@@ -4846,6 +4846,48 @@ void MacroAssembler::append_copyarray_event(Register dst_array, Register src_arr
   #endif
 }
 
+void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, RegisterOrAddress dst, RegisterOrConstant src, 
+                                       Register cntr_reg, XMMRegister tmp_vec) {
+  gen_lock_heap_event_mutex();
+
+  movq(tmp_vec, src.as_register());
+  uint64_t encoded = Universe::encode_heap_event_dst(event_type, 0);
+  if (dst.is_address()) {
+    Address addr = dst.as_address();
+    if (addr.disp() == 0 && addr.index() == noreg) {
+      Register base = addr.base();
+      shlq(base, 15);
+      if (event_type != 0) {
+        uint64_t encoded = Universe::encode_heap_event_dst(event_type, 0);
+        orq(base, (int32_t)encoded);
+      }
+      pinsrq(tmp_vec, base, 1);
+      shrq(base, 15);
+    } else {
+      leaq(cntr_reg, addr);
+      shlq(cntr_reg, 15);
+      if (event_type != 0) {
+        orq(cntr_reg, (int32_t)encoded);
+      }
+      pinsrq(tmp_vec, cntr_reg, 1);
+    }
+  }
+
+  Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
+  
+  movq(cntr_reg, __mem);
+  leaq(cntr_reg, Address(cntr_reg, 1));
+  movq(__mem, cntr_reg);
+  shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
+
+  __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
+
+  movdqa(__mem, tmp_vec);
+
+  check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
+  gen_unlock_heap_event_mutex();
+}
+
 void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size, 
                                          Register tmp1, bool preserve_tmp1, 
                                          Register tmp2, bool preserve_tmp2,

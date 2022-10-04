@@ -6129,22 +6129,7 @@ instruct addPAndAllocObj_rReg(rRegP dst, rRegL src, rRegL tmp1, rFlagsReg cr)
     __ movq(__mem, $dst$$Register);
     __ shrq($dst$$Register, 15);
 
-    if (!UseMprotectForHeapGraphCheck) {
-      uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_reg, JavaThread::heap_events_offset());
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
 
     __ addq($dst$$Register, $src$$Register);
@@ -6180,22 +6165,7 @@ instruct addPAndAllocObj_rReg_imm(rRegP dst, immL32 src, rRegL tmp1, rFlagsReg c
     __ movq(__mem, $dst$$Register);
     __ shrq($dst$$Register, 15);
 
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }      
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
     
     __ addq($dst$$Register, $src$$constant);
@@ -6234,22 +6204,7 @@ instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP
     __ movq(__mem, $obj$$Register);
     __ shrq($obj$$Register, 15);
 
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }      
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -6287,22 +6242,7 @@ instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP ob
     __ movq(__mem, $obj$$Register);
     __ shrq($obj$$Register, 15);
 
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      __ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -6343,22 +6283,7 @@ instruct incrCntrAndStoreHeapEventIntReg(memory cntr_mem, rRegI sz, any_RegP obj
     __ movq(__mem, $obj$$Register);
     __ shrq($obj$$Register, 15);
 
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents+1)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -6399,22 +6324,7 @@ instruct incrCntrAndStoreHeapEventLongReg(memory cntr_mem, rRegL sz, any_RegP ob
     __ movq(__mem, $obj$$Register);
     __ shrq($obj$$Register, 15);
 
-    if (!UseMprotectForHeapGraphCheck) {
-      uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_reg, JavaThread::heap_events_offset());
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -6451,22 +6361,7 @@ instruct incrCntrAndStoreHeapEventFieldSet(memory cntr_mem, any_RegP val, any_Re
     __ movq(__mem, $obj$$Register);
     __ shrq($obj$$Register, 15);
     
-    if (!UseMprotectForHeapGraphCheck) {
-      uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent);
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }      
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));      
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -6529,22 +6424,7 @@ instruct incrCntrAndStoreHeapEventCopyAndNewObject(memory cntr_mem, any_RegP val
       __ shrq($obj$$Register, 15);
     }
     
-    if (!UseMprotectForHeapGraphCheck) {
-      uint64_t maxval = MaxHeapEvents*sizeof(Universe::HeapEvent);
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_addr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }      
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -6592,22 +6472,7 @@ instruct incrCntrAndStoreCopyArrayEventConstOffsets(memory cntr_mem, any_RegP sr
 
     //No need to add CopyArrayLength event
 
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -6659,22 +6524,7 @@ instruct incrCntrAndStoreCopyArrayEventInts(memory cntr_mem, any_RegP src_array,
     __ movq(__mem, copy_count_reg);
 
     //No need to add CopyArrayLength
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -6726,22 +6576,7 @@ instruct incrCntrAndStoreCopyArrayEvent(memory cntr_mem, any_RegP src_array, rRe
     __ movq(__mem, copy_count_reg);
 
     //No need to add CopyArrayLength
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -6819,22 +6654,7 @@ instruct incrCntrAndStoreCopyArrayEventWithNewDstInts(memory cntr_mem, any_RegP 
     }
 
     //No need to add CopyArrayLength
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -6909,22 +6729,7 @@ instruct incrCntrAndStoreCopyArrayEventWithNewDst(memory cntr_mem, any_RegP src_
     }
 
     //No need to add CopyArrayLength
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      //__ mov64(cntr_reg, JavaThread::heap_events_offset()); //TODO: should not be necessary, right? h2 benchmark gives SIGSEGV
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -7029,21 +6834,7 @@ instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, ve
     
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
     
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -7100,21 +6891,7 @@ instruct storeHeapEventFieldSet(memory field, any_RegP val, rRegL cntr_addr, vec
 
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
 
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -7179,21 +6956,7 @@ instruct storeHeapEventFieldSetAndNewObj(memory field1, any_RegP val1, any_RegP 
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
 
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -7289,21 +7052,7 @@ instruct storeHeapEventFieldSetAndCopyObjWithNewObj(memory field1, any_RegP val1
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
 
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -7386,21 +7135,7 @@ instruct storeHeapEventFieldSetAndArrayCopy(memory field1, any_RegP val1, any_Re
       __ movdqa(__mem, $tmp_vec1$$XMMRegister);
     }
 
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -7505,21 +7240,7 @@ instruct storeHeapEventFieldSetAndArrayCopyWithNewArray(memory field1, any_RegP 
       __ movdqa(__mem, $tmp_vec1$$XMMRegister);
     }
 
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -7582,21 +7303,7 @@ instruct storeHeapEventFieldSetTwo(memory field1, any_RegP val1, memory field2, 
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
 
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
   ins_pipe(ialu_mem_reg); // XXX
@@ -7680,21 +7387,7 @@ instruct storeHeapEventFieldSetThree(memory field1, any_RegP val1, memory field2
     __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
 
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-          __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
 
@@ -7802,21 +7495,7 @@ instruct storeHeapEventFieldSetFour(memory field1, any_RegP val1, memory field2,
 
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
 
-    if (!UseMprotectForHeapGraphCheck) {
-      int32_t maxval = (int32_t)(MaxHeapEvents)*sizeof(Universe::HeapEvent); //max_val();
-      __ subq(cntr_reg, maxval);
-      Label not_equal;
-      __ jcc(Assembler::Condition::less, not_equal);
-      __ pushaq();
-      if (CheckHeapEventGraphWithHeap) {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-      }  else {
-        __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-      }
-      __ popaq();
-      //__ movq($mem$$Address, 0);
-      __ bind(not_equal);
-    }
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
 

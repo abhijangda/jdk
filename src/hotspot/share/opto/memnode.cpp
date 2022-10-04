@@ -2783,7 +2783,12 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
         if (phase->is_IterGVN()) {
           phase->is_IterGVN()->rehash_node_delayed(this);
         }
-        if (PrintC2FuseStoreHeapEvents)
+        // if (alloc->output_obj()->_idx != in(MemNode::ValueIn)->_idx) {
+        //   printf("2787:\n");
+        // } else {
+        //   printf("2789\n");
+        // }
+        if (PrintC2FuseStoreHeapEvents) 
           printf("Fusing NewObject %d with FieldSet %d\n", alloc->_idx, this->_idx);
         return this;
       }

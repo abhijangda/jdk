@@ -379,7 +379,7 @@ class MacroAssembler: public Assembler {
                               Register tmp2, bool preserve_tmp2, 
                               Register tmp3, bool preserve_tmp3, 
                               bool preserve_flags);
-
+  void check_heap_events_buffer_size(Register cntr, uint maxval);
   Register register_for_event_counter(Register event_src);
   void gen_lock_heap_event_mutex();
   void gen_unlock_heap_event_mutex();

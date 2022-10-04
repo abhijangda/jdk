@@ -4755,21 +4755,7 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     movq(heap_event_addr, temp1);
   }
 
-  if (!UseMprotectForHeapGraphCheck) {
-    subq(temp2, MaxHeapEvents*sizeof(Universe::HeapEvent));
-    Label not_equal;
-    jcc(Assembler::Condition::less, not_equal);
-    pushaq();
-
-    if (CheckHeapEventGraphWithHeap)
-      call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-    else 
-      call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
-
-    popaq();
-    bind(not_equal);
-  }
-
+  check_heap_events_buffer_size(temp2, MaxHeapEvents*sizeof(Universe::HeapEvent));
   gen_unlock_heap_event_mutex();
 
   if (preserve_flags) 
@@ -4892,6 +4878,23 @@ void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size, 
 void MacroAssembler::append_fieldset_event(Address field, RegisterOrConstant val, bool preserve_flags) {
   append_heap_event(Universe::FieldSet, field, val, 
                     r9, true, r8, true, preserve_flags);
+}
+
+void MacroAssembler::check_heap_events_buffer_size(Register cntr, uint maxval) {
+  if (!UseMprotectForHeapGraphCheck) {
+    subq(cntr, maxval);
+    Label not_equal;
+    jcc(Assembler::Condition::less, not_equal);
+    pushaq();
+
+    if (CheckHeapEventGraphWithHeap)
+      call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
+    else 
+      call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
+
+    popaq();
+    bind(not_equal);
+  }
 }
 
 void MacroAssembler::store_heap_oop(Address dst, Register src, Register tmp1,

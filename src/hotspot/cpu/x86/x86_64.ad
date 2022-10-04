@@ -6877,25 +6877,8 @@ instruct storeHeapEventFieldSetAndNewObj(memory field1, any_RegP val1, any_RegP 
 
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
 
-    __ movq($tmp_vec1$$XMMRegister, $val1$$Register);
-    __ leaq(cntr_addr_reg, $field1$$Address);
-    __ shlq(cntr_addr_reg, 15);
-    if (event_type() != 0) {
-      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-      __ orq(cntr_addr_reg, (int32_t)encoded);
-    }
-    __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
-
-    __mem = Address(r15_thread, JavaThread::heap_events_offset());
-    
-    __ movq(cntr_reg, __mem);
-    __ leaq(cntr_reg, Address(cntr_reg, 1));
-    __ movq(__mem, cntr_reg);
-    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-
-    __ movdqa(__mem, $tmp_vec1$$XMMRegister);
+    __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
+                         $field1$$Address, $val1$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
@@ -6973,25 +6956,8 @@ instruct storeHeapEventFieldSetAndCopyObjWithNewObj(memory field1, any_RegP val1
 
     __ movdqa(__mem, $tmp_vec1$$XMMRegister);
 
-    __ movq($tmp_vec1$$XMMRegister, $val1$$Register);
-    __ leaq(cntr_addr_reg, $field1$$Address);
-    __ shlq(cntr_addr_reg, 15);
-    if (event_type() != 0) {
-      uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-      __ orq(cntr_addr_reg, (int32_t)encoded);
-    }
-    __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
-
-    __mem = Address(r15_thread, JavaThread::heap_events_offset());
-    
-    __ movq(cntr_reg, __mem);
-    __ leaq(cntr_reg, Address(cntr_reg, 1));
-    __ movq(__mem, cntr_reg);
-    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-
-    __ movdqa(__mem, $tmp_vec1$$XMMRegister);
+    __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
+                         $field1$$Address, $val1$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
@@ -7053,27 +7019,8 @@ instruct storeHeapEventFieldSetAndArrayCopy(memory field1, any_RegP val1, any_Re
       __ movq(__mem, copy_count_reg);
     }
 
-    {
-      __ movq($tmp_vec1$$XMMRegister, $val1$$Register);
-      __ leaq(cntr_addr_reg, $field1$$Address);
-      __ shlq(cntr_addr_reg, 15);
-      if (event_type() != 0) {
-        uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-        __ orq(cntr_addr_reg, (int32_t)encoded);
-      }
-      __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
-
-      Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
-      
-      __ movq(cntr_reg, __mem);
-      __ leaq(cntr_reg, Address(cntr_reg, 1));
-      __ movq(__mem, cntr_reg);
-      __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-
-      __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-
-      __ movdqa(__mem, $tmp_vec1$$XMMRegister);
-    }
+    __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
+                         $field1$$Address, $val1$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
 
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
@@ -7158,27 +7105,8 @@ instruct storeHeapEventFieldSetAndArrayCopyWithNewArray(memory field1, any_RegP 
       __ movq(__mem, copy_count_reg);
     }
 
-    {
-      __ movq($tmp_vec1$$XMMRegister, $val1$$Register);
-      __ leaq(cntr_addr_reg, $field1$$Address);
-      __ shlq(cntr_addr_reg, 15);
-      if (event_type() != 0) {
-        uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-        __ orq(cntr_addr_reg, (int32_t)encoded);
-      }
-      __ pinsrq($tmp_vec1$$XMMRegister, cntr_addr_reg, 1);
-
-      Address __mem = Address(r15_thread, JavaThread::heap_events_offset());
-      
-      __ movq(cntr_reg, __mem);
-      __ leaq(cntr_reg, Address(cntr_reg, 1));
-      __ movq(__mem, cntr_reg);
-      __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-
-      __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-
-      __ movdqa(__mem, $tmp_vec1$$XMMRegister);
-    }
+    __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
+                         $field1$$Address, $val1$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
 
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();

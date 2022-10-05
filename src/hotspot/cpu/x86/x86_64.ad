@@ -6350,30 +6350,12 @@ instruct incrCntrAndStoreCopyArrayEventConstOffsets(memory cntr_mem, any_RegP sr
 
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
     
-    __ movq(cntr_reg, __mem);
-    __ leaq(cntr_reg, Address(cntr_reg, 2));
-    __ movq(__mem, cntr_reg);
-    __ subq(cntr_reg, 1);
-    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset());
-
-    __ movq(__mem, src_array_reg);
-    
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
-    uint64_t encoded = Universe::encode_heap_event_dst(Universe::CopyArray, 0);
-    __ shlq(dst_array_reg, 15);
-    __ orq(dst_array_reg, (int32_t)encoded);
-    __ movq(__mem, dst_array_reg);
-    __ shrq(dst_array_reg, 15);
-
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 16);
-
-    encoded = Universe::encode_heap_event_dst(Universe::CopyArrayLength, 0);
-    __ movq(__mem, copy_count_reg);
-
     //No need to add CopyArrayLength event
-
+    Universe::HeapEventType event_types[2] = {Universe::CopyArray, Universe::CopyArrayLength};
+    Register dsts[2] = {$dst_array$$Register, noreg};
+    Register srcs[2] = {$src_array$$Register, $copy_count$$Register};
+    __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
+    
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
@@ -6399,33 +6381,15 @@ instruct incrCntrAndStoreCopyArrayEventInts(memory cntr_mem, any_RegP src_array,
     assert($cntr_mem$$Address.index() == noreg, "");
 
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
-    
-    __ movq(cntr_reg, __mem);
-    __ leaq(cntr_reg, Address(cntr_reg, 2));
-    __ movq(__mem, cntr_reg);
-    __ subq(cntr_reg, 1);
-    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset());
-    
     __ addq(src_array_reg, src_offset_reg);
-    __ movq(__mem, src_array_reg);
-    __ subq(src_array_reg, src_offset_reg);
-    
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
-    uint64_t encoded = Universe::encode_heap_event_dst(Universe::CopyArray, 0);
     __ addq(dst_array_reg, dst_offset_reg);
-    __ shlq(dst_array_reg, 15);
-    __ orq(dst_array_reg, (int32_t)encoded);
-    __ movq(__mem, dst_array_reg);
-    __ shrq(dst_array_reg, 15);
+    Universe::HeapEventType event_types[2] = {Universe::CopyArray, Universe::CopyArrayLength};
+    Register dsts[2] = {dst_array_reg, noreg};
+    Register srcs[2] = {src_array_reg, $copy_count$$Register};
+    __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
+    __ subq(src_array_reg, src_offset_reg);
     __ subq(dst_array_reg, dst_offset_reg);
 
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 16);
-
-    __ movq(__mem, copy_count_reg);
-
-    //No need to add CopyArrayLength
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}
@@ -6451,31 +6415,14 @@ instruct incrCntrAndStoreCopyArrayEvent(memory cntr_mem, any_RegP src_array, rRe
     assert($cntr_mem$$Address.index() == noreg, "");
 
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
-    
-    __ movq(cntr_reg, __mem);
-    __ leaq(cntr_reg, Address(cntr_reg, 2));
-    __ movq(__mem, cntr_reg);
-    __ subq(cntr_reg, 1);
-    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset());
-    
     __ addq(src_array_reg, src_offset_reg);
-    __ movq(__mem, src_array_reg);
-    __ subq(src_array_reg, src_offset_reg);
-    
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
-    uint64_t encoded = Universe::encode_heap_event_dst(Universe::CopyArray, 0);
     __ addq(dst_array_reg, dst_offset_reg);
-    __ shlq(dst_array_reg, 15);
-    __ orq(dst_array_reg, (int32_t)encoded);
-    __ movq(__mem, dst_array_reg);
-    __ shrq(dst_array_reg, 15);
+    Universe::HeapEventType event_types[2] = {Universe::CopyArray, Universe::CopyArrayLength};
+    Register dsts[2] = {dst_array_reg, noreg};
+    Register srcs[2] = {src_array_reg, $copy_count$$Register};
+    __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
+    __ subq(src_array_reg, src_offset_reg);
     __ subq(dst_array_reg, dst_offset_reg);
-
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 16);
-
-    __ movq(__mem, copy_count_reg);
 
     //No need to add CopyArrayLength
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));

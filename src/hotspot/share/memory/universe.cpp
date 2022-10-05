@@ -1109,6 +1109,10 @@ void Universe::verify_heap_graph() {
                  get_oop_klass_name(obj_src_node_iter->first, buf), obj_src_node_iter->second.type());
         }
 
+        if (length_event.src >= 1UL<<30) {
+          printf("too large copy length %ld\n", length_event.src);
+          abort();
+        }
         if (obj_src != obj_dst || (obj_src == obj_dst && offsets.src >= offsets.dst)) {
           //Non overlapping arrays, so copy forward
           for (uint i = 0; i < length_event.src; i++) {

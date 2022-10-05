@@ -377,6 +377,8 @@ class MacroAssembler: public Assembler {
                          Register cntr_reg, XMMRegister tmp_vec);
   void append_heap_event(Address events, Universe::HeapEventType event_type, Register dst, RegisterOrConstant src, 
                          Register cntr_reg);
+  void append_two_heap_events(Address events, Universe::HeapEventType event_type[2], Register dst[2], Register src[2],
+                              Register cntr_reg);
   void append_copyarray_event(Register dst_array, Register src_array, 
                               Register src_off, Register dst_off, Register count, 
                               Register tmp1, bool preserve_tmp1, 

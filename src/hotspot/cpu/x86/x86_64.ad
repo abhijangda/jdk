@@ -6503,28 +6503,8 @@ instruct incrCntrAndStoreCopyArrayEventWithNewDstInts(memory cntr_mem, any_RegP 
     assert($cntr_mem$$Address.index() == noreg, "");
 
     //TODO: Create a CopyArrayWithNewDest as a new heap event type
-    {
-      Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
-    
-      __ movq(cntr_reg, __mem);
-      __ leaq(cntr_reg, Address(cntr_reg, 1));
-      __ movq(__mem, cntr_reg);
-      
-      __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-      __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-      
-      __ movq(__mem, $dst_length$$Register);
-      
-      __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
-      
-      __ shlq($dst_array$$Register, 15);
-      if (Universe::NewArray != 0) {
-        uint64_t encoded_dst = Universe::encode_heap_event_dst(Universe::NewArray, 0);
-        __ orq($dst_array$$Register, (int32_t)encoded_dst);
-      }
-      __ movq(__mem, $dst_array$$Register);
-      __ shrq($dst_array$$Register, 15);
-    }
+    __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1), 
+                         Universe::NewArray, $dst_array$$Register, $dst_length$$Register, cntr_reg);
 
     {
       Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);

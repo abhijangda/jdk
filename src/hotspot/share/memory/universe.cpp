@@ -1075,21 +1075,34 @@ void Universe::verify_heap_graph() {
             ik = ik->superklass();
           } while(ik && ik->is_klass());
         }
-      } else if (heap_event_type == Universe::CopyArray) {
+      } else if (heap_event_type == Universe::CopyArray || heap_event_type == Universe::CopySameArray) {
         oopDesc* obj_src_start = (oopDesc*)event.src;
         oopDesc* obj_dst_start = (oopDesc*)event.dst;
 
         HeapEvent length_event = heap_events_start[event_iter+1];
+        HeapEvent offsets;
         event_iter = event_iter + 1;
+
         objArrayOop obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
-        objArrayOop obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
-        
-        if (obj_src == NULL or obj_dst == NULL) {
-          printf("1074: Didn't find \n");
+        objArrayOop obj_dst;
+
+        if (heap_event_type == Universe::CopyArray) {
+          obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
+          
+          if (obj_src == NULL or obj_dst == NULL) {
+            printf("1074: Didn't find \n");
+          }
+          //No need to consider objArrayOop::base() in offset calculation
+          offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
+                              (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
+        } else {
+          obj_dst = obj_src;
+          if (obj_src == NULL or obj_dst == NULL) {
+            printf("1074: Didn't find \n");
+          }
+          offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
+                     (uint64_t)(oopDesc*)obj_dst_start};
         }
-        //No need to consider objArrayOop::base() in offset calculation
-        HeapEvent offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
-                             (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
         // printf("src %p %ld dst %p %ld length %ld\n", (oopDesc*)obj_src, offsets.src, (oopDesc*)obj_dst, offsets.dst, length_event.src);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
         auto obj_dst_node_iter = ObjectNode::oop_to_obj_node.find(obj_dst);
@@ -1109,6 +1122,10 @@ void Universe::verify_heap_graph() {
                  get_oop_klass_name(obj_src_node_iter->first, buf), obj_src_node_iter->second.type());
         }
 
+        if (length_event.src >= 1UL<<30) {
+          printf("too large copy length %ld\n", length_event.src);
+          abort();
+        }
         if (obj_src != obj_dst || (obj_src == obj_dst && offsets.src >= offsets.dst)) {
           //Non overlapping arrays, so copy forward
           for (uint i = 0; i < length_event.src; i++) {

@@ -4846,6 +4846,30 @@ void MacroAssembler::append_copyarray_event(Register dst_array, Register src_arr
   #endif
 }
 
+void MacroAssembler::append_heap_event(Address events, Universe::HeapEventType event_type, Register dst, RegisterOrConstant src, 
+                                       Register cntr_reg) {
+  movq(cntr_reg, events);
+  leaq(cntr_reg, Address(cntr_reg, 1));
+  movq(events, cntr_reg);
+
+  shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
+  
+  events = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
+  if (src.is_constant()) {
+    movq(events, (size_t)src.as_constant());
+  } else {
+    movq(events, src.as_register());
+  }
+  events = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
+  shlq(dst, 15);
+  if (event_type != 0) {
+    uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type, 0);
+    orq(dst, (int32_t)encoded_dst);
+  }
+  movq(events, dst);
+  shrq(dst, 15);
+}
+
 void MacroAssembler::append_heap_event(Address events, Universe::HeapEventType event_type, RegisterOrAddress dst, RegisterOrConstant src, 
                                        Register cntr_reg, XMMRegister tmp_vec) {
   if (src.is_register()) {

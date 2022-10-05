@@ -6187,22 +6187,7 @@ instruct incrCntrAndStoreHeapEventLongConst(memory cntr_mem, immL32 sz, any_RegP
 
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
 
-    __ movq(cntr_reg, __mem);
-    __ leaq(cntr_reg, Address(cntr_reg, 1));
-    __ movq(__mem, cntr_reg);
-
-    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-    
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());    
-    __ movq(__mem, ((size_t)$sz$$constant)/8);
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
-    __ shlq($obj$$Register, 15);
-    if (event_type() != 0) {
-      uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
-      __ orq($obj$$Register, (int32_t)encoded_dst);
-    }
-    __ movq(__mem, $obj$$Register);
-    __ shrq($obj$$Register, 15);
+    __ append_heap_event(__mem, event_type(), $obj$$Register, $sz$$constant/8, cntr_reg);
 
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
@@ -6224,23 +6209,7 @@ instruct incrCntrAndStoreHeapEventIntConst(memory cntr_mem, immI sz, any_RegP ob
 
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
         
-    __ movq(cntr_reg, __mem);
-    __ leaq(cntr_reg, Address(cntr_reg, 1));
-    __ movq(__mem, cntr_reg);
-    
-    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());    
-    __ movq(__mem, $sz$$constant);
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
-    
-    __ shlq($obj$$Register, 15);
-    if (event_type() != 0) {
-      uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
-      __ orq($obj$$Register, (int32_t)encoded_dst);
-    }
-    __ movq(__mem, $obj$$Register);
-    __ shrq($obj$$Register, 15);
+    __ append_heap_event(__mem, event_type(), $obj$$Register, $sz$$constant, cntr_reg);
 
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
@@ -6262,26 +6231,7 @@ instruct incrCntrAndStoreHeapEventIntReg(memory cntr_mem, rRegI sz, any_RegP obj
 
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
     
-    __ movq(cntr_reg, __mem);
-    __ leaq(cntr_reg, Address(cntr_reg, 1));
-    __ movq(__mem, cntr_reg);
-    
-    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-    
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-
-    //printf("6199: %s\n", $sz$$Register->name());
-    __ movq(__mem, $sz$$Register);
-    
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
-
-    __ shlq($obj$$Register, 15);
-    if (event_type() != 0) {
-      uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
-      __ orq($obj$$Register, (int32_t)encoded_dst);
-    }
-    __ movq(__mem, $obj$$Register);
-    __ shrq($obj$$Register, 15);
+    __ append_heap_event(__mem, event_type(), $obj$$Register, $sz$$Register, cntr_reg);
 
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
@@ -6303,26 +6253,10 @@ instruct incrCntrAndStoreHeapEventLongReg(memory cntr_mem, rRegL sz, any_RegP ob
 
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
     
-    __ movq(cntr_reg, __mem);
-    __ leaq(cntr_reg, Address(cntr_reg, 1));
-    __ movq(__mem, cntr_reg);
-    
-    __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-    
-    __ shrq($sz$$Register, 3); //Convert to # of bytes. //TODO: Do in one instruction
-    __ movq(__mem, $sz$$Register);
+    //Convert to # of bytes.
+    __ shrq($sz$$Register, 3); //TODO: Create a NewObjectInBits event type
+    __ append_heap_event(__mem, event_type(), $obj$$Register, $sz$$Register, cntr_reg);
     __ shlq($sz$$Register, 3);
-    
-    __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
-    
-    __ shlq($obj$$Register, 15);
-    if (event_type() != 0) {
-      uint64_t encoded_dst = Universe::encode_heap_event_dst(event_type(), 0);
-      __ orq($obj$$Register, (int32_t)encoded_dst);
-    }
-    __ movq(__mem, $obj$$Register);
-    __ shrq($obj$$Register, 15);
 
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
@@ -6378,50 +6312,18 @@ instruct incrCntrAndStoreHeapEventCopyAndNewObject(memory cntr_mem, any_RegP val
     Register cntr_reg = $tmp1$$Register;
     assert($cntr_mem$$Address.index() == noreg, "");
     __ gen_lock_heap_event_mutex();
-
+    assert(event_type() == Universe::CopyObject, "sanity");
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
     assert(event_type() == Universe::CopyObject, "only works when CopyingObject for a NewObject");
 
     {
-      __ movq(cntr_reg, __mem);
-      __ leaq(cntr_reg, Address(cntr_reg, 1));
-      __ movq(__mem, cntr_reg);
-      
-      __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-      __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
-      
-      __ shrq($obj_size$$Register, 3); //Convert to # of bytes. //TODO: Do in one instruction
-      __ movq(__mem, $obj_size$$Register);
+      //Convert to # of bytes. TODO: Create NewObjectSizeInBits event
+      __ shrq($obj_size$$Register, 3);
+      __ append_heap_event(__mem, Universe::NewObject, $obj$$Register, $obj_size$$Register, cntr_reg);
       __ shlq($obj_size$$Register, 3);
-      
-      __mem = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + 8);
-      
-      __ shlq($obj$$Register, 15);
-      if (Universe::NewObject != 0) {
-        uint64_t encoded_dst = Universe::encode_heap_event_dst(Universe::NewObject, 0);
-        __ orq($obj$$Register, (int32_t)encoded_dst);
-      }
-      __ movq(__mem, $obj$$Register);
-      __ shrq($obj$$Register, 15);
     }
     {
-      __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
-      __ movq(cntr_reg, __mem);
-      __ leaq(cntr_reg, Address(cntr_reg, 1));
-      __ movq(__mem, cntr_reg);
-
-      __ shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-      __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset());
-      __ movq(__mem, $val$$Register);
-      __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
-      
-      __ shlq($obj$$Register, 15);
-      if (event_type() != 0) {
-        uint64_t encoded = Universe::encode_heap_event_dst(event_type(), 0);
-        __ orq($obj$$Register, (int32_t)encoded);
-      }
-      __ movq(__mem, $obj$$Register);
-      __ shrq($obj$$Register, 15);
+      __ append_heap_event(__mem, event_type(), $obj$$Register, $val$$Register, cntr_reg);
     }
     
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));

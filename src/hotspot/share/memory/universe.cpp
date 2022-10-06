@@ -878,7 +878,8 @@ void Universe::process_heap_event(Universe::HeapEvent event) {
   HeapEventType heap_event_type = decode_heap_event_type(event);      
   if (heap_event_type == Universe::NewObject || 
       heap_event_type == Universe::NewArray || 
-      heap_event_type == Universe::NewPrimitiveArray) {
+      heap_event_type == Universe::NewPrimitiveArray || 
+      heap_event_type == Universe::NewObjectSizeInBits) {
     HeapEvent event2 = decode_heap_event(event);
     oopDesc* obj = (oopDesc*)event2.dst;
     
@@ -888,6 +889,10 @@ void Universe::process_heap_event(Universe::HeapEvent event) {
       ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
     }
 
+    if (heap_event_type == Universe::NewObjectSizeInBits) {
+      event2.src = event2.src/8;
+      heap_event_type = Universe::NewObject;
+    }
     ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
     ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
   }
@@ -962,7 +967,8 @@ void Universe::verify_heap_graph() {
       HeapEvent event2 = decode_heap_event(event);
       if (heap_event_type == Universe::NewObject || 
           heap_event_type == Universe::NewArray || 
-          heap_event_type == Universe::NewPrimitiveArray) {
+          heap_event_type == Universe::NewPrimitiveArray ||
+          heap_event_type == Universe::NewObjectSizeInBits) {
         
         oopDesc* obj = (oopDesc*)event2.dst;
         
@@ -974,6 +980,10 @@ void Universe::verify_heap_graph() {
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
         }
         
+        if (heap_event_type == Universe::NewObjectSizeInBits) {
+          event2.src = event2.src/8;
+          heap_event_type = Universe::NewObject;
+        }
         ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
       }
@@ -1001,7 +1011,8 @@ void Universe::verify_heap_graph() {
 
       if (heap_event_type == Universe::NewObject ||
           heap_event_type == Universe::NewArray ||
-          heap_event_type == Universe::NewPrimitiveArray) {
+          heap_event_type == Universe::NewPrimitiveArray ||
+          heap_event_type == Universe::NewObjectSizeInBits) {
             continue;
         // oopDesc* obj = (oopDesc*)event.dst;
         // if (ObjectNode::oop_to_obj_node.find(obj) == ObjectNode::oop_to_obj_node.end()) {

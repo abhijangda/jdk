@@ -2779,6 +2779,13 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     if (mem->is_Proj() && mem->in(0)->is_Initialize()) {
       InitializeNode* init = mem->in(0)->as_Initialize();
       AllocateNode* alloc = init->allocation();
+      if (alloc->Opcode() == Op_Allocate && init->can_capture_store(this, phase, can_reshape) &&
+          phase->type(in(MemNode::ValueIn)) == TypePtr::NULL_PTR) {
+        //If a storeheap event in a initialize node is stores NULL
+        //then there is no need to instrument it.
+        printf("Changing NULL store in Init node to StoreP\n");
+        return ((StoreHeapEventNode*)this)->to_storep(*phase);
+      }
       if (alloc->Opcode() == Op_Allocate && !alloc->added_heap_event() &&
           init->can_capture_store(this, phase, can_reshape)) {
         ((StoreHeapEventNode*)this)->fuse(alloc, NULL);
@@ -2791,7 +2798,8 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
         // } else {
         //   printf("2789\n");
         // }
-        if (PrintC2FuseStoreHeapEvents) 
+
+        if (PrintC2FuseStoreHeapEvents)
           printf("Fusing NewObject %d with FieldSet %d\n", alloc->_idx, this->_idx);
         return this;
       }
@@ -2817,7 +2825,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   } else {
     // Capture an unaliased, unconditional, simple store into an initializer.
     // Or, if it is independent of the allocation, hoist it above the allocation.
-    // Cannnot do this with StoreHeapEvent because otherwise a
+    // Cannot do this with StoreHeapEvent because otherwise a
     // IncrCntrAndStoreHeapEvent needs to be generated which will be more inefficient
     if (ReduceFieldZeroing && /*can_reshape &&*/
         mem->is_Proj() && mem->in(0)->is_Initialize()) {

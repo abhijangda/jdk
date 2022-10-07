@@ -1187,7 +1187,7 @@ void PhaseIterGVN::optimize() {
   if (StressIGVN) {
     shuffle_worklist();
   }
-
+  // printf("C->for_igvn() %p _worklist %p\n", C->for_igvn(), _worklist);
   uint loop_count = 0;
   // Pull from worklist and transform the node. If the node has changed,
   // update edge info and put uses on worklist.

@@ -2714,7 +2714,10 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       // mem->dump(0);
       // dump(0);
       ((StoreHeapEventNode*)mem)->set_none_event_type();
-      phase->C->record_for_igvn(mem);
+      if (phase->is_IterGVN()) {
+        phase->is_IterGVN()->rehash_node_delayed(mem);
+      }
+      // phase->C->record_for_igvn(mem);
       return NULL;
     }
   } 

@@ -6826,11 +6826,18 @@ instruct storeHeapEventFieldSetTwo(memory field1, any_RegP val1, memory field2, 
     if (!C2InstrumentHeapEvents) return;
     __ gen_lock_heap_event_mutex();
     
-    __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
-                         $field2$$Address, $val2$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
+    Universe::HeapEventType event_types[2] = {Universe::TwoFieldSets, Universe::None};
+    RegisterOrAddress dsts[2] = {$field2$$Address, $field1$$Address};
+    RegisterOrConstant srcs[2] = {$val2$$Register, $val1$$Register};
+    
+    __ append_two_heap_events(Address(r15_thread, JavaThread::heap_events_offset()), event_types, 
+                              dsts, srcs, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
 
-    __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
-                         $field1$$Address, $val1$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
+    //__ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
+                         //$field2$$Address, $val2$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
+
+    //__ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
+                         //$field1$$Address, $val1$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
 
     __ check_heap_events_buffer_size($cntr_addr$$Register, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();

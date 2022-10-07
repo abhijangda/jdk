@@ -4867,7 +4867,83 @@ void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventT
   shrq(dst[0], 15);
 
   events = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 16);
-  movq(events, src[1]);
+  if (src[1] != noreg)
+    movq(events, src[1]);
+
+  events = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 24);
+  if (dst[1] != noreg) {
+    if (event_type[1] != Universe::None) {
+      //TODO: Implement shift left, orq, mov, and shift right
+      abort();
+    }
+
+    movq(events, dst[1]);
+  }
+}
+
+void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventType event_types[2], 
+                                            RegisterOrAddress dsts[2], RegisterOrConstant srcs[2], 
+                                            Register cntr_reg, XMMRegister tmp_vec) {
+  int NUM_EVENTS = 2;
+
+  for (int n = 0; n < NUM_EVENTS; n++) {
+    if (dsts[n].is_address()) {
+      uint64_t encoded = Universe::encode_heap_event_dst(event_types[n], 0);
+
+      Address addr = dsts[n].as_address();
+      if (addr.disp() == 0 && addr.index() == noreg) {
+        Register base = addr.base();
+        if (n == 0 && event_types[n] != Universe::None) {
+          shlq(base, 15);
+          if (event_types[n] != 0) {
+            orq(base, (int32_t)encoded);
+          }
+        }
+
+        pinsrq(tmp_vec, base, NUM_EVENTS - n - 1);
+
+        if (n == 0 && event_types[n] != Universe::None) {
+          shrq(base, 15);
+        }
+      } else {
+        leaq(cntr_reg, addr);
+        if (n == 0 && event_types[n] != Universe::None) {          
+          shlq(cntr_reg, 15);
+          if (event_types[n] != 0) {
+            orq(cntr_reg, (int32_t)encoded);
+          }
+        }
+        pinsrq(tmp_vec, cntr_reg, NUM_EVENTS - n - 1);
+      }
+    }
+  }
+
+  movq(cntr_reg, events);
+  leaq(cntr_reg, Address(cntr_reg, 2));
+  movq(events, cntr_reg);
+  subq(cntr_reg, 1);
+  shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
+
+  events = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
+
+  movdqa(events, tmp_vec);
+
+  for (int n = 0; n < NUM_EVENTS; n++) {
+    if (srcs[n].is_register()) {
+      pinsrq(tmp_vec, srcs[n].as_register(), n);
+    } else {
+      assert(srcs[n].is_constant(), "sanity");
+      if (srcs[n].as_constant() == 0) {
+        pxor(tmp_vec, tmp_vec);
+      } else {
+        assert(false, "sanity");
+      }
+    }
+  }
+
+  events = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset() + sizeof(Universe::HeapEvent));
+
+  movdqa(events, tmp_vec);
 }
 
 void MacroAssembler::append_heap_event(Address events, Universe::HeapEventType event_type, Register dst, RegisterOrConstant src, 

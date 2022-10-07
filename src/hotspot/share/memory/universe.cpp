@@ -1019,30 +1019,41 @@ void Universe::verify_heap_graph() {
         //   ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.src,
         //                                            heap_event_type, 0));
         // }
-      } else if (heap_event_type == Universe::FieldSet) {
-        oopDesc* field = (oopDesc*)event.dst;
-        oop obj = oop_for_address(ObjectNode::oop_to_obj_node, field);
-        if (obj == NULL) {
-          printf("heap_event %p size %ld iter %ld\n", th_heap_events, heap_events_size, event_iter);
-          auto next_obj_iter = ObjectNode::oop_to_obj_node.lower_bound(field);
-          oopDesc* obj = NULL;
-          if (next_obj_iter != ObjectNode::oop_to_obj_node.end() && next_obj_iter->first == field) {
-            obj = next_obj_iter->first;
+      } else if (heap_event_type == Universe::FieldSet || heap_event_type == Universe::TwoFieldSets) {
+        Universe::HeapEvent field_set_events[2];
+        if (heap_event_type == Universe::FieldSet) {
+          field_set_events[0] = event;
+        } else if (heap_event_type == Universe::TwoFieldSets) {
+          field_set_events[0] = {heap_events_start[event_iter+1].src, event.dst};
+          field_set_events[1] = {heap_events_start[event_iter+1].dst, event.src};
+          event_iter += 1;
+        }
+        for (int e = 0; e < ((heap_event_type == Universe::FieldSet) ? 1 : 2); e++) {
+          event = field_set_events[e];
+          oopDesc* field = (oopDesc*)event.dst;
+          oop obj = oop_for_address(ObjectNode::oop_to_obj_node, field);
+          if (obj == NULL) {
+            // printf("heap_event %p size %ld iter %ld\n", th_heap_events, heap_events_size, event_iter);
+            auto next_obj_iter = ObjectNode::oop_to_obj_node.lower_bound(field);
+            oopDesc* obj = NULL;
+            if (next_obj_iter != ObjectNode::oop_to_obj_node.end() && next_obj_iter->first == field) {
+              obj = next_obj_iter->first;
+            } else {
+              printf("Obj is NULL for %p e %d type %ld\n", field, e, heap_event_type);
+              auto obj_iter = --next_obj_iter;
+              if (obj_iter->first != NULL || obj_iter->first != CheckGraph::INVALID_OOP) {
+                char buf[1024];
+                printf("start %p end %ld %ld t %ld %s\n", obj_iter->first, obj_iter->second.size(), obj_iter->first->size(), 
+                obj_iter->second.type(), get_oop_klass_name(obj_iter->first, buf));
+              }
+              if (obj_iter->first <= field && field < obj_iter->second.end()) {
+                obj = obj_iter->first;
+              }
+            }
           } else {
-            printf("Obj is NULL for %p\n", field);
-            auto obj_iter = --next_obj_iter;
-            if (obj_iter->first != NULL || obj_iter->first != CheckGraph::INVALID_OOP) {
-              char buf[1024];
-              printf("start %p end %ld %ld t %ld %s\n", obj_iter->first, obj_iter->second.size(), obj_iter->first->size(), 
-              obj_iter->second.type(), get_oop_klass_name(obj_iter->first, buf));
-            }
-            if (obj_iter->first <= field && field < obj_iter->second.end()) {
-              obj = obj_iter->first;
-            }
+            ObjectNode::oop_to_obj_node[obj].update_or_add_field((void*)field, (oopDesc*)event.src, 
+                                                                0);
           }
-        } else {
-          ObjectNode::oop_to_obj_node[obj].update_or_add_field((void*)field, (oopDesc*)event.src, 
-                                                               0);
         }
 
         // if (heap_event_type == FieldSet && 0 != 0) {

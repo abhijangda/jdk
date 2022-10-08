@@ -6658,7 +6658,7 @@ instruct storeHeapEventFieldSetAndNewObj(memory field1, any_RegP val1, any_RegP 
     Register cntr_reg = cntr_addr_reg;
     Address f = $field1$$Address;
     assert(fuse_event_type() == Universe::NewObject, "sanity");
-    if (true) {
+    if (false) {
       Universe::HeapEventType event_types[2] = {Universe::None, Universe::FieldSetWithNewObject};
       RegisterOrAddress dsts[2] = {$obj$$Register, $field1$$Address};
       RegisterOrConstant srcs[2] = {$size$$Register, $val1$$Register};

@@ -926,18 +926,20 @@ void Universe::verify_heap_graph() {
   printf("Creating Nodes\n");
   
   //Update heap events counter to include heap events stored in the last page of second part
-  for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
-       !heap_events_iter.is_empty(); heap_events_iter.next()) {
-    auto th_heap_events = *heap_events_iter;
-    const size_t heap_events_size = *(const uint64_t*)th_heap_events;
-    if (heap_events_size < MaxHeapEvents)
-      continue;
-    
-    uint64_t second_part = ((uint64_t)(*heap_events_iter + MaxHeapEvents)/4096)*4096;
-    HeapEvent* last_page = (HeapEvent*)second_part + MaxHeapEvents;
+  if (!Universe::is_verify_from_exit) {
+    for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
+        !heap_events_iter.is_empty(); heap_events_iter.next()) {
+      auto th_heap_events = *heap_events_iter;
+      const size_t heap_events_size = *(const uint64_t*)th_heap_events;
+      if (heap_events_size < MaxHeapEvents)
+        continue;
+      
+      uint64_t second_part = ((uint64_t)(*heap_events_iter + MaxHeapEvents)/4096)*4096;
+      HeapEvent* last_page = (HeapEvent*)second_part + MaxHeapEvents;
 
-    printf("New heap events %p from %ld to %ld\n", th_heap_events, heap_events_size, heap_events_size + 4096/sizeof(HeapEvent));
-    *(uint64_t*)th_heap_events += 4096/sizeof(HeapEvent);
+      printf("New heap events %p from %ld to %ld\n", th_heap_events, heap_events_size, heap_events_size + 4096/sizeof(HeapEvent));
+      *(uint64_t*)th_heap_events += 4096/sizeof(HeapEvent);
+    }
   }
 
   Universe::HeapEvent* reverse_events[all_heap_events.size()];
@@ -1042,7 +1044,7 @@ void Universe::verify_heap_graph() {
         }
 
         for (int e = 0; e < ((heap_event_type == Universe::TwoFieldSets) ? 2 : 1); e++) {
-          event = field_set_events[e];
+          Universe::HeapEvent event = field_set_events[e];
           oopDesc* field = (oopDesc*)event.dst;
           oop obj = oop_for_address(ObjectNode::oop_to_obj_node, field);
           if (obj == NULL) {

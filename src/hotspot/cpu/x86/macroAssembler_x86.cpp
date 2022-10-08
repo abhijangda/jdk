@@ -4893,28 +4893,31 @@ void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventT
       Address addr = dsts[n].as_address();
       if (addr.disp() == 0 && addr.index() == noreg) {
         Register base = addr.base();
-        if (n == 0 && event_types[n] != Universe::None) {
+        bool encode_event = n == NUM_EVENTS - 1 && event_types[n] != Universe::None;
+        if (encode_event) {
           shlq(base, 15);
           if (event_types[n] != 0) {
             orq(base, (int32_t)encoded);
           }
         }
 
-        pinsrq(tmp_vec, base, NUM_EVENTS - n - 1);
+        pinsrq(tmp_vec, base, n);
 
-        if (n == 0 && event_types[n] != Universe::None) {
+        if (encode_event) {
           shrq(base, 15);
         }
       } else {
         leaq(cntr_reg, addr);
-        if (n == 0 && event_types[n] != Universe::None) {          
+        if (encode_event) {
           shlq(cntr_reg, 15);
           if (event_types[n] != 0) {
             orq(cntr_reg, (int32_t)encoded);
           }
         }
-        pinsrq(tmp_vec, cntr_reg, NUM_EVENTS - n - 1);
+        pinsrq(tmp_vec, cntr_reg, n);
       }
+    } else {
+      pinsrq(tmp_vec, dsts[n].as_register(), n);
     }
   }
 

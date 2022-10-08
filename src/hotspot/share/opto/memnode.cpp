@@ -2783,11 +2783,20 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
           phase->type(in(MemNode::ValueIn)) == TypePtr::NULL_PTR) {
         //If a storeheap event in a initialize node is stores NULL
         //then there is no need to instrument it.
-        printf("Changing NULL store in Init node to StoreP\n");
+        if (PrintC2FuseStoreHeapEvents)
+          printf("Changing NULL store in Init node to StoreP\n");
         return ((StoreHeapEventNode*)this)->to_storep(*phase);
       }
       if (alloc->Opcode() == Op_Allocate && !alloc->added_heap_event() &&
           init->can_capture_store(this, phase, can_reshape)) {
+        // auto addp = in(MemNode::Address)->isa_AddP();
+        // if (addp) {
+        //   if (addp->in(AddPNode::Base) == alloc->output_obj()) {
+        //     // printf("2794\n");
+        //   } else {
+        //     printf("2796\n");
+        //   }
+        // } else {printf("2798\n");}
         ((StoreHeapEventNode*)this)->fuse(alloc, NULL);
         alloc->set_added_heap_event(true);
         if (phase->is_IterGVN()) {

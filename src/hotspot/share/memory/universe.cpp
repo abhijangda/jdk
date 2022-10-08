@@ -901,6 +901,7 @@ void Universe::process_heap_event(Universe::HeapEvent event) {
 void Universe::verify_heap_graph() {
   // if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
   //   return;
+  const int LOG_MAX_OBJ_SIZE = 16;
   static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;  
   if (Universe::enable_transfer_events)
     Universe::transfer_events_to_gpu();
@@ -968,7 +969,8 @@ void Universe::verify_heap_graph() {
       if (heap_event_type == Universe::NewObject || 
           heap_event_type == Universe::NewArray || 
           heap_event_type == Universe::NewPrimitiveArray ||
-          heap_event_type == Universe::NewObjectSizeInBits) {
+          heap_event_type == Universe::NewObjectSizeInBits ||
+          heap_event_type == Universe::FieldSetWithNewObject) {
         
         oopDesc* obj = (oopDesc*)event2.dst;
         
@@ -983,6 +985,12 @@ void Universe::verify_heap_graph() {
         if (heap_event_type == Universe::NewObjectSizeInBits) {
           event2.src = event2.src/8;
           heap_event_type = Universe::NewObject;
+        } else if (heap_event_type == Universe::FieldSetWithNewObject) {
+          event2 = {0, event2.dst};
+          event2.src = event2.dst;
+          event2.src = event2.src & (1UL<<(64-LOG_MAX_OBJ_SIZE) - 1);
+          event2.dst = event2.dst >> LOG_MAX_OBJ_SIZE;
+          event_iter++;
         }
         ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
@@ -1000,7 +1008,7 @@ void Universe::verify_heap_graph() {
     // printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, get_heap_events_ptr());
     *(uint64_t*)th_heap_events = 0;
     HeapEvent* heap_events_start = &th_heap_events[1];
-    
+
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
       if (event.dst == 0)
@@ -1024,8 +1032,8 @@ void Universe::verify_heap_graph() {
         if (heap_event_type == Universe::FieldSet) {
           field_set_events[0] = event;
         } else if (heap_event_type == Universe::TwoFieldSets) {
-          field_set_events[0] = {heap_events_start[event_iter+1].src, event.dst};
-          field_set_events[1] = {heap_events_start[event_iter+1].dst, event.src};
+          field_set_events[1] = {heap_events_start[event_iter+1].dst, event.dst};
+          field_set_events[0] = {heap_events_start[event_iter+1].src, event.src};
           event_iter += 1;
         }
         for (int e = 0; e < ((heap_event_type == Universe::FieldSet) ? 1 : 2); e++) {

@@ -407,6 +407,7 @@ class Universe: AllStatic {
     CopySameArray = 1L << 12,
     NewObjectSizeInBits = 1L<<13,
     TwoFieldSets = 1L<<14,
+    FieldSetWithNewObject = 1L << 15,
     LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
   };
   static bool is_verify_cause_full_gc;

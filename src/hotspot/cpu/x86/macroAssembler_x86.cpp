@@ -4891,9 +4891,9 @@ void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventT
       uint64_t encoded = Universe::encode_heap_event_dst(event_types[n], 0);
 
       Address addr = dsts[n].as_address();
+      bool encode_event = (n == NUM_EVENTS - 1) && (event_types[n] != Universe::None);
       if (addr.disp() == 0 && addr.index() == noreg) {
         Register base = addr.base();
-        bool encode_event = n == NUM_EVENTS - 1 && event_types[n] != Universe::None;
         if (encode_event) {
           shlq(base, 15);
           if (event_types[n] != 0) {
@@ -4926,7 +4926,7 @@ void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventT
   movq(events, cntr_reg);
   subq(cntr_reg, 1);
   shlq(cntr_reg, exact_log2_long(sizeof(Universe::HeapEvent)));
-
+  
   events = Address(r15_thread, cntr_reg, Address::times_1, JavaThread::heap_events_offset());
 
   movdqa(events, tmp_vec);

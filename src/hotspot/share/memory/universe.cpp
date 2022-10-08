@@ -342,7 +342,7 @@ class CheckGraph : public ObjectClosure {
               if (num_src_not_correct < 100) {
                 char class_name[1024];
                 get_oop_klass_name(obj, class_name);
-                printf("Size mismatch for obj '%p' of class '%s': '%ld' != '%ld'\n", (oopDesc*)obj, class_name, obj->size(), oop_obj_node_pair->second.size());
+                printf("Size mismatch for obj '%p'(with event '%ld') of class '%s': '%ld' != '%ld'\n", (oopDesc*)obj, oop_obj_node_pair->second.type(), class_name, obj->size(), oop_obj_node_pair->second.size());
               }
               num_src_not_correct++;
             }
@@ -972,6 +972,17 @@ void Universe::verify_heap_graph() {
           heap_event_type == Universe::NewObjectSizeInBits ||
           heap_event_type == Universe::FieldSetWithNewObject) {
         
+        if (heap_event_type == Universe::NewObjectSizeInBits) {
+          event2.src = event2.src/8;
+          heap_event_type = Universe::NewObject;
+        } else if (heap_event_type == Universe::FieldSetWithNewObject) {
+          HeapEvent event = heap_events_start[event_iter+1];
+          uint64_t sz = (event.src % 8 == 0) ? event.src/8 : event.src;
+          event2 = {sz, event2.src};
+          heap_event_type = Universe::NewObject;
+          event_iter++;
+        }
+
         oopDesc* obj = (oopDesc*)event2.dst;
         
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
@@ -982,16 +993,6 @@ void Universe::verify_heap_graph() {
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
         }
         
-        if (heap_event_type == Universe::NewObjectSizeInBits) {
-          event2.src = event2.src/8;
-          heap_event_type = Universe::NewObject;
-        } else if (heap_event_type == Universe::FieldSetWithNewObject) {
-          event2 = {0, event2.dst};
-          event2.src = event2.dst;
-          event2.src = event2.src & (1UL<<(64-LOG_MAX_OBJ_SIZE) - 1);
-          event2.dst = event2.dst >> LOG_MAX_OBJ_SIZE;
-          event_iter++;
-        }
         ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
       }
@@ -1008,7 +1009,7 @@ void Universe::verify_heap_graph() {
     // printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, get_heap_events_ptr());
     *(uint64_t*)th_heap_events = 0;
     HeapEvent* heap_events_start = &th_heap_events[1];
-
+    
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
       if (event.dst == 0)
@@ -1016,7 +1017,7 @@ void Universe::verify_heap_graph() {
       ((HeapEvent*)heap_events_start)[event_iter] = HeapEvent{0,0};
       HeapEventType heap_event_type = decode_heap_event_type(event);
       event = decode_heap_event(event);
-
+      
       if (heap_event_type == Universe::NewObject ||
           heap_event_type == Universe::NewArray ||
           heap_event_type == Universe::NewPrimitiveArray ||
@@ -1027,7 +1028,7 @@ void Universe::verify_heap_graph() {
         //   ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.src,
         //                                            heap_event_type, 0));
         // }
-      } else if (heap_event_type == Universe::FieldSet || heap_event_type == Universe::TwoFieldSets) {
+      } else if (heap_event_type == Universe::FieldSet || heap_event_type == Universe::TwoFieldSets || heap_event_type == Universe::FieldSetWithNewObject) {
         Universe::HeapEvent field_set_events[2];
         if (heap_event_type == Universe::FieldSet) {
           field_set_events[0] = event;
@@ -1035,8 +1036,12 @@ void Universe::verify_heap_graph() {
           field_set_events[1] = {heap_events_start[event_iter+1].dst, event.dst};
           field_set_events[0] = {heap_events_start[event_iter+1].src, event.src};
           event_iter += 1;
+        } else if (heap_event_type == Universe::FieldSetWithNewObject) {
+          field_set_events[0] = {heap_events_start[event_iter+1].dst, event.dst};
+          event_iter += 1;
         }
-        for (int e = 0; e < ((heap_event_type == Universe::FieldSet) ? 1 : 2); e++) {
+
+        for (int e = 0; e < ((heap_event_type == Universe::TwoFieldSets) ? 2 : 1); e++) {
           event = field_set_events[e];
           oopDesc* field = (oopDesc*)event.dst;
           oop obj = oop_for_address(ObjectNode::oop_to_obj_node, field);
@@ -1047,7 +1052,7 @@ void Universe::verify_heap_graph() {
             if (next_obj_iter != ObjectNode::oop_to_obj_node.end() && next_obj_iter->first == field) {
               obj = next_obj_iter->first;
             } else {
-              printf("Obj is NULL for %p e %d type %ld\n", field, e, heap_event_type);
+              printf("Obj is NULL for %p e %d type %s\n", field, e, heapEventTypeString(heap_event_type));
               auto obj_iter = --next_obj_iter;
               if (obj_iter->first != NULL || obj_iter->first != CheckGraph::INVALID_OOP) {
                 char buf[1024];

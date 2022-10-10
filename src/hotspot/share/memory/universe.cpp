@@ -972,7 +972,8 @@ void Universe::verify_heap_graph() {
           heap_event_type == Universe::NewArray || 
           heap_event_type == Universe::NewPrimitiveArray ||
           heap_event_type == Universe::NewObjectSizeInBits ||
-          heap_event_type == Universe::FieldSetWithNewObject) {
+          heap_event_type == Universe::FieldSetWithNewObject ||
+          heap_event_type == Universe::CopyNewObject) {
         
         if (heap_event_type == Universe::NewObjectSizeInBits) {
           event2.src = event2.src/8;
@@ -983,6 +984,9 @@ void Universe::verify_heap_graph() {
           event2 = {sz, event2.src};
           heap_event_type = Universe::NewObject;
           event_iter++;
+        } else if (heap_event_type == Universe::CopyNewObject) {
+          event2.src = (event2.src & ((1UL << LOG_MAX_OBJ_SIZE) - 1))/8;
+          heap_event_type = Universe::NewObject;
         }
 
         oopDesc* obj = (oopDesc*)event2.dst;
@@ -1074,7 +1078,10 @@ void Universe::verify_heap_graph() {
         // if (heap_event_type == FieldSet && 0 != 0) {
         //   printf("0 0x%lx\n", 0);
         // }
-      } else if (heap_event_type == Universe::CopyObject) {
+      } else if (heap_event_type == Universe::CopyObject || heap_event_type == Universe::CopyNewObject) {
+        if (heap_event_type == Universe::CopyNewObject) {
+          event.src = event.src >> LOG_MAX_OBJ_SIZE;
+        }
         oop obj_src = oop((oopDesc*)event.src);
         oop obj_dst = oop((oopDesc*)event.dst);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);

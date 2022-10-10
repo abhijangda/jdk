@@ -2789,24 +2789,11 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       }
       if (alloc->Opcode() == Op_Allocate && !alloc->added_heap_event() &&
           init->can_capture_store(this, phase, can_reshape)) {
-        // auto addp = in(MemNode::Address)->isa_AddP();
-        // if (addp) {
-        //   if (addp->in(AddPNode::Base) == alloc->output_obj()) {
-        //     // printf("2794\n");
-        //   } else {
-        //     printf("2796\n");
-        //   }
-        // } else {printf("2798\n");}
         ((StoreHeapEventNode*)this)->fuse(alloc, NULL);
         alloc->set_added_heap_event(true);
         if (phase->is_IterGVN()) {
           phase->is_IterGVN()->rehash_node_delayed(this);
         }
-        // if (alloc->output_obj()->_idx != in(MemNode::ValueIn)->_idx) {
-        //   printf("2787:\n");
-        // } else {
-        //   printf("2789\n");
-        // }
 
         if (PrintC2FuseStoreHeapEvents)
           printf("Fusing NewObject %d with FieldSet %d\n", alloc->_idx, this->_idx);

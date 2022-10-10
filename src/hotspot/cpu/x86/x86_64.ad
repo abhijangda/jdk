@@ -6313,13 +6313,12 @@ instruct incrCntrAndStoreHeapEventCopyAndNewObject(memory cntr_mem, any_RegP val
     assert(event_type() == Universe::CopyObject, "sanity");
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
     assert(event_type() == Universe::CopyObject, "only works when CopyingObject for a NewObject");
-
-    {
-      __ append_heap_event(__mem, Universe::NewObjectSizeInBits, $obj$$Register, $obj_size$$Register, cntr_reg);
-    }
-    {
-      __ append_heap_event(__mem, event_type(), $obj$$Register, $val$$Register, cntr_reg);
-    }
+    
+    __ shlq($val$$Register, 16);
+    __ orq($val$$Register, $obj_size$$Register);
+    printf("6319\n");
+    __ append_heap_event(__mem, Universe::CopyNewObject, $obj$$Register, $val$$Register, cntr_reg);
+    __ shrq($val$$Register, 16);
     
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
@@ -6658,7 +6657,7 @@ instruct storeHeapEventFieldSetAndNewObj(memory field1, any_RegP val1, any_RegP 
     Register cntr_reg = cntr_addr_reg;
     Address f = $field1$$Address;
     assert(fuse_event_type() == Universe::NewObject, "sanity");
-    if (false) {
+    if (true) {
       Universe::HeapEventType event_types[2] = {Universe::None, Universe::FieldSetWithNewObject};
       RegisterOrAddress dsts[2] = {$obj$$Register, $field1$$Address};
       RegisterOrConstant srcs[2] = {$size$$Register, $val1$$Register};

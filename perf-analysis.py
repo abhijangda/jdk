@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-num_runs = 5
+num_runs = 6
 
 base_jvm_path = "java"
 build = "release"
@@ -79,9 +79,9 @@ def process_times(times_l, k):
   if (k == "baseline"):
     return a[1:]
   if (k == "instrument"):
-    if len(a) == 1:
+    if len(a) <= num_runs//2:
       return a
-    return a[:-1]
+    return a[:num_runs//2]
   if a == []:
     return [1]
 

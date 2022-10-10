@@ -6316,7 +6316,6 @@ instruct incrCntrAndStoreHeapEventCopyAndNewObject(memory cntr_mem, any_RegP val
     
     __ shlq($val$$Register, 16);
     __ orq($val$$Register, $obj_size$$Register);
-    printf("6319\n");
     __ append_heap_event(__mem, Universe::CopyNewObject, $obj$$Register, $val$$Register, cntr_reg);
     __ shrq($val$$Register, 16);
     

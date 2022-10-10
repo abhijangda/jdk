@@ -6384,12 +6384,13 @@ instruct incrCntrAndStoreCopyArrayEventInts(memory cntr_mem, any_RegP src_array,
       __ subq(src_array_reg, src_offset_reg);
       __ subq(dst_array_reg, dst_offset_reg);
     } else {
-      __ addq(src_array_reg, src_offset_reg);
-      Universe::HeapEventType event_types[2] = {Universe::CopySameArray, Universe::CopyArrayLength};
-      Register dsts[2] = {dst_offset_reg, noreg};
-      Register srcs[2] = {src_array_reg, $copy_count$$Register};
-      __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
-      __ subq(src_array_reg, src_offset_reg);
+      printf("6387\n");
+      __ addq(dst_array_reg, dst_offset_reg);
+      __ shlq(src_offset_reg, 32);
+      __ orq(src_offset_reg, $copy_count$$Register);
+      __ append_heap_event(__mem, Universe::CopySameArray, dst_array_reg, src_offset_reg, cntr_reg);
+      __ shrq(src_offset_reg, 32);
+      __ subq(dst_array_reg, dst_offset_reg);
     }
 
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
@@ -6427,12 +6428,13 @@ instruct incrCntrAndStoreCopyArrayEvent(memory cntr_mem, any_RegP src_array, rRe
       __ subq(src_array_reg, src_offset_reg);
       __ subq(dst_array_reg, dst_offset_reg);
     } else {
-      __ addq(src_array_reg, src_offset_reg);
-      Universe::HeapEventType event_types[2] = {Universe::CopySameArray, Universe::CopyArrayLength};
-      Register dsts[2] = {dst_offset_reg, noreg};
-      Register srcs[2] = {src_array_reg, $copy_count$$Register};
-      __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
-      __ subq(src_array_reg, src_offset_reg);
+      printf("6431\n");
+      __ addq(dst_array_reg, dst_offset_reg);
+      __ shlq(src_offset_reg, 32);
+      __ orq(src_offset_reg, $copy_count$$Register);
+      __ append_heap_event(__mem, Universe::CopySameArray, dst_array_reg, src_offset_reg, cntr_reg);
+      __ shrq(src_offset_reg, 32);
+      __ subq(dst_array_reg, dst_offset_reg);
     }
 
     //No need to add CopyArrayLength
@@ -6482,7 +6484,6 @@ instruct incrCntrAndStoreCopyArrayEventWithNewDstInts(memory cntr_mem, any_RegP 
       __ subq(src_array_reg, src_offset_reg);
     }
 
-    //No need to add CopyArrayLength
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
   %}

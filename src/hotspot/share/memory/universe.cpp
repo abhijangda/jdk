@@ -1122,31 +1122,35 @@ void Universe::verify_heap_graph() {
       } else if (heap_event_type == Universe::CopyArray || heap_event_type == Universe::CopySameArray) {
         oopDesc* obj_src_start = (oopDesc*)event.src;
         oopDesc* obj_dst_start = (oopDesc*)event.dst;
-
-        HeapEvent length_event = heap_events_start[event_iter+1];
+        HeapEvent length_event;
         HeapEvent offsets;
-        event_iter = event_iter + 1;
-
-        objArrayOop obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
+        
+        objArrayOop obj_src;
         objArrayOop obj_dst;
+        obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
 
         if (heap_event_type == Universe::CopyArray) {
-          obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
+          length_event = heap_events_start[event_iter+1];        
+          event_iter = event_iter + 1;
           
+          obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
+            
           if (obj_src == NULL or obj_dst == NULL) {
             printf("1074: Didn't find \n");
           }
           //No need to consider objArrayOop::base() in offset calculation
           offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
-                              (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
+                     (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
         } else {
-          obj_dst = obj_src;
+          obj_src = obj_dst;
           if (obj_src == NULL or obj_dst == NULL) {
             printf("1074: Didn't find \n");
           }
-          offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
-                     (uint64_t)(oopDesc*)obj_dst_start};
+          offsets = {event.src >> 32,
+                     (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
+          length_event = {event.src & ((1UL << 32) - 1), 0};
         }
+
         // printf("src %p %ld dst %p %ld length %ld\n", (oopDesc*)obj_src, offsets.src, (oopDesc*)obj_dst, offsets.dst, length_event.src);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
         auto obj_dst_node_iter = ObjectNode::oop_to_obj_node.find(obj_dst);

@@ -1137,16 +1137,16 @@ void Universe::verify_heap_graph() {
           printf("1137: Didn't find dst\n");
 
         if (heap_event_type == Universe::CopyArray) {
-          length_event = heap_events_start[event_iter+1];        
+          length_event = heap_events_start[event_iter+1];
           event_iter = event_iter + 1;
-          
+
           obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
-            
+
           if (obj_src == NULL) {
             printf("1144: Didn't find \n");
           }
           //No need to consider objArrayOop::base() in offset calculation
-          offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
+          offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src,
                      (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
         } else if (heap_event_type == Universe::CopySameArray) {
           obj_src = obj_dst;
@@ -1164,7 +1164,7 @@ void Universe::verify_heap_graph() {
 
           length_event = {next_event.src, 0};
           event_iter = event_iter + 1;
-            
+
           if (obj_src == NULL) {
             printf("1167: Didn't find src\n");
           }

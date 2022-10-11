@@ -973,7 +973,8 @@ void Universe::verify_heap_graph() {
           heap_event_type == Universe::NewPrimitiveArray ||
           heap_event_type == Universe::NewObjectSizeInBits ||
           heap_event_type == Universe::FieldSetWithNewObject ||
-          heap_event_type == Universe::CopyNewObject) {
+          heap_event_type == Universe::CopyNewObject || 
+          heap_event_type == Universe::CopyNewArray) {
         
         if (heap_event_type == Universe::NewObjectSizeInBits) {
           event2.src = event2.src/8;
@@ -987,6 +988,9 @@ void Universe::verify_heap_graph() {
         } else if (heap_event_type == Universe::CopyNewObject) {
           event2.src = (event2.src & ((1UL << LOG_MAX_OBJ_SIZE) - 1))/8;
           heap_event_type = Universe::NewObject;
+        } else if (heap_event_type == Universe::CopyNewArray) {
+          heap_event_type = Universe::NewArray;
+          event_iter++;
         }
 
         oopDesc* obj = (oopDesc*)event2.dst;
@@ -1119,7 +1123,8 @@ void Universe::verify_heap_graph() {
             ik = ik->superklass();
           } while(ik && ik->is_klass());
         }
-      } else if (heap_event_type == Universe::CopyArray || heap_event_type == Universe::CopySameArray) {
+      } else if (heap_event_type == Universe::CopyArray || heap_event_type == Universe::CopySameArray ||
+                 heap_event_type == Universe::CopyNewArray) {
         oopDesc* obj_src_start = (oopDesc*)event.src;
         oopDesc* obj_dst_start = (oopDesc*)event.dst;
         HeapEvent length_event;
@@ -1128,6 +1133,8 @@ void Universe::verify_heap_graph() {
         objArrayOop obj_src;
         objArrayOop obj_dst;
         obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
+        if (obj_dst == NULL)
+          printf("1137: Didn't find dst\n");
 
         if (heap_event_type == Universe::CopyArray) {
           length_event = heap_events_start[event_iter+1];        
@@ -1135,20 +1142,35 @@ void Universe::verify_heap_graph() {
           
           obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
             
-          if (obj_src == NULL or obj_dst == NULL) {
-            printf("1074: Didn't find \n");
+          if (obj_src == NULL) {
+            printf("1144: Didn't find \n");
           }
           //No need to consider objArrayOop::base() in offset calculation
           offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src, 
                      (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
-        } else {
+        } else if (heap_event_type == Universe::CopySameArray) {
           obj_src = obj_dst;
-          if (obj_src == NULL or obj_dst == NULL) {
-            printf("1074: Didn't find \n");
+          if (obj_src == NULL) {
+            printf("1152: Didn't find src\n");
           }
           offsets = {event.src >> 32,
                      (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
           length_event = {event.src & ((1UL << 32) - 1), 0};
+        } else if (heap_event_type == Universe::CopyNewArray) {
+          HeapEvent next_event = heap_events_start[event_iter+1];
+          obj_src_start = (oopDesc*)next_event.dst;
+
+          obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
+
+          length_event = {next_event.src, 0};
+          event_iter = event_iter + 1;
+            
+          if (obj_src == NULL) {
+            printf("1167: Didn't find src\n");
+          }
+          //No need to consider objArrayOop::base() in offset calculation
+          offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src,
+                     (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
         }
 
         // printf("src %p %ld dst %p %ld length %ld\n", (oopDesc*)obj_src, offsets.src, (oopDesc*)obj_dst, offsets.dst, length_event.src);

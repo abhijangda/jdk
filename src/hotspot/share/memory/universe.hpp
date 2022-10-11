@@ -409,6 +409,7 @@ class Universe: AllStatic {
     TwoFieldSets,
     FieldSetWithNewObject,
     CopyNewObject,
+    CopyNewArray,
     LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
   };
 

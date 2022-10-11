@@ -1134,7 +1134,7 @@ void Universe::verify_heap_graph() {
         objArrayOop obj_dst;
         obj_dst = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_dst_start);
         if (obj_dst == NULL)
-          printf("1137: Didn't find dst\n");
+          printf("1137: Didn't find dst '%p'\n", obj_dst_start);
 
         if (heap_event_type == Universe::CopyArray) {
           length_event = heap_events_start[event_iter+1];
@@ -1143,7 +1143,7 @@ void Universe::verify_heap_graph() {
           obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
 
           if (obj_src == NULL) {
-            printf("1144: Didn't find \n");
+            printf("1144: Didn't find src '%p'\n", obj_src_start);
           }
           //No need to consider objArrayOop::base() in offset calculation
           offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src,
@@ -1151,7 +1151,7 @@ void Universe::verify_heap_graph() {
         } else if (heap_event_type == Universe::CopySameArray) {
           obj_src = obj_dst;
           if (obj_src == NULL) {
-            printf("1152: Didn't find src\n");
+            printf("1152: Didn't find src '%p'\n", obj_dst_start);
           }
           offsets = {event.src >> 32,
                      (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
@@ -1166,7 +1166,7 @@ void Universe::verify_heap_graph() {
           event_iter = event_iter + 1;
 
           if (obj_src == NULL) {
-            printf("1167: Didn't find src\n");
+            printf("1167: Didn't find src '%p'\n", obj_src_start);
           }
           //No need to consider objArrayOop::base() in offset calculation
           offsets = {(uint64_t)obj_src_start - (uint64_t)(oopDesc*)obj_src,

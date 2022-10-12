@@ -6459,15 +6459,19 @@ instruct incrCntrAndStoreCopyArrayEventWithNewDstConstOffsets(memory cntr_mem, a
     assert($cntr_mem$$Address.index() == noreg, "");
 
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
-    if ($dst_length$$Register == $copy_count$$Register)
-      printf("6464\n");
-    else
-      printf("6466\n");
-    if (false) {
-      Universe::HeapEventType event_types[2] = {Universe::CopyNewArray, Universe::None};
-      Register dsts[2] = {$dst_array$$Register, $src_array$$Register};
-      Register srcs[2] = {$dst_length$$Register, $copy_count$$Register};
-      __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
+    
+    if (true) {
+      if ($dst_length$$Register == $copy_count$$Register) {
+        Universe::HeapEventType event_types[2] = {Universe::CopyNewArrayOfSameLength, Universe::None};
+        Register dsts[2] = {$dst_array$$Register, noreg};
+        Register srcs[2] = {$dst_length$$Register, $src_array$$Register};
+        __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
+      } else {
+        Universe::HeapEventType event_types[2] = {Universe::CopyNewArray, Universe::None};
+        Register dsts[2] = {$dst_array$$Register, $src_array$$Register};
+        Register srcs[2] = {$dst_length$$Register, $copy_count$$Register};
+        __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
+      }
      } else {
       __ append_heap_event(__mem, 
                           Universe::NewArray, $dst_array$$Register, $dst_length$$Register, cntr_reg);

@@ -974,8 +974,8 @@ void Universe::verify_heap_graph() {
           heap_event_type == Universe::NewObjectSizeInBits ||
           heap_event_type == Universe::FieldSetWithNewObject ||
           heap_event_type == Universe::CopyNewObject || 
-          heap_event_type == Universe::CopyNewArray) {
-        
+          heap_event_type == Universe::CopyNewArray ||
+          heap_event_type == Universe::CopyNewArrayOfSameLength) {
         if (heap_event_type == Universe::NewObjectSizeInBits) {
           event2.src = event2.src/8;
           heap_event_type = Universe::NewObject;
@@ -988,7 +988,7 @@ void Universe::verify_heap_graph() {
         } else if (heap_event_type == Universe::CopyNewObject) {
           event2.src = (event2.src & ((1UL << LOG_MAX_OBJ_SIZE) - 1))/8;
           heap_event_type = Universe::NewObject;
-        } else if (heap_event_type == Universe::CopyNewArray) {
+        } else if (heap_event_type == Universe::CopyNewArray || heap_event_type == Universe::CopyNewArrayOfSameLength) {
           heap_event_type = Universe::NewArray;
           event_iter++;
         }
@@ -1002,10 +1002,12 @@ void Universe::verify_heap_graph() {
           // printf("858: Replacing %p ('%s') from old size %ld event %ld to new size %ld event %ld event_iter %ld\n", obj, class_name, obj_src_node_iter->second.size(), obj_src_node_iter->second.type(), event2.src, heap_event_type, event_iter);
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
         }
-        
+
         ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
-      }
+      } else if (heap_event_type == Universe::TwoFieldSets || 
+                 heap_event_type == Universe::CopyArray)
+                event_iter++;
     }
   }
 
@@ -1124,7 +1126,7 @@ void Universe::verify_heap_graph() {
           } while(ik && ik->is_klass());
         }
       } else if (heap_event_type == Universe::CopyArray || heap_event_type == Universe::CopySameArray ||
-                 heap_event_type == Universe::CopyNewArray) {
+                 heap_event_type == Universe::CopyNewArray || heap_event_type == Universe::CopyNewArrayOfSameLength) {
         oopDesc* obj_src_start = (oopDesc*)event.src;
         oopDesc* obj_dst_start = (oopDesc*)event.dst;
         HeapEvent length_event;
@@ -1156,14 +1158,20 @@ void Universe::verify_heap_graph() {
           offsets = {event.src >> 32,
                      (uint64_t)obj_dst_start - (uint64_t)(oopDesc*)obj_dst};
           length_event = {event.src & ((1UL << 32) - 1), 0};
-        } else if (heap_event_type == Universe::CopyNewArray) {
+        } else if (heap_event_type == Universe::CopyNewArray || 
+                   heap_event_type == Universe::CopyNewArrayOfSameLength) {
           HeapEvent next_event = heap_events_start[event_iter+1];
-          obj_src_start = (oopDesc*)next_event.dst;
+          
+         if (heap_event_type == Universe::CopyNewArray) {
+            length_event = {next_event.src, 0};
+            obj_src_start = (oopDesc*)next_event.dst;
+          } else if (heap_event_type == Universe::CopyNewArrayOfSameLength) {
+            length_event = {event.src, 0};
+            obj_src_start = (oopDesc*)next_event.src;
+          }
 
-          obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
-
-          length_event = {next_event.src, 0};
           event_iter = event_iter + 1;
+          obj_src = (objArrayOop)oop_for_address(ObjectNode::oop_to_obj_node, obj_src_start);
 
           if (obj_src == NULL) {
             printf("1167: Didn't find src '%p'\n", obj_src_start);

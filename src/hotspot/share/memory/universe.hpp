@@ -391,18 +391,16 @@ class Universe: AllStatic {
   static uint32_t checking;
 
   enum HeapEventType {
-    None = 1L<<0,
     FieldSet = 0,
-    NewObject = 1L<<1,
-    NewArray = 1L << 2,
-    ArrayElemSet = 1L << 3,
-    CopyObject = 1L << 4,
-    CopyArray = 1L << 5,
-    CopyArrayOffsets = 1L << 6,
-    CopyArrayLength = 1L << 7,
-    MoveObject = 1L << 8,
-    ClearContiguousSpace = 1L << 9,
-    Dummy = 1L << 10,
+    NewObject,
+    NewArray,
+    ArrayElemSet,
+    CopyObject,
+    CopyArray,
+    CopyArrayOffsets,
+    CopyArrayLength,
+    MoveObject,
+    ClearContiguousSpace,
     NewPrimitiveArray,
     CopySameArray,
     NewObjectSizeInBits,
@@ -410,6 +408,9 @@ class Universe: AllStatic {
     FieldSetWithNewObject,
     CopyNewObject,
     CopyNewArray,
+    CopyNewArrayOfSameLength,
+    None,
+    Dummy,
     LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
   };
 

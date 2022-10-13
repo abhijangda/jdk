@@ -1045,8 +1045,8 @@ void Universe::verify_heap_graph() {
         if (heap_event_type == Universe::FieldSet) {
           field_set_events[0] = event;
         } else if (heap_event_type == Universe::TwoFieldSets) {
-          field_set_events[1] = {heap_events_start[event_iter+1].dst, event.dst};
-          field_set_events[0] = {heap_events_start[event_iter+1].src, event.src};
+          field_set_events[0] = {event.src, event.dst};
+          field_set_events[1] = {heap_events_start[event_iter+1].src, heap_events_start[event_iter+1].dst};
           event_iter += 1;
         } else if (heap_event_type == Universe::FieldSetWithNewObject) {
           field_set_events[0] = {heap_events_start[event_iter+1].dst, event.dst};

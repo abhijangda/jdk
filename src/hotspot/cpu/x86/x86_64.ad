@@ -6506,10 +6506,10 @@ instruct incrCntrAndStoreCopyArrayEventWithNewDstInts(memory cntr_mem, any_RegP 
     Register cntr_reg = $tmp1$$Register;
     assert($cntr_mem$$Address.index() == noreg, "");
 
-    //TODO: Create a CopyArrayWithNewDest as a new heap event type
+    //Not optimizing because this is not called in any benchmarks
     __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1), 
                          Universe::NewArray, $dst_array$$Register, $dst_length$$Register, cntr_reg);
-    //printf("6498\n");
+  
     if (src_array_reg != dst_array_reg) {
       __ addq(src_array_reg, src_offset_reg);
       __ addq(dst_array_reg, dst_offset_reg);
@@ -6554,6 +6554,7 @@ instruct incrCntrAndStoreCopyArrayEventWithNewDst(memory cntr_mem, any_RegP src_
     assert($cntr_mem$$Address.index() == noreg, "");
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
     
+    //Not optimizing because this is not called in any benchmarks
     __ append_heap_event(__mem, Universe::NewArray, $dst_array$$Register, $dst_length$$Register, cntr_reg);
     
     if (src_array_reg != dst_array_reg) {
@@ -6865,10 +6866,10 @@ instruct storeHeapEventFieldSetAndArrayCopyWithNewArray(memory field1, any_RegP 
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
-instruct storeHeapEventFieldSetTwo(memory field1, any_RegP val1, memory field2, any_RegP val2, rRegL cntr_addr, vecXReg tmp_vec1)
+instruct storeHeapEventFieldSetTwo(memory field1, any_RegP val1, memory field2, any_RegP val2, rRegL cntr_addr, vecXReg tmp_vec1, vecXReg tmp_vec2)
 %{
   match(Set field1 (StoreHeapEvent field1 (Binary val1 (Binary field2 val2))));
-  effect(TEMP cntr_addr, TEMP tmp_vec1);
+  effect(TEMP cntr_addr, TEMP tmp_vec1, TEMP tmp_vec2);
 
   //TODO: Specialize for constant vals
   ins_cost(125); // XXX
@@ -6880,13 +6881,14 @@ instruct storeHeapEventFieldSetTwo(memory field1, any_RegP val1, memory field2, 
     if (!C2InstrumentHeapEvents) return;
     __ gen_lock_heap_event_mutex();
     
-    Universe::HeapEventType event_types[2] = {Universe::None, Universe::TwoFieldSets};
+    Universe::HeapEventType event_types[2] = {Universe::TwoFieldSets, Universe::None};
     RegisterOrAddress dsts[2] = {$field1$$Address, $field2$$Address};
     RegisterOrConstant srcs[2] = {$val1$$Register, $val2$$Register};
-    
+    XMMRegister tmp_vecs[2] = {$tmp_vec1$$XMMRegister, $tmp_vec2$$XMMRegister};
+
     if (true) {
     __ append_two_heap_events(Address(r15_thread, JavaThread::heap_events_offset()), event_types, 
-                              dsts, srcs, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
+                              dsts, srcs, $cntr_addr$$Register, tmp_vecs);
     } else {
     __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
                          $field2$$Address, $val2$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);

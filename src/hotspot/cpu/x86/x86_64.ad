@@ -6273,7 +6273,7 @@ instruct incrCntrAndStoreHeapEventFieldSet(memory cntr_mem, any_RegP val, any_Re
     Register cntr_reg = $tmp1$$Register;
     assert($cntr_mem$$Address.index() == noreg, "");
     __ gen_lock_heap_event_mutex();
-
+    printf("6276\n");
     Address __mem = $cntr_mem$$Address; //Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
     
     __ movq(cntr_reg, __mem);

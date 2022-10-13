@@ -2781,8 +2781,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       AllocateNode* alloc = init->allocation();
       if (alloc->Opcode() == Op_Allocate && init->can_capture_store(this, phase, can_reshape) &&
           phase->type(in(MemNode::ValueIn)) == TypePtr::NULL_PTR) {
-        //If a storeheap event in a initialize node is stores NULL
-        //then there is no need to instrument it.
+        //Do not instrument NULL stores in an initialize node
         if (PrintC2FuseStoreHeapEvents)
           printf("Changing NULL store in Init node to StoreP\n");
         return ((StoreHeapEventNode*)this)->to_storep(*phase);
@@ -2808,6 +2807,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
           phase->is_IterGVN()->rehash_node_delayed(this);
         }
         ac->set_fused_with_fieldset(true);
+
         if (PrintC2FuseStoreHeapEvents) {
           if (ac->is_alloc_tightly_coupled()) {
             printf("Fuse ArrayCopy '%d', %s, and FieldSet '%d'\n", ac->_idx, (ac->is_clone_inst() ? "NewObject" : "NewArray"), this->_idx);

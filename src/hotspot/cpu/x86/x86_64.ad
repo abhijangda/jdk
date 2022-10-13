@@ -6347,6 +6347,9 @@ instruct incrCntrAndStoreCopyArrayEventConstOffsets(memory cntr_mem, any_RegP sr
     Universe::HeapEventType event_types[2] = {Universe::CopyArray, Universe::CopyArrayLength};
     Register dsts[2] = {$dst_array$$Register, noreg};
     Register srcs[2] = {$src_array$$Register, $copy_count$$Register};
+    if (dst_array_reg == src_array_reg) {
+      printf("6351\n");
+    }
     __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
     
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
@@ -6654,6 +6657,7 @@ instruct storeHeapEventFieldSetNull(memory field, immN0 val, rRegL cntr_addr, ve
     }
     if (!C2InstrumentHeapEvents) return;
     __ gen_lock_heap_event_mutex();
+    //TODO: Create a FieldSetNull event
     __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), $field$$Address, $val$$constant, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
     __ check_heap_events_buffer_size($cntr_addr$$Register, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
@@ -6742,7 +6746,13 @@ instruct storeHeapEventFieldSetAndCopyObjWithNewObj(memory field1, any_RegP val1
     Register cntr_reg = cntr_addr_reg;
     
     Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
-
+    //This is not generated, so do not optimize it.
+    if ($dst$$Register == $val1$$Register) {
+      printf("6746\n");
+    } else {
+      printf("6748\n");
+    }
+    ShouldNotReachHere();
     __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), Universe::NewObjectSizeInBits, 
                           $dst$$Register, $obj_size$$Register, cntr_reg);
     __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), fuse_event_type(),
@@ -6754,6 +6764,55 @@ instruct storeHeapEventFieldSetAndCopyObjWithNewObj(memory field1, any_RegP val1
   %}
   ins_pipe(ialu_mem_reg); // XXX
 %}
+
+instruct storeHeapEventFieldSetAndArrayCopyConstOffsets(memory field1, any_RegP val1, any_RegP src_array, immI_0 src_offset, any_RegP dst_array, immI_0 dst_offset, rRegI copy_count, rRegL cntr_addr, vecXReg tmp_vec1)
+%{
+  match(Set field1 (StoreHeapEvent field1 (Binary val1 (Binary src_array (Binary src_offset (Binary dst_array (Binary dst_offset copy_count)))))));
+  effect(TEMP cntr_addr, TEMP tmp_vec1);
+
+  //TODO: Specialize for constant vals
+  ins_cost(125); // XXX
+  format %{ "movq    $field1, $val1\t# long" %}
+  ins_encode %{
+    __ movq($field1$$Address, $val1$$Register);
+    //__ movq($field2$$Address, $val2$$Register);
+
+    if (!C2InstrumentHeapEvents) return;
+    __ gen_lock_heap_event_mutex();
+
+    Register src_array_reg = $src_array$$Register;
+    Register dst_array_reg = $dst_array$$Register;
+    Register copy_count_reg = $copy_count$$Register;
+    Register cntr_addr_reg = $cntr_addr$$Register;
+    Register cntr_reg = cntr_addr_reg;
+
+    Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+
+    if (false && $val1$$Register == dst_array_reg) {
+      //Universe::HeapEventType event_types[2] = {Universe::FieldSetAndArrayCopy, Universe::None};
+      //RegisterOrAddress dsts[2] = {$field1$$Address, src_array_reg};
+      //RegisterOrConstant srcs[2] = {dst_array_reg, $copy_count$$Register};
+      //TODO: Implement. This will need refactoring in Unvierse::verify_heap_graph code.
+    } else {
+      if (src_array_reg != dst_array_reg) {
+        Universe::HeapEventType event_types[2] = {Universe::CopyArray, Universe::CopyArrayLength};
+        Register dsts[2] = {dst_array_reg, noreg};
+        Register srcs[2] = {src_array_reg, $copy_count$$Register};
+        __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
+      } else {
+        __ append_heap_event(__mem, Universe::CopySameArray, dst_array_reg, $copy_count$$Register, cntr_reg);
+      }
+
+      __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
+                            $field1$$Address, $val1$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
+    }
+
+    __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
+    __ gen_unlock_heap_event_mutex();
+  %}
+  ins_pipe(ialu_mem_reg); // XXX
+%}
+
 
 instruct storeHeapEventFieldSetAndArrayCopy(memory field1, any_RegP val1, any_RegP src_array, rRegI src_offset, any_RegP dst_array, rRegI dst_offset, rRegI copy_count, rRegL cntr_addr, vecXReg tmp_vec1)
 %{
@@ -6770,38 +6829,36 @@ instruct storeHeapEventFieldSetAndArrayCopy(memory field1, any_RegP val1, any_Re
     if (!C2InstrumentHeapEvents) return;
     __ gen_lock_heap_event_mutex();
 
+    Register src_array_reg = $src_array$$Register;
+    Register src_offset_reg = $src_offset$$Register;
+    Register dst_array_reg = $dst_array$$Register;
+    Register dst_offset_reg = $dst_offset$$Register;
+    Register copy_count_reg = $copy_count$$Register;
     Register cntr_addr_reg = $cntr_addr$$Register;
     Register cntr_reg = cntr_addr_reg;
-    {
-      Register src_array_reg = $src_array$$Register;
-      Register src_offset_reg = $src_offset$$Register;
-      Register dst_array_reg = $dst_array$$Register;
-      Register dst_offset_reg = $dst_offset$$Register;
-      Register copy_count_reg = $copy_count$$Register;
-      
-      Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
-      
-      if (src_array_reg != dst_array_reg) {
-        __ addq(src_array_reg, src_offset_reg);
-        __ addq(dst_array_reg, dst_offset_reg);
-        Universe::HeapEventType event_types[2] = {Universe::CopyArray, Universe::CopyArrayLength};
-        Register dsts[2] = {dst_array_reg, noreg};
-        Register srcs[2] = {src_array_reg, $copy_count$$Register};
-        __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
-        __ subq(src_array_reg, src_offset_reg);
-        __ subq(dst_array_reg, dst_offset_reg);
-      } else {
-        __ addq(dst_array_reg, dst_offset_reg);
-        __ shlq(src_offset_reg, 32);
-        __ orq(src_offset_reg, $copy_count$$Register);
-        __ append_heap_event(__mem, Universe::CopySameArray, dst_array_reg, src_offset_reg, cntr_reg);
-        __ shrq(src_offset_reg, 32);
-        __ subq(dst_array_reg, dst_offset_reg);
-      }
+
+    Address __mem = Address(r15_thread, JavaThread::heap_events_offset(), Address::times_1);
+    printf("6835\n");
+    if (src_array_reg != dst_array_reg) {
+      __ addq(src_array_reg, src_offset_reg);
+      __ addq(dst_array_reg, dst_offset_reg);
+      Universe::HeapEventType event_types[2] = {Universe::CopyArray, Universe::CopyArrayLength};
+      Register dsts[2] = {dst_array_reg, noreg};
+      Register srcs[2] = {src_array_reg, $copy_count$$Register};
+      __ append_two_heap_events(__mem, event_types, dsts, srcs, cntr_reg);
+      __ subq(src_array_reg, src_offset_reg);
+      __ subq(dst_array_reg, dst_offset_reg);
+    } else {
+      __ addq(dst_array_reg, dst_offset_reg);
+      __ shlq(src_offset_reg, 32);
+      __ orq(src_offset_reg, $copy_count$$Register);
+      __ append_heap_event(__mem, Universe::CopySameArray, dst_array_reg, src_offset_reg, cntr_reg);
+      __ shrq(src_offset_reg, 32);
+      __ subq(dst_array_reg, dst_offset_reg);
     }
 
     __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), event_type(), 
-                         $field1$$Address, $val1$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
+                          $field1$$Address, $val1$$Register, $cntr_addr$$Register, $tmp_vec1$$XMMRegister);
 
     __ check_heap_events_buffer_size(cntr_reg, MaxHeapEvents*sizeof(Universe::HeapEvent));
     __ gen_unlock_heap_event_mutex();
@@ -6823,7 +6880,8 @@ instruct storeHeapEventFieldSetAndArrayCopyWithNewArray(memory field1, any_RegP 
 
     if (!C2InstrumentHeapEvents) return;
     __ gen_lock_heap_event_mutex();
-
+    printf("6832\n");
+    ShouldNotReachHere();
     Register cntr_addr_reg = $cntr_addr$$Register;
     Register cntr_reg = cntr_addr_reg;
     __ append_heap_event(Address(r15_thread, JavaThread::heap_events_offset()), Universe::NewArray, 
@@ -6848,6 +6906,7 @@ instruct storeHeapEventFieldSetAndArrayCopyWithNewArray(memory field1, any_RegP 
         __ subq(src_array_reg, src_offset_reg);
         __ subq(dst_array_reg, dst_offset_reg);
       } else {
+        ShouldNotReachHere();
         __ addq(dst_array_reg, dst_offset_reg);
         __ shlq(src_offset_reg, 32);
         __ orq(src_offset_reg, $copy_count$$Register);

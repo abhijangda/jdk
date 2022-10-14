@@ -6940,7 +6940,7 @@ instruct storeHeapEventFieldSetTwo(memory field1, any_RegP val1, memory field2, 
     if (!C2InstrumentHeapEvents) return;
     __ gen_lock_heap_event_mutex();
     
-    Universe::HeapEventType event_types[2] = {Universe::TwoFieldSets, Universe::None};
+    Universe::HeapEventType event_types[2] = {Universe::FieldSet, Universe::FieldSet};
     RegisterOrAddress dsts[2] = {$field1$$Address, $field2$$Address};
     RegisterOrConstant srcs[2] = {$val1$$Register, $val2$$Register};
     XMMRegister tmp_vecs[2] = {$tmp_vec1$$XMMRegister, $tmp_vec2$$XMMRegister};

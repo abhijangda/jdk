@@ -404,7 +404,6 @@ class Universe: AllStatic {
     NewPrimitiveArray,
     CopySameArray,
     NewObjectSizeInBits,
-    TwoFieldSets,
     FieldSetWithNewObject,
     CopyNewObject,
     CopyNewArray,
@@ -432,7 +431,6 @@ class Universe: AllStatic {
         PROCESS_EVENT_TYPE(NewPrimitiveArray)
         PROCESS_EVENT_TYPE(CopySameArray)
         PROCESS_EVENT_TYPE(NewObjectSizeInBits)
-        PROCESS_EVENT_TYPE(TwoFieldSets)
         PROCESS_EVENT_TYPE(FieldSetWithNewObject)
         PROCESS_EVENT_TYPE(LARGE_VALUE)
 

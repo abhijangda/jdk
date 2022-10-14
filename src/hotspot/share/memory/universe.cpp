@@ -1018,8 +1018,7 @@ void Universe::verify_heap_graph() {
 
         ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
-      } else if (heap_event_type == Universe::TwoFieldSets || 
-                 heap_event_type == Universe::CopyArray) {
+      } else if (heap_event_type == Universe::CopyArray) {
         event_iter++;
       }
     }
@@ -1060,20 +1059,16 @@ void Universe::verify_heap_graph() {
         //   ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.src,
         //                                            heap_event_type, 0));
         // }
-      } else if (heap_event_type == Universe::FieldSet || heap_event_type == Universe::TwoFieldSets || heap_event_type == Universe::FieldSetWithNewObject) {
+      } else if (heap_event_type == Universe::FieldSet || heap_event_type == Universe::FieldSetWithNewObject) {
         Universe::HeapEvent field_set_events[2];
         if (heap_event_type == Universe::FieldSet) {
           field_set_events[0] = event;
-        } else if (heap_event_type == Universe::TwoFieldSets) {
-          field_set_events[0] = {event.src, event.dst};
-          field_set_events[1] = {heap_events_start[event_iter+1].src, heap_events_start[event_iter+1].dst};
-          event_iter += 1;
         } else if (heap_event_type == Universe::FieldSetWithNewObject) {
           field_set_events[0] = {heap_events_start[event_iter+1].dst, event.dst};
           event_iter += 1;
         }
 
-        for (int e = 0; e < ((heap_event_type == Universe::TwoFieldSets) ? 2 : 1); e++) {
+        for (int e = 0; e < 1; e++) {
           Universe::HeapEvent event = field_set_events[e];
           if (event.dst == 0) continue;
           oopDesc* field = (oopDesc*)event.dst;

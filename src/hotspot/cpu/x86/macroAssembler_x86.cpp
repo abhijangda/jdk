@@ -4908,7 +4908,7 @@ void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventT
       uint64_t encoded = Universe::encode_heap_event_dst(event_types[n], 0);
 
       Address addr = dsts[n].as_address();
-      bool encode_event = event_types[n] != Universe::None;
+      bool encode_event = event_types[n] != Universe::None && event_types[n] != Universe::FieldSet;
       if (addr.disp() == 0 && addr.index() == noreg) {
         Register base = addr.base();
         if (encode_event) {

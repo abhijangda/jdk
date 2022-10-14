@@ -152,7 +152,8 @@ public:
 
   Generation* young_gen() const { return _young_gen; }
   Generation* old_gen()   const { return _old_gen; }
-
+  const char* base() const {return _young_gen->base();}
+  const char* end() const {return _old_gen->end();}
   bool is_young_gen(const Generation* gen) const { return gen == _young_gen; }
   bool is_old_gen(const Generation* gen) const { return gen == _old_gen; }
 

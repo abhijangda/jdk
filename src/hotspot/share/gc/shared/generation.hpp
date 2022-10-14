@@ -174,7 +174,8 @@ class Generation: public CHeapObj<mtGC> {
   }
 
   MemRegion reserved() const { return _reserved; }
-
+  const char* base() const {return _virtual_space.low();}
+  const char* end() const {return _virtual_space.high_boundary();}
   // Returns a region guaranteed to contain all the objects in the
   // generation.
   virtual MemRegion used_region() const { return _reserved; }

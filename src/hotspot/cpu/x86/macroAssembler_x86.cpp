@@ -4741,15 +4741,19 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     movq(heap_event_addr, temp1);
   }
   heap_event_addr = Address(r15_thread, temp2, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
+  assert(Universe::FieldSet == 0, "sanity");
   if (dst_or_new_obj.is_register()) {
-    shlq(dst_or_new_obj.as_register(), 15);
+    if (event_type != Universe::FieldSet)
+      shlq(dst_or_new_obj.as_register(), 15);
     if (event_type != 0)
       orq(dst_or_new_obj.as_register(), (int32_t)event_type);
     movq(heap_event_addr, dst_or_new_obj.as_register());
-    shrq(dst_or_new_obj.as_register(), 15);
+    if (event_type != Universe::FieldSet)
+      shrq(dst_or_new_obj.as_register(), 15);
   } else {
     leaq(temp1, dst_or_new_obj.as_address());
-    shlq(temp1, 15);
+    if (event_type != Universe::FieldSet)
+      shlq(temp1, 15);
     if (event_type != 0)
       orq(temp1, (int32_t)event_type);
     movq(heap_event_addr, temp1);
@@ -5057,15 +5061,18 @@ void MacroAssembler::append_heap_event(Address events, Universe::HeapEventType e
     Address addr = dst.as_address();
     if (addr.disp() == 0 && addr.index() == noreg) {
       Register base = addr.base();
-      shlq(base, 15);
+      if (event_type != Universe::FieldSet)
+        shlq(base, 15);
       if (event_type != 0) {
         orq(base, (int32_t)encoded);
       }
       pinsrq(tmp_vec, base, 1);
-      shrq(base, 15);
+      if (event_type != Universe::FieldSet)
+        shrq(base, 15);
     } else {
       leaq(cntr_reg, addr);
-      shlq(cntr_reg, 15);
+      if (event_type != Universe::FieldSet)
+        shlq(cntr_reg, 15);
       if (event_type != 0) {
         orq(cntr_reg, (int32_t)encoded);
       }

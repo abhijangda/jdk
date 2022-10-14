@@ -37,6 +37,7 @@
 #include "code/codeBehaviours.hpp"
 #include "code/codeCache.hpp"
 #include "compiler/oopMap.hpp"
+#include "gc/shared/genCollectedHeap.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "gc/shared/gcArguments.hpp"
 #include "gc/shared/gcConfig.hpp"
@@ -898,6 +899,15 @@ void Universe::process_heap_event(Universe::HeapEvent event) {
   }
 }
 
+bool is_field_set(Universe::HeapEvent event, const void* heap_start, const void* heap_end) {
+  bool is_src_in_heap = ((uint64_t)heap_start) <= event.src && event.src < ((uint64_t)heap_end);
+  bool is_dst_in_heap = ((uint64_t)heap_start) <= event.dst && event.dst < ((uint64_t)heap_end);
+  if ((event.src == 0 || is_src_in_heap) and is_dst_in_heap)
+    return true;
+  
+  return false;
+}
+
 void Universe::verify_heap_graph() {
   // if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
   //   return;
@@ -924,7 +934,9 @@ void Universe::verify_heap_graph() {
 
   map<oopDesc*, oopDesc*> old_to_new_objects;
   printf("Creating Nodes\n");
-  
+  const void* heap_start = ((GenCollectedHeap*)Universe::heap())->base();
+  const void* heap_end = ((GenCollectedHeap*)Universe::heap())->end();
+  printf("Heap top address %p end address %p\n", heap_start, heap_end);
   //Update heap events counter to include heap events stored in the last page of second part
   if (!Universe::is_verify_from_exit) {
     for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
@@ -963,9 +975,10 @@ void Universe::verify_heap_graph() {
 
     // }
     printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, get_heap_events_ptr());
-
+    
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
+      if(is_field_set(event, heap_start, heap_end)) continue;
       HeapEventType heap_event_type = decode_heap_event_type(event);
       HeapEvent event2 = decode_heap_event(event);
       if (heap_event_type == Universe::NewObject || 
@@ -1006,8 +1019,9 @@ void Universe::verify_heap_graph() {
         ObjectNode obj_node = ObjectNode(obj, event2.src, heap_event_type, 0);
         ObjectNode::oop_to_obj_node.emplace(obj, obj_node);
       } else if (heap_event_type == Universe::TwoFieldSets || 
-                 heap_event_type == Universe::CopyArray)
-                event_iter++;
+                 heap_event_type == Universe::CopyArray) {
+        event_iter++;
+      }
     }
   }
 
@@ -1021,14 +1035,20 @@ void Universe::verify_heap_graph() {
     // printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, get_heap_events_ptr());
     *(uint64_t*)th_heap_events = 0;
     HeapEvent* heap_events_start = &th_heap_events[1];
-    
+    HeapEvent prevEvent = {0,0};
+    bool PrintHeapEventStatistics = true;
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
       if (event.dst == 0)
         continue;
       ((HeapEvent*)heap_events_start)[event_iter] = HeapEvent{0,0};
-      HeapEventType heap_event_type = decode_heap_event_type(event);
-      event = decode_heap_event(event);
+      HeapEventType heap_event_type;
+      if(is_field_set(event, heap_start, heap_end)) {
+        heap_event_type = Universe::FieldSet;
+      } else {
+        heap_event_type = decode_heap_event_type(event);
+        event = decode_heap_event(event);
+      }
       
       if (heap_event_type == Universe::NewObject ||
           heap_event_type == Universe::NewArray ||
@@ -1055,6 +1075,7 @@ void Universe::verify_heap_graph() {
 
         for (int e = 0; e < ((heap_event_type == Universe::TwoFieldSets) ? 2 : 1); e++) {
           Universe::HeapEvent event = field_set_events[e];
+          if (event.dst == 0) continue;
           oopDesc* field = (oopDesc*)event.dst;
           oop obj = oop_for_address(ObjectNode::oop_to_obj_node, field);
           if (obj == NULL) {
@@ -1076,6 +1097,14 @@ void Universe::verify_heap_graph() {
               }
             }
           } else {
+            // if (PrintHeapEventStatistics) {
+            //   char buf[1024];
+            //   if (prevEvent.dst == event.dst && heap_event_type == Universe::FieldSet) {
+            //     printf("Prev event {0x%lx, 0x%lx} == curr event {0x%lx, 0x%lx} at %ld. oop '%s'\n", prevEvent.src, prevEvent.dst, event.src, event.dst, event_iter, get_oop_klass_name(obj, buf));
+            //   }
+
+            //   prevEvent = event;
+            // }
             ObjectNode::oop_to_obj_node[obj].update_or_add_field((void*)field, (oopDesc*)event.src, 
                                                                 0);
           }

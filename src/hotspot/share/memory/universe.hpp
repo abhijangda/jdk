@@ -494,6 +494,9 @@ class Universe: AllStatic {
     // printf("449: v %ld\n", v);
     (&heap_events[1])[v] = encode_heap_event(event_type, event);
 
+    // if ((&heap_events[1])[v-1].dst == event.dst) {
+    //   printf("498: 0x%lx, 0x%lx, 0x%lx\n", (&heap_events[1])[v-1].src, event.src, event.dst);
+    // }
     if (!UseMprotectForHeapGraphCheck) {
       if (v + 1 >= MaxHeapEvents) {
         if (CheckHeapEventGraphWithHeap)

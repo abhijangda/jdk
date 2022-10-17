@@ -432,14 +432,16 @@ class CheckGraph : public ObjectClosure {
               if (found) {
                 num_found++;
                 if (found && field_edge->second.val() != actual_val) {
-                  num_src_not_correct++;
-                  if (num_src_not_correct < 100) {
-                    char field_name[1024];
-                    ik->field_name(f)->as_C_string(field_name, 1024);
-                    char class_name[1024];
-                    get_oop_klass_name(obj, class_name);
-                    printf("Field '%s' of oop '%p' of class '%s' not correct '%p' != '%p'\n", 
-                            field_name, (oopDesc*)obj, class_name, (oopDesc*)field_edge->second.val(), (oopDesc*)actual_val);
+                  if ((actual_val == NULL) || !actual_val->is_forwarded() || (actual_val != NULL && actual_val != INVALID_OOP && actual_val->is_forwarded() && field_edge->second.val() != actual_val->forwardee())) {
+                    num_src_not_correct++;
+                    if (num_src_not_correct < 100) {
+                      char field_name[1024];
+                      ik->field_name(f)->as_C_string(field_name, 1024);
+                      char class_name[1024];
+                      get_oop_klass_name(obj, class_name);
+                      printf("Field '%s' (%p) of oop '%p' of class '%s' not correct '%p' != '%p'\n", 
+                              field_name, field_addr, (oopDesc*)obj, class_name, (oopDesc*)field_edge->second.val(), (oopDesc*)actual_val);
+                    }
                   }
                 }
               } else {
@@ -874,6 +876,7 @@ oopDesc* oop_for_address(Map& oop_map, oopDesc* field) {
 
 bool Universe::is_verify_cause_full_gc = false;
 bool Universe::is_verify_from_exit = false;
+bool Universe::is_verify_from_gc = false;
 
 void Universe::process_heap_event(Universe::HeapEvent event) {
   HeapEventType heap_event_type = decode_heap_event_type(event);      
@@ -908,6 +911,10 @@ bool is_field_set(Universe::HeapEvent event, const void* heap_start, const void*
   return false;
 }
 
+bool Universe::is_curr_Java_thread() {
+  return Thread::current()->is_Java_thread();
+}
+
 void Universe::verify_heap_graph() {
   // if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
   //   return;
@@ -919,6 +926,11 @@ void Universe::verify_heap_graph() {
   if (!CheckHeapEventGraphWithHeap)
     return;
   
+  // heap()->print();
+
+  if (Universe::is_verify_from_gc) {
+    printf("GC from thread %p\n", Thread::current_or_null());
+  }
   // pthread_mutex_lock(&lock);
   size_t num_events_created = 0;
   checking++;
@@ -928,7 +940,8 @@ void Universe::verify_heap_graph() {
   int zero_event_types = 0;
   //Update heap hash table
   unordered_set<uint64_t> event_threads;
-  printf("Check Shadow Graph is_verify_cause_full_gc %d is_verify_from_exit %d\n", is_verify_cause_full_gc, is_verify_from_exit);
+  printf("Check Shadow Graph is_verify_cause_full_gc %d is_verify_from_exit %d\n", 
+         is_verify_cause_full_gc, is_verify_from_exit);
   uint64_t num_field_sets = 0;
   uint64_t num_new_obj = 0;
 
@@ -974,7 +987,7 @@ void Universe::verify_heap_graph() {
     //   heap_events_start += MaxHeapEvents;
 
     // }
-    printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, get_heap_events_ptr());
+    printf("heap_events_size %ld %p\n", heap_events_size, th_heap_events);
     
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
@@ -1100,6 +1113,7 @@ void Universe::verify_heap_graph() {
 
             //   prevEvent = event;
             // }
+            // if(checking == 3) printf("FieldSet (%p) of oop %p to %p in %p\n", field, (oopDesc*)obj, (oopDesc*)event.src, th_heap_events);
             ObjectNode::oop_to_obj_node[obj].update_or_add_field((void*)field, (oopDesc*)event.src, 
                                                                 0);
           }
@@ -1267,7 +1281,7 @@ void Universe::verify_heap_graph() {
         oop obj_src = oop((oopDesc*)event.src);
         oop obj_dst = oop((oopDesc*)event.dst);
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj_src);
-
+        if(checking == 3) printf("Move %p --> %p\n", (oopDesc*)obj_src, (oopDesc*)obj_dst);
         if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
           ObjectNode node = obj_src_node_iter->second;
           ObjectNode::oop_to_obj_node.erase(obj_src_node_iter);
@@ -1337,6 +1351,7 @@ void Universe::verify_heap_graph() {
   // if (Universe::is_verify_cause_full_gc) abort();
 
   Universe::is_verify_cause_full_gc = false;
+  Universe::is_verify_from_gc = false;
   // pthread_mutex_unlock(&lock);
 }
 

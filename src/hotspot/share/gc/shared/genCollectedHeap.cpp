@@ -534,6 +534,7 @@ void GenCollectedHeap::do_collection(bool           full,
 
   if (InstrumentHeapEvents) {
     //Before collection transfer all the events
+    Universe::is_verify_from_gc = true;
     if(CheckHeapEventGraphWithHeap)
       Universe::verify_heap_graph();
     else
@@ -585,10 +586,12 @@ void GenCollectedHeap::do_collection(bool           full,
     
     if (InstrumentHeapEvents) {
       //Before collection transfer all the events
+      Universe::is_verify_from_gc = true;
       if(CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
       else
         Universe::transfer_events_to_gpu();
+      Universe::is_verify_from_gc = false;
     }
 
     print_heap_after_gc();
@@ -635,6 +638,7 @@ void GenCollectedHeap::do_collection(bool           full,
 
     if (InstrumentHeapEvents) {
       //Before collection transfer all the events
+      Universe::is_verify_from_gc = true;
       Universe::is_verify_cause_full_gc = true;
       if(CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();

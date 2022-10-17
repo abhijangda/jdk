@@ -441,6 +441,7 @@ class Universe: AllStatic {
   }
 
   static bool is_verify_cause_full_gc;
+  static bool is_verify_from_gc;
   static bool is_verify_from_exit;
   struct HeapEvent {
     uint64_t src;
@@ -470,7 +471,9 @@ class Universe: AllStatic {
   static void transfer_events_to_gpu_list_head();
   static sem_t cuda_semaphore;
   static void add_heap_events(Universe::HeapEventType event_type1, Universe::HeapEvent event1, Universe::HeapEventType event_type2, Universe::HeapEvent event2);
-  static inline __attribute__((always_inline)) void add_heap_event(Universe::HeapEventType event_type, const Universe::HeapEvent event) {
+  static bool is_curr_Java_thread();
+  static inline __attribute__((always_inline))
+  void add_heap_event(Universe::HeapEventType event_type, const Universe::HeapEvent event) {
     if (!InstrumentHeapEvents) return;
     
     if (CheckHeapEventGraphWithHeap)
@@ -483,13 +486,17 @@ class Universe: AllStatic {
     // }
     #endif
     
+    bool add_to_main_thread = !is_curr_Java_thread();
     // Thread* curr_thread = Thread::current();
-    Universe::HeapEvent* heap_events = (CheckHeapEventGraphWithHeap) ? Universe::get_heap_events_ptr() : *all_heap_events.head()->data() ; //(Universe::HeapEvent*)(((char*)curr_thread) + 2048);
+    Universe::HeapEvent* heap_events = (CheckHeapEventGraphWithHeap && !add_to_main_thread) ? Universe::get_heap_events_ptr() : *all_heap_events.head()->data() ; //(Universe::HeapEvent*)(((char*)curr_thread) + 2048);
     uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
-    
+    // if (Universe::checking == 2 && event_type == Universe::FieldSet) {
+    //   printf("494: FieldSet for %p to %p\n", (oopDesc*)event.dst, (oopDesc*)event.src);
+    // }
     const uint64_t v = *heap_event_counter_ptr;
     *heap_event_counter_ptr = v + 1;
     // printf("449: v %ld\n", v);
+    //TODO: Improve for FieldSet
     (&heap_events[1])[v] = encode_heap_event(event_type, event);
 
     // if ((&heap_events[1])[v-1].dst == event.dst) {

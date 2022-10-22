@@ -442,6 +442,7 @@ class Universe: AllStatic {
 
   static bool is_verify_cause_full_gc;
   static bool is_verify_from_gc;
+  static bool is_verify_from_gc_start;
   static bool is_verify_from_exit;
   struct HeapEvent {
     uint64_t src;
@@ -452,8 +453,9 @@ class Universe: AllStatic {
     size_t length;
   };
 
+  static Universe::unordered_set<void*> marked_objects;
   static EventsToTransfer events_to_transfer;
-
+  static void check_marked_objects();
   static uint64_t heap_event_mask();
   static uint64_t encode_heap_event_dst(HeapEventType event_type, uint64_t src);
   static HeapEvent encode_heap_event(HeapEventType event_type, HeapEvent event);
@@ -472,6 +474,7 @@ class Universe: AllStatic {
   static sem_t cuda_semaphore;
   static void add_heap_events(Universe::HeapEventType event_type1, Universe::HeapEvent event1, Universe::HeapEventType event_type2, Universe::HeapEvent event2);
   static bool is_curr_Java_thread();
+  static void mark_objects(Universe::unordered_set<void*>& visited);
   static inline __attribute__((always_inline))
   void add_heap_event(Universe::HeapEventType event_type, const Universe::HeapEvent event) {
     if (!InstrumentHeapEvents) return;

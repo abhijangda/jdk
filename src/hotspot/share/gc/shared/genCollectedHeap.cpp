@@ -532,21 +532,21 @@ void GenCollectedHeap::do_collection(bool           full,
   bool prepared_for_verification = false;
   bool do_full_collection = false;
 
-  if (InstrumentHeapEvents) {
-    //Before collection transfer all the events
-    Universe::is_verify_from_gc = true;
-    if(CheckHeapEventGraphWithHeap)
-      Universe::verify_heap_graph();
-    else
-      Universe::transfer_events_to_gpu();
-  }
-
   if (do_young_collection) {
     GCIdMark gc_id_mark;
     GCTraceCPUTime tcpu;
     GCTraceTime(Info, gc) t("Pause Young", NULL, gc_cause(), true);
 
     print_heap_before_gc();
+
+    if (InstrumentHeapEvents) {
+      //Before collection transfer all the events
+      Universe::is_verify_from_gc = true;
+      if(CheckHeapEventGraphWithHeap)
+        Universe::verify_heap_graph();
+      else
+        Universe::transfer_events_to_gpu();
+    }
 
     if (run_verification && VerifyGCLevel <= 0 && VerifyBeforeGC) {
       prepare_for_verify();
@@ -575,7 +575,7 @@ void GenCollectedHeap::do_collection(bool           full,
     if (!do_full_collection) {
       // Adjust generation sizes.
       _young_gen->compute_new_size();
-
+    
       print_heap_change(pre_gc_values);
 
       // Track memory usage and detect low memory after GC finishes
@@ -605,8 +605,17 @@ void GenCollectedHeap::do_collection(bool           full,
     GCIdMark gc_id_mark;
     GCTraceCPUTime tcpu;
     GCTraceTime(Info, gc) t("Pause Full", NULL, gc_cause(), true);
-
+    
     print_heap_before_gc();
+
+    if (InstrumentHeapEvents) {
+      //Before collection transfer all the events
+      Universe::is_verify_from_gc_start = true;
+      if(CheckHeapEventGraphWithHeap)
+        Universe::verify_heap_graph();
+      else
+        Universe::transfer_events_to_gpu();
+    }
 
     if (!prepared_for_verification && run_verification &&
         VerifyGCLevel <= 1 && VerifyBeforeGC) {

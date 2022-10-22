@@ -358,7 +358,7 @@ inline bool OopStorage::Block::iterate(F f) const {
 // const OopStorage* or OopStorage*, respectively.
 template<typename F, typename Storage> // Storage := [const] OopStorage
 inline bool OopStorage::iterate_impl(F f, Storage* storage) {
-  assert_at_safepoint();
+  // assert_at_safepoint();
   // Propagate const/non-const iteration to the block layer, by using
   // const or non-const blocks as corresponding to Storage.
   typedef typename Conditional<IsConst<Storage>::value, const Block*, Block*>::type BlockPtr;

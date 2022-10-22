@@ -46,6 +46,7 @@
 #include "gc/shared/oopStorageSet.hpp"
 #include "gc/shared/stringdedup/stringDedup.hpp"
 #include "gc/shared/tlab_globals.hpp"
+#include "gc/shared/oopStorageSet.inline.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/metadataFactory.hpp"
@@ -387,7 +388,7 @@ class CheckGraph : public ObjectClosure {
       const ObjectNode& obj_node = oop_obj_node_pair->second;
 
       //If this oop is a MirrorOop of a klass then check static fields
-      if (_check_static_fields && obj->klass()->id() == InstanceMirrorKlassID) {          
+      if (_check_static_fields && obj->klass()->id() == InstanceMirrorKlassID) {
         oop ikoop                  = ((InstanceKlass*)obj->klass())->java_mirror();
         auto ikoop_iter            = ObjectNode::oop_to_obj_node.find(ikoop);
         InstanceMirrorKlass* imk   = (InstanceMirrorKlass*)ikoop->klass();
@@ -426,7 +427,7 @@ class CheckGraph : public ObjectClosure {
             if (is_field_of_reference_type(ik, f)) {
               void* field_addr = (void*)(((uint64_t)(void*)obj) + ik->field_offset(f));
               oop actual_val = obj->obj_field(ik->field_offset(f));
-              auto field_edge = obj_node.fields().find(ik->field_offset(f)); 
+              auto field_edge = obj_node.fields().find(ik->field_offset(f));
               bool found = field_edge != obj_node.fields().end();
 
               if (found) {
@@ -877,6 +878,7 @@ oopDesc* oop_for_address(Map& oop_map, oopDesc* field) {
 bool Universe::is_verify_cause_full_gc = false;
 bool Universe::is_verify_from_exit = false;
 bool Universe::is_verify_from_gc = false;
+bool Universe::is_verify_from_gc_start = false;
 
 void Universe::process_heap_event(Universe::HeapEvent event) {
   HeapEventType heap_event_type = decode_heap_event_type(event);      
@@ -915,6 +917,127 @@ bool Universe::is_curr_Java_thread() {
   return Thread::current()->is_Java_thread();
 }
 
+class GetRoots : public BasicOopIterateClosure {
+public:
+  Universe::vector<oop> root_oops;
+  virtual void do_oop(oop* p) {root_oops.push_back(RawAccess<>::oop_load(p));}
+  virtual void do_oop(narrowOop* p) {abort();}
+};
+
+class GetCLDRoots : public CLDClosure {
+ public:
+  virtual void do_cld(ClassLoaderData* cld) {};
+};
+
+class CheckMarkedObjects : public ObjectClosure {
+  // Universe::unordered_set<void*>& marked_objects_;
+  
+public:
+  int num_obj_marked;
+  int num_obj_unmarked;
+  CheckMarkedObjects() : num_obj_marked(0), num_obj_unmarked(0) {
+  }
+  
+  virtual void do_object(oop obj) {
+    if (obj->mark().is_marked()) {
+      if (Universe::marked_objects.count((void*)obj) == 0) {
+        num_obj_unmarked++;
+      } else {
+        num_obj_marked++;
+      }
+    }
+  }
+};
+
+void Universe::check_marked_objects() {
+  assert(marked_objects.size() > 0, "sanity");
+
+  CheckMarkedObjects checkMarkedObjects;
+  Universe::heap()->object_iterate(&checkMarkedObjects);
+
+  printf("Objects Marked %d Objects Not Marked: %d\n", checkMarkedObjects.num_obj_marked, checkMarkedObjects.num_obj_unmarked);
+}
+
+void Universe::mark_objects(Universe::unordered_set<void*>& visited) {
+  GetRoots get_roots;
+  OopStorageSet::strong_oops_do(&get_roots);
+  Threads::oops_do(&get_roots, NULL);
+  printf("roots %ld\n", get_roots.root_oops.size());
+
+  //Mark reachable objects
+  Universe::deque<oop> bfs_queue;
+  for (auto& root : get_roots.root_oops) {
+    bfs_queue.push_back(root);
+    while (!bfs_queue.empty()) {
+      oop obj = bfs_queue.front();
+      bfs_queue.pop_front();
+      if (visited.count((void*)obj) > 0)
+        continue;
+      if (obj == NULL) continue;
+      visited.insert((void*)obj);
+      if (obj != NULL && obj->is_instance()) {
+        if(obj->klass() && obj->klass()->is_klass()) {
+          ObjectNode objNode = ObjectNode::oop_to_obj_node[(oopDesc*)obj];
+          InstanceKlass* ik = (InstanceKlass*)obj->klass();
+          do {
+            for(int f = 0; f < ik->java_fields_count(); f++) {
+              //Only go through non static and reference fields here.
+              if (AccessFlags(ik->field_access_flags(f)).is_static()) continue;
+              
+              if (is_field_of_reference_type(ik, f)) {
+                void* field_addr = (void*)(((uint64_t)(void*)obj) + ik->field_offset(f));
+                oop field_val = objNode.field_val(field_addr);
+                if (((void*)field_val) != NULL && ((void*)field_val) != CheckGraph::INVALID_PTR)
+                  bfs_queue.push_back(field_val);
+              }
+            }
+            ik = ik->superklass();
+          } while (ik && ik->is_klass());
+        }
+      } else if (obj->is_objArray()) {
+        objArrayOop array = (objArrayOop)obj;
+        ObjectNode obj_node = ObjectNode::oop_to_obj_node[(oopDesc*)obj];
+        int length = array->length();
+        for (int i = 0; i < length; i++) {
+          oop actual_elem = array->obj_at(i);
+          void* elem_addr = (void*)(((uint64_t)array->base()) + i * sizeof(oop)); 
+          auto elem_val = obj_node.field_val(elem_addr);
+          bfs_queue.push_back(elem_val);
+        }
+      }
+    }
+  }
+
+  // #0  MarkSweep::FollowRootClosure::do_oop (this=0x7ffff71564c0 <MarkSweep::follow_root_closure>, p=0x7fffec09bec0) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/serial/markSweep.cpp:145
+  // #1  0x00007ffff5a988d6 in OopStorage::OopFn<OopClosure>::operator()<oop*> (ptr=<optimized out>, this=<synthetic pointer>) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/oopStorage.inline.hpp:240
+  // #2  OopStorage::Block::iterate_impl<OopStorage::OopFn<OopClosure>, OopStorage::Block*> (block=0x7fffec09bec0, f=...) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/oopStorage.inline.hpp:337
+  // #3  OopStorage::Block::iterate<OopStorage::OopFn<OopClosure> > (f=..., this=0x7fffec09bec0) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/oopStorage.inline.hpp:346
+  // #4  OopStorage::iterate_impl<OopStorage::OopFn<OopClosure>, OopStorage> (storage=<optimized out>, f=...) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/oopStorage.inline.hpp:369
+  // #5  OopStorage::iterate_safepoint<OopStorage::OopFn<OopClosure> > (f=..., this=<optimized out>) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/oopStorage.inline.hpp:378
+  // #6  OopStorage::oops_do<OopClosure> (cl=0x7ffff71564c0 <MarkSweep::follow_root_closure>, this=<optimized out>) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/oopStorage.inline.hpp:388
+  // #7  OopStorageSet::strong_oops_do<OopClosure> (cl=cl@entry=0x7ffff71564c0 <MarkSweep::follow_root_closure>) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/oopStorageSet.inline.hpp:36
+  // #8  0x00007ffff5a963fe in GenCollectedHeap::process_roots (code_roots=0x7ffff01a3c10, weak_cld_closure=<optimized out>, strong_cld_closure=<optimized out>, strong_roots=0x7ffff71564c0 <MarkSweep::follow_root_closure>, so=GenCollectedHeap::SO_None, this=0x0) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/genCollectedHeap.cpp:796
+  // #9  GenCollectedHeap::full_process_roots (this=this@entry=0x7fffec048120, is_adjust_phase=is_adjust_phase@entry=false, so=so@entry=GenCollectedHeap::SO_None, only_strong_roots=<optimized out>, root_closure=0x7ffff71564c0 <MarkSweep::follow_root_closure>, cld_closure=<optimized out>) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/genCollectedHeap.cpp:825
+  // #10 0x00007ffff5a99a60 in GenMarkSweep::mark_sweep_phase1 (clear_all_softrefs=clear_all_softrefs@entry=false) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/serial/genMarkSweep.cpp:189
+  // #11 0x00007ffff5a9b059 in GenMarkSweep::invoke_at_safepoint (rp=<optimized out>, clear_all_softrefs=<optimized out>) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/serial/genMarkSweep.cpp:93
+  // #12 0x00007ffff67328e9 in TenuredGeneration::collect (this=0x7fffec0518e0, full=<optimized out>, clear_all_soft_refs=<optimized out>, size=<optimized out>, is_tlab=<optimized out>) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/generation.hpp:414
+  // #13 0x00007ffff5a95ddc in GenCollectedHeap::collect_generation (this=this@entry=0x7fffec048120, gen=0x7fffec0518e0, full=full@entry=false, size=size@entry=3, is_tlab=is_tlab@entry=false, run_verification=<optimized out>, clear_soft_refs=false) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/genCollectedHeap.cpp:483
+  // #14 0x00007ffff5a96ee3 in GenCollectedHeap::do_collection (this=this@entry=0x7fffec048120, full=full@entry=false, clear_all_soft_refs=clear_all_soft_refs@entry=false, size=<optimized out>, size@entry=3, is_tlab=is_tlab@entry=false, max_generation=max_generation@entry=GenCollectedHeap::OldGen) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/genCollectedHeap.cpp:628
+  // #15 0x00007ffff5a97ca9 in GenCollectedHeap::satisfy_failed_allocation (this=this@entry=0x7fffec048120, size=3, is_tlab=<optimized out>) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/genCollectedHeap.cpp:708
+  // #16 0x00007ffff5a7ef62 in VM_GenCollectForAllocation::doit (this=0x7ffff7fc7aa0) at /mnt/homes/aabhinav/jdk/src/hotspot/share/gc/shared/gcVMOperations.cpp:178
+  // #17 0x00007ffff684435a in VM_Operation::evaluate (this=this@entry=0x7ffff7fc7aa0) at /mnt/homes/aabhinav/jdk/src/hotspot/share/runtime/vmOperations.cpp:70
+  // #18 0x00007ffff6867973 in VMThread::evaluate_operation (this=this@entry=0x7fff57ffd030, op=0x7ffff7fc7aa0) at /mnt/homes/aabhinav/jdk/src/hotspot/share/runtime/vmThread.cpp:282
+  // #19 0x00007ffff68687d7 in VMThread::inner_execute (this=this@entry=0x7fff57ffd030, op=<optimized out>) at /mnt/homes/aabhinav/jdk/src/hotspot/share/runtime/vmThread.cpp:429
+  // #20 0x00007ffff6868915 in VMThread::loop (this=this@entry=0x7fff57ffd030) at /mnt/homes/aabhinav/jdk/src/hotspot/share/runtime/vmThread.cpp:496
+  // #21 0x00007ffff6868a34 in VMThread::run (this=0x7fff57ffd030) at /mnt/homes/aabhinav/jdk/src/hotspot/share/runtime/vmThread.cpp:175
+  // #22 0x00007ffff67422b0 in Thread::call_run (this=0x7fff57ffd030) at /mnt/homes/aabhinav/jdk/src/hotspot/share/runtime/thread.cpp:384
+  // #23 0x00007ffff62feac4 in thread_native_entry (thread=0x7fff57ffd030) at /mnt/homes/aabhinav/jdk/src/hotspot/os/linux/os_linux.cpp:705
+  // #24 0x00007ffff719a6db in start_thread (arg=0x7ffff01a5700) at pthread_create.c:463
+  // #25 0x00007ffff78f461f in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:95
+}
+
+Universe::unordered_set<void*> Universe::marked_objects;
+
 void Universe::verify_heap_graph() {
   // if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
   //   return;
@@ -940,8 +1063,8 @@ void Universe::verify_heap_graph() {
   int zero_event_types = 0;
   //Update heap hash table
   unordered_set<uint64_t> event_threads;
-  printf("Check Shadow Graph is_verify_cause_full_gc %d is_verify_from_exit %d\n", 
-         is_verify_cause_full_gc, is_verify_from_exit);
+  printf("Check Shadow Graph is_verify_cause_full_gc %d is_verify_from_exit %d is_verify_from_gc_start %d\n", 
+         is_verify_cause_full_gc, is_verify_from_exit, is_verify_from_gc_start);
   uint64_t num_field_sets = 0;
   uint64_t num_new_obj = 0;
 
@@ -1347,11 +1470,16 @@ void Universe::verify_heap_graph() {
   printf("Total Events '%ld' {Object: %ld, FieldSet: %ld} ; Events-Found '%d' Events-Notfound '%d' Events-Wrong '%d'\n", 
   num_objects + num_fields, num_objects, num_fields, 
   check_graph.num_found, check_graph.num_not_found, check_graph.num_src_not_correct);
-
+  if (is_verify_from_gc_start) {
+    marked_objects.clear();
+    mark_objects(marked_objects);
+    printf("Marked objects: %ld\n", marked_objects.size());
+  }
   // if (Universe::is_verify_cause_full_gc) abort();
 
   Universe::is_verify_cause_full_gc = false;
   Universe::is_verify_from_gc = false;
+  Universe::is_verify_from_gc_start = false;
   // pthread_mutex_unlock(&lock);
 }
 

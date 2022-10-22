@@ -207,7 +207,11 @@ void GenMarkSweep::mark_sweep_phase1(bool clear_all_softrefs) {
 
   // This is the point where the entire marking should have completed.
   assert(_marking_stack.is_empty(), "Marking should have completed");
-
+  if (InstrumentHeapEvents) {
+    //Before collection transfer all the events
+    if(CheckHeapEventGraphWithHeap)
+      Universe::check_marked_objects();
+  }
   {
     GCTraceTime(Debug, gc, phases) tm_m("Weak Processing", gc_timer());
     WeakProcessor::weak_oops_do(&is_alive, &do_nothing_cl);

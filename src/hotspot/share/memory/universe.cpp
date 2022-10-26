@@ -56,6 +56,8 @@
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
+#include "memory/iterator.hpp"
+#include "memory/iterator.inline.hpp"
 #include "oops/compressedOops.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/instanceMirrorKlass.hpp"
@@ -917,6 +919,17 @@ bool Universe::is_curr_Java_thread() {
   return Thread::current()->is_Java_thread();
 }
 
+static char* jstr_to_utf(oop str, char utfstr[]) {
+  int len = java_lang_String::utf8_length(str);
+  typeArrayOop s_value = java_lang_String::value(str);
+  if (s_value != NULL) {
+    size_t length = java_lang_String::utf8_length(str, s_value);
+    java_lang_String::as_utf8_string(str, s_value, utfstr, (int) length + 1);
+  }
+
+  return utfstr;
+}
+
 class GetRoots : public BasicOopIterateClosure {
 public:
   Universe::vector<oop> root_oops;
@@ -926,7 +939,43 @@ public:
 
 class GetCLDRoots : public CLDClosure {
  public:
-  virtual void do_cld(ClassLoaderData* cld) {};
+  GetRoots* get_roots_;
+  GetCLDRoots(GetRoots* get_roots) : get_roots_(get_roots) {}
+  virtual void do_cld(ClassLoaderData* cld) {
+    cld->oops_do(get_roots_, ClassLoaderData::_claim_none, /*clear_modified_oops*/false);
+  };
+};
+
+class GetCodeBlobRoots : public CodeBlobToOopClosure {
+ public:
+  GetCodeBlobRoots(OopClosure* cl) : CodeBlobToOopClosure(cl, false) {}
+  // Called for each code blob, but at most once per unique blob.
+
+  virtual void do_code_blob(CodeBlob* cb) {
+    nmethod* nm = cb->as_nmethod_or_null();
+    if (nm != NULL) {
+      do_nmethod(nm);
+    }
+  }
+};
+
+class GetFieldsClosure: public OopIterateClosure {
+public:
+  Universe::vector<oop*> field_addr;
+  virtual void do_oop(oop* p) {
+    field_addr.push_back(p);
+  }
+  virtual void do_oop(narrowOop* p) {
+  
+  }
+
+  virtual bool do_metadata() { return true; }
+  virtual void do_klass(Klass* k) {
+
+  }
+  virtual void do_cld(ClassLoaderData* cld) {
+
+  }
 };
 
 class CheckMarkedObjects : public ObjectClosure {
@@ -935,13 +984,27 @@ class CheckMarkedObjects : public ObjectClosure {
 public:
   int num_obj_marked;
   int num_obj_unmarked;
+  const int max_unmarked_to_print = 100;
   CheckMarkedObjects() : num_obj_marked(0), num_obj_unmarked(0) {
   }
   
   virtual void do_object(oop obj) {
-    if (obj->mark().is_marked()) {
+    if (obj != NULL && obj != CheckGraph::INVALID_OOP && obj->mark().is_marked()) {
       if (Universe::marked_objects.count((void*)obj) == 0) {
         num_obj_unmarked++;
+        if (num_obj_unmarked < max_unmarked_to_print) {
+          char buf[10240];
+
+          printf("Object not marked %p of class %s\n", (void*)obj, get_oop_klass_name(obj, buf));
+          if (strcmp(buf,"java/lang/String") == 0) {
+            jstr_to_utf(obj, buf);
+            printf("String is %s\n", buf);
+          }
+        }
+
+        if (ObjectNode::oop_to_obj_node.count((oopDesc*)obj) == 0) {
+          printf("985: Not present\n");
+        }
       } else {
         num_obj_marked++;
       }
@@ -950,18 +1013,24 @@ public:
 };
 
 void Universe::check_marked_objects() {
-  assert(marked_objects.size() > 0, "sanity");
+  // assert(marked_objects.size() > 0, "sanity");
 
   CheckMarkedObjects checkMarkedObjects;
   Universe::heap()->object_iterate(&checkMarkedObjects);
 
-  printf("Objects Marked %d Objects Not Marked: %d\n", checkMarkedObjects.num_obj_marked, checkMarkedObjects.num_obj_unmarked);
+  printf("Objects Marked %d Objects Not Marked: %d Extra Objects Marked: %ld\n", checkMarkedObjects.num_obj_marked, checkMarkedObjects.num_obj_unmarked, marked_objects.size() - checkMarkedObjects.num_obj_marked);
 }
 
 void Universe::mark_objects(Universe::unordered_set<void*>& visited) {
   GetRoots get_roots;
+  GetCLDRoots cld_closure(&get_roots);
+  ClassLoaderDataGraph::roots_cld_do(&cld_closure, &cld_closure);
+  
+  GetCodeBlobRoots code_blobs_roots(&get_roots);
+  Threads::oops_do(&get_roots, &code_blobs_roots);
+  
   OopStorageSet::strong_oops_do(&get_roots);
-  Threads::oops_do(&get_roots, NULL);
+  
   printf("roots %ld\n", get_roots.root_oops.size());
 
   //Mark reachable objects
@@ -975,35 +1044,59 @@ void Universe::mark_objects(Universe::unordered_set<void*>& visited) {
         continue;
       if (obj == NULL) continue;
       visited.insert((void*)obj);
-      if (obj != NULL && obj->is_instance()) {
-        if(obj->klass() && obj->klass()->is_klass()) {
-          ObjectNode objNode = ObjectNode::oop_to_obj_node[(oopDesc*)obj];
-          InstanceKlass* ik = (InstanceKlass*)obj->klass();
-          do {
-            for(int f = 0; f < ik->java_fields_count(); f++) {
-              //Only go through non static and reference fields here.
-              if (AccessFlags(ik->field_access_flags(f)).is_static()) continue;
-              
-              if (is_field_of_reference_type(ik, f)) {
-                void* field_addr = (void*)(((uint64_t)(void*)obj) + ik->field_offset(f));
-                oop field_val = objNode.field_val(field_addr);
-                if (((void*)field_val) != NULL && ((void*)field_val) != CheckGraph::INVALID_PTR)
-                  bfs_queue.push_back(field_val);
-              }
-            }
-            ik = ik->superklass();
-          } while (ik && ik->is_klass());
+      if (false) {
+        // GetFieldsClosure get_fields;
+        // obj->oop_iterate(&get_fields);
+        // ObjectNode objNode = ObjectNode::oop_to_obj_node[(oopDesc*)obj];
+        // for (auto field : get_fields.field_addr) {
+        //   oop heap_oop = RawAccess<>::oop_load(field);
+        //   if (heap_oop != NULL) {
+        //     if (!objNode.has_field(field)) {
+        //       char buf[1024];
+        //       char buf2[1024];
+        //       printf("1052: Field '%p'(oop '%s') not found in obj '%p' of class '%s'\n", field, get_oop_klass_name(heap_oop, buf2), (void*)obj, get_oop_klass_name(obj, buf));
+        //     } else if (objNode.field_val(field) != heap_oop) {
+        //       char buf[1024];
+        //       char buf2[1024];
+        //       printf("1061: Value of field '%p'(oop '%s') is not correct in obj '%p' of class '%s'\n", field, get_oop_klass_name(heap_oop, buf2), (void*)obj, get_oop_klass_name(obj, buf));
+        //     }
+        //     bfs_queue.push_back(heap_oop);
+        //   }
+        // }
+      } else if (true) {
+        ObjectNode objNode = ObjectNode::oop_to_obj_node[(oopDesc*)obj];
+        for (auto field : objNode.fields()) {
+          if ((void*)field.second.val() != NULL) {
+            bfs_queue.push_back(field.second.val());
+          }
         }
-      } else if (obj->is_objArray()) {
-        objArrayOop array = (objArrayOop)obj;
-        ObjectNode obj_node = ObjectNode::oop_to_obj_node[(oopDesc*)obj];
-        int length = array->length();
-        for (int i = 0; i < length; i++) {
-          oop actual_elem = array->obj_at(i);
-          void* elem_addr = (void*)(((uint64_t)array->base()) + i * sizeof(oop)); 
-          auto elem_val = obj_node.field_val(elem_addr);
-          bfs_queue.push_back(elem_val);
-        }
+      } else {
+        // if (obj != NULL && obj->is_instance()) {
+        //   if(obj->klass() && obj->klass()->is_klass()) {
+        //     ObjectNode objNode = ObjectNode::oop_to_obj_node[(oopDesc*)obj];
+        //     InstanceKlass* ik = (InstanceKlass*)obj->klass();
+        //     do {
+        //       for(int f = 0; f < ik->java_fields_count(); f++) {
+        //         //Only go through non static and reference fields here.
+        //         if (AccessFlags(ik->field_access_flags(f)).is_static()) continue;
+                
+        //         if (is_field_of_reference_type(ik, f)) {
+        //           oop* field_addr = (oop*)(((uint64_t)(void*)obj) + ik->field_offset(f));
+        //           bfs_queue.push_back(RawAccess<>::oop_load(field_addr));
+        //         }
+        //       }
+        //       ik = ik->superklass();
+        //     } while (ik && ik->is_klass());
+        //   }
+        // } else if (obj->is_objArray()) {
+        //   objArrayOop array = (objArrayOop)obj;
+        //   ObjectNode obj_node = ObjectNode::oop_to_obj_node[(oopDesc*)obj];
+        //   int length = array->length();
+        //   for (int i = 0; i < length; i++) {
+        //     oop actual_elem = array->obj_at(i);
+        //     bfs_queue.push_back(actual_elem);
+        //   }
+        // }
       }
     }
   }

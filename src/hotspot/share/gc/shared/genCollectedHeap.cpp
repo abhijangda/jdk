@@ -794,15 +794,21 @@ void GenCollectedHeap::process_roots(ScanningOption so,
                                      CodeBlobToOopClosure* code_roots) {
   // General roots.
   assert(code_roots != NULL, "code root closure should always be set");
-
+   
   ClassLoaderDataGraph::roots_cld_do(strong_cld_closure, weak_cld_closure);
 
   // Only process code roots from thread stacks if we aren't visiting the entire CodeCache anyway
   CodeBlobToOopClosure* roots_from_code_p = (so & SO_AllCodeCache) ? NULL : code_roots;
-
   Threads::oops_do(strong_roots, roots_from_code_p);
+  // MarkSweep::is_full_collection = false;
 
   OopStorageSet::strong_oops_do(strong_roots);
+  
+  // if (so & ScanningOption::SO_FullCollection) {
+  //   printf("807: ************\n");
+  //   Universe::check_marked_objects();
+  //   printf("809: ************\n");
+  // }
 
   if (so & SO_ScavengeCodeCache) {
     assert(code_roots != NULL, "must supply closure for code cache");
@@ -830,7 +836,8 @@ void GenCollectedHeap::full_process_roots(bool is_adjust_phase,
                                           CLDClosure* cld_closure) {
   MarkingCodeBlobClosure mark_code_closure(root_closure, is_adjust_phase);
   CLDClosure* weak_cld_closure = only_strong_roots ? NULL : cld_closure;
-
+  // printf("834: only_strong_roots %d so %d\n", only_strong_roots, (int)so);
+  // Universe::check_marked_objects();
   process_roots(so, root_closure, cld_closure, weak_cld_closure, &mark_code_closure);
 }
 

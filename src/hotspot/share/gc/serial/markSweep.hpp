@@ -54,6 +54,9 @@ class MarkAndPushClosure;
 class AdjustPointerClosure;
 
 class MarkSweep : AllStatic {
+  public:
+  static bool is_full_collection;
+  private:
   //
   // Inline closure decls
   //

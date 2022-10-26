@@ -44,6 +44,7 @@
 #include "utilities/macros.hpp"
 #include "utilities/stack.inline.hpp"
 
+bool MarkSweep::is_full_collection = false;
 uint                    MarkSweep::_total_invocations = 0;
 
 Stack<oop, mtGC>              MarkSweep::_marking_stack;

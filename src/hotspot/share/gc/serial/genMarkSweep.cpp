@@ -187,7 +187,7 @@ void GenMarkSweep::mark_sweep_phase1(bool clear_all_softrefs) {
     StrongRootsScope srs(0);
 
     gch->full_process_roots(false, // not the adjust phase
-                            GenCollectedHeap::SO_None,
+                            GenCollectedHeap::SO_FullCollection,
                             ClassUnloading, // only strong roots if ClassUnloading
                                             // is enabled
                             &follow_root_closure,
@@ -207,10 +207,8 @@ void GenMarkSweep::mark_sweep_phase1(bool clear_all_softrefs) {
 
   // This is the point where the entire marking should have completed.
   assert(_marking_stack.is_empty(), "Marking should have completed");
-  if (InstrumentHeapEvents) {
-    //Before collection transfer all the events
-    if(CheckHeapEventGraphWithHeap)
-      Universe::check_marked_objects();
+  if (InstrumentHeapEvents && CheckHeapEventGraphWithHeap) {
+    Universe::check_marked_objects();
   }
   {
     GCTraceTime(Debug, gc, phases) tm_m("Weak Processing", gc_timer());

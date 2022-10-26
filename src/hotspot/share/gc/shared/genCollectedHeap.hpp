@@ -337,7 +337,8 @@ public:
   enum ScanningOption {
     SO_None                =  0x0,
     SO_AllCodeCache        =  0x8,
-    SO_ScavengeCodeCache   = 0x10
+    SO_ScavengeCodeCache   = 0x10,
+    SO_FullCollection      = 0x20,
   };
 
  protected:

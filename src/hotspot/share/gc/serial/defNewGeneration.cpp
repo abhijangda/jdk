@@ -524,6 +524,35 @@ void DefNewGeneration::adjust_desired_tenuring_threshold() {
   age_table()->print_age_table(_tenuring_threshold);
 }
 
+class UpdateFieldValClosure : public BasicOopIterateClosure {
+public:
+  DefNewGeneration* _young_gen;
+  HeapWord* _young_gen_end;
+  Generation* _old_gen;
+  HeapWord* _old_gen_end;
+
+  UpdateFieldValClosure(DefNewGeneration* young_gen, Generation* old_gen) : 
+    _young_gen(young_gen), _young_gen_end(_young_gen->reserved().end()),
+    _old_gen(old_gen), _old_gen_end(_old_gen->reserved().start()) 
+  {}
+
+  virtual void do_oop(oop* p) {
+    oop heap_oop = RawAccess<>::oop_load(p);
+    // Should we copy the obj?
+    if (!CompressedOops::is_null(heap_oop)) {
+      oop obj = CompressedOops::decode_not_null(heap_oop);
+      if (cast_from_oop<HeapWord*>(obj) < _young_gen_end && obj->is_forwarded() && !_young_gen->to()->is_in_reserved(obj)) {
+        // assert(!_young_gen->to()->is_in_reserved(obj), "Scanning field twice?");
+        oop new_obj = obj->forwardee();
+        assert(new_obj != NULL, "sanity");
+        RawAccess<IS_NOT_NULL>::oop_store(p, new_obj);
+        // static_cast<Derived*>(this)->barrier(p);
+      }
+    }
+  }
+  virtual void do_oop(narrowOop* p) {abort();}
+};
+
 void DefNewGeneration::collect(bool   full,
                                bool   clear_all_soft_refs,
                                size_t size,
@@ -579,35 +608,64 @@ void DefNewGeneration::collect(bool   full,
   assert(heap->no_allocs_since_save_marks(),
          "save marks have not been newly set.");
 
-  {
-    StrongRootsScope srs(0);
+  if (!UseInstrumentedHeapGC) {
+    // Universe::marked_objects.clear();
+    // Universe::mark_objects(Universe::marked_objects);
+    // printf("Young Collection: Marked objects: %ld\n", Universe::marked_objects.size());
+    // for (auto obj : Universe::marked_objects) {
+    //   if (obj < reserved().end()) {
+    //     copy_to_survivor_space((oopDesc*)obj);
+    //   }
+    // }
+    
+    // UpdateFieldValClosure update_field_val(this, _old_gen);
 
+    // eden()->oop_iterate(&update_field_val);
+    // from()->oop_iterate(&update_field_val);
+    // // oop_iterate(&update_field_val);
+    // _old_gen->oop_iterate(&update_field_val);
+    
+    StrongRootsScope srs(0);
+  
     heap->young_process_roots(&scan_closure,
                               &younger_gen_closure,
                               &cld_scan_closure);
+    // "evacuate followers".
+    evacuate_followers.do_void();
+    Universe::is_verify_cause_full_gc = true;
+    FastKeepAliveClosure keep_alive(this, &scan_weak_ref);
+    ReferenceProcessor* rp = ref_processor();
+    ReferenceProcessorPhaseTimes pt(_gc_timer, rp->max_num_queues());
+    SerialGCRefProcProxyTask task(is_alive, keep_alive, evacuate_followers);
+    const ReferenceProcessorStats& stats = rp->process_discovered_references(task, pt);
+    gc_tracer.report_gc_reference_stats(stats);
+    gc_tracer.report_tenuring_threshold(tenuring_threshold());
+    pt.print_all_references();
+    Universe::is_verify_cause_full_gc = false;
+    assert(heap->no_allocs_since_save_marks(), "save marks have not been newly set.");
+
+    WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
+
+    // Verify that the usage of keep_alive didn't copy any objects.
+    assert(heap->no_allocs_since_save_marks(), "save marks have not been newly set.");
+
+    _string_dedup_requests.flush();
+  } else {
+    // Universe::marked_objects.clear();
+    // Universe::mark_objects(Universe::marked_objects);
+    // printf("Young Collection: Marked objects: %ld\n", Universe::marked_objects.size());
+    // for (auto obj : Universe::marked_objects) {
+    //   if (obj < reserved().end()) {
+    //     copy_to_survivor_space((oopDesc*)obj);
+    //   }
+    // }
+    
+    // UpdateFieldValClosure update_field_val(this, _old_gen);
+
+    // oop_iterate(&update_field_val);
+    // _old_gen->oop_iterate(&update_field_val);
+    gc_tracer.report_tenuring_threshold(tenuring_threshold());
   }
-
-  // "evacuate followers".
-  evacuate_followers.do_void();
-  Universe::is_verify_cause_full_gc = true;
-  FastKeepAliveClosure keep_alive(this, &scan_weak_ref);
-  ReferenceProcessor* rp = ref_processor();
-  ReferenceProcessorPhaseTimes pt(_gc_timer, rp->max_num_queues());
-  SerialGCRefProcProxyTask task(is_alive, keep_alive, evacuate_followers);
-  const ReferenceProcessorStats& stats = rp->process_discovered_references(task, pt);
-  gc_tracer.report_gc_reference_stats(stats);
-  gc_tracer.report_tenuring_threshold(tenuring_threshold());
-  pt.print_all_references();
-  Universe::is_verify_cause_full_gc = false;
-  
-  assert(heap->no_allocs_since_save_marks(), "save marks have not been newly set.");
-
-  WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
-
-  // Verify that the usage of keep_alive didn't copy any objects.
-  assert(heap->no_allocs_since_save_marks(), "save marks have not been newly set.");
-
-  _string_dedup_requests.flush();
 
   if (InstrumentHeapEvents) {
     MemRegion mr = eden()->used_region();

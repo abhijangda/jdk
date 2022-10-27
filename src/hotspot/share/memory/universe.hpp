@@ -442,7 +442,8 @@ class Universe: AllStatic {
 
   static bool is_verify_cause_full_gc;
   static bool is_verify_from_gc;
-  static bool is_verify_from_gc_start;
+  static bool is_verify_from_full_gc_start;
+  static bool is_verify_from_young_gc_start;
   static bool is_verify_from_exit;
   struct HeapEvent {
     uint64_t src;

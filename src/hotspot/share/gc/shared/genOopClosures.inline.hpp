@@ -54,7 +54,8 @@ inline void FastScanClosure<Derived>::do_oop_work(T* p) {
   // Should we copy the obj?
   if (!CompressedOops::is_null(heap_oop)) {
     oop obj = CompressedOops::decode_not_null(heap_oop);
-    if (cast_from_oop<HeapWord*>(obj) < _young_gen_end) {
+    if (cast_from_oop<HeapWord*>(obj) < _young_gen_end &&
+        !_young_gen->to()->is_in_reserved(obj)) {
       assert(!_young_gen->to()->is_in_reserved(obj), "Scanning field twice?");
       oop new_obj = obj->is_forwarded() ? obj->forwardee()
                                         : _young_gen->copy_to_survivor_space(obj);

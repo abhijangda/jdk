@@ -521,16 +521,29 @@ void GenCollectedHeap::do_collection(bool           full,
   ClearedAllSoftRefs casr(do_clear_all_soft_refs, soft_ref_policy());
 
   AutoModifyRestore<bool> temporarily(_is_gc_active, true);
+  // bool AlwaysDoFullCollection = true;
+  bool do_young_collection;
+  bool do_full_collection;
+  bool complete;
 
-  bool complete = full && (max_generation == OldGen);
-  bool old_collects_young = complete && !ScavengeBeforeFullGC;
-  bool do_young_collection = !old_collects_young && _young_gen->should_collect(full, size, is_tlab);
+  if (AlwaysDoFullCollection) {
+    do_young_collection = false;
+    do_full_collection = true;
+    complete = true;
+    full = true;
+    max_generation = OldGen;
+  } else {
+    complete = full && (max_generation == OldGen);
+    bool old_collects_young = complete && !ScavengeBeforeFullGC;
+    do_young_collection = !old_collects_young && _young_gen->should_collect(full, size, is_tlab);
 
-  const PreGenGCValues pre_gc_values = get_pre_gc_values();
+    
+    do_full_collection = false;
+  }
 
   bool run_verification = total_collections() >= VerifyGCStartAt;
   bool prepared_for_verification = false;
-  bool do_full_collection = false;
+  const PreGenGCValues pre_gc_values = get_pre_gc_values();
 
   if (do_young_collection) {
     GCIdMark gc_id_mark;
@@ -542,6 +555,7 @@ void GenCollectedHeap::do_collection(bool           full,
     if (InstrumentHeapEvents) {
       //Before collection transfer all the events
       Universe::is_verify_from_gc = true;
+      Universe::is_verify_from_young_gc_start = true;
       if(CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
       else
@@ -610,7 +624,7 @@ void GenCollectedHeap::do_collection(bool           full,
 
     if (InstrumentHeapEvents) {
       //Before collection transfer all the events
-      Universe::is_verify_from_gc_start = true;
+      Universe::is_verify_from_full_gc_start = true;
       if(CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
       else

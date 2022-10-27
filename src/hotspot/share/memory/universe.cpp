@@ -880,7 +880,7 @@ oopDesc* oop_for_address(Map& oop_map, oopDesc* field) {
 bool Universe::is_verify_cause_full_gc = false;
 bool Universe::is_verify_from_exit = false;
 bool Universe::is_verify_from_gc = false;
-bool Universe::is_verify_from_gc_start = false;
+bool Universe::is_verify_from_full_gc_start = false;
 
 void Universe::process_heap_event(Universe::HeapEvent event) {
   HeapEventType heap_event_type = decode_heap_event_type(event);      
@@ -1012,6 +1012,7 @@ public:
   }
 };
 
+bool Universe::is_verify_from_young_gc_start = 0;
 void Universe::check_marked_objects() {
   // assert(marked_objects.size() > 0, "sanity");
 
@@ -1156,8 +1157,8 @@ void Universe::verify_heap_graph() {
   int zero_event_types = 0;
   //Update heap hash table
   unordered_set<uint64_t> event_threads;
-  printf("Check Shadow Graph is_verify_cause_full_gc %d is_verify_from_exit %d is_verify_from_gc_start %d\n", 
-         is_verify_cause_full_gc, is_verify_from_exit, is_verify_from_gc_start);
+  printf("Check Shadow Graph is_verify_cause_full_gc %d is_verify_from_exit %d is_verify_from_full_gc_start %d\n", 
+         is_verify_cause_full_gc, is_verify_from_exit, is_verify_from_full_gc_start);
   uint64_t num_field_sets = 0;
   uint64_t num_new_obj = 0;
 
@@ -1563,16 +1564,22 @@ void Universe::verify_heap_graph() {
   printf("Total Events '%ld' {Object: %ld, FieldSet: %ld} ; Events-Found '%d' Events-Notfound '%d' Events-Wrong '%d'\n", 
   num_objects + num_fields, num_objects, num_fields, 
   check_graph.num_found, check_graph.num_not_found, check_graph.num_src_not_correct);
-  if (is_verify_from_gc_start) {
+  if (is_verify_from_full_gc_start) {
     marked_objects.clear();
     mark_objects(marked_objects);
-    printf("Marked objects: %ld\n", marked_objects.size());
-  }
+    printf("1570: Marked objects: %ld\n", marked_objects.size());
+  } 
+  // else if (is_verify_from_young_gc_start) {
+  //   marked_objects.clear();
+  //   mark_objects(marked_objects);
+  //   printf("Marked objects: %ld\n", marked_objects.size());
+  // }
+
   // if (Universe::is_verify_cause_full_gc) abort();
 
   Universe::is_verify_cause_full_gc = false;
   Universe::is_verify_from_gc = false;
-  Universe::is_verify_from_gc_start = false;
+  Universe::is_verify_from_full_gc_start = false;
   // pthread_mutex_unlock(&lock);
 }
 

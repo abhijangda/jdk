@@ -717,6 +717,8 @@ void DerivedPointerTable::add(derived_pointer* derived_loc, oop *base_loc) {
   assert(derived_loc != (void*)base_loc, "Base and derived in same location");
   derived_pointer base_loc_as_derived_pointer =
     static_cast<derived_pointer>(reinterpret_cast<intptr_t>(base_loc));
+  if (*derived_loc == base_loc_as_derived_pointer)
+    return;
   assert(*derived_loc != base_loc_as_derived_pointer, "location already added");
   assert(Entry::_list != NULL, "list must exist");
   assert(is_active(), "table must be active here");

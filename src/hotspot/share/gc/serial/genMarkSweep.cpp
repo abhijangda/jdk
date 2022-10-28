@@ -182,8 +182,16 @@ void GenMarkSweep::mark_sweep_phase1(bool clear_all_softrefs) {
 
   // Need new claim bits before marking starts.
   ClassLoaderDataGraph::clear_claimed_marks();
-
-  {
+  if (InstrumentHeapEvents && CheckHeapEventGraphWithHeap && UseInstrumentedHeapGC) {
+    Universe::marked_objects.clear();
+    Universe::mark_objects(Universe::marked_objects);
+    printf("Full Collection: Marked objects: %ld\n", Universe::marked_objects.size());
+    for (auto obj : Universe::marked_objects) {
+      MarkSweep::mark_object((oopDesc*)obj);
+      // markWord mark = ((oopDesc*)obj)->mark();
+      // ((oopDesc*)obj)->set_mark(markWord::prototype().set_marked());
+    }
+  } else {
     StrongRootsScope srs(0);
 
     gch->full_process_roots(false, // not the adjust phase
@@ -207,7 +215,7 @@ void GenMarkSweep::mark_sweep_phase1(bool clear_all_softrefs) {
 
   // This is the point where the entire marking should have completed.
   assert(_marking_stack.is_empty(), "Marking should have completed");
-  if (InstrumentHeapEvents && CheckHeapEventGraphWithHeap) {
+  if (InstrumentHeapEvents && CheckHeapEventGraphWithHeap && !UseInstrumentedHeapGC) {
     Universe::check_marked_objects();
   }
   {

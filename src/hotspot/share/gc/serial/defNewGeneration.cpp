@@ -608,7 +608,7 @@ void DefNewGeneration::collect(bool   full,
   assert(heap->no_allocs_since_save_marks(),
          "save marks have not been newly set.");
 
-  if (!UseInstrumentedHeapGC) {
+  if (true) {
     // Universe::marked_objects.clear();
     // Universe::mark_objects(Universe::marked_objects);
     // printf("Young Collection: Marked objects: %ld\n", Universe::marked_objects.size());
@@ -664,7 +664,7 @@ void DefNewGeneration::collect(bool   full,
 
     // oop_iterate(&update_field_val);
     // _old_gen->oop_iterate(&update_field_val);
-    gc_tracer.report_tenuring_threshold(tenuring_threshold());
+    // gc_tracer.report_tenuring_threshold(tenuring_threshold());
   }
 
   if (InstrumentHeapEvents) {

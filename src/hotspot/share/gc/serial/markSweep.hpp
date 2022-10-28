@@ -159,10 +159,10 @@ class MarkSweep : AllStatic {
 
   // Check mark and maybe push on marking stack
   template <class T> static void mark_and_push(T* p);
-
- private:
   // Call backs for marking
   static void mark_object(oop obj);
+  
+ private:
   // Mark pointer and follow contents.  Empty marking stack afterwards.
   template <class T> static inline void follow_root(T* p);
 

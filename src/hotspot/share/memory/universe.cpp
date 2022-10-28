@@ -1564,7 +1564,7 @@ void Universe::verify_heap_graph() {
   printf("Total Events '%ld' {Object: %ld, FieldSet: %ld} ; Events-Found '%d' Events-Notfound '%d' Events-Wrong '%d'\n", 
   num_objects + num_fields, num_objects, num_fields, 
   check_graph.num_found, check_graph.num_not_found, check_graph.num_src_not_correct);
-  if (is_verify_from_full_gc_start) {
+  if (is_verify_from_full_gc_start && false) {
     marked_objects.clear();
     mark_objects(marked_objects);
     printf("1570: Marked objects: %ld\n", marked_objects.size());

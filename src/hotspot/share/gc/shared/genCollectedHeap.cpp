@@ -536,8 +536,6 @@ void GenCollectedHeap::do_collection(bool           full,
     complete = full && (max_generation == OldGen);
     bool old_collects_young = complete && !ScavengeBeforeFullGC;
     do_young_collection = !old_collects_young && _young_gen->should_collect(full, size, is_tlab);
-
-    
     do_full_collection = false;
   }
 
@@ -548,19 +546,21 @@ void GenCollectedHeap::do_collection(bool           full,
   if (do_young_collection) {
     GCIdMark gc_id_mark;
     GCTraceCPUTime tcpu;
-    GCTraceTime(Info, gc) t("Pause Young", NULL, gc_cause(), true);
-
-    print_heap_before_gc();
 
     if (InstrumentHeapEvents) {
       //Before collection transfer all the events
       Universe::is_verify_from_gc = true;
       Universe::is_verify_from_young_gc_start = true;
+      printf("Young Collection:\n");
       if(CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
       else
         Universe::transfer_events_to_gpu();
     }
+
+    GCTraceTime(Info, gc) t("Pause Young", NULL, gc_cause(), true);
+
+    print_heap_before_gc();
 
     if (run_verification && VerifyGCLevel <= 0 && VerifyBeforeGC) {
       prepare_for_verify();

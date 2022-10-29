@@ -59,6 +59,13 @@ inline void FastScanClosure<Derived>::do_oop_work(T* p) {
       assert(!_young_gen->to()->is_in_reserved(obj), "Scanning field twice?");
       oop new_obj = obj->is_forwarded() ? obj->forwardee()
                                         : _young_gen->copy_to_survivor_space(obj);
+      // if (new_obj != NULL) {
+      //   char klass_name[1024];
+      //   Universe::get_oop_klass_name(new_obj, klass_name);
+      //   if (strcmp(klass_name, "java/lang/invoke/MethodType$ConcurrentWeakInternSet$WeakEntry") == 0) {
+      //     printf("setting %p to %p from %p\n", p, (oopDesc*)new_obj, (oopDesc*)obj);
+      //   }
+      // }
       RawAccess<IS_NOT_NULL>::oop_store(p, new_obj);
       static_cast<Derived*>(this)->barrier(p);
     }

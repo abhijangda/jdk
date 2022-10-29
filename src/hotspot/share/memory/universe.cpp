@@ -267,7 +267,7 @@ static char* get_klass_name(Klass* klass, char buf[]) {
   return buf;
 }
 
-static char* get_oop_klass_name(oop obj_, char buf[]) {
+char* Universe::get_oop_klass_name(oop obj_, char buf[]) {
   get_klass_name(obj_->klass(), buf);
   return buf;
 }
@@ -345,7 +345,7 @@ class CheckGraph : public ObjectClosure {
             if (obj->size() != oop_obj_node_pair->second.size()) {
               if (num_src_not_correct < 100) {
                 char class_name[1024];
-                get_oop_klass_name(obj, class_name);
+                Universe::get_oop_klass_name(obj, class_name);
                 printf("Size mismatch for obj '%p'(with event '%ld') of class '%s': '%ld' != '%ld'\n", (oopDesc*)obj, oop_obj_node_pair->second.type(), class_name, obj->size(), oop_obj_node_pair->second.size());
               }
               num_src_not_correct++;
@@ -368,7 +368,7 @@ class CheckGraph : public ObjectClosure {
           } else if (klass->id() == TypeArrayKlassID) {
             if (oop_obj_node_pair->second.type() != Universe::NewPrimitiveArray) {
               char buf[1024];
-              get_oop_klass_name(obj, buf);
+              Universe::get_oop_klass_name(obj, buf);
               // printf("Wrong obj type '%ld' instead of NewPrimitiveArray '%s'\n", oop_obj_node_pair->second.type(), buf);
             }
           }
@@ -376,7 +376,7 @@ class CheckGraph : public ObjectClosure {
           num_not_found++;
           if (num_not_found < 100) {
             char class_name[1024];
-            get_oop_klass_name(obj, class_name);
+            Universe::get_oop_klass_name(obj, class_name);
             printf("Not found: object '%p' with class '%s'\n", (void*)obj, class_name);
             if (obj->klass()->is_array_klass()) {
               printf("length: %d\n", ((arrayOop)obj)->length());
@@ -441,9 +441,14 @@ class CheckGraph : public ObjectClosure {
                       char field_name[1024];
                       ik->field_name(f)->as_C_string(field_name, 1024);
                       char class_name[1024];
-                      get_oop_klass_name(obj, class_name);
-                      printf("Field '%s' (%p) of oop '%p' of class '%s' not correct '%p' != '%p'\n", 
-                              field_name, field_addr, (oopDesc*)obj, class_name, (oopDesc*)field_edge->second.val(), (oopDesc*)actual_val);
+                      Universe::get_oop_klass_name(obj, class_name);
+                      bool val_is_forwarded = (oopDesc*)field_edge->second.val() != NULL && ((oopDesc*)field_edge->second.val())->is_forwarded();
+                      bool actual_is_forwarded = (oopDesc*)actual_val != NULL && ((oopDesc*)actual_val)->is_forwarded();
+                      printf("Field '%s' (%p) of oop '%p' of class '%s'(size '%ld') not correct '%p' (is_forwarded() %d) != '%p' (is_forwarded() %d)\n", 
+                              field_name, field_addr, (oopDesc*)obj, class_name, obj->size(), (oopDesc*)field_edge->second.val(), val_is_forwarded, (oopDesc*)actual_val, actual_is_forwarded);
+                      if (actual_val != NULL) {
+                        printf("actual val %s\n", Universe::get_oop_klass_name(actual_val, class_name));
+                      }
                     }
                   }
                 }
@@ -452,7 +457,7 @@ class CheckGraph : public ObjectClosure {
                   char field_name[1024];
                   ik->field_name(f)->as_C_string(field_name, 1024);
                   char class_name[1024];
-                  get_oop_klass_name(obj, class_name);
+                  Universe::get_oop_klass_name(obj, class_name);
                   if (num_not_found < 100) { 
                     printf("Field '%s' ('%d':'%p') not found in oop '%p' of class '%s'\n", field_name, ik->field_offset(f), ((char*)(void*)obj + ik->field_offset(f)), (oopDesc*)obj, class_name);
                   }
@@ -572,7 +577,7 @@ class CheckGraph : public ObjectClosure {
             if (num_not_found < 100) {
               printf("Elem at index '%d' of addr '%p' is not found in array '%p' of length '%d'\n", i, elem_addr, (oopDesc*)array, length);
               char name[1024];
-              printf("elem type %s\n", get_oop_klass_name(actual_elem, name));
+              printf("elem type %s\n", Universe::get_oop_klass_name(actual_elem, name));
             }
           }
         }
@@ -582,8 +587,8 @@ class CheckGraph : public ObjectClosure {
     }
   }
 };
-
 const void* CheckGraph::INVALID_PTR = (void*)0xbaadbabebaadbabe;
+
 const oop CheckGraph::INVALID_OOP = oop((oopDesc*)INVALID_PTR);
 
 Universe::EventsToTransfer Universe::events_to_transfer;
@@ -699,6 +704,8 @@ uint64_t Universe::heap_event_mask() {
 }
 
 uint64_t Universe::encode_heap_event_dst(HeapEventType event_type, uint64_t dst){
+  if (event_type == Universe::FieldSet && event_type == 0) 
+    return dst; 
   return ((uint64_t)event_type) | (dst << 15);
 }
 
@@ -995,7 +1002,7 @@ public:
         if (num_obj_unmarked < max_unmarked_to_print) {
           char buf[10240];
 
-          printf("Object not marked %p of class %s\n", (void*)obj, get_oop_klass_name(obj, buf));
+          printf("Object not marked %p of class %s\n", (void*)obj, Universe::get_oop_klass_name(obj, buf));
           if (strcmp(buf,"java/lang/String") == 0) {
             jstr_to_utf(obj, buf);
             printf("String is %s\n", buf);
@@ -1257,7 +1264,41 @@ void Universe::verify_heap_graph() {
   printf("Nodes created: %ld\nCreating Edges\n", ObjectNode::oop_to_obj_node.size());
   // printf("newobj %ld fieldsets %ld\n", num_new_obj, num_field_sets);
   //Go through events in the order they are created
-  
+  bool CheckSameFieldSetsBetweenThreads = true;
+  if (CheckSameFieldSetsBetweenThreads) {
+    Universe::unordered_set<uint64_t> field_set_in_thread[16];
+    for (uint i = 0; i < all_heap_events.size(); i++) {
+      auto th_heap_events = reverse_events[i];
+      HeapEvent* heap_events_start = &th_heap_events[1];
+      const size_t heap_events_size = *(const uint64_t*)th_heap_events;
+      for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
+        HeapEvent event = heap_events_start[event_iter];
+        if (is_field_set(event, heap_start, heap_end)) {
+          field_set_in_thread[i].insert(event.dst);
+        } else if (decode_heap_event_type(event) == Universe::FieldSet) {
+          event = decode_heap_event(event);
+          field_set_in_thread[i].insert(event.dst);
+        }
+      }
+    }
+
+    for (uint i = 0; i < all_heap_events.size(); i++) {
+      Universe::unordered_set<uint64_t>& first = field_set_in_thread[i];
+      if (first.size() == 0) continue;
+      for (uint j = 0; j < all_heap_events.size(); j++) {
+        Universe::unordered_set<uint64_t>& second = field_set_in_thread[j];
+        if (second.size() == 0 || i == j) continue;
+        Universe::unordered_set<uint64_t> result;
+        for (auto first_elem : first) {
+          if (second.count(first_elem) > 0)
+            result.insert(first_elem);
+        }
+        printf("'%ld' common field set between %p (%ld) and %p (%ld)\n", result.size(), 
+               reverse_events[i], first.size(), reverse_events[j], second.size());
+      }
+    }
+  }
+
   for (uint i = 0; i < all_heap_events.size(); i++) {
     auto th_heap_events = reverse_events[i];
     const size_t heap_events_size = *(const uint64_t*)th_heap_events;
@@ -1315,13 +1356,22 @@ void Universe::verify_heap_graph() {
               if (obj_iter->first != NULL || obj_iter->first != CheckGraph::INVALID_OOP) {
                 char buf[1024];
                 printf("start %p end %ld %ld t %ld %s\n", obj_iter->first, obj_iter->second.size(), obj_iter->first->size(), 
-                obj_iter->second.type(), get_oop_klass_name(obj_iter->first, buf));
+                obj_iter->second.type(), Universe::get_oop_klass_name(obj_iter->first, buf));
               }
               if (obj_iter->first <= field && field < obj_iter->second.end()) {
                 obj = obj_iter->first;
               }
             }
           } else {
+            // if (checking==3 && obj != NULL) {
+            //   char klass_name[1024];
+            //   void* curr_val = NULL;
+            //   if (ObjectNode::oop_to_obj_node[obj].has_field(field)) curr_val = ObjectNode::oop_to_obj_node[obj].field_val(field);
+            //   Universe::get_oop_klass_name(obj, klass_name);
+            //   if (strcmp(klass_name, "java/lang/invoke/MethodType$ConcurrentWeakInternSet$WeakEntry") == 0) {
+            //     printf("(%p) setting %p to %p from %p : heap_event_type %ld\n", th_heap_events, field, (oopDesc*)event.src, curr_val, heap_event_type);
+            //   }
+            // }
             // if (PrintHeapEventStatistics) {
             //   char buf[1024];
             //   if (prevEvent.dst == event.dst && heap_event_type == Universe::FieldSet) {
@@ -1450,9 +1500,9 @@ void Universe::verify_heap_graph() {
             obj_src_node_iter->second.type() != Universe::NewArray) {
           char buf[1024];
           printf("Destination of class type '%s' is not object array but is '%ld' ", 
-                 get_oop_klass_name(obj_src_node_iter->first, buf), obj_dst_node_iter->second.type());
+                 Universe::get_oop_klass_name(obj_src_node_iter->first, buf), obj_dst_node_iter->second.type());
           printf("Source of class type '%s' is not object array but is '%ld'\n", 
-                 get_oop_klass_name(obj_src_node_iter->first, buf), obj_src_node_iter->second.type());
+                 Universe::get_oop_klass_name(obj_src_node_iter->first, buf), obj_src_node_iter->second.type());
         }
 
         if (length_event.src >= 1UL<<30) {

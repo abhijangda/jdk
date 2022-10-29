@@ -453,7 +453,7 @@ class Universe: AllStatic {
     HeapEvent* events;
     size_t length;
   };
-
+  static char* get_oop_klass_name(oop obj_, char buf[]);
   static Universe::unordered_set<void*> marked_objects;
   static EventsToTransfer events_to_transfer;
   static void check_marked_objects();
@@ -500,6 +500,7 @@ class Universe: AllStatic {
     const uint64_t v = *heap_event_counter_ptr;
     *heap_event_counter_ptr = v + 1;
     // printf("449: v %ld\n", v);
+    // if (event_type == FieldSet) event_type = Dummy;
     //TODO: Improve for FieldSet
     (&heap_events[1])[v] = encode_heap_event(event_type, event);
 

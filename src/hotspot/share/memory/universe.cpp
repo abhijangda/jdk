@@ -96,8 +96,8 @@
 
 pthread_mutex_t Universe::mutex_heap_event = PTHREAD_MUTEX_INITIALIZER;
 LinkedListImpl<Universe::HeapEvent*> Universe::all_heap_events;
-bool Universe::enable_transfer_events = false;
 sem_t Universe::cuda_semaphore;
+sem_t Universe::cuda_thread_wait_semaphore;
 
 #include <sys/mman.h>
 #include <stdlib.h>
@@ -768,7 +768,7 @@ Universe::HeapEvent* Universe::get_heap_events_ptr() {
 
 size_t Universe::heap_events_buf_size() {
   int PAGE_SIZE = 4096;
-  size_t size = JavaThread::heap_events_offset() + (MaxHeapEvents)*sizeof(Universe::HeapEvent)*2 + PAGE_SIZE + PAGE_SIZE;
+  size_t size = (MaxHeapEvents)*sizeof(Universe::HeapEvent)*2 + PAGE_SIZE + PAGE_SIZE;
   
   return size;
 }
@@ -1144,8 +1144,6 @@ void Universe::verify_heap_graph() {
   //   return;
   const int LOG_MAX_OBJ_SIZE = 16;
   static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;  
-  if (Universe::enable_transfer_events)
-    Universe::transfer_events_to_gpu();
 
   if (!CheckHeapEventGraphWithHeap)
     return;
@@ -1197,6 +1195,13 @@ void Universe::verify_heap_graph() {
   for (uint i = 0; i < all_heap_events.size(); i++) {
     reverse_events[all_heap_events.size() - i - 1] = *heap_events_iter;
     heap_events_iter.next();
+  }
+
+  if (CreateGPUHeapEventGraph) {
+    //ask cuda thread to do its work
+    sem_post(&Universe::cuda_semaphore);
+    //wait for thread to complete transfers
+    sem_wait(&Universe::cuda_thread_wait_semaphore);
   }
 
   for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
@@ -1661,7 +1666,7 @@ void* Universe::cudaAllocHost(size_t size) {
   return p;
 }
 
-void* cumemcpy_func(void* arg)
+void* Universe::cumemcpy_func(void* arg)
 {
   CUdevice   device;
   CUcontext  context;
@@ -1671,36 +1676,66 @@ void* cumemcpy_func(void* arg)
   checkCudaErrors(cuDeviceGet(&device, 0));
   checkCudaErrors(cuCtxCreate(&context, 0, device));
   checkCudaErrors(cuStreamCreate(&stream, CU_STREAM_NON_BLOCKING));
-  checkCudaErrors(cuMemAlloc(&d_heap_events, MaxHeapEvents * 2 * sizeof(Universe::HeapEvent)));
+  uint32_t MAX_THREADS = 16;
+  Universe::HeapEvent* d_heap_events[MAX_THREADS];
+  uint64_t num_events[MAX_THREADS];
+
+  if (CreateGPUHeapEventGraph && CheckHeapEventGraphWithHeap) {
+    for (uint i = 0; i < MAX_THREADS; i++) {
+      CUdeviceptr ptr;
+      checkCudaErrors(cuMemAlloc(&ptr, Universe::heap_events_buf_size()));
+      d_heap_events[i] = (Universe::HeapEvent*)ptr;
+    }
+  } else {
+    // void* ptr;
+    // checkCudaErrors(cuMemAlloc(&ptr, MaxHeapEvents * 2 * sizeof(Universe::HeapEvent)));
+    // d_heap_events[0] = (Universe::HeapEvent*)ptr;
+  }
   checkCudaErrors(cuMemAllocHost((void**)&h_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent)));
 
   Universe::vector<Universe::HeapEvent*> is_registered;
   while(true) {
     sem_wait(&Universe::cuda_semaphore);
     #ifndef PRODUCT
-      printf("Transferring %ld from %p\n", Universe::events_to_transfer.length, Universe::events_to_transfer.events);
+      // printf("Transferring %ld from %p\n", Universe::events_to_transfer.length, Universe::events_to_transfer.events);
     #else
       // printf("Transferring\n");
     #endif
 
-    bool found = false;
-    for (auto ptr : is_registered) {
-      if (ptr <= Universe::events_to_transfer.events && Universe::events_to_transfer.events <= ptr + MaxHeapEvents*2) {
-        found = true;
-        break;
+    if (CreateGPUHeapEventGraph && CheckHeapEventGraphWithHeap) {
+      uint thread_i = 0;
+      for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
+       !heap_events_iter.is_empty(); heap_events_iter.next(), thread_i++) {
+        auto th_heap_events = *heap_events_iter;
+        const size_t heap_events_size = *(const uint64_t*)th_heap_events;
+        printf("Transferring %ld from %p\n", heap_events_size, th_heap_events);
+        num_events[thread_i] = heap_events_size;
+        checkCudaErrors(cuMemcpyHtoD((CUdeviceptr)d_heap_events[thread_i], th_heap_events + 1, Universe::heap_events_buf_size() - sizeof(Universe::HeapEvent)));
       }
-    } 
 
-    if (!found) {
-      Universe::HeapEvent* page_start = (Universe::HeapEvent*)(((uint64_t)Universe::events_to_transfer.events/4096)*4096);
-      // printf("1246: %p page start %p %ld %ld\n", Universe::events_to_transfer.events, page_start, Universe::events_to_transfer.length, MaxHeapEvents);
-      checkCudaErrors(cuMemHostRegister(page_start,
-                                        MaxHeapEvents * 2 * sizeof(Universe::HeapEvent),
-                                        CU_MEMHOSTREGISTER_PORTABLE));
-      is_registered.push_back(page_start);
+      sem_post(&Universe::cuda_thread_wait_semaphore);
     }
+    
+    
+    //TODO: Enable for doing pinned memory transfers
+    // bool found = false;
+    // for (auto ptr : is_registered) {
+    //   if (ptr <= Universe::events_to_transfer.events && Universe::events_to_transfer.events <= ptr + MaxHeapEvents*2) {
+    //     found = true;
+    //     break;
+    //   }
+    // } 
 
-    checkCudaErrors(cuMemcpyHtoD(d_heap_events, Universe::events_to_transfer.events, Universe::events_to_transfer.length * sizeof(Universe::HeapEvent) - 1024));
+    // if (!found) {
+    //   Universe::HeapEvent* page_start = (Universe::HeapEvent*)(((uint64_t)Universe::events_to_transfer.events/4096)*4096);
+    //   // printf("1246: %p page start %p %ld %ld\n", Universe::events_to_transfer.events, page_start, Universe::events_to_transfer.length, MaxHeapEvents);
+    //   checkCudaErrors(cuMemHostRegister(page_start,
+    //                                     MaxHeapEvents * 2 * sizeof(Universe::HeapEvent),
+    //                                     CU_MEMHOSTREGISTER_PORTABLE));
+    //   is_registered.push_back(page_start);
+    // }
+
+    // checkCudaErrors(cuMemcpyHtoD(d_heap_events, Universe::events_to_transfer.events, Universe::events_to_transfer.length * sizeof(Universe::HeapEvent) - 1024));
     // checkCudaErrors(cuMemcpyHtoDAsync(d_heap_events, h_heap_events, MaxHeapEvents * sizeof(Universe::HeapEvent), stream));
   }
 }

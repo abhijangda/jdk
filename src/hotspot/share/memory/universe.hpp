@@ -473,6 +473,8 @@ class Universe: AllStatic {
   static void transfer_events_to_gpu_no_zero(HeapEvent* events, size_t length);
   static void transfer_events_to_gpu_list_head();
   static sem_t cuda_semaphore;
+  static sem_t cuda_thread_wait_semaphore;
+  static void* cumemcpy_func(void* arg);
   static void add_heap_events(Universe::HeapEventType event_type1, Universe::HeapEvent event1, Universe::HeapEventType event_type2, Universe::HeapEvent event2);
   static bool is_curr_Java_thread();
   static void mark_objects(Universe::unordered_set<void*>& visited);

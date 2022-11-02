@@ -47,6 +47,7 @@
 #include "gc/shared/stringdedup/stringDedup.hpp"
 #include "gc/shared/tlab_globals.hpp"
 #include "gc/shared/oopStorageSet.inline.hpp"
+#include "gc/gpugc/gpugc.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/metadataFactory.hpp"
@@ -1713,6 +1714,7 @@ void* Universe::cumemcpy_func(void* arg)
         checkCudaErrors(cuMemcpyHtoD((CUdeviceptr)d_heap_events[thread_i], th_heap_events + 1, Universe::heap_events_buf_size() - sizeof(Universe::HeapEvent)));
       }
 
+      gpugc();
       sem_post(&Universe::cuda_thread_wait_semaphore);
     }
     

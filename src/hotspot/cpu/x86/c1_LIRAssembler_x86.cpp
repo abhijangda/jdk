@@ -3309,7 +3309,7 @@ void LIR_Assembler::emit_arraycopy(LIR_OpArrayCopy* op) {
     __ subq(src, src_pos);
     
     __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
-    uint64_t encoded = Universe::encode_heap_event_dst(Universe::CopyArray, 0);
+    uint64_t encoded = Universe::encode_heap_event_dst(Universe::HeapEventType::CopyArray, 0);
     __ addq(dst, dst_pos);
     __ shlq(dst, 15);
     __ orq(dst, (int32_t)encoded);
@@ -3320,7 +3320,7 @@ void LIR_Assembler::emit_arraycopy(LIR_OpArrayCopy* op) {
     __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 16);
     __ movq(__mem, length);
 
-    // encoded = Universe::encode_heap_event_dst(Universe::CopyArrayLength, 0);
+    // encoded = Universe::encode_heap_event_dst(Universe::HeapEventType::CopyArrayLength, 0);
     // __mem = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 24);
     // __ movq(__mem, encoded);
 

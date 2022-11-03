@@ -4729,7 +4729,7 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     // if (Universe::checking > 1) {
     //   printf("const_src %ld\n", const_src);
     // }
-    if (const_src == 1 && event_type == Universe::NewObject) {
+    if (const_src == 1 && event_type == Universe::HeapEventType::NewObject) {
       printf("4732 %ld\n", const_src);
       printf("4733\n");
       // mov64(temp1, (int64_t)const_src);
@@ -4741,18 +4741,18 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     movq(heap_event_addr, temp1);
   }
   heap_event_addr = Address(r15_thread, temp2, Address::times_1, (int)JavaThread::heap_events_offset() + 8);
-  assert(Universe::FieldSet == 0, "sanity");
+  assert(Universe::HeapEventType::FieldSet == 0, "sanity");
   if (dst_or_new_obj.is_register()) {
-    if (event_type != Universe::FieldSet)
+    if (event_type != Universe::HeapEventType::FieldSet)
       shlq(dst_or_new_obj.as_register(), 15);
     if (event_type != 0)
       orq(dst_or_new_obj.as_register(), (int32_t)event_type);
     movq(heap_event_addr, dst_or_new_obj.as_register());
-    if (event_type != Universe::FieldSet)
+    if (event_type != Universe::HeapEventType::FieldSet)
       shrq(dst_or_new_obj.as_register(), 15);
   } else {
     leaq(temp1, dst_or_new_obj.as_address());
-    if (event_type != Universe::FieldSet)
+    if (event_type != Universe::HeapEventType::FieldSet)
       shlq(temp1, 15);
     if (event_type != 0)
       orq(temp1, (int32_t)event_type);
@@ -4814,19 +4814,19 @@ void MacroAssembler::append_copyarray_event(Register dst_array, Register src_arr
   addq(tmp2, tmp1);
   
   int i = 0;
-  movq(Address(tmp2, i + 0), (uint64_t)Universe::CopyArray);
+  movq(Address(tmp2, i + 0), (uint64_t)Universe::HeapEventType::CopyArray);
   movq(Address(tmp2, i + 8), src_array);
   movq(Address(tmp2, i + 16), dst_array);
 
   i += sizeof(Universe::HeapEvent);
 
-  movq(Address(tmp2, i + 0), (uint64_t)Universe::CopyArrayOffsets);
+  movq(Address(tmp2, i + 0), (uint64_t)Universe::HeapEventType::CopyArrayOffsets);
   movq(Address(tmp2, i + 8), src_off);
   movq(Address(tmp2, i + 16), dst_off);
 
   i += sizeof(Universe::HeapEvent);
 
-  movq(Address(tmp2, i + 0), (uint64_t)Universe::CopyArrayLength);
+  movq(Address(tmp2, i + 0), (uint64_t)Universe::HeapEventType::CopyArrayLength);
   movq(Address(tmp2, i + 8), count);
   movq(Address(tmp2, i + 16), count);
 
@@ -4876,7 +4876,7 @@ void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventT
 
   events = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 24);
   if (dst[1] != noreg) {
-    if (event_type[1] != Universe::None) {
+    if (event_type[1] != Universe::HeapEventType::None) {
       //TODO: Implement shift left, orq, mov, and shift right
       abort();
     }
@@ -4908,7 +4908,7 @@ void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventT
       uint64_t encoded = Universe::encode_heap_event_dst(event_types[n], 0);
 
       Address addr = dsts[n].as_address();
-      bool encode_event = event_types[n] != Universe::None && event_types[n] != Universe::FieldSet;
+      bool encode_event = event_types[n] != Universe::HeapEventType::None && event_types[n] != Universe::HeapEventType::FieldSet;
       if (addr.disp() == 0 && addr.index() == noreg) {
         Register base = addr.base();
         if (encode_event) {
@@ -4962,7 +4962,7 @@ void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventT
       uint64_t encoded = Universe::encode_heap_event_dst(event_types[n], 0);
 
       Address addr = dsts[n].as_address();
-      bool encode_event = (n == NUM_EVENTS - 1) && (event_types[n] != Universe::None);
+      bool encode_event = (n == NUM_EVENTS - 1) && (event_types[n] != Universe::HeapEventType::None);
       if (addr.disp() == 0 && addr.index() == noreg) {
         Register base = addr.base();
         if (encode_event) {
@@ -5061,17 +5061,17 @@ void MacroAssembler::append_heap_event(Address events, Universe::HeapEventType e
     Address addr = dst.as_address();
     if (addr.disp() == 0 && addr.index() == noreg) {
       Register base = addr.base();
-      if (event_type != Universe::FieldSet)
+      if (event_type != Universe::HeapEventType::FieldSet)
         shlq(base, 15);
       if (event_type != 0) {
         orq(base, (int32_t)encoded);
       }
       pinsrq(tmp_vec, base, 1);
-      if (event_type != Universe::FieldSet)
+      if (event_type != Universe::HeapEventType::FieldSet)
         shrq(base, 15);
     } else {
       leaq(cntr_reg, addr);
-      if (event_type != Universe::FieldSet)
+      if (event_type != Universe::HeapEventType::FieldSet)
         shlq(cntr_reg, 15);
       if (event_type != 0) {
         orq(cntr_reg, (int32_t)encoded);
@@ -5094,7 +5094,7 @@ void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size,
                                          Register tmp1, bool preserve_tmp1, 
                                          Register tmp2, bool preserve_tmp2,
                                          bool preserve_flags) {
-  append_heap_event(Universe::NewObject, RegisterOrAddress(obj), size, 
+  append_heap_event(Universe::HeapEventType::NewObject, RegisterOrAddress(obj), size, 
                     tmp1, preserve_tmp1, tmp2, preserve_tmp2, preserve_flags);
 }
 
@@ -5110,17 +5110,17 @@ void MacroAssembler::append_fieldset_event(Address field, RegisterOrConstant val
                                            Register tmp1, bool preserve_tmp1, 
                                            Register tmp2, bool preserve_tmp2, 
                                            bool preserve_flags) {
-  append_heap_event(Universe::FieldSet, RegisterOrAddress(field), val, 
+  append_heap_event(Universe::HeapEventType::FieldSet, RegisterOrAddress(field), val, 
                     tmp1, preserve_tmp1, tmp2, preserve_tmp2, preserve_flags);
 }
 
 void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size, bool preserve_flags) {
-  append_heap_event(Universe::NewObject, obj, size, 
+  append_heap_event(Universe::HeapEventType::NewObject, obj, size, 
                     r9, true, r8, true, preserve_flags);
 }
 
 void MacroAssembler::append_fieldset_event(Address field, RegisterOrConstant val, bool preserve_flags) {
-  append_heap_event(Universe::FieldSet, field, val, 
+  append_heap_event(Universe::HeapEventType::FieldSet, field, val, 
                     r9, true, r8, true, preserve_flags);
 }
 

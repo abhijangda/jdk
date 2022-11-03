@@ -1351,7 +1351,7 @@ void PhaseMacroExpand::expand_allocate_common(
         // Node *mem = memory(adr_idx);
         Node *st1;
         
-        st1 = new IncrCntrAndStoreHeapEventNode(fast_oop_ctrl, fast_oop_rawmem->as_MergeMem()->memory_at(Compile::AliasIdxRaw), node_cntr_addr, adr_type, size_in_bytes, fast_oop, Universe::NewObject);
+        st1 = new IncrCntrAndStoreHeapEventNode(fast_oop_ctrl, fast_oop_rawmem->as_MergeMem()->memory_at(Compile::AliasIdxRaw), node_cntr_addr, adr_type, size_in_bytes, fast_oop, Universe::HeapEventType::NewObject);
         
         transform_later(st1);
         fast_oop_rawmem->as_MergeMem()->set_memory_at(adr_idx, st1);
@@ -1520,7 +1520,7 @@ void PhaseMacroExpand::expand_allocate_common(
 
   //   const TypePtr* adr_type = node_cntr_addr->bottom_type()->is_ptr();
     
-  //   Node* incr_cntr_st = new IncrCntrAndStoreHeapEventNode(result_region, mem, node_cntr_addr, adr_type, size_in_bytes, result_phi_rawoop, Universe::NewObject);
+  //   Node* incr_cntr_st = new IncrCntrAndStoreHeapEventNode(result_region, mem, node_cntr_addr, adr_type, size_in_bytes, result_phi_rawoop, Universe::HeapEventType::NewObject);
   //   transform_later(incr_cntr_st);
   //   // result_phi_rawoop->add_req(st);
   //   if (mem->is_MergeMem())

@@ -344,7 +344,7 @@ void ClassFileParser::parse_constant_pool_entries(const ClassFileStream* const s
             names_count = 0;
           }
         } else {
-          // Universe::add_heap_event(Universe::HeapEvent({Universe::NewObject, utf8_length, (uint64_t)result}));
+          // Universe::add_heap_event(Universe::HeapEvent({Universe::HeapEventType::NewObject, utf8_length, (uint64_t)result}));
           cp->symbol_at_put(index, result);
         }
         break;

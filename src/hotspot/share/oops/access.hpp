@@ -146,14 +146,14 @@ protected:
     //   for (uint64_t i = 0; i < length; i++) {
     //     oop elem = src_arrayoop->obj_at(src_pos + i);
     //     uint64_t elem_addr = (uint64_t)(((objArrayOop)dst_arrayoop)->base()) + (dst_pos + i) * sizeof(oop);
-    //     Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
+    //     Universe::add_heap_event(Universe::HeapEvent{Universe::HeapEventType::FieldSet, (uint64_t)(void*)elem, elem_addr});
     //   }
     // } else if (src_raw != NULL && dst_raw != NULL) {
     //   // printf("src_obj %p dst_obj %p\n", src_obj, dst_obj);
     //   for (uint64_t i = 0; i < length; i++) {
     //     T elem = src_raw[i];
     //     uint64_t elem_addr = (uint64_t)&dst_raw[i];
-    //     Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
+    //     Universe::add_heap_event(Universe::HeapEvent{Universe::HeapEventType::FieldSet, (uint64_t)(void*)elem, elem_addr});
     //   }
     // } else if (src_raw != NULL && dst_obj != NULL) {
     //   objArrayOop dst_arrayoop = (objArrayOop)dst_obj;
@@ -163,7 +163,7 @@ protected:
     //   for (uint64_t i = 0; i < length; i++) {
     //     T elem = src_raw[i];
     //     uint64_t elem_addr = (uint64_t)(((objArrayOop)dst_arrayoop)->base()) + (dst_pos + i) * sizeof(oop);
-    //     Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
+    //     Universe::add_heap_event(Universe::HeapEvent{Universe::HeapEventType::FieldSet, (uint64_t)(void*)elem, elem_addr});
     //   }
     // } else if (src_obj != NULL && dst_raw != NULL) {
     //   objArrayOop src_arrayoop = (objArrayOop)src_obj;
@@ -172,7 +172,7 @@ protected:
     //   for (uint64_t i = 0; i < length; i++) {
     //     oop elem = src_arrayoop->obj_at(src_pos + i);
     //     uint64_t elem_addr = (uint64_t)&dst_raw[i];
-    //     Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)(void*)elem, elem_addr});
+    //     Universe::add_heap_event(Universe::HeapEvent{Universe::HeapEventType::FieldSet, (uint64_t)(void*)elem, elem_addr});
     //   }
     // } 
     #endif
@@ -240,7 +240,7 @@ public:
     //     printf("0x%lx: oop %p offset 0x%lx (%p) src %p oop-class %s oop-class-id %d\n", dst, (void*)base, offset, (char*)base + offset, (void*)value, buf, base->klass()->id());
     //   }
     // }
-    Universe::add_heap_event(Universe::FieldSet, Universe::HeapEvent{(uint64_t)(void*)value, ((uint64_t)(void*)base) + offset});
+    Universe::add_heap_event(Universe::HeapEventType::FieldSet, Universe::HeapEvent{(uint64_t)(void*)value, ((uint64_t)(void*)base) + offset});
     AccessInternal::store_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, oop_value);
   }
 
@@ -253,7 +253,7 @@ public:
     // printf("206: src %p dst 0x%lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
     //TODO: Is this also called by some other function
     //TODO: Assuming T is oop and not a narrowoop
-    Universe::add_heap_event(Universe::FieldSet, Universe::HeapEvent{(uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
+    Universe::add_heap_event(Universe::HeapEventType::FieldSet, Universe::HeapEvent{(uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
     return AccessInternal::atomic_cmpxchg_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, compare_oop_value, new_oop_value);
   }
 
@@ -265,7 +265,7 @@ public:
     // printf("206: src %p dst 0x%lx\n", (void*)new_oop_value, ((uint64_t)(void*)base) + offset);
     //TODO: Is this also called by some other function
     //TODO: Assuming T is oop and not a narrowoop
-    Universe::add_heap_event(Universe::FieldSet, Universe::HeapEvent{(uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
+    Universe::add_heap_event(Universe::HeapEventType::FieldSet, Universe::HeapEvent{(uint64_t)(void*)new_value, ((uint64_t)(void*)base) + offset});
     return AccessInternal::atomic_xchg_at<decorators | INTERNAL_VALUE_IS_OOP>(base, offset, new_oop_value);
   }
 
@@ -318,7 +318,7 @@ public:
     if (Universe::is_verify_cause_full_gc) {
       // printf("%p at %p\n", (void*)addr, value);
       // Universe::print_heap_event_counter();
-      //Universe::add_heap_event(Universe::HeapEvent{Universe::FieldSet, (uint64_t)addr, (uint64_t)value});
+      //Universe::add_heap_event(Universe::HeapEvent{Universe::HeapEventType::FieldSet, (uint64_t)addr, (uint64_t)value});
     }
     AccessInternal::store<decorators | INTERNAL_VALUE_IS_OOP>(addr, oop_value);
   }

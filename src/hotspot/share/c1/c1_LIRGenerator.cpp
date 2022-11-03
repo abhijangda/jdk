@@ -1807,7 +1807,7 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
   if (!C1InstrumentHeapEvents)
     return;
   
-  if (event_type != Universe::FieldSet) {
+  if (event_type != Universe::HeapEventType::FieldSet) {
     return;
   }
 
@@ -1832,7 +1832,7 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
     LIR_Address* heap_events_addr_src = new LIR_Address(getThreadPointer(), counter, JavaThread::heap_events_offset(), T_LONG); //Object size is in Integer and not Long
     LIR_Address* heap_events_addr_dst = new LIR_Address(getThreadPointer(), counter, JavaThread::heap_events_offset() + 8, T_LONG);
 
-    if (event_type == Universe::FieldSet) {
+    if (event_type == Universe::HeapEventType::FieldSet) {
       // Extra additions must be done to constant object pointers.
       // BasicType src_type = (src_or_obj_size.is_constant() && src_or_obj_size.as_jobject() != NULL) ? T_OBJECT : src_or_obj_size.type();
       LIR_Opr tmp2 = new_pointer_register();
@@ -1862,7 +1862,7 @@ void LIRGenerator::append_heap_event(Universe::HeapEventType event_type, LIR_Opr
       __ shift_left(tmp2, 15, tmp2);
       __ logical_or(tmp2, LIR_OprFact::longConst((int32_t)event_type), tmp2);
       __ store(tmp2, heap_events_addr_dst);
-    } else if (event_type == Universe::NewObject || event_type == Universe::NewArray) {   
+    } else if (event_type == Universe::HeapEventType::NewObject || event_type == Universe::HeapEventType::NewArray) {   
       ShouldNotReachHere();
       //Not updated
       // if (src_or_obj_size.is_constant()) {
@@ -1933,19 +1933,19 @@ void LIRGenerator::append_copy_array(LIR_Opr dst_array, LIR_Opr src_array, LIR_O
     __ add(tmp, src_offset, tmp);
     __ shift_left(tmp, 15, tmp);
     //TODO: Try with intConst instead of longConst
-    __ logical_or(tmp, LIR_OprFact::longConst(Universe::CopyArray), tmp);
+    __ logical_or(tmp, LIR_OprFact::longConst(Universe::HeapEventType::CopyArray), tmp);
     __ store(tmp, heap_events_addr_src);
     __ leal(new LIR_Address(dst_array, 0, T_LONG), tmp);
     __ add(tmp, dst_offset, tmp);
     __ store(tmp, heap_events_addr_dst);
 
     // __ add(heap_event_counter_addr_reg, LIR_OprFact::longConst(sizeof(Universe::HeapEvent)), heap_event_counter_addr_reg);
-    // __ store(LIR_OprFact::longConst(Universe::CopyArrayOffsets), heap_events_addr_type);
+    // __ store(LIR_OprFact::longConst(Universe::HeapEventType::CopyArrayOffsets), heap_events_addr_type);
     // __ store(src_offset, heap_events_addr_src);
     // __ store(dst_offset, heap_events_addr_dst);
 
     heap_events_addr_src = new LIR_Address(getThreadPointer(), heap_events_idx, JavaThread::heap_events_offset() + 16, T_LONG);
-    // uint64_t encoded_event_copy_array_length = Universe::encode_heap_event_src(Universe::CopyArrayLength, 0L);
+    // uint64_t encoded_event_copy_array_length = Universe::encode_heap_event_src(Universe::HeapEventType::CopyArrayLength, 0L);
     // __ move(LIR_OprFact::longConst(encoded_event_copy_array_length), encoded_event_reg);
     __ move(LIR_OprFact::longConst(0), tmp);
     __ add(tmp, count, tmp);

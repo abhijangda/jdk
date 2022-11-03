@@ -1377,18 +1377,18 @@ void StoreHeapEventNode::fuse(AllocateNode* node, PhaseIterGVN* igvn) {
   if (node->Opcode() == Op_Allocate) {
     add_req(node->output_obj());
     add_req(node->in(AllocateNode::AllocSize));
-    _fused_events[0] = Universe::NewObject;
+    _fused_events[0] = Universe::HeapEventType::NewObject;
   }
 }
 
 void StoreHeapEventNode::fuse(ArrayCopyNode* node) {  
   assert(node->store_heap_event(), "sanity");
   if (node->is_clone_inst()) {
-    _fused_events[0] = Universe::CopyObject;
+    _fused_events[0] = Universe::HeapEventType::CopyObject;
     add_req(node->in(ArrayCopyNode::Src));
     add_req(node->in(ArrayCopyNode::Dest));
   } else {
-    _fused_events[0] = Universe::CopyArray;
+    _fused_events[0] = Universe::HeapEventType::CopyArray;
     add_req(node->in(ArrayCopyNode::Src));
     add_req(node->in(ArrayCopyNode::SrcPos));
     add_req(node->in(ArrayCopyNode::Dest));
@@ -2694,7 +2694,7 @@ Node *StoreNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
   if (this->Opcode() == Op_StoreHeapEvent) {
     //Convert a StoreHeapEvent with None type to a StorePNode
-    if (((StoreHeapEventNode*)this)->event_type() == Universe::None) {
+    if (((StoreHeapEventNode*)this)->event_type() == Universe::HeapEventType::None) {
       // printf("Change StoreHeapEvent with None event type %d to StoreP\n", this->_idx);
       Node* ret =  ((StoreHeapEventNode*)this)->to_storep(*phase);
       printf("event_type() %ld %p %d ==> %p %d %s\n", ((StoreHeapEventNode*)this)->event_type(), this, _idx, ret, ret->_idx, ret->node_name());

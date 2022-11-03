@@ -30,7 +30,7 @@
 #include "oops/oopHandle.hpp"
 #include "runtime/handles.hpp"
 #include "utilities/linkedlist.hpp"
-
+#include "gc/gpugc/gpugc.hpp"
 #include <pthread.h>
 #include <semaphore.h>
 #include <sys/mman.h>
@@ -389,66 +389,16 @@ class Universe: AllStatic {
   using deque = std::deque<T, STLAllocator<T>>;
 
   static uint32_t checking;
-
-  enum HeapEventType {
-    FieldSet = 0,
-    NewObject,
-    NewArray,
-    ArrayElemSet,
-    CopyObject,
-    CopyArray,
-    CopyArrayOffsets,
-    CopyArrayLength,
-    MoveObject,
-    ClearContiguousSpace,
-    NewPrimitiveArray,
-    CopySameArray,
-    NewObjectSizeInBits,
-    FieldSetWithNewObject,
-    CopyNewObject,
-    CopyNewArray,
-    CopyNewArrayOfSameLength,
-    None,
-    Dummy,
-    LARGE_VALUE = 0x1000000000000000ULL //To use 64-bit enums
-  };
-
-  #define PROCESS_EVENT_TYPE(p) case(p): return #p;
-  static const char* heapEventTypeString(HeapEventType value) {
-    switch (value) {
-        PROCESS_EVENT_TYPE(None)
-        PROCESS_EVENT_TYPE(FieldSet)
-        PROCESS_EVENT_TYPE(NewObject)
-        PROCESS_EVENT_TYPE(NewArray)
-        PROCESS_EVENT_TYPE(ArrayElemSet)
-        PROCESS_EVENT_TYPE(CopyObject)
-        PROCESS_EVENT_TYPE(CopyArray)
-        PROCESS_EVENT_TYPE(CopyArrayOffsets)
-        PROCESS_EVENT_TYPE(CopyArrayLength)
-        PROCESS_EVENT_TYPE(MoveObject)
-        PROCESS_EVENT_TYPE(ClearContiguousSpace)
-        PROCESS_EVENT_TYPE(Dummy)
-        PROCESS_EVENT_TYPE(NewPrimitiveArray)
-        PROCESS_EVENT_TYPE(CopySameArray)
-        PROCESS_EVENT_TYPE(NewObjectSizeInBits)
-        PROCESS_EVENT_TYPE(FieldSetWithNewObject)
-        PROCESS_EVENT_TYPE(LARGE_VALUE)
-
-        default:
-          ShouldNotReachHere();
-          return NULL;
-    }
-  }
+  using HeapEvent = GPUGC::HeapEvent;
+  using HeapEventType = GPUGC::HeapEventType;
+  static const char* heapEventTypeString(HeapEventType t) {return GPUGC::heapEventTypeString(t);}
 
   static bool is_verify_cause_full_gc;
   static bool is_verify_from_gc;
   static bool is_verify_from_full_gc_start;
   static bool is_verify_from_young_gc_start;
   static bool is_verify_from_exit;
-  struct HeapEvent {
-    uint64_t src;
-    uint64_t dst;
-  };
+  
   struct EventsToTransfer {
     HeapEvent* events;
     size_t length;
@@ -496,7 +446,7 @@ class Universe: AllStatic {
     // Thread* curr_thread = Thread::current();
     Universe::HeapEvent* heap_events = (CheckHeapEventGraphWithHeap && !add_to_main_thread) ? Universe::get_heap_events_ptr() : *all_heap_events.head()->data() ; //(Universe::HeapEvent*)(((char*)curr_thread) + 2048);
     uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
-    // if (Universe::checking == 2 && event_type == Universe::FieldSet) {
+    // if (Universe::checking == 2 && event_type == Universe::HeapEventType::FieldSet) {
     //   printf("494: FieldSet for %p to %p\n", (oopDesc*)event.dst, (oopDesc*)event.src);
     // }
     const uint64_t v = *heap_event_counter_ptr;

@@ -1161,7 +1161,7 @@ Node* GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_
   if (!InstrumentHeapEvents) return NULL;
   if (!C2InstrumentHeapEvents) return NULL;
   
-  if (event_type == Universe::NewObject) return NULL;
+  if (event_type == Universe::HeapEventType::NewObject) return NULL;
   uint64_t offset = JavaThread::heap_events_offset();
   uint64_t* ptr_event_ctr = reinterpret_cast<uint64_t*>(offset);//(uint64_t*)*Universe::all_heap_events.tail()->data();
 
@@ -1179,7 +1179,7 @@ Node* GraphKit::append_heap_event(Universe::HeapEventType event_type, Node* new_
   //                        LoadNode::DependsOnlyOnTest, false, false, false, is_unsafe);
 
   // ((LoadLNode*)cnt)->is_heap_event_cntr_load = true;
-  // if (event_type == Universe::NewObject) {
+  // if (event_type == Universe::HeapEventType::NewObject) {
   //   new_obj_or_field->dump(0);
   //   new_obj_or_field->in(1)->dump(0);
   //   new_obj_or_field->in(1)->in(0)->dump(0);
@@ -1243,7 +1243,7 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
     }
     src_array = basic_plus_adr(src_array, src_array, src_offset);
     src_array = _gvn.transform(new LShiftLNode(src_array, _gvn.intcon(15)));
-    src_array = _gvn.transform(new OrLNode(src_array, _gvn.longcon(Universe::encode_heap_event_src(Universe::CopyArray, 0L))));
+    src_array = _gvn.transform(new OrLNode(src_array, _gvn.longcon(Universe::encode_heap_event_src(Universe::HeapEventType::CopyArray, 0L))));
     store_to_memory(ctrl, src_addr, src_array, T_ADDRESS, adr_type, MemNode::unordered, 
                     false, false, false, is_unsafe);
     Node* dst_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
@@ -1261,7 +1261,7 @@ void GraphKit::append_copy_array(Node* dst_array, Node* src_array, Node* dst_off
   idx = _gvn.transform(new AddLNode(idx, _gvn.longcon(sizeof(Universe::HeapEvent))));
   if(true) {
     Node* event_type_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, idx);
-    store_to_memory(ctrl, event_type_addr, _gvn.longcon(Universe::CopyArrayLength), T_LONG, 
+    store_to_memory(ctrl, event_type_addr, _gvn.longcon(Universe::HeapEventType::CopyArrayLength), T_LONG, 
                     adr_type, MemNode::unordered, false, false, false, is_unsafe);
     Node* src_addr = basic_plus_adr(node_cntr_addr, node_cntr_addr, 
                                     _gvn.transform(new AddLNode(idx, _gvn.longcon(8))));
@@ -1769,7 +1769,7 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
     if (store_heap) {
       assert(C->get_alias_index(adr_type) != Compile::AliasIdxRaw ||
              ctl != NULL, "raw memory operations should have control edge");
-      st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, mo, Universe::FieldSet);
+      st = new StoreHeapEventNode(ctl, mem, adr, adr_type, val, mo, Universe::HeapEventType::FieldSet);
       // if (val->is_CheckCastPP() && val->in(1)->is_Proj()) {
       //   val->in(1)->in(0)->dump(0);
       // }
@@ -1793,7 +1793,7 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
     } else {
       if (InstrumentHeapEvents && is_reference_type(bt)) {
         //It looks like this is rarely called
-        append_heap_event(Universe::FieldSet, adr, val);
+        append_heap_event(Universe::HeapEventType::FieldSet, adr, val);
       }
       st = StoreNode::make(_gvn, ctl, mem, adr, adr_type, val, bt, mo);
     }
@@ -4062,7 +4062,7 @@ Node* GraphKit::new_instance(Node* klass_node,
   
   Node* obj = set_output_for_allocation(alloc, oop_type, deoptimize_on_exception);
   if (add_newobj_event)
-    alloc->set_heap_event_store((IncrCntrAndStoreHeapEventNode*)append_heap_event(Universe::NewObject, obj, size));
+    alloc->set_heap_event_store((IncrCntrAndStoreHeapEventNode*)append_heap_event(Universe::HeapEventType::NewObject, obj, size));
   alloc->set_output_obj(obj);
   return obj;
 }
@@ -4247,9 +4247,9 @@ Node* GraphKit::new_array(Node* klass_node,     // array klass (maybe variable)
   // const TypeKlassPtr* tk = _gvn.type(klass_node)->is_klassptr();
   // printf("tk->klass() %d %d\n", tk->klass()->is_type_array_klass(), tk->klass()->is_obj_array_klass());
   // if (tk->klass()->is_type_array_klass()) {
-  //   append_heap_event(Universe::NewObject, javaoop, length);
+  //   append_heap_event(Universe::HeapEventType::NewObject, javaoop, length);
   // } else if (tk->klass()->is_obj_array_klass()) {
-  //   append_heap_event(Universe::NewArray, javaoop, length);
+  //   append_heap_event(Universe::HeapEventType::NewArray, javaoop, length);
   // } else {
   //   //This case is called in LibraryCallKit::inline_string_toBytesU()
   //   Universe::print_heap_event_counter();

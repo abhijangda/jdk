@@ -265,9 +265,9 @@ void C1_MacroAssembler::allocate_array(Register obj, Register len, Register t1, 
   if (InstrumentHeapEvents && C1InstrumentHeapEvents) {
     // printf("t1 %s t2 %s len %s obj %s\n", t1->name(), t2->name(), len->name(), obj->name());
     if (bt == T_OBJECT)
-      append_newarray_event(Universe::NewArray, obj, len, rscratch2, false, rscratch1, false, false);
+      append_newarray_event(Universe::HeapEventType::NewArray, obj, len, rscratch2, false, rscratch1, false, false);
     else
-      append_newarray_event(Universe::NewPrimitiveArray, obj, len, rscratch2, false, rscratch1, false, false);
+      append_newarray_event(Universe::HeapEventType::NewPrimitiveArray, obj, len, rscratch2, false, rscratch1, false, false);
   }
   // clear rest of allocated space
   const Register len_zero = len;

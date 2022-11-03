@@ -838,9 +838,9 @@ public:
     : StoreNode(c, mem, adr, at, size, cntr_addr, mo), _event_type(event_type) {
     add_req(cntr_idx);
   }
-  void set_none_event_type() {_event_type = Universe::None;}
+  void set_none_event_type() {_event_type = Universe::HeapEventType::None;}
   void fuse(StoreHeapEventNode* node) {
-    _fused_events[0] = Universe::FieldSet; 
+    _fused_events[0] = Universe::HeapEventType::FieldSet; 
     add_req(node->in(Address)); add_req(node->in(ValueIn));
   }
   void fuse(ArrayCopyNode* node);

@@ -369,9 +369,9 @@ Node* PhaseVector::expand_vbox_alloc_node(VectorBoxAllocateNode* vbox_alloc,
   Node* arr = kit.new_array(kit.makecon(array_klass), kit.intcon(num_elem), 1);
   if (InstrumentHeapEvents) {
     if (is_reference_type(bt)) {
-      // kit.append_heap_event(Universe::NewArray, arr, kit.intcon(num_elem));
+      // kit.append_heap_event(Universe::HeapEventType::NewArray, arr, kit.intcon(num_elem));
     } else {
-      kit.append_heap_event(Universe::NewPrimitiveArray, arr, kit.intcon(num_elem));
+      kit.append_heap_event(Universe::HeapEventType::NewPrimitiveArray, arr, kit.intcon(num_elem));
     }
   }
   // Store the vector value into the array.

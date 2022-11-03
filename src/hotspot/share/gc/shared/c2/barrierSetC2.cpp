@@ -101,7 +101,7 @@ Node* BarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue& val) cons
     }
 
     if (InstrumentHeapEvents && is_reference_type(access.type()) && !kit->use_store_heap_event()) {
-      kit->append_heap_event(Universe::FieldSet, access.addr().node(), val.node());
+      kit->append_heap_event(Universe::HeapEventType::FieldSet, access.addr().node(), val.node());
     }
 
     store = kit->store_to_memory(kit->control(), access.addr().node(), val.node(), access.type(),
@@ -437,7 +437,7 @@ Node* BarrierSetC2::atomic_cmpxchg_val_at_resolved(C2AtomicParseAccess& access, 
 #endif
     {
       if (InstrumentHeapEvents) {
-        kit->append_heap_event(Universe::FieldSet, adr, new_val);
+        kit->append_heap_event(Universe::HeapEventType::FieldSet, adr, new_val);
       }
       load_store = new CompareAndExchangePNode(kit->control(), mem, adr, new_val, expected_val, adr_type, value_type->is_oopptr(), mo);
     }
@@ -503,7 +503,7 @@ Node* BarrierSetC2::atomic_cmpxchg_bool_at_resolved(C2AtomicParseAccess& access,
 #endif
     {
       if (InstrumentHeapEvents) {
-        kit->append_heap_event(Universe::FieldSet, adr, new_val);
+        kit->append_heap_event(Universe::HeapEventType::FieldSet, adr, new_val);
       }
       if (is_weak_cas) {
         load_store = new WeakCompareAndSwapPNode(kit->control(), mem, adr, new_val, expected_val, mo);
@@ -575,7 +575,7 @@ Node* BarrierSetC2::atomic_xchg_at_resolved(C2AtomicParseAccess& access, Node* n
 #endif
     {
       if (InstrumentHeapEvents) {
-        kit->append_heap_event(Universe::FieldSet, adr, new_val);
+        kit->append_heap_event(Universe::HeapEventType::FieldSet, adr, new_val);
       }
       load_store = new GetAndSetPNode(kit->control(), mem, adr, new_val, adr_type, value_type->is_oopptr());
     }
@@ -713,7 +713,7 @@ void BarrierSetC2::clone(GraphKit* kit, Node* src_base, Node* dst_base, Node* si
     } else {
       ac->set_store_heap_event();
       ac->set_alloc_length(size);
-      // kit->append_heap_event(Universe::CopyObject, dst_base, src_base);
+      // kit->append_heap_event(Universe::HeapEventType::CopyObject, dst_base, src_base);
     }
   }
   Node* n = kit->gvn().transform(ac);
@@ -777,7 +777,7 @@ Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobi
   Node *new_eden_top;
   if (InstrumentHeapEvents && C2InstrumentHeapEvents && length == NULL && false) {
     // printf("length %p\n", length);
-    new_eden_top = new AddPAndAllocObjNode(macro->top(), old_eden_top, size_in_bytes, Universe::NewObject);
+    new_eden_top = new AddPAndAllocObjNode(macro->top(), old_eden_top, size_in_bytes, Universe::HeapEventType::NewObject);
   } else {
     new_eden_top = new AddPNode(macro->top(), old_eden_top, size_in_bytes);
   }

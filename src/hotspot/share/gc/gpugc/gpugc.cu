@@ -1,3 +1,4 @@
+#include "gpugc.hpp"
 #include <stdio.h>
 
 __global__ void cuda_hello(){

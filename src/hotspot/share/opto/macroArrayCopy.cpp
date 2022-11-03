@@ -1256,7 +1256,7 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
       Node* raw_mem = merge_mem->memory_at(Compile::AliasIdxRaw);
       Node* st;
       if (ac->is_clone_inst()) {
-        st = new IncrCntrAndStoreHeapEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, dest, Universe::CopyObject);
+        st = new IncrCntrAndStoreHeapEventNode(ctrl, raw_mem, node_cntr_addr, adr_type, src, dest, Universe::HeapEventType::CopyObject);
         if (ac->is_alloc_tightly_coupled()) {
           //Fuse NewObject/Array with CopyObject/Array
           st->add_req(ac->alloc_length());

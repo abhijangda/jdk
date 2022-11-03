@@ -81,7 +81,7 @@ void* MetaspaceObj::operator new(size_t size, ClassLoaderData* loader_data,
                                  MetaspaceObj::Type type, TRAPS) throw() {
   // Klass has its own operator new
   void* p = Metaspace::allocate(loader_data, word_size, type, THREAD);
-  // Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, size, (uint64_t)p});
+  // Universe::add_heap_event(Universe::HeapEvent{Universe::HeapEventType::NewObject, size, (uint64_t)p});
   return p;
 }
 
@@ -90,7 +90,7 @@ void* MetaspaceObj::operator new(size_t size, ClassLoaderData* loader_data,
                                  MetaspaceObj::Type type) throw() {
   assert(!Thread::current()->is_Java_thread(), "only allowed by non-Java thread");
   void* p = Metaspace::allocate(loader_data, word_size, type);
-  // Universe::add_heap_event(Universe::HeapEvent{Universe::NewObject, size, (uint64_t)p});
+  // Universe::add_heap_event(Universe::HeapEvent{Universe::HeapEventType::NewObject, size, (uint64_t)p});
   return p;
 }
 

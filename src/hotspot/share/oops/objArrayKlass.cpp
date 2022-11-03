@@ -165,7 +165,7 @@ objArrayOop ObjArrayKlass::allocate(int length, TRAPS) {
   size_t size = objArrayOopDesc::object_size(length);
   objArrayOop r = (objArrayOop)Universe::heap()->array_allocate(this, size, length,
                                                        /* do_zero */ true, THREAD);
-  Universe::add_heap_event(Universe::NewArray, Universe::HeapEvent{(uint64_t)length, (uint64_t)(void*)r});
+  Universe::add_heap_event(Universe::HeapEventType::NewArray, Universe::HeapEvent{(uint64_t)length, (uint64_t)(void*)r});
   return r;
 }
 
@@ -312,7 +312,7 @@ void ObjArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d,
       for (int i = 0; i < length; i++) {
         oop elem = ((objArrayOop)s)->obj_at(src_pos + i);
         uint64_t elem_addr = (uint64_t)(((objArrayOop)d)->base()) + (dst_pos + i) * sizeof(oop);
-        Universe::add_heap_event(Universe::FieldSet, Universe::HeapEvent{(uint64_t)(void*)elem, elem_addr});
+        Universe::add_heap_event(Universe::HeapEventType::FieldSet, Universe::HeapEvent{(uint64_t)(void*)elem, elem_addr});
       }
     }
     do_copy(s, src_offset, d, dst_offset, length, CHECK);

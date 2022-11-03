@@ -672,22 +672,22 @@ JVM_ENTRY(jobject, JVM_Clone(JNIEnv* env, jobject handle))
                                                    /* do_zero */ true, CHECK_NULL);
     event_size = length;
     if (obj->klass()->id() == ObjArrayKlassID)
-      Universe::add_heap_event(Universe::NewArray, Universe::HeapEvent{event_size, (uint64_t)(void*) new_obj_oop});
+      Universe::add_heap_event(Universe::HeapEventType::NewArray, Universe::HeapEvent{event_size, (uint64_t)(void*) new_obj_oop});
     else
-      Universe::add_heap_event(Universe::NewPrimitiveArray, Universe::HeapEvent{event_size, (uint64_t)(void*) new_obj_oop});  
+      Universe::add_heap_event(Universe::HeapEventType::NewPrimitiveArray, Universe::HeapEvent{event_size, (uint64_t)(void*) new_obj_oop});  
   } else {
     new_obj_oop = Universe::heap()->obj_allocate(klass, size, CHECK_NULL);
     event_size = size;
-    Universe::add_heap_event(Universe::NewObject, Universe::HeapEvent{event_size, (uint64_t)(void*) new_obj_oop});
+    Universe::add_heap_event(Universe::HeapEventType::NewObject, Universe::HeapEvent{event_size, (uint64_t)(void*) new_obj_oop});
   }
 
   if (obj->klass()->is_instance_klass()) {
-    Universe::add_heap_event(Universe::CopyObject, Universe::HeapEvent{(uint64_t)(void*)obj(), (uint64_t)(void*)new_obj_oop});
+    Universe::add_heap_event(Universe::HeapEventType::CopyObject, Universe::HeapEvent{(uint64_t)(void*)obj(), (uint64_t)(void*)new_obj_oop});
   } else if (obj->klass()->id() == ObjArrayKlassID) {
     //TODO: Add these using single function call
     // printf("copy: %p -> %p\n", obj(), new_obj_oop);
-    Universe::add_heap_events(Universe::CopyArray, Universe::HeapEvent{(uint64_t)(void*)obj(), (uint64_t)(void*)new_obj_oop}, 
-                              Universe::CopyArrayLength, Universe::HeapEvent{event_size, event_size});
+    Universe::add_heap_events(Universe::HeapEventType::CopyArray, Universe::HeapEvent{(uint64_t)(void*)obj(), (uint64_t)(void*)new_obj_oop}, 
+                              Universe::HeapEventType::CopyArrayLength, Universe::HeapEvent{event_size, event_size});
   }
   
   HeapAccess<>::clone(obj(), new_obj_oop, size);

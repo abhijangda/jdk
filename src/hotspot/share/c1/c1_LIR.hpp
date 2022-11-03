@@ -1652,7 +1652,7 @@ class LIR_Op2: public LIR_Op {
     , _tmp4(LIR_OprFact::illegalOpr)
     , _tmp5(LIR_OprFact::illegalOpr)
     , _condition(condition) 
-    , _event_type(Universe::None) {
+    , _event_type(Universe::HeapEventType::None) {
     assert(code == lir_cmp || code == lir_assert, "code check");
   }
 
@@ -1668,7 +1668,7 @@ class LIR_Op2: public LIR_Op {
     , _tmp4(LIR_OprFact::illegalOpr)
     , _tmp5(LIR_OprFact::illegalOpr)
     , _condition(condition) 
-    , _event_type(Universe::None) {
+    , _event_type(Universe::HeapEventType::None) {
     assert(code == lir_cmove, "code check");
     assert(type != T_ILLEGAL, "cmove should have type");
   }
@@ -1686,7 +1686,7 @@ class LIR_Op2: public LIR_Op {
     , _tmp4(LIR_OprFact::illegalOpr)
     , _tmp5(LIR_OprFact::illegalOpr)
     , _condition(lir_cond_unknown) 
-    , _event_type(Universe::None) {
+    , _event_type(Universe::HeapEventType::None) {
     assert(code != lir_cmp && is_in_range(code, begin_op2, end_op2), "code check");
   }
 
@@ -1703,7 +1703,7 @@ class LIR_Op2: public LIR_Op {
     , _tmp4(tmp4)
     , _tmp5(tmp5)
     , _condition(lir_cond_unknown) 
-    , _event_type(Universe::None) {
+    , _event_type(Universe::HeapEventType::None) {
     assert(code != lir_cmp && is_in_range(code, begin_op2, end_op2), "code check");
   }
 

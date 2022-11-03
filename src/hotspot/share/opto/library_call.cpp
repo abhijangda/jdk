@@ -1425,7 +1425,7 @@ bool LibraryCallKit::inline_string_toBytesU() {
     AllocateArrayNode* alloc = tightly_coupled_allocation(newcopy);
     guarantee(alloc != NULL, "created above");
     if (InstrumentHeapEvents) {
-      append_heap_event(Universe::NewPrimitiveArray, newcopy, size);
+      append_heap_event(Universe::HeapEventType::NewPrimitiveArray, newcopy, size);
     }
 
     // Calculate starting addresses.
@@ -3514,14 +3514,14 @@ bool LibraryCallKit::inline_unsafe_newArray(bool uninitialized) {
       if (layout_is_con) {
         const TypeKlassPtr* tk = _gvn.type(klass_node)->isa_klassptr();
         if (tk->klass()->is_obj_array_klass()) {
-          append_heap_event(Universe::NewArray, obj, count_val);
+          append_heap_event(Universe::HeapEventType::NewArray, obj, count_val);
         } else {
         // // if (tk->klass()->is_type_array_klass()) {
-          append_heap_event(Universe::NewPrimitiveArray, obj, count_val);
+          append_heap_event(Universe::HeapEventType::NewPrimitiveArray, obj, count_val);
         }
       } else {
         printf("3523\n");
-        append_heap_event(Universe::NewArray, obj, count_val);
+        append_heap_event(Universe::HeapEventType::NewArray, obj, count_val);
       }
     }
     result_reg->init_req(_normal_path, control());
@@ -3696,9 +3696,9 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
         const TypeKlassPtr* tk = _gvn.type(klass_node)->is_klassptr();
         if (InstrumentHeapEvents) {
           if (tk->klass()->is_type_array_klass()) {
-            append_heap_event(Universe::NewPrimitiveArray, newcopy, length);
+            append_heap_event(Universe::HeapEventType::NewPrimitiveArray, newcopy, length);
           } else if (tk->klass()->is_obj_array_klass()) {
-            // append_heap_event(Universe::NewArray, newcopy, length);
+            // append_heap_event(Universe::HeapEventType::NewArray, newcopy, length);
           } else {
             ShouldNotReachHere();
           }
@@ -4366,15 +4366,15 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
           }
         } else {
           printf("4352\n");
-          append_heap_event(Universe::NewArray, alloc_obj, obj_length);
+          append_heap_event(Universe::HeapEventType::NewArray, alloc_obj, obj_length);
         }
       } else {
         //Above condition is always true for Object
         const TypeKlassPtr* tk = _gvn.type(obj_klass)->is_klassptr();
         if (tk->klass()->is_obj_array_klass()) 
-          append_heap_event(Universe::NewArray, alloc_obj, obj_length);
+          append_heap_event(Universe::HeapEventType::NewArray, alloc_obj, obj_length);
         else
-          append_heap_event(Universe::NewPrimitiveArray, alloc_obj, obj_length);
+          append_heap_event(Universe::HeapEventType::NewPrimitiveArray, alloc_obj, obj_length);
       }
       // Otherwise, there are no barriers to worry about.
       // (We can dispense with card marks if we know the allocation
@@ -5107,7 +5107,7 @@ bool LibraryCallKit::inline_multiplyToLen() {
        Node * narr = new_array(klass_node, zlen, 1);
        if (InstrumentHeapEvents) {
          //Always an integer.
-         append_heap_event(Universe::NewPrimitiveArray, narr, zlen);
+         append_heap_event(Universe::HeapEventType::NewPrimitiveArray, narr, zlen);
        }
        // Update IdealKit memory and control from graphKit.
        __ sync_kit(this);

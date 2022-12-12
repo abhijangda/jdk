@@ -196,9 +196,10 @@ void* Thread::allocate(size_t size, bool throw_excpt, MEMFLAGS flags) {
     //   perror("Error locking\n");
     // }
     size -= JavaThread::heap_events_offset() + Universe::heap_events_buf_size();
-    *(uint64_t*)(((char*)p) + JavaThread::heap_events_offset()) = 0;
+    // *(uint64_t*)(((char*)p) + JavaThread::heap_events_offset()) = 0;
+    memset(((char*)p) + JavaThread::heap_events_offset(), 0, Universe::heap_events_buf_size());
     Universe::HeapEvent* he = (Universe::HeapEvent*)(((char*)p) + JavaThread::heap_events_offset());
-    printf("199: thread %p heap_events %p num %ld\n", p, he, Universe::all_heap_events.size());
+    printf("199: thread %p heap_events %p -> %p num %ld \n", p, he, ((char*)p) + size + JavaThread::heap_events_offset() + Universe::heap_events_buf_size(), Universe::all_heap_events.size());
     // if (size == sizeof(JavaThread)) {
       Universe::add_heap_event_ptr(he);
     // }
@@ -802,7 +803,7 @@ static void call_postVMInitHook(TRAPS) {
 // Initialized by VMThread at vm_global_init
 static OopStorage* _thread_oop_storage = NULL;
 int JavaThread::heap_events_offset() {
-  return 2048;//sizeof(JavaThread) + 16;
+  return 2048 - (sizeof(Universe::HeapEvent) - 16);//sizeof(JavaThread) + 16;
 }
 oop  JavaThread::threadObj() const    {
   return _threadObj.resolve();

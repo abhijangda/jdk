@@ -57,6 +57,15 @@ enum HeapEventType {
 struct HeapEvent {
   uint64_t src;
   uint64_t dst;
+  uint64_t bci;
+  uint64_t method;
+
+  HeapEvent(uint64_t s, uint64_t d) : src(s), dst(d)
+  , bci(0), method(0) 
+  {}
+  HeapEvent() : src(0), dst(0)
+  , bci(0), method(0)
+  {}
 };
   
 int gpugc();

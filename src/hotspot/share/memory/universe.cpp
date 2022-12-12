@@ -726,7 +726,7 @@ uint64_t Universe::decode_heap_event_dst(HeapEvent event) {
 }
 
 Universe::HeapEvent Universe::decode_heap_event(Universe::HeapEvent event) {
-  return HeapEvent{event.src, decode_heap_event_dst(event)};
+  return HeapEvent(event.src, decode_heap_event_dst(event));
 }
 
 static pthread_mutex_t heap_events_list_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -746,9 +746,11 @@ void Universe::add_heap_event_ptr(Universe::HeapEvent* ptr) {
   pthread_mutex_lock(&heap_events_list_lock);
   uint64_t second_part = ((uint64_t)(ptr + MaxHeapEvents)/4096)*4096;
   printf("703: 0x%lx\n", second_part);
-  Universe::mprotect((void*)second_part, 4096, PROT_READ); //MaxHeapEvents*sizeof(Universe::HeapEvent)
-  //memset last page to zeros
-  memset((char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent), 0, 4096);
+  if (UseMprotectForHeapGraphCheck) {
+    Universe::mprotect((void*)second_part, 4096, PROT_READ); //MaxHeapEvents*sizeof(Universe::HeapEvent)
+    //memset last page to zeros
+    memset((char*)second_part + MaxHeapEvents*sizeof(Universe::HeapEvent), 0, 4096);
+  }
   all_heap_events.add(ptr);
   pthread_mutex_unlock(&heap_events_list_lock);
 }
@@ -769,7 +771,7 @@ Universe::HeapEvent* Universe::get_heap_events_ptr() {
 
 size_t Universe::heap_events_buf_size() {
   int PAGE_SIZE = 4096;
-  size_t size = (MaxHeapEvents)*sizeof(Universe::HeapEvent)*2 + PAGE_SIZE + PAGE_SIZE;
+  size_t size = (MaxHeapEvents)*sizeof(Universe::HeapEvent)*2+ PAGE_SIZE + PAGE_SIZE;
   
   return size;
 }
@@ -779,13 +781,16 @@ bool Universe::handle_heap_events_sigsegv(int sig, siginfo_t* info) {
     return false;
 
   Universe::HeapEvent* sig_addr = (Universe::HeapEvent*)info->si_addr;
+  printf("sig_addr %p\n", sig_addr);
   if ((uint64_t)sig_addr < 0x10000)
     return false;
 
   HeapEvent* heap_events_ptr = Universe::get_heap_events_ptr();
   void* end_heap_events_buff = (char*)heap_events_ptr + heap_events_buf_size();
+  printf("heap_events_ptr  %p end_heap_events_buff %p\n", heap_events_ptr, end_heap_events_buff);
   if (heap_events_ptr < sig_addr && sig_addr <= end_heap_events_buff) {
     uint64_t second_part = ((uint64_t)(heap_events_ptr + MaxHeapEvents)/4096)*4096;
+    printf("second_part 0x%lx\n", second_part);
     if (second_part == (size_t)sig_addr) {
       //TODO: make a template mprotect
       //TODO: Only set the page starting at second_part to PROT_READ
@@ -1249,6 +1254,7 @@ void Universe::verify_heap_graph() {
           event_iter++;
         }
 
+        if (event2.dst == 0) continue;
         oopDesc* obj = (oopDesc*)event2.dst;
         
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);

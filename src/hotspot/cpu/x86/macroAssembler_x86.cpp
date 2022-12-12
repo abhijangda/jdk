@@ -4708,7 +4708,7 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
   if (preserve_temp2)
     push(temp2);
   if (preserve_flags)
-    pushf(); 
+    pushf();
 
   gen_lock_heap_event_mutex();
   //TODO: Optimize
@@ -4873,7 +4873,7 @@ void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventT
   events = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 16);
   if (src[1] != noreg)
     movq(events, src[1]);
-
+  //TODO: Make this size independent
   events = Address(r15_thread, cntr_reg, Address::times_1, (int)JavaThread::heap_events_offset() + 24);
   if (dst[1] != noreg) {
     if (event_type[1] != Universe::HeapEventType::None) {
@@ -5022,6 +5022,7 @@ void MacroAssembler::append_two_heap_events(Address events, Universe::HeapEventT
 
 void MacroAssembler::append_heap_event(Address events, Universe::HeapEventType event_type, Register dst, RegisterOrConstant src, 
                                        Register cntr_reg) {
+
   movq(cntr_reg, events);
   leaq(cntr_reg, Address(cntr_reg, 1));
   movq(events, cntr_reg);
@@ -5046,6 +5047,7 @@ void MacroAssembler::append_heap_event(Address events, Universe::HeapEventType e
 
 void MacroAssembler::append_heap_event(Address events, Universe::HeapEventType event_type, RegisterOrAddress dst, RegisterOrConstant src, 
                                        Register cntr_reg, XMMRegister tmp_vec) {
+
   if (src.is_register()) {
     movq(tmp_vec, src.as_register());
   } else {
@@ -5102,7 +5104,7 @@ void MacroAssembler::append_newarray_event(Universe::HeapEventType arraytype, Re
                                          Register tmp1, bool preserve_tmp1, 
                                          Register tmp2, bool preserve_tmp2,
                                          bool preserve_flags) {
-  append_heap_event(arraytype, RegisterOrAddress(obj), size, 
+  append_heap_event(arraytype, RegisterOrAddress(obj), size,
                     tmp1, preserve_tmp1, tmp2, preserve_tmp2, preserve_flags);
 }
 

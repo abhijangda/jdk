@@ -4759,6 +4759,15 @@ void MacroAssembler::append_heap_event(Universe::HeapEventType event_type, Regis
     movq(heap_event_addr, temp1);
   }
 
+  if (sizeof(Universe::HeapEvent) > 16) {
+    movq(temp1, Address(rbp, frame::interpreter_frame_method_offset * wordSize));
+    heap_event_addr = Address(r15_thread, temp2, Address::times_1, (int)JavaThread::heap_events_offset() + 16);
+    movq(heap_event_addr, temp1);
+    heap_event_addr = Address(r15_thread, temp2, Address::times_1, (int)JavaThread::heap_events_offset() + 24);
+    movq(heap_event_addr, r13);
+    printf("4768 %d\n", ProfileInterpreter);
+  }
+
   check_heap_events_buffer_size(temp2, MaxHeapEvents*sizeof(Universe::HeapEvent));
   gen_unlock_heap_event_mutex();
 
@@ -5092,7 +5101,7 @@ void MacroAssembler::append_heap_event(Address events, Universe::HeapEventType e
   movdqa(events, tmp_vec);
 }
 
-void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size, 
+void MacroAssembler::append_newobj_event(Register obj, RegisterOrConstant size,
                                          Register tmp1, bool preserve_tmp1, 
                                          Register tmp2, bool preserve_tmp2,
                                          bool preserve_flags) {

@@ -1102,6 +1102,7 @@ JRT_ENTRY(void, InterpreterRuntime::update_mdp_for_ret(JavaThread* current, int 
   guarantee(data != NULL, "profile data must be valid");
   RetData* rdata = data->as_RetData();
   address new_mdp = rdata->fixup_ret(return_bci, h_mdo);
+  printf("1105: new_mdp %p\n", new_mdp);
   last_frame.set_mdp(new_mdp);
 JRT_END
 

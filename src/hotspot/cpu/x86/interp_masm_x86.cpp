@@ -1832,7 +1832,7 @@ void InterpreterMacroAssembler::profile_ret(Register return_bci,
       jmp(profile_continue);
       bind(next_test);
     }
-
+    printf("1835:\n");
     update_mdp_for_ret(return_bci);
 
     bind(profile_continue);

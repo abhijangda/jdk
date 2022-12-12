@@ -59,6 +59,7 @@
 #include "memory/universe.hpp"
 #include "memory/iterator.hpp"
 #include "memory/iterator.inline.hpp"
+#include "oops/methodData.hpp"
 #include "oops/compressedOops.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/instanceMirrorKlass.hpp"
@@ -711,7 +712,8 @@ uint64_t Universe::encode_heap_event_dst(HeapEventType event_type, uint64_t dst)
 }
 
 Universe::HeapEvent Universe::encode_heap_event(Universe::HeapEventType event_type, Universe::HeapEvent event) {
-  return HeapEvent{event.src, encode_heap_event_dst(event_type, event.dst)};
+  event.dst = encode_heap_event_dst(event_type, event.dst);
+  return event;
 }
 
 Universe::HeapEventType Universe::decode_heap_event_type(Universe::HeapEvent event) {
@@ -726,7 +728,8 @@ uint64_t Universe::decode_heap_event_dst(HeapEvent event) {
 }
 
 Universe::HeapEvent Universe::decode_heap_event(Universe::HeapEvent event) {
-  return HeapEvent(event.src, decode_heap_event_dst(event));
+  event.dst = decode_heap_event_dst(event);
+  return event;
 }
 
 static pthread_mutex_t heap_events_list_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -1145,6 +1148,35 @@ void Universe::mark_objects(Universe::unordered_set<void*>& visited) {
 
 Universe::unordered_set<void*> Universe::marked_objects;
 
+static int64_t bcAndEventsMatched = 0;
+static int64_t bcAndEventsMismatched = 0;
+static int64_t methodBciInvalid = 0;
+
+void checkBytecodeForHeapEvent(Universe::HeapEventType event_type, Universe::HeapEvent& event) {
+  if (event.getmethod() != 0 and event.getbci() != 0) {
+    Method* m = (Method*)event.getmethod();
+    // printf("%p %ld\n", m, event.getbci());
+    // printf("is_method() %d\n", m->is_method());
+    // char buf[1024];
+    // printf("%s\n", m->name_and_sig_as_C_string(buf, 1024));
+    int bci = m->bci_from((address)event.getbci());
+    Bytecodes::Code bc = m->java_code_at(bci);
+    if (event_type == Universe::HeapEventType::NewObject && bc == Bytecodes::_new) {
+      bcAndEventsMatched++;
+    } else if (event_type == Universe::HeapEventType::NewArray && bc == Bytecodes::_anewarray) {
+bcAndEventsMatched++;
+    } else if (event_type == Universe::HeapEventType::NewPrimitiveArray && bc == Bytecodes::_newarray) {bcAndEventsMatched++;
+    } else if (event_type == Universe::HeapEventType::FieldSet && (bc == Bytecodes::_aastore || bc == Bytecodes::_putfield || bc == Bytecodes::_putstatic)) {bcAndEventsMatched++;
+    } else {
+      printf("Mismatch event type '%ld' and bytecode '%s'\n", event_type, Bytecodes::name(bc));
+      bcAndEventsMismatched++;
+    }
+    
+  }
+  else {
+    methodBciInvalid++;
+  }
+}
 void Universe::verify_heap_graph() {
   // if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
   //   return;
@@ -1323,7 +1355,7 @@ void Universe::verify_heap_graph() {
       HeapEvent event = heap_events_start[event_iter];
       if (event.dst == 0)
         continue;
-      ((HeapEvent*)heap_events_start)[event_iter] = HeapEvent{0,0};
+      ((HeapEvent*)heap_events_start)[event_iter] = HeapEvent();
       HeapEventType heap_event_type;
       if(is_field_set(event, heap_start, heap_end)) {
         heap_event_type = Universe::HeapEventType::FieldSet;
@@ -1336,6 +1368,7 @@ void Universe::verify_heap_graph() {
           heap_event_type == Universe::HeapEventType::NewArray ||
           heap_event_type == Universe::HeapEventType::NewPrimitiveArray ||
           heap_event_type == Universe::HeapEventType::NewObjectSizeInBits) {
+            checkBytecodeForHeapEvent(heap_event_type, event);
             continue;
         // oopDesc* obj = (oopDesc*)event.dst;
         // if (ObjectNode::oop_to_obj_node.find(obj) == ObjectNode::oop_to_obj_node.end()) {
@@ -1350,6 +1383,8 @@ void Universe::verify_heap_graph() {
           field_set_events[0] = {heap_events_start[event_iter+1].dst, event.dst};
           event_iter += 1;
         }
+        
+        checkBytecodeForHeapEvent(heap_event_type, event);
 
         for (int e = 0; e < 1; e++) {
           Universe::HeapEvent event = field_set_events[e];
@@ -1626,6 +1661,8 @@ void Universe::verify_heap_graph() {
   printf("Total Events '%ld' {Object: %ld, FieldSet: %ld} ; Events-Found '%d' Events-Notfound '%d' Events-Wrong '%d'\n", 
   num_objects + num_fields, num_objects, num_fields, 
   check_graph.num_found, check_graph.num_not_found, check_graph.num_src_not_correct);
+  printf("Bytecodes and Event types '%ld' {matched: %ld, mismatched: %ld} Method and Bytecode invalid %ld\n",
+         bcAndEventsMatched+bcAndEventsMismatched, bcAndEventsMatched, bcAndEventsMismatched, methodBciInvalid);
   if (is_verify_from_full_gc_start && false) {
     marked_objects.clear();
     mark_objects(marked_objects);

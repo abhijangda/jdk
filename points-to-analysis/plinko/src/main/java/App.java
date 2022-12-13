@@ -5,6 +5,7 @@ import org.apache.bcel.classfile.ClassParser;
 import org.apache.bcel.classfile.JavaClass;
 import org.apache.bcel.classfile.Method;
 import org.apache.bcel.*;
+import org.apache.bcel.generic.Type;
 
 import java.util.jar.*;
 
@@ -79,32 +80,42 @@ public class App {
     return heapEvents;
   }
 
-  public static void processHeapEventsText(String heapEventsText) {
+  public static void findMainClass(String jarFile, JarFile jar) {
+    try {
+      Enumeration<JarEntry> entries = jar.entries();
+      while (entries.hasMoreElements()) {
+          JarEntry entry = entries.nextElement();
+          if (!entry.getName().endsWith(".class")) {
+              continue;
+          }
 
+          ClassParser parser = new ClassParser(jarFile, entry.getName());
+          JavaClass javaClass = parser.parse();
+          // System.out.println(javaClass.getClassName());
+          for (org.apache.bcel.classfile.Method m : javaClass.getMethods()) {
+            // System.out.println(m.getName());
+            if (m.getName().equals("main") && m.isStatic() && m.isPublic() && 
+                m.getReturnType() == org.apache.bcel.generic.Type.VOID) {
+              System.out.println("main method in " + javaClass.getClassName());
+            }
+          }
+      }
+    } catch (Exception e) {
+
+    }
   }
 
   public static void main(String[] args) throws ClassFormatException, IOException {
-    String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events";
-    HashMap<String, ArrayList<HeapEvent>> heapEvents = processHeapEventsFile(heapEventsFile);
-    for (String th : heapEvents.keySet()) {
-      System.out.println(th);
-      for (HeapEvent he : heapEvents.get(th)) {
-        System.out.println(he.toString());
-      }
-    }
+    //Read and process heap events
+    // String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events";
+    // HashMap<String, ArrayList<HeapEvent>> heapEvents = processHeapEventsFile(heapEventsFile);
+
+    //Read the jarfile
     String jarFile = "/mnt/homes/aabhinav/jdk/dacapo-9.12-MR1-bach.jar";
     JarFile jar = new JarFile(jarFile);
-    Enumeration<JarEntry> entries = jar.entries();
-    while (entries.hasMoreElements()) {
-        JarEntry entry = entries.nextElement();
-        if (!entry.getName().endsWith(".class")) {
-            continue;
-        }
-
-        ClassParser parser = new ClassParser(jarFile, entry.getName());
-        JavaClass javaClass = parser.parse();
-        System.out.println(javaClass.getClassName());
-    }
+    findMainClass(jarFile, jar);
+    //Find the class with main method
+    
     // System.out.println("17\n");
     // /*An existing class can be parsed with ClassParser */
     // ClassParser parser=new ClassParser(App.class.getResourceAsStream("App.class"), "App.class");

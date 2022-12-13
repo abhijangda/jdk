@@ -105,6 +105,8 @@ sem_t Universe::cuda_thread_wait_semaphore;
 #include <stdlib.h>
 #include <sys/syscall.h>
 #include <string.h>
+#include <fstream>
+#include <iomanip>
 #define gettid() syscall(SYS_gettid)
 #include "runtime/interfaceSupport.inline.hpp"
 
@@ -816,7 +818,11 @@ bool Universe::handle_heap_events_sigsegv(int sig, siginfo_t* info) {
       if (CheckHeapEventGraphWithHeap)
         Universe::verify_heap_graph();
       else {
-        Universe::transfer_events_to_gpu_no_zero((HeapEvent*)second_part, MaxHeapEvents);
+        if (HeapEventsFileDump) {
+          Universe::dump_heap_events_to_file();
+        } else {
+          Universe::transfer_events_to_gpu_no_zero((HeapEvent*)second_part, MaxHeapEvents);
+        }
         *(uint64_t*)heap_events_ptr = 0;
         //fprintf(stderr, "T\n");
         // *(uint64_t*)events = 0;
@@ -1164,19 +1170,88 @@ void checkBytecodeForHeapEvent(Universe::HeapEventType event_type, Universe::Hea
     if (event_type == Universe::HeapEventType::NewObject && bc == Bytecodes::_new) {
       bcAndEventsMatched++;
     } else if (event_type == Universe::HeapEventType::NewArray && bc == Bytecodes::_anewarray) {
-bcAndEventsMatched++;
+      bcAndEventsMatched++;
     } else if (event_type == Universe::HeapEventType::NewPrimitiveArray && bc == Bytecodes::_newarray) {bcAndEventsMatched++;
     } else if (event_type == Universe::HeapEventType::FieldSet && (bc == Bytecodes::_aastore || bc == Bytecodes::_putfield || bc == Bytecodes::_putstatic)) {bcAndEventsMatched++;
     } else {
       printf("Mismatch event type '%ld' and bytecode '%s'\n", event_type, Bytecodes::name(bc));
       bcAndEventsMismatched++;
     }
-    
   }
   else {
     methodBciInvalid++;
   }
 }
+
+void Universe::dump_heap_events_to_file() {
+  printf("Dump heap events to %s\n", HeapEventsFileDump);
+  const void* heap_start = ((GenCollectedHeap*)Universe::heap())->base();
+  const void* heap_end = ((GenCollectedHeap*)Universe::heap())->end();
+  for (auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head()); 
+       !heap_events_iter.is_empty(); heap_events_iter.next()) {
+    auto th_heap_events = *heap_events_iter;
+    const size_t heap_events_size = *(const uint64_t*)th_heap_events;
+    if (heap_events_size < MaxHeapEvents)
+      continue;
+    
+    uint64_t second_part = ((uint64_t)(*heap_events_iter + MaxHeapEvents)/4096)*4096;
+    HeapEvent* last_page = (HeapEvent*)second_part + MaxHeapEvents;
+
+    *(uint64_t*)th_heap_events += 4096/sizeof(HeapEvent);
+  }
+
+  Universe::HeapEvent* reverse_events[all_heap_events.size()];
+  auto heap_events_iter = LinkedListIterator<HeapEvent*>(all_heap_events.head());
+
+  for (uint i = 0; i < all_heap_events.size(); i++) {
+    reverse_events[all_heap_events.size() - i - 1] = *heap_events_iter;
+    heap_events_iter.next();
+  }
+
+  for (uint i = 0; i < all_heap_events.size(); i++) {
+    auto th_heap_events = reverse_events[i];
+    const size_t heap_events_size = *(const uint64_t*)th_heap_events;
+    // printf("heap_events_size %ld %p %p\n", heap_events_size, th_heap_events, get_heap_events_ptr());
+    *(uint64_t*)th_heap_events = 0;
+    HeapEvent* heap_events_start = &th_heap_events[1];
+    HeapEvent prevEvent = {0,0};
+    bool PrintHeapEventStatistics = true;
+    Universe::string heap_dump = "";
+    char heap_dump_buf[2048];
+    for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
+      HeapEvent event = heap_events_start[event_iter];
+      if (event.dst == 0)
+        continue;
+      ((HeapEvent*)heap_events_start)[event_iter] = HeapEvent();
+      HeapEventType heap_event_type;
+      if(is_field_set(event, heap_start, heap_end)) {
+        heap_event_type = Universe::HeapEventType::FieldSet;
+      } else {
+        heap_event_type = decode_heap_event_type(event);
+        event = decode_heap_event(event);
+      }
+      
+      char m_name[1024] = "NULL";
+      int bci = -1;
+      if (event.getmethod() != 0) {
+        Method* m = (Method*)event.getmethod();
+        m->name_and_sig_as_C_string(m_name, 1024);
+        bci = m->bci_from((address)event.getbci());
+      }
+
+      sprintf(heap_dump_buf, "[%s, %d, %ld, %ld]\n", m_name, bci, event.src, event.dst);
+
+      heap_dump += Universe::string(heap_dump_buf);
+    }
+
+    std::ofstream outfile;
+    outfile.open(HeapEventsFileDump, std::ios_base::app);
+    outfile << std::hex << th_heap_events << " : {\n";
+    outfile << heap_dump;
+    outfile << "}\n";
+  }
+}
+
 void Universe::verify_heap_graph() {
   // if (*Universe::heap_event_counter_ptr < MaxHeapEvents)
   //   return;
@@ -1667,7 +1742,7 @@ void Universe::verify_heap_graph() {
     marked_objects.clear();
     mark_objects(marked_objects);
     printf("1570: Marked objects: %ld\n", marked_objects.size());
-  } 
+  }
   // else if (is_verify_from_young_gc_start) {
   //   marked_objects.clear();
   //   mark_objects(marked_objects);

@@ -467,10 +467,14 @@ void before_exit(JavaThread* thread) {
   Universe::heap()->stop();
 
   // Print GC/heap related information.
-  if (InstrumentHeapEvents && CheckHeapEventGraphWithHeap) {
-    //Check HeapEvent Graph before exiting
-    Universe::is_verify_from_exit = true;
-    Universe::verify_heap_graph();
+  if (InstrumentHeapEvents) {
+    if (CheckHeapEventGraphWithHeap) {
+      //Check HeapEvent Graph before exiting
+      Universe::is_verify_from_exit = true;
+      Universe::verify_heap_graph();
+    } else if (HeapEventsFileDump) {
+      Universe::dump_heap_events_to_file();
+    }
   }
 
   Log(gc, heap, exit) log;

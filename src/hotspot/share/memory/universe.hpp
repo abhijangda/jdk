@@ -44,6 +44,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <deque>
+#include <string>
 
 // Universe is a name space holding known system classes and objects in the VM.
 //
@@ -375,6 +376,7 @@ class Universe: AllStatic {
   };
 
   static Universe::MmapHeap mmap_heap;
+  using string = std::basic_string<char, std::char_traits<char>, STLAllocator<char>>;
   template <typename K, typename V>
   using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, STLAllocator<std::pair<const K, V>>>;
   template <typename K>
@@ -477,6 +479,7 @@ class Universe: AllStatic {
   static void print_heap_event_counter();
   static HeapEvent* get_heap_events_ptr();
   static void verify_heap_graph();
+  static void dump_heap_events_to_file();
   static void process_heap_event(Universe::HeapEvent event);
   static void verify_heap_graph_for_copy_array();
   static void* mmap(size_t sz) {

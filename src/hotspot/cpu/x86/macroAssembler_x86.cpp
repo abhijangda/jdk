@@ -5144,7 +5144,9 @@ void MacroAssembler::check_heap_events_buffer_size(Register cntr, uint maxval) {
 
     if (CheckHeapEventGraphWithHeap)
       call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::verify_heap_graph)));
-    else 
+    else if (HeapEventsFileDump)
+      call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::dump_heap_events_to_file)));
+    else
       call(RuntimeAddress(CAST_FROM_FN_PTR(address, Universe::transfer_events_to_gpu)));
 
     popaq();

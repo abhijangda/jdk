@@ -929,6 +929,7 @@ public:
   // allocation
   instanceOop allocate_instance(TRAPS);
   static instanceOop allocate_instance(oop cls, TRAPS);
+  instanceOop allocate_instance_add_event(Method* m, uint64_t bcp, TRAPS);
 
   // additional member function to return a handle
   instanceHandle allocate_instance_handle(TRAPS);

@@ -59,7 +59,8 @@ struct HeapEvent {
   uint64_t dst;
   uint64_t method;
   uint64_t bci;
-
+  HeapEvent(uint64_t s, uint64_t d, uint64_t m, uint64_t b) : src(s), dst(d), method(m), bci(b)
+  {}
   HeapEvent(uint64_t s, uint64_t d) : src(s), dst(d)
   , method(0), bci(0) 
   {}
@@ -67,8 +68,8 @@ struct HeapEvent {
   , method(0), bci(0)
   {}
 
-  uint64_t getbci() {return bci;}
-  uint64_t getmethod() {return method;}
+  uint64_t getbci() const {return bci;}
+  uint64_t getmethod() const {return method;}
 };
   
 int gpugc();

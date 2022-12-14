@@ -430,49 +430,8 @@ class Universe: AllStatic {
   static void add_heap_events(Universe::HeapEventType event_type1, Universe::HeapEvent event1, Universe::HeapEventType event_type2, Universe::HeapEvent event2);
   static bool is_curr_Java_thread();
   static void mark_objects(Universe::unordered_set<void*>& visited);
-  static inline __attribute__((always_inline))
-  void add_heap_event(Universe::HeapEventType event_type, const Universe::HeapEvent event) {
-    if (!InstrumentHeapEvents) return;
-    
-    if (CheckHeapEventGraphWithHeap)
-      Universe::lock_mutex_heap_event();
-    
-    #ifndef PRODUCT
-    // if (all_heap_events.find(heap_events) == NULL) {
-    //   printf("835: heap_events %p\n", heap_events);
-    //   abort();
-    // }
-    #endif
-    
-    bool add_to_main_thread = !is_curr_Java_thread();
-    // Thread* curr_thread = Thread::current();
-    Universe::HeapEvent* heap_events = (CheckHeapEventGraphWithHeap && !add_to_main_thread) ? Universe::get_heap_events_ptr() : *all_heap_events.head()->data() ; //(Universe::HeapEvent*)(((char*)curr_thread) + 2048);
-    uint64_t* heap_event_counter_ptr = (uint64_t*)heap_events;
-    // if (Universe::checking == 2 && event_type == Universe::HeapEventType::FieldSet) {
-    //   printf("494: FieldSet for %p to %p\n", (oopDesc*)event.dst, (oopDesc*)event.src);
-    // }
-    const uint64_t v = *heap_event_counter_ptr;
-    *heap_event_counter_ptr = v + 1;
-    // printf("449: v %ld\n", v);
-    // if (event_type == FieldSet) event_type = Dummy;
-    //TODO: Improve for FieldSet
-    (&heap_events[1])[v] = encode_heap_event(event_type, event);
-
-    // if ((&heap_events[1])[v-1].dst == event.dst) {
-    //   printf("498: 0x%lx, 0x%lx, 0x%lx\n", (&heap_events[1])[v-1].src, event.src, event.dst);
-    // }
-    if (!UseMprotectForHeapGraphCheck) {
-      if (v + 1 >= MaxHeapEvents) {
-        if (CheckHeapEventGraphWithHeap)
-          Universe::verify_heap_graph();
-        else
-          Universe::transfer_events_to_gpu_list_head();  
-      }
-    }
-
-    if (CheckHeapEventGraphWithHeap)
-      Universe::unlock_mutex_heap_event();
-  }
+  // static inline __attribute__((always_inline))
+  static void add_heap_event(Universe::HeapEventType event_type, const Universe::HeapEvent event);
   static void* cudaAllocHost(size_t size);
   static void lock_mutex_heap_event();
   static void unlock_mutex_heap_event();

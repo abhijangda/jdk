@@ -238,7 +238,14 @@ JRT_ENTRY(void, InterpreterRuntime::_new(JavaThread* current, ConstantPool* pool
   //       Java).
   //       If we have a breakpoint, then we don't rewrite
   //       because the _breakpoint bytecode would be lost.
-  oop obj = klass->allocate_instance(CHECK);
+  oop obj;
+  if (InstrumentHeapEvents) {
+    LastFrameAccessor last_frame(current);
+    
+    obj = klass->allocate_instance_add_event(last_frame.method(), (uint64_t)last_frame.bcp(), CHECK);
+  } else {
+    obj = klass->allocate_instance(CHECK);
+  }
   current->set_vm_result(obj);
 JRT_END
 

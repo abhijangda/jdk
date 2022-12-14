@@ -137,8 +137,8 @@ public class App {
             for (Method m : javaClass.getMethods()) {
               String methodName = javaClass.getClassName() +
                                   "." + m.getName() + m.getSignature();
-              // if (methodName.contains("org.dacapo.harness.Digest.toString([B)Ljava/lang/String;"))
-              //   System.out.println("found " + methodName);
+              if (methodName.contains("Harness.makeHarnessClassLoader"))
+                System.out.println(m.getCode().toString(true));
               methodNameMap.put(methodName, m);
             }
           } else if (entry.getName().endsWith(".jar")) {
@@ -463,11 +463,12 @@ public class App {
       HeapEvent he = mainThreadEvents.get(i);
       if (methodToCare(he.method_) && !methodNameMap.containsKey(he.method_)) {
         System.out.println("not found: " + he.method_);
-      } else if (methodNameMap.containsKey(he.method_)) {
-        HashMap<Integer, String> invokeMethods = findInvokeBytecode(methodNameMap.get(he.method_));
+      // } else if (methodNameMap.containsKey(he.method_)) {
+        // HashMap<Integer, String> invokeMethods = findInvokeBytecode(methodNameMap.get(he.method_));
         // System.out.println(methodNameMap.get(he.method_).getCode().toString(true));
         // for (Map.Entry<Integer, String> e : invokeMethods.entrySet())
         //   System.out.println(e.getKey() + " " + e.getValue());
+      // }
       }
     }
 
@@ -479,7 +480,8 @@ public class App {
     for (int idx = heapEventIdx + 1; idx < mainThreadEvents.size(); idx++) {
       for (int idx2 = idx; idx2 < mainThreadEvents.size(); idx2++) {
         String nextMethod = mainThreadEvents.get(idx2).method_;
-        // System.out.println("nextMethod " + nextMethod);
+        if (nextMethod.contains("org.dacapo"))
+          System.out.println("nextMethod " + nextMethod);
         if (!nextMethod.equals(prevHe.method_) && methodToCare(nextMethod)) {
           idx = idx2;
           break;
@@ -533,7 +535,7 @@ public class App {
         int i = 0;
         for (HeapEvent he : heapEvents.get(thread)) {
           //TODO: also check for the class obtained from above
-          if (he.method_.contains(".main")) { //&& he.method_.contains(mainClassName)) {
+          if (he.method_.contains(".main") && he.method_.contains("org.dacapo.harness.TestHarness.main")) { //&& he.method_.contains(mainClassName)) {
             mainThread = thread;
             heapEventIdx = i;
             break;

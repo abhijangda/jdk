@@ -449,6 +449,10 @@ public class App {
     return invokeMethods;
   }
 
+  public static boolean methodToCare(String name) {
+    return !name.equals("NULL") && !name.contains("java.") && !name.contains("jdk.") && !name.contains("sun.");
+  }
+
   public static void callGraph(HashMap<String, Method> methodNameMap,
                                HashMap<String, ArrayList<HeapEvent>> heapEvents, 
                                String mainThread, int heapEventIdx) {
@@ -457,8 +461,7 @@ public class App {
 
     for (int i = heapEventIdx; i < mainThreadEvents.size(); i++) {
       HeapEvent he = mainThreadEvents.get(i);
-      if (!he.method_.equals("NULL") && !he.method_.contains("java.") && !he.method_.contains("jdk.") && 
-          !he.method_.contains("sun.") && !methodNameMap.containsKey(he.method_)) {
+      if (methodToCare(he.method_) && !methodNameMap.containsKey(he.method_)) {
         System.out.println("not found: " + he.method_);
       } else if (methodNameMap.containsKey(he.method_)) {
         HashMap<Integer, String> invokeMethods = findInvokeBytecode(methodNameMap.get(he.method_));
@@ -470,10 +473,40 @@ public class App {
 
     Stack<JavaStackElement> callStack;
     HeapEvent prevHe = mainThreadEvents.get(heapEventIdx);
-    for (int idx = heapEventIdx + 1; idx < mainThreadEvents.size(); idx++) {
-      HeapEvent he = mainThreadEvents.get(idx);
+    Method prevMeth = methodNameMap.get(prevHe.method_);
 
+    System.out.println("starting from " + prevHe.method_);
+    for (int idx = heapEventIdx + 1; idx < mainThreadEvents.size(); idx++) {
+      for (int idx2 = idx; idx2 < mainThreadEvents.size(); idx2++) {
+        String nextMethod = mainThreadEvents.get(idx2).method_;
+        // System.out.println("nextMethod " + nextMethod);
+        if (!nextMethod.equals(prevHe.method_) && methodToCare(nextMethod)) {
+          idx = idx2;
+          break;
+        }
+      }
       
+      HeapEvent he = mainThreadEvents.get(idx);
+      HashMap<Integer, String> invokeBC = findInvokeBytecode(prevMeth);
+      boolean found = false;
+      String foundInvokeMethod = "";
+      for (Map.Entry<Integer, String> e : invokeBC.entrySet()) {
+        if (he.method_.equals(e.getValue())) {
+          found = true;
+          foundInvokeMethod = e.getValue();
+          break;
+        }
+      }
+
+      if (!found) {
+        System.out.println("Didn't find " + he.method_);
+        System.out.println(prevMeth.getCode().toString(true));
+        break;
+      }
+
+      prevHe = he;
+      prevMeth = methodNameMap.get(foundInvokeMethod);
+      System.out.println("found: " + foundInvokeMethod);
     }
   }
 

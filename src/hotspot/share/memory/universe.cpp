@@ -1296,15 +1296,13 @@ void Universe::dump_heap_events_to_file() {
       }
 
       sprintf(heap_dump_buf, "[%s, %d, %ld, %ld]\n", m_name, bci, event.src, event.dst);
-      if (strstr(m_name, "TestHarness")!= NULL)
-        printf("%s\n", heap_dump_buf);
       heap_dump += Universe::string(heap_dump_buf);
     }
 
     std::ofstream outfile;
     outfile.open(HeapEventsFileDump, std::ios_base::app);
     outfile << std::hex << th_heap_events << " : {\n";
-    // outfile << heap_dump;
+    outfile << heap_dump;
     outfile << "}\n";
   }
 }

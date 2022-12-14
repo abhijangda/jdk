@@ -137,8 +137,8 @@ public class App {
             for (Method m : javaClass.getMethods()) {
               String methodName = javaClass.getClassName() +
                                   "." + m.getName() + m.getSignature();
-              if (methodName.contains("Harness.makeHarnessClassLoader"))
-                System.out.println(m.getCode().toString(true));
+              // if (methodName.contains("Harness.makeHarnessClassLoader"))
+              //   System.out.println(m.getCode().toString(true));
               methodNameMap.put(methodName, m);
             }
           } else if (entry.getName().endsWith(".jar")) {
@@ -335,25 +335,25 @@ public class App {
         final Constant c = constantPool.getConstant(index);
         // With Java8 operand may be either a CONSTANT_Methodref
         // or a CONSTANT_InterfaceMethodref. (markro)
-        invokeMethods.put(bcIndex, constantPool.constantToString(index, c.getTag()));
+        invokeMethods.put(bcIndex, constantPool.constantToString(index, c.getTag()).replace(" ", ""));
 
         buf.append("\t").append(constantPool.constantToString(index, c.getTag())).append(verbose ? " (" + index + ")" : "");
         break;
     case Const.INVOKEVIRTUAL:
         index = bytes.readUnsignedShort();
-        invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_Methodref));
+        invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_Methodref).replace(" ", ""));
         buf.append("\t").append(constantPool.constantToString(index, Const.CONSTANT_Methodref)).append(verbose ? " (" + index + ")" : "");
         break;
     case Const.INVOKEINTERFACE:
         index = bytes.readUnsignedShort();
         final int nargs = bytes.readUnsignedByte(); // historical, redundant
-        invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref));
+        invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref).replace(" ", ""));
         buf.append("\t").append(constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref)).append(verbose ? " (" + index + ")\t" : "")
             .append(nargs).append("\t").append(bytes.readUnsignedByte()); // Last byte is a reserved space
         break;
     case Const.INVOKEDYNAMIC:
         index = bytes.readUnsignedShort();
-        buf.append("\t").append(constantPool.constantToString(index, Const.CONSTANT_InvokeDynamic)).append(verbose ? " (" + index + ")\t" : "")
+        buf.append("\t").append(constantPool.constantToString(index, Const.CONSTANT_InvokeDynamic).replace(" ", "")).append(verbose ? " (" + index + ")\t" : "")
             .append(bytes.readUnsignedByte()) // Thrid byte is a reserved space
             .append(bytes.readUnsignedByte()); // Last byte is a reserved space
         break;
@@ -450,7 +450,7 @@ public class App {
   }
 
   public static boolean methodToCare(String name) {
-    return !name.equals("NULL") && !name.contains("java.") && !name.contains("jdk.") && !name.contains("sun.");
+    return !name.equals("NULL") && !name.contains("java.") && !name.contains("jdk.") && !name.contains("sun.") && !name.contains("<clinit>");
   }
 
   public static void callGraph(HashMap<String, Method> methodNameMap,
@@ -480,8 +480,6 @@ public class App {
     for (int idx = heapEventIdx + 1; idx < mainThreadEvents.size(); idx++) {
       for (int idx2 = idx; idx2 < mainThreadEvents.size(); idx2++) {
         String nextMethod = mainThreadEvents.get(idx2).method_;
-        if (nextMethod.contains("org.dacapo"))
-          System.out.println("nextMethod " + nextMethod);
         if (!nextMethod.equals(prevHe.method_) && methodToCare(nextMethod)) {
           idx = idx2;
           break;
@@ -493,7 +491,8 @@ public class App {
       boolean found = false;
       String foundInvokeMethod = "";
       for (Map.Entry<Integer, String> e : invokeBC.entrySet()) {
-        if (he.method_.equals(e.getValue())) {
+        System.out.println(e.getKey() + " : " + e.getValue());
+        if (he.method_.contains(e.getValue())) {
           found = true;
           foundInvokeMethod = e.getValue();
           break;
@@ -527,24 +526,48 @@ public class App {
     createMethodNameMap(jarFile, methodNameMap);
     String mainThread = "";
     int heapEventIdx = -1;
+    String threadWithMaxEvents = "";
 
+    for (String thread : heapEvents.keySet()) {
+      if (threadWithMaxEvents == "") {
+        threadWithMaxEvents = thread;
+      }
+      if (heapEvents.get(threadWithMaxEvents).size() < heapEvents.get(thread).size())
+        threadWithMaxEvents = thread;
+
+      System.out.println(thread + ": " + heapEvents.get(thread).size() + " events");
+    }
+
+    System.out.println("threadWithMaxEvents " + threadWithMaxEvents);
+
+    int ii = 0;
+    for (HeapEvent he : heapEvents.get(threadWithMaxEvents)) {
+      if (methodToCare(he.method_)) {
+        System.out.println(he.toString());
+        
+        mainThread = threadWithMaxEvents;
+        heapEventIdx = ii;
+        break;
+      }
+      ii++;
+    }
     // for (Method mainMethod : mainMethods) {
     //   String mainClassName = mainMethod.getClass().getName();
       // System.out.println(mainClassName);
-      for (String thread : heapEvents.keySet()) {
-        int i = 0;
-        for (HeapEvent he : heapEvents.get(thread)) {
-          //TODO: also check for the class obtained from above
-          if (he.method_.contains(".main") && he.method_.contains("org.dacapo.harness.TestHarness.main")) { //&& he.method_.contains(mainClassName)) {
-            mainThread = thread;
-            heapEventIdx = i;
-            break;
-          }
-          i++;
-        }
+      // for (String thread : heapEvents.keySet()) {
+      //   int i = 0;
+      //   for (HeapEvent he : heapEvents.get(thread)) {
+      //     //TODO: also check for the class obtained from above
+      //     if (he.method_.contains(".main") && he.method_.contains("org.dacapo.harness.TestHarness.main")) { //&& he.method_.contains(mainClassName)) {
+      //       mainThread = thread;
+      //       heapEventIdx = i;
+      //       System.out.println(mainThread + " " + heapEventIdx + " " + he.toString());
+      //     }
+      //     i++;
+      //   }
 
-        if (heapEventIdx != -1) break;
-      }
+      //   // if (heapEventIdx != -1) break;
+      // }
     // }
 
     assert(mainThread != "");

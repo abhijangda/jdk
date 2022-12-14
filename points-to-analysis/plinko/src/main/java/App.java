@@ -1,12 +1,9 @@
 import java.io.IOException;
 
-import org.apache.bcel.classfile.ClassFormatException;
-import org.apache.bcel.classfile.ClassParser;
-import org.apache.bcel.classfile.JavaClass;
-import org.apache.bcel.classfile.Method;
+import org.apache.bcel.classfile.*;
 import org.apache.bcel.*;
 import org.apache.bcel.generic.Type;
-
+import org.apache.bcel.util.*;
 import java.util.jar.*;
 
 import javax.print.attribute.IntegerSyntax;
@@ -159,6 +156,299 @@ public class App {
     }
   }
 
+  class JavaStackElement {
+    String method;
+    int bci;
+
+    JavaStackElement(String m, int b) {
+      method = m;
+      bci = b;
+    }
+  }
+
+  public static boolean wide;
+
+  public static String getInvokes(final ByteSequence bytes, int bcIndex, final ConstantPool constantPool, HashMap<Integer, String> invokeMethods) throws IOException {
+    final short opcode = (short) bytes.readUnsignedByte();
+    int defaultOffset = 0;
+    int low;
+    int high;
+    int npairs;
+    int index;
+    int vindex;
+    int constant;
+    int[] match;
+    int[] jumpTable;
+    int noPadBytes = 0;
+    int offset;
+    boolean verbose = false;
+    final StringBuilder buf = new StringBuilder(Const.getOpcodeName(opcode));
+    /*
+     * Special case: Skip (0-3) padding bytes, i.e., the following bytes are 4-byte-aligned
+     */
+    if (opcode == Const.TABLESWITCH || opcode == Const.LOOKUPSWITCH) {
+        final int remainder = bytes.getIndex() % 4;
+        noPadBytes = remainder == 0 ? 0 : 4 - remainder;
+        for (int i = 0; i < noPadBytes; i++) {
+            byte b;
+            if ((b = bytes.readByte()) != 0) {
+                System.err.println("Warning: Padding byte != 0 in " + Const.getOpcodeName(opcode) + ":" + b);
+            }
+        }
+        // Both cases have a field default_offset in common
+        defaultOffset = bytes.readInt();
+    }
+    switch (opcode) {
+    /*
+     * Table switch has variable length arguments.
+     */
+    case Const.TABLESWITCH:
+        low = bytes.readInt();
+        high = bytes.readInt();
+        offset = bytes.getIndex() - 12 - noPadBytes - 1;
+        defaultOffset += offset;
+        buf.append("\tdefault = ").append(defaultOffset).append(", low = ").append(low).append(", high = ").append(high).append("(");
+        jumpTable = new int[high - low + 1];
+        for (int i = 0; i < jumpTable.length; i++) {
+            jumpTable[i] = offset + bytes.readInt();
+            buf.append(jumpTable[i]);
+            if (i < jumpTable.length - 1) {
+                buf.append(", ");
+            }
+        }
+        buf.append(")");
+        break;
+    /*
+     * Lookup switch has variable length arguments.
+     */
+    case Const.LOOKUPSWITCH: {
+        npairs = bytes.readInt();
+        offset = bytes.getIndex() - 8 - noPadBytes - 1;
+        match = new int[npairs];
+        jumpTable = new int[npairs];
+        defaultOffset += offset;
+        buf.append("\tdefault = ").append(defaultOffset).append(", npairs = ").append(npairs).append(" (");
+        for (int i = 0; i < npairs; i++) {
+            match[i] = bytes.readInt();
+            jumpTable[i] = offset + bytes.readInt();
+            buf.append("(").append(match[i]).append(", ").append(jumpTable[i]).append(")");
+            if (i < npairs - 1) {
+                buf.append(", ");
+            }
+        }
+        buf.append(")");
+    }
+        break;
+    /*
+     * Two address bytes + offset from start of byte stream form the jump target
+     */
+    case Const.GOTO:
+    case Const.IFEQ:
+    case Const.IFGE:
+    case Const.IFGT:
+    case Const.IFLE:
+    case Const.IFLT:
+    case Const.JSR:
+    case Const.IFNE:
+    case Const.IFNONNULL:
+    case Const.IFNULL:
+    case Const.IF_ACMPEQ:
+    case Const.IF_ACMPNE:
+    case Const.IF_ICMPEQ:
+    case Const.IF_ICMPGE:
+    case Const.IF_ICMPGT:
+    case Const.IF_ICMPLE:
+    case Const.IF_ICMPLT:
+    case Const.IF_ICMPNE:
+        buf.append("\t\t#").append(bytes.getIndex() - 1 + bytes.readShort());
+        break;
+    /*
+     * 32-bit wide jumps
+     */
+    case Const.GOTO_W:
+    case Const.JSR_W:
+        buf.append("\t\t#").append(bytes.getIndex() - 1 + bytes.readInt());
+        break;
+    /*
+     * Index byte references local variable (register)
+     */
+    case Const.ALOAD:
+    case Const.ASTORE:
+    case Const.DLOAD:
+    case Const.DSTORE:
+    case Const.FLOAD:
+    case Const.FSTORE:
+    case Const.ILOAD:
+    case Const.ISTORE:
+    case Const.LLOAD:
+    case Const.LSTORE:
+    case Const.RET:
+        if (wide) {
+            vindex = bytes.readUnsignedShort();
+            wide = false; // Clear flag
+        } else {
+            vindex = bytes.readUnsignedByte();
+        }
+        buf.append("\t\t%").append(vindex);
+        break;
+    /*
+     * Remember wide byte which is used to form a 16-bit address in the following instruction. Relies on that the method is
+     * called again with the following opcode.
+     */
+    case Const.WIDE:
+        wide = true;
+        buf.append("\t(wide)");
+        break;
+    /*
+     * Array of basic type.
+     */
+    case Const.NEWARRAY:
+        buf.append("\t\t<").append(Const.getTypeName(bytes.readByte())).append(">");
+        break;
+    /*
+     * Access object/class fields.
+     */
+    case Const.GETFIELD:
+    case Const.GETSTATIC:
+    case Const.PUTFIELD:
+    case Const.PUTSTATIC:
+        index = bytes.readUnsignedShort();
+        buf.append("\t\t").append(constantPool.constantToString(index, Const.CONSTANT_Fieldref)).append(verbose ? " (" + index + ")" : "");
+        break;
+    /*
+     * Operands are references to classes in constant pool
+     */
+    case Const.NEW:
+    case Const.CHECKCAST:
+        buf.append("\t");
+        //$FALL-THROUGH$
+    case Const.INSTANCEOF:
+        index = bytes.readUnsignedShort();
+        buf.append("\t<").append(constantPool.constantToString(index, Const.CONSTANT_Class)).append(">").append(verbose ? " (" + index + ")" : "");
+        break;
+    /*
+     * Operands are references to methods in constant pool
+     */
+    case Const.INVOKESPECIAL:
+    case Const.INVOKESTATIC:
+        index = bytes.readUnsignedShort();
+        final Constant c = constantPool.getConstant(index);
+        // With Java8 operand may be either a CONSTANT_Methodref
+        // or a CONSTANT_InterfaceMethodref. (markro)
+        invokeMethods.put(bcIndex, constantPool.constantToString(index, c.getTag()));
+
+        buf.append("\t").append(constantPool.constantToString(index, c.getTag())).append(verbose ? " (" + index + ")" : "");
+        break;
+    case Const.INVOKEVIRTUAL:
+        index = bytes.readUnsignedShort();
+        invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_Methodref));
+        buf.append("\t").append(constantPool.constantToString(index, Const.CONSTANT_Methodref)).append(verbose ? " (" + index + ")" : "");
+        break;
+    case Const.INVOKEINTERFACE:
+        index = bytes.readUnsignedShort();
+        final int nargs = bytes.readUnsignedByte(); // historical, redundant
+        invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref));
+        buf.append("\t").append(constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref)).append(verbose ? " (" + index + ")\t" : "")
+            .append(nargs).append("\t").append(bytes.readUnsignedByte()); // Last byte is a reserved space
+        break;
+    case Const.INVOKEDYNAMIC:
+        index = bytes.readUnsignedShort();
+        buf.append("\t").append(constantPool.constantToString(index, Const.CONSTANT_InvokeDynamic)).append(verbose ? " (" + index + ")\t" : "")
+            .append(bytes.readUnsignedByte()) // Thrid byte is a reserved space
+            .append(bytes.readUnsignedByte()); // Last byte is a reserved space
+        break;
+    /*
+     * Operands are references to items in constant pool
+     */
+    case Const.LDC_W:
+    case Const.LDC2_W:
+        index = bytes.readUnsignedShort();
+        buf.append("\t\t").append(constantPool.constantToString(index, constantPool.getConstant(index).getTag()))
+            .append(verbose ? " (" + index + ")" : "");
+        break;
+    case Const.LDC:
+        index = bytes.readUnsignedByte();
+        buf.append("\t\t").append(constantPool.constantToString(index, constantPool.getConstant(index).getTag()))
+            .append(verbose ? " (" + index + ")" : "");
+        break;
+    /*
+     * Array of references.
+     */
+    case Const.ANEWARRAY:
+        index = bytes.readUnsignedShort();
+        buf.append("\t\t<").append(Utility.compactClassName(constantPool.getConstantString(index, Const.CONSTANT_Class), false)).append(">")
+            .append(verbose ? " (" + index + ")" : "");
+        break;
+    /*
+     * Multidimensional array of references.
+     */
+    case Const.MULTIANEWARRAY: {
+        index = bytes.readUnsignedShort();
+        final int dimensions = bytes.readUnsignedByte();
+        buf.append("\t<").append(Utility.compactClassName(constantPool.getConstantString(index, Const.CONSTANT_Class), false)).append(">\t").append(dimensions)
+            .append(verbose ? " (" + index + ")" : "");
+    }
+        break;
+    /*
+     * Increment local variable.
+     */
+    case Const.IINC:
+        if (wide) {
+            vindex = bytes.readUnsignedShort();
+            constant = bytes.readShort();
+            wide = false;
+        } else {
+            vindex = bytes.readUnsignedByte();
+            constant = bytes.readByte();
+        }
+        buf.append("\t\t%").append(vindex).append("\t").append(constant);
+        break;
+    default:
+        if (Const.getNoOfOperands(opcode) > 0) {
+            for (int i = 0; i < Const.getOperandTypeCount(opcode); i++) {
+                buf.append("\t\t");
+                switch (Const.getOperandType(opcode, i)) {
+                case Const.T_BYTE:
+                    buf.append(bytes.readByte());
+                    break;
+                case Const.T_SHORT:
+                    buf.append(bytes.readShort());
+                    break;
+                case Const.T_INT:
+                    buf.append(bytes.readInt());
+                    break;
+                default: // Never reached
+                    throw new IllegalStateException("Unreachable default case reached!");
+                }
+            }
+        }
+    }
+    return buf.toString();
+  }
+
+  public static String getInvokes(final byte[] code, final ConstantPool constantPool, HashMap<Integer, String> invokeMethods) {
+    final StringBuilder buf = new StringBuilder(code.length * 20); // Should be sufficient // CHECKSTYLE IGNORE MagicNumber
+    try (ByteSequence stream = new ByteSequence(code)) {
+        for (int i = 0; stream.available() > 0; i++) {
+          getInvokes(stream, i, constantPool, invokeMethods);
+        }
+    } catch (final IOException e) {
+        throw new ClassFormatException("Byte code error: " + buf.toString(), e);
+    }
+    return buf.toString();
+  }
+
+  public static HashMap<Method, HashMap<Integer, String>> invokeBCInMethod = new HashMap<>();
+  public static HashMap<Integer, String> findInvokeBytecode(Method method) {
+    if (invokeBCInMethod.containsKey(method))
+      return invokeBCInMethod.get(method);
+    Code code = method.getCode();
+    HashMap<Integer, String> invokeMethods = new HashMap<>();
+    getInvokes(code.getCode(), code.getConstantPool(), invokeMethods);
+    invokeBCInMethod.put(method, invokeMethods);
+    return invokeMethods;
+  }
+
   public static void callGraph(HashMap<String, Method> methodNameMap,
                                HashMap<String, ArrayList<HeapEvent>> heapEvents, 
                                String mainThread, int heapEventIdx) {
@@ -170,11 +460,19 @@ public class App {
       if (!he.method_.equals("NULL") && !he.method_.contains("java.") && !he.method_.contains("jdk.") && 
           !he.method_.contains("sun.") && !methodNameMap.containsKey(he.method_)) {
         System.out.println("not found: " + he.method_);
+      } else if (methodNameMap.containsKey(he.method_)) {
+        HashMap<Integer, String> invokeMethods = findInvokeBytecode(methodNameMap.get(he.method_));
+        // System.out.println(methodNameMap.get(he.method_).getCode().toString(true));
+        // for (Map.Entry<Integer, String> e : invokeMethods.entrySet())
+        //   System.out.println(e.getKey() + " " + e.getValue());
       }
     }
 
-    for (int idx = heapEventIdx; idx < mainThreadEvents.size(); idx++) {
+    Stack<JavaStackElement> callStack;
+    HeapEvent prevHe = mainThreadEvents.get(heapEventIdx);
+    for (int idx = heapEventIdx + 1; idx < mainThreadEvents.size(); idx++) {
       HeapEvent he = mainThreadEvents.get(idx);
+
       
     }
   }

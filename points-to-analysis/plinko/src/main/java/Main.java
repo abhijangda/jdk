@@ -52,7 +52,7 @@ class JavaStackElement {
   }
 }
 
-public class App {
+public class Main {
   //Parse heapevents file to create a map of each thread to a list of heap events
   public static HashMap<String, ArrayList<HeapEvent>> processHeapEventsFile(String fileName) {
     BufferedReader reader;

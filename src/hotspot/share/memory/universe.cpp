@@ -1434,18 +1434,18 @@ void Universe::verify_heap_graph() {
 
         if (event2.dst == 0) continue;
         oopDesc* obj = (oopDesc*)event2.dst;
-        char class_name[1024];
-        get_oop_klass_name(oop(obj), class_name);
-        if (strstr(class_name, "Locale") != NULL) {
-          char m_name[1024] = "NULL";
-          int bci = -1;
-          if (event.getmethod() != 0) {
-            Method* m = (Method*)event.getmethod();
-            m->name_and_sig_as_C_string(m_name, 1024);          
-            bci = m->bci_from((address)event.getbci());
-          }
-          printf("Found Locale in %s (%ld) for event type %ld\n", m_name, event.getmethod(), orig_heap_event_type);
-        }
+        // char class_name[1024];
+        // get_oop_klass_name(oop(obj), class_name);
+        // if (strstr(class_name, "Locale") != NULL) {
+        //   char m_name[1024] = "NULL";
+        //   int bci = -1;
+        //   if (event.getmethod() != 0) {
+        //     Method* m = (Method*)event.getmethod();
+        //     m->name_and_sig_as_C_string(m_name, 1024);          
+        //     bci = m->bci_from((address)event.getbci());
+        //   }
+        //   printf("Found Locale in %s (%ld) for event type %ld\n", m_name, event.getmethod(), orig_heap_event_type);
+        // }
         auto obj_src_node_iter = ObjectNode::oop_to_obj_node.find(obj);
         if (obj_src_node_iter != ObjectNode::oop_to_obj_node.end()) {
             // printf("858: Replacing %p ('%s') from old size %ld event %ld to new size %ld event %ld event_iter %ld\n", obj, class_name, obj_src_node_iter->second.size(), obj_src_node_iter->second.type(), event2.src, heap_event_type, event_iter);
@@ -1544,7 +1544,6 @@ void Universe::verify_heap_graph() {
             }
 
             checkBytecodeForHeapEvent(heap_event_type, event);
-            continue;
         // oopDesc* obj = (oopDesc*)event.dst;
         // if (ObjectNode::oop_to_obj_node.find(obj) == ObjectNode::oop_to_obj_node.end()) {
         //   ObjectNode::oop_to_obj_node.emplace(obj, ObjectNode(obj, event.src,

@@ -146,16 +146,12 @@ public class Main {
         high = bytes.readInt();
         offset = bytes.getIndex() - 12 - noPadBytes - 1;
         defaultOffset += offset;
-        buf.append("\tdefault = ").append(defaultOffset).append(", low = ").append(low).append(", high = ").append(high).append("(");
         jumpTable = new int[high - low + 1];
         for (int i = 0; i < jumpTable.length; i++) {
             jumpTable[i] = offset + bytes.readInt();
-            buf.append(jumpTable[i]);
             if (i < jumpTable.length - 1) {
-                buf.append(", ");
             }
         }
-        buf.append(")");
         break;
     /*
      * Lookup switch has variable length arguments.
@@ -166,16 +162,12 @@ public class Main {
         match = new int[npairs];
         jumpTable = new int[npairs];
         defaultOffset += offset;
-        buf.append("\tdefault = ").append(defaultOffset).append(", npairs = ").append(npairs).append(" (");
         for (int i = 0; i < npairs; i++) {
             match[i] = bytes.readInt();
             jumpTable[i] = offset + bytes.readInt();
-            buf.append("(").append(match[i]).append(", ").append(jumpTable[i]).append(")");
             if (i < npairs - 1) {
-                buf.append(", ");
             }
         }
-        buf.append(")");
     }
         break;
     /*
@@ -199,15 +191,17 @@ public class Main {
     case Const.IF_ICMPLE:
     case Const.IF_ICMPLT:
     case Const.IF_ICMPNE:
-        buf.append("\t\t#").append(bytes.getIndex() - 1 + bytes.readShort());
-        break;
+      bytes.getIndex();
+      bytes.readShort();
+      break;
     /*
      * 32-bit wide jumps
      */
     case Const.GOTO_W:
     case Const.JSR_W:
-        buf.append("\t\t#").append(bytes.getIndex() - 1 + bytes.readInt());
-        break;
+      bytes.getIndex();
+      bytes.readInt();
+      break;
     /*
      * Index byte references local variable (register)
      */
@@ -222,28 +216,26 @@ public class Main {
     case Const.LLOAD:
     case Const.LSTORE:
     case Const.RET:
-        if (wide) {
-            vindex = bytes.readUnsignedShort();
-            wide = false; // Clear flag
-        } else {
-            vindex = bytes.readUnsignedByte();
-        }
-        buf.append("\t\t%").append(vindex);
-        break;
+      if (wide) {
+        vindex = bytes.readUnsignedShort();
+        wide = false; // Clear flag
+      } else {
+        vindex = bytes.readUnsignedByte();
+      }
+      break;
     /*
      * Remember wide byte which is used to form a 16-bit address in the following instruction. Relies on that the method is
      * called again with the following opcode.
      */
     case Const.WIDE:
         wide = true;
-        buf.append("\t(wide)");
         break;
     /*
      * Array of basic type.
      */
     case Const.NEWARRAY:
-        buf.append("\t\t<").append(Const.getTypeName(bytes.readByte())).append(">");
-        break;
+      Const.getTypeName(bytes.readByte());
+      break;
     /*
      * Access object/class fields.
      */
@@ -251,110 +243,99 @@ public class Main {
     case Const.GETSTATIC:
     case Const.PUTFIELD:
     case Const.PUTSTATIC:
-        index = bytes.readUnsignedShort();
-        buf.append("\t\t").append(constantPool.constantToString(index, Const.CONSTANT_Fieldref)).append(verbose ? " (" + index + ")" : "");
-        break;
+      index = bytes.readUnsignedShort();
+      constantPool.constantToString(index, Const.CONSTANT_Fieldref);
+      break;
     /*
      * Operands are references to classes in constant pool
      */
     case Const.NEW:
     case Const.CHECKCAST:
-        buf.append("\t");
         //$FALL-THROUGH$
     case Const.INSTANCEOF:
-        index = bytes.readUnsignedShort();
-        buf.append("\t<").append(constantPool.constantToString(index, Const.CONSTANT_Class)).append(">").append(verbose ? " (" + index + ")" : "");
-        break;
+      index = bytes.readUnsignedShort();
+      constantPool.constantToString(index, Const.CONSTANT_Class);
+      break;
     /*
      * Operands are references to methods in constant pool
      */
     case Const.INVOKESPECIAL:
     case Const.INVOKESTATIC:
-        index = bytes.readUnsignedShort();
-        final Constant c = constantPool.getConstant(index);
-        // With Java8 operand may be either a CONSTANT_Methodref
-        // or a CONSTANT_InterfaceMethodref. (markro)
-        invokeMethods.put(bcIndex, constantPool.constantToString(index, c.getTag()).replace(" ", ""));
-
-        buf.append("\t").append(constantPool.constantToString(index, c.getTag())).append(verbose ? " (" + index + ")" : "");
-        break;
+      index = bytes.readUnsignedShort();
+      final Constant c = constantPool.getConstant(index);
+      // With Java8 operand may be either a CONSTANT_Methodref
+      // or a CONSTANT_InterfaceMethodref. (markro)
+      invokeMethods.put(bcIndex, constantPool.constantToString(index, c.getTag()).replace(" ", ""));
+      break;
     case Const.INVOKEVIRTUAL:
-        index = bytes.readUnsignedShort();
-        invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_Methodref).replace(" ", ""));
-        buf.append("\t").append(constantPool.constantToString(index, Const.CONSTANT_Methodref)).append(verbose ? " (" + index + ")" : "");
-        break;
+      index = bytes.readUnsignedShort();
+      invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_Methodref).replace(" ", ""));
+      break;
     case Const.INVOKEINTERFACE:
-        index = bytes.readUnsignedShort();
-        final int nargs = bytes.readUnsignedByte(); // historical, redundant
-        invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref).replace(" ", ""));
-        buf.append("\t").append(constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref)).append(verbose ? " (" + index + ")\t" : "")
-            .append(nargs).append("\t").append(bytes.readUnsignedByte()); // Last byte is a reserved space
-        break;
+      index = bytes.readUnsignedShort();
+      final int nargs = bytes.readUnsignedByte(); // historical, redundant
+      invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref).replace(" ", ""));
+      bytes.readUnsignedByte(); // Last byte is a reserved space
+      break;
     case Const.INVOKEDYNAMIC:
-        index = bytes.readUnsignedShort();
-        buf.append("\t").append(constantPool.constantToString(index, Const.CONSTANT_InvokeDynamic).replace(" ", "")).append(verbose ? " (" + index + ")\t" : "")
-            .append(bytes.readUnsignedByte()) // Thrid byte is a reserved space
-            .append(bytes.readUnsignedByte()); // Last byte is a reserved space
-        break;
+      index = bytes.readUnsignedShort();
+      bytes.readUnsignedByte(); // Thrid byte is a reserved space
+      bytes.readUnsignedByte(); // Last byte is a reserved space
+      constantPool.constantToString(index, Const.CONSTANT_InvokeDynamic).replace(" ", "");
+      break;
     /*
      * Operands are references to items in constant pool
      */
     case Const.LDC_W:
     case Const.LDC2_W:
-        index = bytes.readUnsignedShort();
-        buf.append("\t\t").append(constantPool.constantToString(index, constantPool.getConstant(index).getTag()))
-            .append(verbose ? " (" + index + ")" : "");
-        break;
+      index = bytes.readUnsignedShort();
+      constantPool.constantToString(index, constantPool.getConstant(index).getTag());
+      break;
     case Const.LDC:
-        index = bytes.readUnsignedByte();
-        buf.append("\t\t").append(constantPool.constantToString(index, constantPool.getConstant(index).getTag()))
-            .append(verbose ? " (" + index + ")" : "");
-        break;
+      index = bytes.readUnsignedByte();
+      constantPool.constantToString(index, constantPool.getConstant(index).getTag());
+      break;
     /*
      * Array of references.
      */
     case Const.ANEWARRAY:
-        index = bytes.readUnsignedShort();
-        buf.append("\t\t<").append(Utility.compactClassName(constantPool.getConstantString(index, Const.CONSTANT_Class), false)).append(">")
-            .append(verbose ? " (" + index + ")" : "");
-        break;
+      index = bytes.readUnsignedShort();
+      Utility.compactClassName(constantPool.getConstantString(index, Const.CONSTANT_Class), false);
+      break;
     /*
      * Multidimensional array of references.
      */
-    case Const.MULTIANEWARRAY: {
-        index = bytes.readUnsignedShort();
-        final int dimensions = bytes.readUnsignedByte();
-        buf.append("\t<").append(Utility.compactClassName(constantPool.getConstantString(index, Const.CONSTANT_Class), false)).append(">\t").append(dimensions)
-            .append(verbose ? " (" + index + ")" : "");
-    }
-        break;
+    case Const.MULTIANEWARRAY:
+      index = bytes.readUnsignedShort();
+      final int dimensions = bytes.readUnsignedByte();
+      Utility.compactClassName(constantPool.getConstantString(index, Const.CONSTANT_Class), false);
+      break;
     /*
      * Increment local variable.
      */
     case Const.IINC:
-        if (wide) {
-            vindex = bytes.readUnsignedShort();
-            constant = bytes.readShort();
-            wide = false;
-        } else {
-            vindex = bytes.readUnsignedByte();
-            constant = bytes.readByte();
-        }
-        buf.append("\t\t%").append(vindex).append("\t").append(constant);
-        break;
+      if (wide) {
+          vindex = bytes.readUnsignedShort();
+          constant = bytes.readShort();
+          wide = false;
+      } else {
+          vindex = bytes.readUnsignedByte();
+          constant = bytes.readByte();
+      }
+      break;
     default:
         if (Const.getNoOfOperands(opcode) > 0) {
             for (int i = 0; i < Const.getOperandTypeCount(opcode); i++) {
                 buf.append("\t\t");
                 switch (Const.getOperandType(opcode, i)) {
                 case Const.T_BYTE:
-                    buf.append(bytes.readByte());
+                    bytes.readByte();
                     break;
                 case Const.T_SHORT:
-                    buf.append(bytes.readShort());
+                    bytes.readShort();
                     break;
                 case Const.T_INT:
-                    buf.append(bytes.readInt());
+                    bytes.readInt();
                     break;
                 default: // Never reached
                     throw new IllegalStateException("Unreachable default case reached!");

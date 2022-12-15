@@ -17,28 +17,38 @@ class HeapEvent {
   //TODO: Use constant table indices to represent class and method?
   String method_;
   int bci_;
-  long src_;
-  long dst_;
+  long srcPtr_;
+  String srcClass_;
+  long dstPtr_;
+  String dstClass_;
 
-  public HeapEvent(String method, int bci, long src, long dst) {
+  public HeapEvent(String method, int bci, long src, String srcClass, long dst, String dstClass) {
     this.method_ = method;
     this.bci_ = bci;
-    this.src_ = src;
-    this.dst_ = dst;
+    this.srcPtr_ = src;
+    this.srcClass_ = srcClass;
+    this.dstPtr_ = dst;
+    this.dstClass_ = dstClass;
   }
 
   public static HeapEvent fromString(String repr) {
-    assert(repr.charAt(0) == '[' && repr.charAt(-1) == ']');
+    assert(repr.charAt(0) == '[' && repr.charAt(-1) == ']'); 
+    // System.out.println(": " + repr); 
     String[] split = repr.split(",");
-    
-    return new HeapEvent(split[0].substring(1).strip(),
-                     Integer.parseInt(split[1].strip()),
-                     Long.parseLong(split[2].strip()),
-                     Long.parseLong(split[3].substring(0, split[3].length() - 1).strip()));
+    String method = split[0].substring(1).strip();
+    int bci = Integer.parseInt(split[1].strip());
+    String[] src = split[2].split(":");
+    String[] dst = split[3].substring(0, split[3].length() - 1).split(":");
+    return new HeapEvent(method, bci,
+                     Long.parseLong(src[0].strip()),
+                     src[1].strip(),
+                     Long.parseLong(dst[0].strip()),
+                     dst[1].strip());
   }
 
+
   public String toString() {
-    return "[" + method_ + "," + Integer.toString(bci_) + "," + Long.toString(src_) + "," + Long.toString(dst_) + "]";
+    return "[" + method_ + "," + Integer.toString(bci_) + "," + Long.toString(srcPtr_) + ":" + srcClass_ + "," + Long.toString(dstPtr_) + ":" + dstClass_ + "]";
   }
 }
 

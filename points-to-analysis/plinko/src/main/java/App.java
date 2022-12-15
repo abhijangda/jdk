@@ -42,6 +42,16 @@ class HeapEvent {
   }
 }
 
+class JavaStackElement {
+  String method;
+  int bci;
+
+  JavaStackElement(String m, int b) {
+    method = m;
+    bci = b;
+  }
+}
+
 public class App {
   //Parse heapevents file to create a map of each thread to a list of heap events
   public static HashMap<String, ArrayList<HeapEvent>> processHeapEventsFile(String fileName) {
@@ -137,8 +147,8 @@ public class App {
             for (Method m : javaClass.getMethods()) {
               String methodName = javaClass.getClassName() +
                                   "." + m.getName() + m.getSignature();
-              // if (methodName.contains("Harness.makeHarnessClassLoader"))
-              //   System.out.println(m.getCode().toString(true));
+              // if (methodName.contains("org.apache.lucene.store.FSDirectory."))
+              //   System.out.println(methodName);
               methodNameMap.put(methodName, m);
             }
           } else if (entry.getName().endsWith(".jar")) {
@@ -156,19 +166,10 @@ public class App {
     }
   }
 
-  class JavaStackElement {
-    String method;
-    int bci;
-
-    JavaStackElement(String m, int b) {
-      method = m;
-      bci = b;
-    }
-  }
-
   public static boolean wide;
 
-  public static String getInvokes(final ByteSequence bytes, int bcIndex, final ConstantPool constantPool, HashMap<Integer, String> invokeMethods) throws IOException {
+  public static String getInvokes(final ByteSequence bytes, int bcIndex, final ConstantPool constantPool, 
+                                  HashMap<Integer, String> invokeMethods) throws IOException {
     final short opcode = (short) bytes.readUnsignedByte();
     int defaultOffset = 0;
     int low;
@@ -453,6 +454,35 @@ public class App {
     return !name.equals("NULL") && !name.contains("java.") && !name.contains("jdk.") && !name.contains("sun.") && !name.contains("<clinit>");
   }
 
+  public static boolean isMethodReachable(HashMap<String, Method> methodNameMap, Stack<JavaStackElement> stack, String startMethod, int startBytecode, String endMethod) {
+    Method m = methodNameMap.get(startMethod);
+    if (m == null) {
+      System.out.println("not found " + startMethod);
+      return false;
+    }
+    if (m.isAbstract())
+      return false;
+    HashMap<Integer, String> invokeBC = findInvokeBytecode(m);
+    assert(methodNameMap.containsKey(startMethod));
+    assert(methodNameMap.containsKey(endMethod));
+
+    for (Map.Entry<Integer, String> entry : invokeBC.entrySet()) {
+      if (startBytecode <= entry.getKey() && methodToCare(entry.getValue())) {
+        if (endMethod.equals(entry.getValue())) {
+          stack.push(new JavaStackElement(startMethod, entry.getKey()));
+          return true;
+        } else {
+          stack.push(new JavaStackElement(startMethod, entry.getKey()));
+          if (isMethodReachable(methodNameMap, stack, entry.getValue(), 0, endMethod))
+            return true;
+          stack.pop();
+        }
+      }
+    }
+
+    return false;
+  }
+
   public static void callGraph(HashMap<String, Method> methodNameMap,
                                HashMap<String, ArrayList<HeapEvent>> heapEvents, 
                                String mainThread, int heapEventIdx) {
@@ -475,7 +505,7 @@ public class App {
     Stack<JavaStackElement> callStack;
     HeapEvent prevHe = mainThreadEvents.get(heapEventIdx);
     Method prevMeth = methodNameMap.get(prevHe.method_);
-
+    
     System.out.println("starting from " + prevHe.method_);
     for (int idx = heapEventIdx + 1; idx < mainThreadEvents.size(); idx++) {
       for (int idx2 = idx; idx2 < mainThreadEvents.size(); idx2++) {
@@ -489,15 +519,8 @@ public class App {
       HeapEvent he = mainThreadEvents.get(idx);
       HashMap<Integer, String> invokeBC = findInvokeBytecode(prevMeth);
       boolean found = false;
-      String foundInvokeMethod = "";
-      for (Map.Entry<Integer, String> e : invokeBC.entrySet()) {
-        System.out.println(e.getKey() + " : " + e.getValue());
-        if (he.method_.contains(e.getValue())) {
-          found = true;
-          foundInvokeMethod = e.getValue();
-          break;
-        }
-      }
+      Stack<JavaStackElement> newCallStack = new Stack<>();
+      found = isMethodReachable(methodNameMap, newCallStack, prevHe.method_, 0, he.method_);
 
       if (!found) {
         System.out.println("Didn't find " + he.method_);
@@ -506,8 +529,8 @@ public class App {
       }
 
       prevHe = he;
-      prevMeth = methodNameMap.get(foundInvokeMethod);
-      System.out.println("found: " + foundInvokeMethod);
+      prevMeth = methodNameMap.get(he.method_);
+      System.out.println("found: " + he.method_ + " " + newCallStack.size());
     }
   }
 

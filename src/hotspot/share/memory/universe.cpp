@@ -1295,7 +1295,22 @@ void Universe::dump_heap_events_to_file() {
         bci = m->bci_from((address)event.getbci());
       }
 
-      sprintf(heap_dump_buf, "[%s, %d, %ld, %ld]\n", m_name, bci, event.src, event.dst);
+      char src_class[1024] = "NULL";
+      char dst_class[1024] = "NULL";
+
+      if (heap_event_type == HeapEventType::NewObject || 
+          heap_event_type == HeapEventType::NewArray || 
+          heap_event_type == HeapEventType::NewPrimitiveArray) {
+        strcpy(src_class, "int");
+        if (event.dst != 0)
+          get_oop_klass_name(oop((oopDesc*)event.dst), dst_class);
+      } else if (heap_event_type == HeapEventType::FieldSet) {
+        if (event.src != 0) {
+          get_oop_klass_name(oop((oopDesc*)event.src), src_class);
+        }
+        // get_oop_klass_name(oop((oopDesc*)event.src), src_class);
+      }
+      sprintf(heap_dump_buf, "[%s, %d, %ld:%s, %ld:%s]\n", m_name, bci, event.src, src_class, event.dst, dst_class);
       heap_dump += Universe::string(heap_dump_buf);
     }
 
@@ -1385,7 +1400,7 @@ void Universe::verify_heap_graph() {
 
     // }
     printf("heap_events_size %ld %p\n", heap_events_size, th_heap_events);
-    
+
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
       if(is_field_set(event, heap_start, heap_end)) continue;
@@ -1491,6 +1506,8 @@ void Universe::verify_heap_graph() {
     HeapEvent* heap_events_start = &th_heap_events[1];
     HeapEvent prevEvent = {0,0};
     bool PrintHeapEventStatistics = true;
+    Universe::string heap_dump = "";
+    char heap_dump_buf[2048];
     for (uint64_t event_iter = 0; event_iter < heap_events_size; event_iter++) {
       HeapEvent event = heap_events_start[event_iter];
       if (event.dst == 0)
@@ -1503,11 +1520,29 @@ void Universe::verify_heap_graph() {
         heap_event_type = decode_heap_event_type(event);
         event = decode_heap_event(event);
       }
+
+      char m_name[1024] = "NULL";
+      char src_class[1024] = "NULL";
+      char dst_class[1024] = "NULL";
+      int bci = -1;
+      if (HeapEventsFileDump) {
+        if (event.getmethod() != 0) {
+          Method* m = (Method*)event.getmethod();
+          m->name_and_sig_as_C_string(m_name, 1024);          
+          bci = m->bci_from((address)event.getbci());
+        }
+      }
       
       if (heap_event_type == Universe::HeapEventType::NewObject ||
           heap_event_type == Universe::HeapEventType::NewArray ||
           heap_event_type == Universe::HeapEventType::NewPrimitiveArray ||
           heap_event_type == Universe::HeapEventType::NewObjectSizeInBits) {
+            if (HeapEventsFileDump) {
+              strcpy(src_class, "int");
+              if (event.dst != 0)
+                get_oop_klass_name(oop((oopDesc*)event.dst), dst_class);
+            }
+
             checkBytecodeForHeapEvent(heap_event_type, event);
             continue;
         // oopDesc* obj = (oopDesc*)event.dst;
@@ -1525,6 +1560,9 @@ void Universe::verify_heap_graph() {
         }
         
         checkBytecodeForHeapEvent(heap_event_type, event);
+        if (event.src != 0) {
+          get_oop_klass_name(oop((oopDesc*)event.src), src_class);
+        }
 
         for (int e = 0; e < 1; e++) {
           Universe::HeapEvent event = field_set_events[e];
@@ -1568,6 +1606,11 @@ void Universe::verify_heap_graph() {
             //   prevEvent = event;
             // }
             // if(checking == 3) printf("FieldSet (%p) of oop %p to %p in %p\n", field, (oopDesc*)obj, (oopDesc*)event.src, th_heap_events);
+            if (HeapEventsFileDump) {
+              if (event.dst != 0) {
+                get_oop_klass_name(obj, dst_class);
+              }
+            }
             ObjectNode::oop_to_obj_node[obj].update_or_add_field((void*)field, (oopDesc*)event.src, 
                                                                 0);
           }
@@ -1775,7 +1818,19 @@ void Universe::verify_heap_graph() {
       } else {
         printf("Unknown event %ld 0x%lx 0x%lx at %ld\n", heap_event_type, event.src, event.dst, event_iter);
       }
-    } 
+
+      if (HeapEventsFileDump) {  
+        sprintf(heap_dump_buf, "[%s, %d, %ld:%s, %ld:%s]\n", m_name, bci, event.src, src_class, event.dst, dst_class);
+        heap_dump += Universe::string(heap_dump_buf);
+      }
+    }
+    if (HeapEventsFileDump) {
+      std::ofstream outfile;
+      outfile.open(HeapEventsFileDump, std::ios_base::app);
+      outfile << std::hex << th_heap_events << " : {\n";
+      outfile << heap_dump;
+      outfile << "}\n";
+    }
   }
   
   //Update object values in each field/element to new objects

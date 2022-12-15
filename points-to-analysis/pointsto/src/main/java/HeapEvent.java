@@ -1,4 +1,11 @@
-package main;
+import java.util.jar.*;
+
+import javax.print.attribute.IntegerSyntax;
+import javax.swing.plaf.basic.BasicInternalFrameTitlePane.SystemMenuBar;
+import java.nio.file.*;
+import java.util.*;
+import java.io.*;
+import java.util.zip.ZipInputStream;
 
 public class HeapEvent {
   //TODO: Use constant table indices to represent class and method?

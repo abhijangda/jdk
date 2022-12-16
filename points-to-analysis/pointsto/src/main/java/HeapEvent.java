@@ -14,16 +14,17 @@ import org.apache.bcel.util.*;
 
 public class HeapEvent {
   //TODO: Use constant table indices to represent class and method?
-  JavaMethod method_;
-  String methorStr;
-  int bci_;
-  long srcPtr_;
-  JavaClass srcClass_;
-  long dstPtr_;
-  JavaClass dstClass_;
+  public final JavaMethod method_;
+  public final String methodStr_;
+  public final int bci_;
+  public final long srcPtr_;
+  public final JavaClass srcClass_;
+  public final long dstPtr_;
+  public final JavaClass dstClass_;
 
-  public HeapEvent(JavaMethod method, String methorStr, int bci, long src, JavaClass srcClass, long dst, JavaClass dstClass) {
+  public HeapEvent(JavaMethod method, String methodStr, int bci, long src, JavaClass srcClass, long dst, JavaClass dstClass) {
     this.method_ = method;
+    this.methodStr_ = methodStr;
     this.bci_ = bci;
     this.srcPtr_ = src;
     this.srcClass_ = srcClass;
@@ -41,13 +42,13 @@ public class HeapEvent {
       assert (m != null);
     int bci = Integer.parseInt(split[1].strip());
     String[] src = split[2].split(":");
-    JavaClass srcClass = classes.getClassForString(src[1].strip());
+    JavaClass srcClass = classes.getClassForString(src[1].strip().replace("/","."));
     if (JavaClassCollection.classToCare(src[1].strip()))
       assert(srcClass != null);
 
     String[] dst = split[3].substring(0, split[3].length() - 1).split(":");
 
-    JavaClass dstClass = classes.getClassForString(dst[1].strip());
+    JavaClass dstClass = classes.getClassForString(dst[1].strip().replace("/","."));
     if (JavaClassCollection.classToCare(dst[1].strip()))
       assert(dstClass != null);
 
@@ -97,6 +98,8 @@ public class HeapEvent {
   }
 
   public String toString() {
-    return "[" + method_ + "," + Integer.toString(bci_) + "," + Long.toString(srcPtr_) + ":" + srcClass_ + "," + Long.toString(dstPtr_) + ":" + dstClass_ + "]";
+    return "[" + method_.getFullName() + "," + Integer.toString(bci_) + "," + 
+            Long.toString(srcPtr_) + ":" + ((srcClass_ != null) ? srcClass_.getClassName() : "NULL") + "," + 
+            Long.toString(dstPtr_) + ":" + ((dstClass_ != null) ? dstClass_.getClassName() : "NULL") + "]";
   }
 }

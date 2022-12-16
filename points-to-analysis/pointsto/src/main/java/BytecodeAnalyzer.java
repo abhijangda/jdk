@@ -256,17 +256,35 @@ public class BytecodeAnalyzer {
     return buf.toString();
   }
 
-  public static String analyzeMethod(JavaMethod javaMethod) {
-    Code code = javaMethod.getMethod().getCode();
+  public static void analyzeEvent(HeapEvent event, CallFrame frame, StaticValue staticValues) {
+    Code code = event.method_.getMethod().getCode();
     ConstantPool constPool = code.getConstantPool();
-    final StringBuilder buf = new StringBuilder(code.getCode().length * 20); // Should be sufficient // CHECKSTYLE IGNORE MagicNumber
-    try (ByteSequence stream = new ByteSequence(code.getCode())) {
-        for (int i = 0; stream.available() > 0; i++) {
-          analyzeBytecode(stream, i, constPool, null);
-        }
-    } catch (final IOException e) {
-        throw new ClassFormatException("Byte code error: " + buf.toString(), e);
+    int opcode = Byte.toUnsignedInt(code.getCode()[event.bci_]);
+    
+    switch(opcode) {
+      case Const.NEW:
+      case Const.NEWARRAY:
+      case Const.ANEWARRAY:
+      case Const.PUTFIELD:
+      case Const.GETFIELD:
+
+      default:
+        System.out.println("Unhandled " + Const.getOpcodeName(opcode));
     }
-    return buf.toString();
+
+    // for (int i = 0; i < code.getCode().length; i++) { //stream.available() > 0
+      // if (i == event.bci_) 
+        // System.out.println(Const.getOpcodeName(code.getCode()[i]));
+      // analyzeBytecode(stream, i, constPool, frame, staticValues);
+    // }
+    // try (ByteSequence stream = new ByteSequence(code.getCode())) {
+    //     for (int i = 0; i < code.getCode().length; i++) { //stream.available() > 0
+    //       if (i == event.bci_) 
+    //         System.out.println(Const.getOpcodeName(code.getCode()[i]));
+    //       // analyzeBytecode(stream, i, constPool, frame, staticValues);
+    //     }
+    // } catch (final IOException e) {
+    //    e.printStackTrace();
+    // }
   }
 }

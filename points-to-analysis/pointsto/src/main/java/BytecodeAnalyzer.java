@@ -16,7 +16,7 @@ import java.util.zip.ZipInputStream;
 public class BytecodeAnalyzer {
   public static boolean wide;
 
-  public static String getInvokes(final ByteSequence bytes, int bcIndex, final ConstantPool constantPool, 
+  public static String analyzeBytecode(final ByteSequence bytes, int bcIndex, final ConstantPool constantPool, 
                                   HashMap<Integer, String> invokeMethods) throws IOException {
     final short opcode = (short) bytes.readUnsignedByte();
     int defaultOffset = 0;
@@ -256,11 +256,13 @@ public class BytecodeAnalyzer {
     return buf.toString();
   }
 
-  public static String getInvokes(final byte[] code, final ConstantPool constantPool, HashMap<Integer, String> invokeMethods) {
-    final StringBuilder buf = new StringBuilder(code.length * 20); // Should be sufficient // CHECKSTYLE IGNORE MagicNumber
-    try (ByteSequence stream = new ByteSequence(code)) {
+  public static String analyzeMethod(JavaMethod javaMethod) {
+    Code code = javaMethod.getMethod().getCode();
+    ConstantPool constPool = code.getConstantPool();
+    final StringBuilder buf = new StringBuilder(code.getCode().length * 20); // Should be sufficient // CHECKSTYLE IGNORE MagicNumber
+    try (ByteSequence stream = new ByteSequence(code.getCode())) {
         for (int i = 0; stream.available() > 0; i++) {
-          getInvokes(stream, i, constantPool, invokeMethods);
+          analyzeBytecode(stream, i, constPool, null);
         }
     } catch (final IOException e) {
         throw new ClassFormatException("Byte code error: " + buf.toString(), e);

@@ -68,11 +68,11 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
   }
 
   public static boolean methodToCare(String name) {
-    return !name.equals("NULL") && !name.contains("sun.") && !name.contains("<clinit>");
+    return !name.equals("NULL") && !name.contains("<clinit>");
   }
 
   public static boolean classToCare(String name) {
-    return !name.equals("NULL") && !name.contains("sun.") && !name.contains("<clinit>");
+    return !name.equals("NULL") && !name.contains("<clinit>");
   }
 
   private void loadJavaLibraryClass(String classStr) {
@@ -91,7 +91,7 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
   }
 
   public JavaClass getClassForString(String classStr) {
-    if ((classStr.contains("java.") || classStr.contains("jdk.")) && !containsKey(classStr))
+    if ((classStr.contains("java.") || classStr.contains("jdk.") || classStr.contains("sun.")) && !containsKey(classStr))
       loadJavaLibraryClass(classStr);
     if (!classToCare(classStr)) return null;
     return get(classStr);

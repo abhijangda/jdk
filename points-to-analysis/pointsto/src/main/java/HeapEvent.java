@@ -31,7 +31,7 @@ public class HeapEvent {
   }
 
   public static HeapEvent fromString(String repr, JavaClassCollection classes) {
-    assert(repr.charAt(0) == '[' && repr.charAt(-1) == ']'); 
+    assert(repr.charAt(0) == '[' && repr.charAt(-1) == ']');
     // System.out.println(": " + repr);
     String[] split = repr.split(",");
     String method = split[0].substring(1).strip();

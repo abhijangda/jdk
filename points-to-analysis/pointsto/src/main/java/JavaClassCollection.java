@@ -97,7 +97,7 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
     return get(classStr);
   }
 
-  public Method getMethod(String methodStr) {
+  public JavaMethod getMethod(String methodStr) {
     if (!methodToCare(methodStr)) {      
       return null;
     }
@@ -117,7 +117,7 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
         }
         for (Method m : javaclass.getMethods()) {
           if (m.getName().equals(methodname) && m.getSignature().equals(signature))
-            return m;
+            return new JavaMethod(m, javaclass);
         }
         // System.out.println(classname + methodname + signature);
       }

@@ -13,16 +13,6 @@ import java.util.*;
 import java.io.*;
 import java.util.zip.ZipInputStream;
 
-class JavaStackElement {
-  String method;
-  int bci;
-
-  JavaStackElement(String m, int b) {
-    method = m;
-    bci = b;
-  }
-}
-
 public class Main {
   public static ArrayList<Method> findMainMethods(String jarFile, JarFile jar) {
     ArrayList<Method> mainMethods = new ArrayList<>();
@@ -52,99 +42,8 @@ public class Main {
     return mainMethods;
   }
 
-  public static HashMap<Method, HashMap<Integer, String>> invokeBCInMethod = new HashMap<>();
-  public static HashMap<Integer, String> findInvokeBytecode(Method method) {
-    if (invokeBCInMethod.containsKey(method))
-      return invokeBCInMethod.get(method);
-    Code code = method.getCode();
-    HashMap<Integer, String> invokeMethods = new HashMap<>();
-    BytecodeAnalyzer.getInvokes(code.getCode(), code.getConstantPool(), invokeMethods);
-    invokeBCInMethod.put(method, invokeMethods);
-    return invokeMethods;
-  }
-
   public static boolean methodToCare(String name) {
     return !name.equals("NULL") && !name.contains("java.") && !name.contains("jdk.") && !name.contains("sun.") && !name.contains("<clinit>");
-  }
-
-  public static boolean isMethodReachable(HashMap<String, Method> methodNameMap, Stack<JavaStackElement> stack, String startMethod, int startBytecode, String endMethod) {
-    Method m = methodNameMap.get(startMethod);
-    if (m == null) {
-      System.out.println("not found " + startMethod);
-      return false;
-    }
-    if (m.isAbstract())
-      return false;
-    HashMap<Integer, String> invokeBC = findInvokeBytecode(m);
-    assert(methodNameMap.containsKey(startMethod));
-    assert(methodNameMap.containsKey(endMethod));
-
-    for (Map.Entry<Integer, String> entry : invokeBC.entrySet()) {
-      if (startBytecode <= entry.getKey() && methodToCare(entry.getValue())) {
-        if (endMethod.equals(entry.getValue())) {
-          stack.push(new JavaStackElement(startMethod, entry.getKey()));
-          return true;
-        } else {
-          stack.push(new JavaStackElement(startMethod, entry.getKey()));
-          if (isMethodReachable(methodNameMap, stack, entry.getValue(), 0, endMethod))
-            return true;
-          stack.pop();
-        }
-      }
-    }
-
-    return false;
-  }
-
-  public static void callGraph(HashMap<String, Method> methodNameMap,
-                               HashMap<String, ArrayList<HeapEvent>> heapEvents, 
-                               String mainThread, int heapEventIdx) {
-    //Check all methods of event in the main thread are in methodNameMap
-    // ArrayList<HeapEvent> mainThreadEvents = heapEvents.get(mainThread);
-
-    // for (int i = heapEventIdx; i < mainThreadEvents.size(); i++) {
-    //   HeapEvent he = mainThreadEvents.get(i);
-    //   if (methodToCare(he.method_) && !methodNameMap.containsKey(he.method_)) {
-    //     System.out.println("not found: " + he.method_);
-    //   // } else if (methodNameMap.containsKey(he.method_)) {
-    //     // HashMap<Integer, String> invokeMethods = findInvokeBytecode(methodNameMap.get(he.method_));
-    //     // System.out.println(methodNameMap.get(he.method_).getCode().toString(true));
-    //     // for (Map.Entry<Integer, String> e : invokeMethods.entrySet())
-    //     //   System.out.println(e.getKey() + " " + e.getValue());
-    //   // }
-    //   }
-    // }
-
-    // Stack<JavaStackElement> callStack;
-    // HeapEvent prevHe = mainThreadEvents.get(heapEventIdx);
-    // Method prevMeth = methodNameMap.get(prevHe.method_);
-    
-    // System.out.println("starting from " + prevHe.method_);
-    // for (int idx = heapEventIdx + 1; idx < mainThreadEvents.size(); idx++) {
-    //   for (int idx2 = idx; idx2 < mainThreadEvents.size(); idx2++) {
-    //     String nextMethod = mainThreadEvents.get(idx2).method_;
-    //     if (!nextMethod.equals(prevHe.method_) && methodToCare(nextMethod)) {
-    //       idx = idx2;
-    //       break;
-    //     }
-    //   }
-      
-    //   HeapEvent he = mainThreadEvents.get(idx);
-    //   HashMap<Integer, String> invokeBC = findInvokeBytecode(prevMeth);
-    //   boolean found = false;
-    //   Stack<JavaStackElement> newCallStack = new Stack<>();
-    //   found = isMethodReachable(methodNameMap, newCallStack, prevHe.method_, 0, he.method_);
-
-    //   if (!found) {
-    //     System.out.println("Didn't find " + he.method_);
-    //     System.out.println(prevMeth.getCode().toString(true));
-    //     break;
-    //   }
-
-    //   prevHe = he;
-    //   prevMeth = methodNameMap.get(he.method_);
-    //   System.out.println("found: " + he.method_ + " " + newCallStack.size());
-    // }
   }
 
   public static void main(String[] args) throws ClassFormatException, IOException {
@@ -157,25 +56,12 @@ public class Main {
     HashMap<String, ArrayList<HeapEvent>> heapEvents = HeapEvent.processHeapEventsFile(heapEventsFile, javaClasses);
     System.out.println("HeapEvents loaded");
     
-    // //Find all main methods in the jar and find that method in the heap events
-    // // ArrayList<Method> mainMethods = findMainMethods(jarFile, jar);
+
+    // //Find all main methods in the jar and also find those method in the heap events
+    // ArrayList<Method> mainMethods = findMainMethods(jarFile, jar);
     // HashMap<String, Method> methodNameMap = new HashMap<>();
     // createMethodNameMap(jarFile, methodNameMap);
-    // String mainThread = "";
-    // int heapEventIdx = -1;
-    // String threadWithMaxEvents = "";
-
-    // for (String thread : heapEvents.keySet()) {
-    //   if (threadWithMaxEvents == "") {
-    //     threadWithMaxEvents = thread;
-    //   }
-    //   if (heapEvents.get(threadWithMaxEvents).size() < heapEvents.get(thread).size())
-    //     threadWithMaxEvents = thread;
-
-    //   System.out.println(thread + ": " + heapEvents.get(thread).size() + " events");
-    // }
-
-    // System.out.println("threadWithMaxEvents " + threadWithMaxEvents);
+    // 
 
     // int ii = 0;
     // for (HeapEvent he : heapEvents.get(threadWithMaxEvents)) {

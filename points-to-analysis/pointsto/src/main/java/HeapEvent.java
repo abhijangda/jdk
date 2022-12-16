@@ -14,14 +14,14 @@ import org.apache.bcel.util.*;
 
 public class HeapEvent {
   //TODO: Use constant table indices to represent class and method?
-  Method method_;
+  JavaMethod method_;
   int bci_;
   long srcPtr_;
   JavaClass srcClass_;
   long dstPtr_;
   JavaClass dstClass_;
 
-  public HeapEvent(Method method, int bci, long src, JavaClass srcClass, long dst, JavaClass dstClass) {
+  public HeapEvent(JavaMethod method, int bci, long src, JavaClass srcClass, long dst, JavaClass dstClass) {
     this.method_ = method;
     this.bci_ = bci;
     this.srcPtr_ = src;
@@ -35,7 +35,7 @@ public class HeapEvent {
     // System.out.println(": " + repr);
     String[] split = repr.split(",");
     String method = split[0].substring(1).strip();
-    Method m = classes.getMethod(method);
+    JavaMethod m = classes.getMethod(method);
     if (JavaClassCollection.methodToCare(method))
       assert (m != null);
     int bci = Integer.parseInt(split[1].strip());

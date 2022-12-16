@@ -79,14 +79,14 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
     Path javaBase = Paths.get("/mnt/homes/aabhinav/jdk/build/linux-x86_64-server-release/jdk/modules/java.base/");
     Path classPath = javaBase.resolve(classStr.replace(".", "/") + ".class");
     if (!Files.exists(classPath, LinkOption.NOFOLLOW_LINKS))
-      System.out.println(classPath + " do not exists for " + classStr);
+      ;//System.out.println(classPath + " do not exists for " + classStr);
     
     ClassParser parser = new ClassParser(classPath.toString());
     try {
       JavaClass javaClass = parser.parse();
       put(javaClass.getClassName(), javaClass);
     } catch (Exception e) {
-      e.printStackTrace();
+      // e.printStackTrace();
     }
   }
 
@@ -112,7 +112,7 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
 
         JavaClass javaclass = getClassForString(classname);
         if (javaclass == null) {
-          System.out.println("null javaclass for " + classname);
+          // System.out.println("null javaclass for " + classname);
           return null;
         }
         for (Method m : javaclass.getMethods()) {
@@ -122,6 +122,8 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
         // System.out.println(classname + methodname + signature);
       }
     }
+
+    System.out.println("Cannot find method " + methodStr);
 
     return null;
   }

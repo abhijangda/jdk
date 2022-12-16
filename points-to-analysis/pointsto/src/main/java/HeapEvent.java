@@ -15,13 +15,14 @@ import org.apache.bcel.util.*;
 public class HeapEvent {
   //TODO: Use constant table indices to represent class and method?
   JavaMethod method_;
+  String methorStr;
   int bci_;
   long srcPtr_;
   JavaClass srcClass_;
   long dstPtr_;
   JavaClass dstClass_;
 
-  public HeapEvent(JavaMethod method, int bci, long src, JavaClass srcClass, long dst, JavaClass dstClass) {
+  public HeapEvent(JavaMethod method, String methorStr, int bci, long src, JavaClass srcClass, long dst, JavaClass dstClass) {
     this.method_ = method;
     this.bci_ = bci;
     this.srcPtr_ = src;
@@ -50,7 +51,7 @@ public class HeapEvent {
     if (JavaClassCollection.classToCare(dst[1].strip()))
       assert(dstClass != null);
 
-    return new HeapEvent(m, bci,
+    return new HeapEvent(m, method, bci,
                          Long.parseLong(src[0].strip()),
                          srcClass,
                          Long.parseLong(dst[0].strip()),

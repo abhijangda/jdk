@@ -12,4 +12,8 @@ public class JavaMethod {
 
   Method getMethod() {return method;}
   JavaClass getKlass() {return klass;}
+
+  String getFullName() {
+    return getKlass().getClassName() + "." + getMethod().getName() + getMethod().getSignature();
+  }
 }

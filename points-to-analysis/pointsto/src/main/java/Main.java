@@ -56,7 +56,9 @@ public class Main {
     HashMap<String, ArrayList<HeapEvent>> heapEvents = HeapEvent.processHeapEventsFile(heapEventsFile, javaClasses);
     System.out.println("HeapEvents loaded");
     
+    CallGraphAnalysis.callGraph(heapEvents, javaClasses);
 
+    
     // //Find all main methods in the jar and also find those method in the heap events
     // ArrayList<Method> mainMethods = findMainMethods(jarFile, jar);
     // HashMap<String, Method> methodNameMap = new HashMap<>();

@@ -2,6 +2,9 @@ import java.io.IOException;
 
 import org.apache.bcel.classfile.*;
 import org.apache.bcel.*;
+import org.apache.bcel.generic.GETFIELD;
+import org.apache.bcel.generic.PUTFIELD;
+import org.apache.bcel.generic.PUTSTATIC;
 import org.apache.bcel.generic.Type;
 import org.apache.bcel.util.*;
 import java.util.jar.*;
@@ -23,7 +26,7 @@ public class BytecodeAnalyzer {
   }
 
   public static BytecodeUpdate createThreeAddressCode(final ByteSequence bytes, int bci, final ConstantPool constantPool, 
-                                                      Stack<Var> operandStack) throws IOException {
+                                                      Stack<Var> operandStack, LocalVar[] localVars, JavaClassCollection classCollection) throws IOException {
     final short opcode = (short) bytes.readUnsignedByte();
     BytecodeUpdate bcUpdate = new BytecodeUpdate(bci, opcode);
     int defaultOffset = 0;
@@ -124,23 +127,40 @@ public class BytecodeAnalyzer {
      * Index byte references local variable (register)
      */
     case Const.ALOAD:
-    case Const.ASTORE:
     case Const.DLOAD:
-    case Const.DSTORE:
     case Const.FLOAD:
-    case Const.FSTORE:
     case Const.ILOAD:
-    case Const.ISTORE:
     case Const.LLOAD:
-    case Const.LSTORE:
-    case Const.RET:
       if (wide) {
         vindex = bytes.readUnsignedShort();
         wide = false; // Clear flag
       } else {
         vindex = bytes.readUnsignedByte();
       }
+      // bcUpdate.addInput(localVars[vindex]);
+      // bcUpdate.addOutput(localVars[vindex]);
+      operandStack.push(localVars[vindex]);
       break;
+  
+    case Const.ASTORE:
+    case Const.FSTORE:
+    case Const.DSTORE:
+    case Const.ISTORE:
+    case Const.LSTORE:
+      if (wide) {
+        vindex = bytes.readUnsignedShort();
+        wide = false; // Clear flag
+      } else {
+        vindex = bytes.readUnsignedByte();
+      }
+      Var v = operandStack.pop();
+      bcUpdate.addInput(v);
+      bcUpdate.addOutput(localVars[vindex]);
+      break;
+
+    case Const.RET:
+      break;
+
     /*
      * Remember wide byte which is used to form a 16-bit address in the following instruction. Relies on that the method is
      * called again with the following opcode.
@@ -152,7 +172,12 @@ public class BytecodeAnalyzer {
      * Array of basic type.
      */
     case Const.NEWARRAY:
-      Const.getTypeName(bytes.readByte());
+      String elem = Const.getTypeName(bytes.readByte());
+      JavaClass elemClass = classCollection.getClassForString(elem);
+      Var count = operandStack.pop();
+      Var arr = new IntermediateVar(elemClass, bci);
+      bcUpdate.addInput(count);
+      bcUpdate.addOutput(arr);
       break;
     /*
      * Access object/class fields.
@@ -160,41 +185,78 @@ public class BytecodeAnalyzer {
     case Const.GETFIELD:
     case Const.GETSTATIC:
     case Const.PUTFIELD:
-    case Const.PUTSTATIC:
+    case Const.PUTSTATIC: {
       index = bytes.readUnsignedShort();
-      constantPool.constantToString(index, Const.CONSTANT_Fieldref);
+      String field = constantPool.constantToString(index, Const.CONSTANT_Fieldref);
+      String[] split = field.split(" ");
+      String fieldPath = split[0];
+      String fieldTypeSig = split[1];
+      JavaClass fieldType = classCollection.getClassForSignature(fieldTypeSig);
+      
+      if (opcode == Const.PUTFIELD  || opcode == Const.PUTSTATIC) {
+        Var value = operandStack.pop();
+        if (opcode == Const.PUTFIELD) {
+          Var obj = operandStack.pop();
+          bcUpdate.addInput(obj);
+        }
+        bcUpdate.addInput(new FieldVar(fieldType, fieldPath));
+        bcUpdate.addInput(value);
+      } else if (opcode == Const.GETFIELD || opcode == Const.GETSTATIC) {
+        IntermediateVar value = new IntermediateVar(fieldType, bci);
+        if (opcode == Const.GETFIELD) {
+          Var obj = operandStack.pop();
+          bcUpdate.addInput(obj);
+        }
+        bcUpdate.addInput(new FieldVar(fieldType, fieldPath));
+        bcUpdate.addOutput(value);
+        operandStack.push(value);
+      }
       break;
+    }
     /*
      * Operands are references to classes in constant pool
      */
     case Const.NEW:
+      index = bytes.readUnsignedShort();
+      String klass = constantPool.constantToString(index, Const.CONSTANT_Class);
+      JavaClass c = classCollection.getClassForString(klass);
+      assert (c != null);
+      IntermediateVar obj = new IntermediateVar(c, bci);
+      bcUpdate.addOutput(obj);
+      operandStack.push(obj);
+      break;
+
     case Const.CHECKCAST:
-        //$FALL-THROUGH$
     case Const.INSTANCEOF:
       index = bytes.readUnsignedShort();
       constantPool.constantToString(index, Const.CONSTANT_Class);
+      unhandledBytecode(opcode);
+      //TODO: 
       break;
     /*
      * Operands are references to methods in constant pool
      */
     case Const.INVOKESPECIAL:
-    case Const.INVOKESTATIC:
+    case Const.INVOKESTATIC: {
       index = bytes.readUnsignedShort();
-      final Constant c = constantPool.getConstant(index);
+      String method = constantPool.constantToString(index, constantPool.getConstant(index).getTag()).replace(" ", "");
       // With Java8 operand may be either a CONSTANT_Methodref
       // or a CONSTANT_InterfaceMethodref. (markro)
       // invokeMethods.put(bci, constantPool.constantToString(index, c.getTag()).replace(" ", ""));
       break;
-    case Const.INVOKEVIRTUAL:
+    }
+    case Const.INVOKEVIRTUAL: {
       index = bytes.readUnsignedShort();
       // invokeMethods.put(bci, constantPool.constantToString(index, Const.CONSTANT_Methodref).replace(" ", ""));
       break;
-    case Const.INVOKEINTERFACE:
+    }
+    case Const.INVOKEINTERFACE: {
       index = bytes.readUnsignedShort();
       final int nargs = bytes.readUnsignedByte(); // historical, redundant
       // invokeMethods.put(bci, constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref).replace(" ", ""));
       bytes.readUnsignedByte(); // Last byte is a reserved space
       break;
+    }
     case Const.INVOKEDYNAMIC:
       index = bytes.readUnsignedShort();
       bytes.readUnsignedByte(); // Thrid byte is a reserved space
@@ -270,9 +332,19 @@ public class BytecodeAnalyzer {
     Stack<Var> operandStack = new Stack<>();
     LocalVar[] localVars = new LocalVar[code.getLocalVariableTable().getLength()];
     for (LocalVariable v : code.getLocalVariableTable()) {
-      classCollection.getClassForSignature(v.getSignature());
-      localVars[v.getIndex()] = new LocalVar(null, v.getIndex());
+      localVars[v.getIndex()] = new LocalVar(classCollection.getClassForSignature(v.getSignature()), v.getIndex());
     }
+    try (ByteSequence stream = new ByteSequence(code.getCode())) {
+        for (int bci = 0; bci < stream.available(); bci++) { //stream.available() > 0
+          // if (i == event.bci_) 
+          //   System.out.println(Const.getOpcodeName(code.getCode()[i]));
+          createThreeAddressCode(stream, bci, constPool, 
+                                 operandStack, localVars, classCollection);
+        }
+    } catch (final IOException e) {
+       e.printStackTrace();
+    }
+    
     // int opcode = Byte.toUnsignedInt(code.getCode()[event.bci_]);
     
     // switch(opcode) {

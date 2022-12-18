@@ -1,11 +1,12 @@
 package threeaddresscode;
 
 import org.apache.bcel.classfile.*;
+import org.apache.bcel.generic.Type;
 
 public class Var {
-  public final JavaClass type;
+  public final Type type;
 
-  public Var(JavaClass type) {
+  public Var(Type type) {
     this.type = type;
   }
 }

@@ -8,7 +8,7 @@ import org.apache.bcel.util.*;
 public class IntermediateVar extends Var {
   public final int startBci;
 
-  public IntermediateVar(JavaClass type, int startBci) {
+  public IntermediateVar(Type type, int startBci) {
     super(type);
     this.startBci = startBci;
   }

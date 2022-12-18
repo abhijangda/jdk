@@ -7,6 +7,9 @@ import org.apache.bcel.generic.PUTFIELD;
 import org.apache.bcel.generic.PUTSTATIC;
 import org.apache.bcel.generic.Type;
 import org.apache.bcel.util.*;
+
+import javatypes.*;
+
 import java.util.jar.*;
 
 import javax.print.attribute.IntegerSyntax;
@@ -175,7 +178,7 @@ public class BytecodeAnalyzer {
       String elem = Const.getTypeName(bytes.readByte());
       JavaClass elemClass = classCollection.getClassForString(elem);
       Var count = operandStack.pop();
-      Var arr = new IntermediateVar(elemClass, bci);
+      Var arr = new IntermediateVar(new JavaArrayType(elemClass, 1), bci);
       bcUpdate.addInput(count);
       bcUpdate.addOutput(arr);
       break;
@@ -191,7 +194,7 @@ public class BytecodeAnalyzer {
       String[] split = field.split(" ");
       String fieldPath = split[0];
       String fieldTypeSig = split[1];
-      JavaClass fieldType = classCollection.getClassForSignature(fieldTypeSig);
+      Type fieldType = classCollection.javaTypeForSignature(fieldTypeSig);
       
       if (opcode == Const.PUTFIELD  || opcode == Const.PUTSTATIC) {
         Var value = operandStack.pop();
@@ -219,7 +222,7 @@ public class BytecodeAnalyzer {
     case Const.NEW: {
       index = bytes.readUnsignedShort();
       String klass = constantPool.constantToString(index, Const.CONSTANT_Class);
-      JavaClass c = classCollection.getClassForString(klass);
+      Type c = classCollection.javaTypeForSignature(klass);
       assert (c != null);
       IntermediateVar obj = new IntermediateVar(c, bci);
       bcUpdate.addOutput(obj);
@@ -233,7 +236,7 @@ public class BytecodeAnalyzer {
       String klass = constantPool.constantToString(index, Const.CONSTANT_Class);
       if (opcode == Const.INSTANCEOF) {
         //TODO: Bool class
-        IntermediateVar b = new IntermediateVar(null, bci);
+        IntermediateVar b = new IntermediateVar(Type.BOOLEAN, bci);
         Var obj = operandStack.pop();
         bcUpdate.addInput(obj);
         bcUpdate.addOutput(b);
@@ -356,7 +359,7 @@ public class BytecodeAnalyzer {
     Stack<Var> operandStack = new Stack<>();
     LocalVar[] localVars = new LocalVar[code.getLocalVariableTable().getLength()];
     for (LocalVariable v : code.getLocalVariableTable()) {
-      localVars[v.getIndex()] = new LocalVar(classCollection.getClassForSignature(v.getSignature()), v.getIndex());
+      localVars[v.getIndex()] = new LocalVar(classCollection.javaTypeForSignature(v.getSignature()), v.getIndex());
     }
     try (ByteSequence stream = new ByteSequence(code.getCode())) {
         for (int bci = 0; bci < stream.available(); bci++) { //stream.available() > 0

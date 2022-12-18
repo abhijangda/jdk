@@ -2,6 +2,10 @@ import org.apache.bcel.classfile.*;
 import org.apache.bcel.*;
 import org.apache.bcel.generic.Type;
 import org.apache.bcel.util.*;
+
+import javatypes.JavaArrayType;
+import javatypes.JavaObjectType;
+
 import java.util.jar.*;
 
 import javax.print.attribute.IntegerSyntax;
@@ -90,25 +94,40 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
     }
   }
 
-  public JavaClass getClassForSignature(String sig) {
-    boolean isArray = false;
-    if (sig.charAt(0) == '[') {
-      isArray = true;
-      sig = sig.substring(1);
-    }
-
+  public Type javaTypeForSignature(String sig) {
+    int arraydims = 0;
+    for (; arraydims < sig.length() && sig.charAt(arraydims) == '['; arraydims++);
+    sig = sig.substring(arraydims);
+    
+    Type basicType = null;
     if (sig.charAt(0) == 'L' && sig.charAt(sig.length() - 1) == ';') {
-      return getClassForString(sig.substring(1, sig.length() - 1));
-    } else if (sig.equals("B")) {
-      return null;
+      JavaClass cl = getClassForString(sig.substring(1, sig.length() - 1));
+      basicType = JavaObjectType.getInstance(cl);
     } else if (sig.equals("Z")) {
-      return null;
+      basicType = Type.BOOLEAN;
+    } else if (sig.equals("B")) {
+      basicType = Type.BYTE;
     } else if (sig.equals("I")) {
-      return null;
+      basicType = Type.INT;
+    } else if (sig.equals("C")) {
+      basicType = Type.CHAR;
+    } else if (sig.equals("S")) {
+      basicType = Type.SHORT;
+    } else if (sig.equals("J")) {
+      basicType = Type.LONG;
+    } else if (sig.equals("F")) {
+      basicType = Type.FLOAT;
+    } else if (sig.equals("D")) {
+      basicType = Type.DOUBLE;
     }
-
-    System.out.println("Invalid signature " + sig);
-    return null;
+    
+    if (basicType == null)
+      System.out.println("Invalid signature " + sig);
+    
+    if (arraydims > 0) 
+      return new JavaArrayType(basicType, arraydims);
+    else
+      return basicType;
   }
 
   public JavaClass getClassForString(String classStr) {

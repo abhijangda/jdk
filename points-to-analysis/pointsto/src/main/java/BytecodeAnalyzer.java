@@ -216,7 +216,7 @@ public class BytecodeAnalyzer {
     /*
      * Operands are references to classes in constant pool
      */
-    case Const.NEW:
+    case Const.NEW: {
       index = bytes.readUnsignedShort();
       String klass = constantPool.constantToString(index, Const.CONSTANT_Class);
       JavaClass c = classCollection.getClassForString(klass);
@@ -225,36 +225,57 @@ public class BytecodeAnalyzer {
       bcUpdate.addOutput(obj);
       operandStack.push(obj);
       break;
+    }
 
     case Const.CHECKCAST:
-    case Const.INSTANCEOF:
+    case Const.INSTANCEOF: {
       index = bytes.readUnsignedShort();
-      constantPool.constantToString(index, Const.CONSTANT_Class);
-      unhandledBytecode(opcode);
+      String klass = constantPool.constantToString(index, Const.CONSTANT_Class);
+      if (opcode == Const.INSTANCEOF) {
+        //TODO: Bool class
+        IntermediateVar b = new IntermediateVar(null, bci);
+        Var obj = operandStack.pop();
+        bcUpdate.addInput(obj);
+        bcUpdate.addOutput(b);
+        operandStack.push(b);
+      } else {
+        unhandledBytecode(opcode);
+      }
       //TODO: 
       break;
+    }
     /*
      * Operands are references to methods in constant pool
      */
     case Const.INVOKESPECIAL:
-    case Const.INVOKESTATIC: {
-      index = bytes.readUnsignedShort();
-      String method = constantPool.constantToString(index, constantPool.getConstant(index).getTag()).replace(" ", "");
-      // With Java8 operand may be either a CONSTANT_Methodref
-      // or a CONSTANT_InterfaceMethodref. (markro)
-      // invokeMethods.put(bci, constantPool.constantToString(index, c.getTag()).replace(" ", ""));
-      break;
-    }
+    case Const.INVOKESTATIC: 
+    case Const.INVOKEINTERFACE: 
     case Const.INVOKEVIRTUAL: {
       index = bytes.readUnsignedShort();
-      // invokeMethods.put(bci, constantPool.constantToString(index, Const.CONSTANT_Methodref).replace(" ", ""));
-      break;
-    }
-    case Const.INVOKEINTERFACE: {
-      index = bytes.readUnsignedShort();
-      final int nargs = bytes.readUnsignedByte(); // historical, redundant
-      // invokeMethods.put(bci, constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref).replace(" ", ""));
-      bytes.readUnsignedByte(); // Last byte is a reserved space
+      String methodStr = "";
+      
+      if (opcode == Const.INVOKEDYNAMIC || opcode == Const.INVOKESPECIAL) {
+        methodStr = constantPool.constantToString(index, constantPool.getConstant(index).getTag()).replace(" ", "");
+      } else if (opcode == Const.INVOKEVIRTUAL) {
+        methodStr = constantPool.constantToString(index, Const.CONSTANT_Methodref).replace(" ", "");
+      } else if (opcode == Const.INVOKEINTERFACE) {
+        final int nargs = bytes.readUnsignedByte(); // historical, redundant
+        methodStr = constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref).replace(" ", "");
+        bytes.readUnsignedByte();
+      } else {
+        unhandledBytecode(opcode);
+      }
+      JavaMethod method = classCollection.getMethod(methodStr);
+      for (Type t : method.getMethod().getArgumentTypes()) {
+        bcUpdate.addInput(operandStack.pop());
+      }
+      if (method.getMethod().getReturnType() != Type.VOID) {
+        //TODO: 
+        //method.getMethod().getReturnType()
+        IntermediateVar ret = new IntermediateVar(null, bci);
+        operandStack.push(ret);
+        bcUpdate.addOutput(ret);
+      }
       break;
     }
     case Const.INVOKEDYNAMIC:
@@ -262,6 +283,7 @@ public class BytecodeAnalyzer {
       bytes.readUnsignedByte(); // Thrid byte is a reserved space
       bytes.readUnsignedByte(); // Last byte is a reserved space
       constantPool.constantToString(index, Const.CONSTANT_InvokeDynamic).replace(" ", "");
+
       break;
     /*
      * Operands are references to items in constant pool
@@ -270,10 +292,12 @@ public class BytecodeAnalyzer {
     case Const.LDC2_W:
       index = bytes.readUnsignedShort();
       constantPool.constantToString(index, constantPool.getConstant(index).getTag());
+      unhandledBytecode(opcode);
       break;
     case Const.LDC:
       index = bytes.readUnsignedByte();
       constantPool.constantToString(index, constantPool.getConstant(index).getTag());
+      unhandledBytecode(opcode);
       break;
     /*
      * Array of references.

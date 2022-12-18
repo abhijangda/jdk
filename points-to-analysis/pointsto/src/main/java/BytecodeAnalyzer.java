@@ -13,12 +13,19 @@ import java.util.*;
 import java.io.*;
 import java.util.zip.ZipInputStream;
 
+import threeaddresscode.*;
+
 public class BytecodeAnalyzer {
   public static boolean wide;
 
-  public static String analyzeBytecode(final ByteSequence bytes, int bcIndex, final ConstantPool constantPool, 
-                                  HashMap<Integer, String> invokeMethods) throws IOException {
+  static void unhandledBytecode(int opcode) {
+    System.out.println("Not handling " + Const.getOpcodeName(opcode)); 
+  }
+
+  public static BytecodeUpdate createThreeAddressCode(final ByteSequence bytes, int bci, final ConstantPool constantPool, 
+                                                      Stack<Var> operandStack) throws IOException {
     final short opcode = (short) bytes.readUnsignedByte();
+    BytecodeUpdate bcUpdate = new BytecodeUpdate(bci, opcode);
     int defaultOffset = 0;
     int low;
     int high;
@@ -31,7 +38,6 @@ public class BytecodeAnalyzer {
     int noPadBytes = 0;
     int offset;
     boolean verbose = false;
-    final StringBuilder buf = new StringBuilder(Const.getOpcodeName(opcode));
     /*
      * Special case: Skip (0-3) padding bytes, i.e., the following bytes are 4-byte-aligned
      */
@@ -62,6 +68,7 @@ public class BytecodeAnalyzer {
             if (i < jumpTable.length - 1) {
             }
         }
+        unhandledBytecode(opcode);
         break;
     /*
      * Lookup switch has variable length arguments.
@@ -78,8 +85,9 @@ public class BytecodeAnalyzer {
             if (i < npairs - 1) {
             }
         }
-    }
-        break;
+      }
+      unhandledBytecode(opcode);
+      break;
     /*
      * Two address bytes + offset from start of byte stream form the jump target
      */
@@ -175,16 +183,16 @@ public class BytecodeAnalyzer {
       final Constant c = constantPool.getConstant(index);
       // With Java8 operand may be either a CONSTANT_Methodref
       // or a CONSTANT_InterfaceMethodref. (markro)
-      invokeMethods.put(bcIndex, constantPool.constantToString(index, c.getTag()).replace(" ", ""));
+      // invokeMethods.put(bci, constantPool.constantToString(index, c.getTag()).replace(" ", ""));
       break;
     case Const.INVOKEVIRTUAL:
       index = bytes.readUnsignedShort();
-      invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_Methodref).replace(" ", ""));
+      // invokeMethods.put(bci, constantPool.constantToString(index, Const.CONSTANT_Methodref).replace(" ", ""));
       break;
     case Const.INVOKEINTERFACE:
       index = bytes.readUnsignedShort();
       final int nargs = bytes.readUnsignedByte(); // historical, redundant
-      invokeMethods.put(bcIndex, constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref).replace(" ", ""));
+      // invokeMethods.put(bci, constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref).replace(" ", ""));
       bytes.readUnsignedByte(); // Last byte is a reserved space
       break;
     case Const.INVOKEDYNAMIC:
@@ -236,7 +244,6 @@ public class BytecodeAnalyzer {
     default:
         if (Const.getNoOfOperands(opcode) > 0) {
             for (int i = 0; i < Const.getOperandTypeCount(opcode); i++) {
-                buf.append("\t\t");
                 switch (Const.getOperandType(opcode, i)) {
                 case Const.T_BYTE:
                     bytes.readByte();
@@ -253,24 +260,31 @@ public class BytecodeAnalyzer {
             }
         }
     }
-    return buf.toString();
+    
+    return bcUpdate;
   }
 
-  public static void analyzeEvent(HeapEvent event, CallFrame frame, StaticValue staticValues) {
-    Code code = event.method_.getMethod().getCode();
+  public static void analyzeMethod(JavaMethod method, CallFrame frame, StaticValue staticValues, JavaClassCollection classCollection) {
+    Code code = method.getMethod().getCode();
     ConstantPool constPool = code.getConstantPool();
-    int opcode = Byte.toUnsignedInt(code.getCode()[event.bci_]);
-    
-    switch(opcode) {
-      case Const.NEW:
-      case Const.NEWARRAY:
-      case Const.ANEWARRAY:
-      case Const.PUTFIELD:
-      case Const.GETFIELD:
-
-      default:
-        System.out.println("Unhandled " + Const.getOpcodeName(opcode));
+    Stack<Var> operandStack = new Stack<>();
+    LocalVar[] localVars = new LocalVar[code.getLocalVariableTable().getLength()];
+    for (LocalVariable v : code.getLocalVariableTable()) {
+      classCollection.getClassForSignature(v.getSignature());
+      localVars[v.getIndex()] = new LocalVar(null, v.getIndex());
     }
+    // int opcode = Byte.toUnsignedInt(code.getCode()[event.bci_]);
+    
+    // switch(opcode) {
+    //   case Const.NEW:
+    //   case Const.NEWARRAY:
+    //   case Const.ANEWARRAY:
+    //   case Const.PUTFIELD:
+    //   case Const.GETFIELD:
+
+    //   default:
+    //     System.out.println("Unhandled " + Const.getOpcodeName(opcode));
+    // }
 
     // for (int i = 0; i < code.getCode().length; i++) { //stream.available() > 0
       // if (i == event.bci_) 

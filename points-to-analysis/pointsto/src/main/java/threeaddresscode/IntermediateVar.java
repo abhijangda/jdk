@@ -5,12 +5,11 @@ import org.apache.bcel.*;
 import org.apache.bcel.generic.Type;
 import org.apache.bcel.util.*;
 
-public class Variable {
-  public final JavaClass type;
+public class IntermediateVar extends Var {
   public final int startBci;
 
-  public Variable(JavaClass type, int startBci) {
-    this.type = type;
+  public IntermediateVar(JavaClass type, int startBci) {
+    super(type);
     this.startBci = startBci;
   }
 }

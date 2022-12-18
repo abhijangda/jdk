@@ -11,6 +11,7 @@ import org.apache.bcel.classfile.*;
 import org.apache.bcel.*;
 import org.apache.bcel.generic.Type;
 import org.apache.bcel.util.*;
+import org.apache.bcel.util.Repository;
 
 public class HeapEvent {
   //TODO: Use constant table indices to represent class and method?
@@ -42,13 +43,13 @@ public class HeapEvent {
       assert (m != null);
     int bci = Integer.parseInt(split[1].strip());
     String[] src = split[2].split(":");
-    JavaClass srcClass = classes.getClassForString(src[1].strip().replace("/","."));
+    JavaClass srcClass = classes.getClassForString(Utility.pathToPackage(src[1].strip()));
     if (JavaClassCollection.classToCare(src[1].strip()))
       assert(srcClass != null);
 
     String[] dst = split[3].substring(0, split[3].length() - 1).split(":");
 
-    JavaClass dstClass = classes.getClassForString(dst[1].strip().replace("/","."));
+    JavaClass dstClass = classes.getClassForString(Utility.pathToPackage(dst[1].strip()));
     if (JavaClassCollection.classToCare(dst[1].strip()))
       assert(dstClass != null);
 
@@ -63,7 +64,7 @@ public class HeapEvent {
   public static HashMap<String, ArrayList<HeapEvent>> processHeapEventsFile(String fileName, JavaClassCollection classes) {
     BufferedReader reader;
     HashMap<String, ArrayList<HeapEvent>> heapEvents = new HashMap<String, ArrayList<HeapEvent>>();
-
+    
     try {
       reader = new BufferedReader(new FileReader(fileName));
       String line = reader.readLine();

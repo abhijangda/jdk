@@ -77,7 +77,7 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
 
   private void loadJavaLibraryClass(String classStr) {
     Path javaBase = Paths.get("/mnt/homes/aabhinav/jdk/build/linux-x86_64-server-release/jdk/modules/java.base/");
-    Path classPath = javaBase.resolve(classStr.replace(".", "/") + ".class");
+    Path classPath = javaBase.resolve(Utility.packageToPath(classStr) + ".class");
     if (!Files.exists(classPath, LinkOption.NOFOLLOW_LINKS))
       ;//System.out.println(classPath + " do not exists for " + classStr);
     

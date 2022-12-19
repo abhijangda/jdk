@@ -6,8 +6,8 @@ import org.apache.bcel.generic.*;
 
 public final class JavaArrayType extends ReferenceType {
 
-  private final int dimensions;
-  private final Type basicType;
+  public final int dimensions;
+  public final Type basicType;
 
   public JavaArrayType(final byte type, final int dimensions) {
       this(BasicType.getType(type), dimensions);
@@ -39,6 +39,13 @@ public final class JavaArrayType extends ReferenceType {
     // super.setSignature(buf.toString());
   }
 
+  public Type getBasicType() {
+    if (dimensions > 1) {
+      return new JavaArrayType(basicType, dimensions - 1);
+    }
+
+    return basicType;
+  }
   public String getSignatureString() {
     final StringBuilder buf = new StringBuilder();
     for (int i = 0; i < this.dimensions; i++) {

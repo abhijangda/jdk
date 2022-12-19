@@ -110,7 +110,7 @@ public class BytecodeAnalyzer {
   }
 
   public static BytecodeUpdate createThreeAddressCode(final ByteSequence bytes, int bci, int byteIndex, final ConstantPool constantPool, 
-                                                      Stack<Var> operandStack, LocalVar[] localVars, ConstantVal[] constantVals, JavaClassCollection classCollection) throws IOException {
+                                                      Stack<Var> operandStack, LocalVar[] localVars, ConstantVal[] constantVals, JavaClassCollection classCollection, boolean print) throws IOException {
     final short opcode = (short) bytes.readUnsignedByte();
     BytecodeUpdate bcUpdate = new BytecodeUpdate(bci, opcode);
     int defaultOffset = 0;
@@ -125,6 +125,7 @@ public class BytecodeAnalyzer {
     int noPadBytes = 0;
     int offset;
     boolean verbose = false;
+    if (print)
     System.out.println(Const.getOpcodeName(opcode) + " " + byteIndex);
     /*
      * Special case: Skip (0-3) padding bytes, i.e., the following bytes are 4-byte-aligned
@@ -179,11 +180,18 @@ public class BytecodeAnalyzer {
     /*
      * Two address bytes + offset from start of byte stream form the jump target
      */
-    case Const.GOTO:
+    case Const.GOTO: {
+      int t = bytes.readUnsignedShort();
       break;
-    case Const.JSR:
+    }
+    case Const.JSR: {
+      int t = bytes.readUnsignedShort();
+      // ConstantVal v = new ConstantVal(Type.INT, new ConstantInteger(t));
+      // operandStack.push(v);
+      // bcUpdate.addOutput(v);
       unhandledBytecode(opcode);
       break;
+    }
     case Const.IFEQ:
     case Const.IFGE:
     case Const.IFGT:
@@ -217,6 +225,91 @@ public class BytecodeAnalyzer {
       bytes.getIndex();
       bytes.readInt();
       break;
+
+      /**
+       * Array operations
+       */
+    case Const.ARRAYLENGTH: {
+      Var a = operandStack.pop();
+      IntermediateVar v = new IntermediateVar(Type.INT, bci);
+      operandStack.push(v);
+      bcUpdate.addInput(a);
+      bcUpdate.addOutput(v);
+      break;
+    }
+
+    case Const.IALOAD: {
+      Var a = operandStack.pop();
+      Var i = operandStack.pop();
+      assert (a.type instanceof JavaArrayType);
+      IntermediateVar e = new IntermediateVar(Type.INT, bci);
+      operandStack.push(e);
+      bcUpdate.addInput(a);
+      bcUpdate.addInput(i);
+      bcUpdate.addOutput(e);
+      break;
+    }
+    case Const.BALOAD: {
+      Var a = operandStack.pop();
+      Var i = operandStack.pop();
+      assert (a.type instanceof JavaArrayType);
+      IntermediateVar e = new IntermediateVar(Type.BYTE, bci);
+      operandStack.push(e);
+      bcUpdate.addInput(a);
+      bcUpdate.addInput(i);
+      bcUpdate.addOutput(e);
+      break;
+    }
+    case Const.CALOAD: {
+      Var a = operandStack.pop();
+      Var i = operandStack.pop();
+      assert (a.type instanceof JavaArrayType);
+      IntermediateVar e = new IntermediateVar(Type.CHAR, bci);
+      operandStack.push(e);
+      bcUpdate.addInput(a);
+      bcUpdate.addInput(i);
+      bcUpdate.addOutput(e);
+      break;
+    }
+    case Const.LALOAD: {
+      Var a = operandStack.pop();
+      Var i = operandStack.pop();
+      assert (a.type instanceof JavaArrayType);
+      IntermediateVar e = new IntermediateVar(Type.LONG, bci);
+      operandStack.push(e);
+      bcUpdate.addInput(a);
+      bcUpdate.addInput(i);
+      bcUpdate.addOutput(e);
+      break;
+    }
+
+    case Const.AALOAD: {
+      Var a = operandStack.pop();
+      Var i = operandStack.pop();
+      assert (a.type instanceof JavaArrayType);
+      IntermediateVar e = new IntermediateVar(((JavaArrayType)a.type).getBasicType(), bci);
+      operandStack.push(e);
+      bcUpdate.addInput(a);
+      bcUpdate.addInput(i);
+      bcUpdate.addOutput(e);
+      break;
+    }
+
+    case Const.AASTORE: {
+      Var a = operandStack.pop();
+      Var i = operandStack.pop();
+      Var v = operandStack.pop();
+      assert (a.type instanceof JavaArrayType);
+      bcUpdate.addInput(a);
+      bcUpdate.addInput(i);
+      bcUpdate.addInput(v);
+      break;
+    }
+
+    case Const.POP: {
+      operandStack.pop();
+      break;
+    }
     
     /*
      * Const push instructions 
@@ -397,9 +490,24 @@ public class BytecodeAnalyzer {
       break;
     }
 
+    /**
+     * Return instructions
+     */
     case Const.RET:
       break;
-
+    
+    case Const.RETURN:
+      break;
+    
+    case Const.LRETURN:
+    case Const.IRETURN:
+    case Const.DRETURN:
+    case Const.ARETURN:
+    case Const.FRETURN: {
+      Var v = operandStack.pop();
+      bcUpdate.addInput(v);
+      break;
+    }
     /*
      * Remember wide byte which is used to form a 16-bit address in the following instruction. Relies on that the method is
      * called again with the following opcode.
@@ -416,6 +524,7 @@ public class BytecodeAnalyzer {
     case Const.IXOR:
     case Const.IMUL:
     case Const.IADD:
+    case Const.IAND:
     case Const.IOR:
     case Const.IREM:
     case Const.ISHR:
@@ -625,12 +734,10 @@ public class BytecodeAnalyzer {
      */
     case Const.LDC_W:
     case Const.LDC2_W: {
-      index = bytes.readUnsignedShort();
-      Constant c = constantPool.getConstant(index);
-      System.out.println("385: " + c.toString());
-      String s = constantPool.constantToString(index, constantPool.getConstant(index).getTag());
-      System.out.println("391: " + s);
-      unhandledBytecode(opcode);
+      index = bytes.readUnsignedByte();
+      Constant con = constantPool.getConstant(index);
+      ConstantVal c = getOrSetConstantVal(index, con, classCollection, constantVals);
+      operandStack.push(c);
       break;
     }
     case Const.LDC: {
@@ -696,7 +803,7 @@ public class BytecodeAnalyzer {
     /*
      * Increment local variable.
      */
-    case Const.IINC:
+    case Const.IINC: {
       if (wide) {
           vindex = bytes.readUnsignedShort();
           constant = bytes.readShort();
@@ -705,9 +812,13 @@ public class BytecodeAnalyzer {
           vindex = bytes.readUnsignedByte();
           constant = bytes.readByte();
       }
-      unhandledBytecode(opcode);
+      bcUpdate.addInput(localVars[vindex]);
+      bcUpdate.addOutput(localVars[vindex]);
       break;
+    }
     
+    case Const.IMPDEP1:
+    case Const.IMPDEP2:
     case Const.NOP:
       break;
     default:
@@ -747,18 +858,21 @@ public class BytecodeAnalyzer {
     //   Constant co = constPool.getConstant(c);
     //   System.out.println("484: " + co.toString());
     // }
-    System.out.println(code.toString(true));
+
+    boolean print = method.getFullName().contains("[org.apache.lucene.store.FSDirectory.getLockID()");
+    if (print) System.out.println(method.getFullName() + " " + code.toString(true));
     try (ByteSequence stream = new ByteSequence(code.getCode())) {
-        for (int bci = 0; bci < stream.available(); bci++) { //stream.available() > 0
+        for (int bci = 0; stream.available() > 0; bci++) { //stream.available() > 0
           // if (i == event.bci_) 
           //   System.out.println(Const.getOpcodeName(code.getCode()[i]));
           createThreeAddressCode(stream, bci, stream.getIndex(), constPool,
-                                 operandStack, localVars, constants, classCollection);
+                                 operandStack, localVars, constants, classCollection, print);
         }
     } catch (final IOException e) {
        e.printStackTrace();
     }
-    
+    if (print)
+    System.out.println("\n");
     // int opcode = Byte.toUnsignedInt(code.getCode()[event.bci_]);
     
     // switch(opcode) {

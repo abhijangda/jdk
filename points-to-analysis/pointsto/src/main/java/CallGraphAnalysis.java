@@ -108,7 +108,7 @@ public class CallGraphAnalysis {
       }
 
       currEvent = nextEvent;
-      if (iterations > 10) break;
+      if (iterations > 1000) break;
     }
    }
 }

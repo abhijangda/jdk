@@ -602,7 +602,7 @@ public class BytecodeAnalyzer {
       }
       JavaMethod method = classCollection.getMethod(methodStr);
       for (Type t : method.getMethod().getArgumentTypes()) {
-        bcUpdate.addInput(operandStack.pop());  
+        bcUpdate.addInput(operandStack.pop());
       }
       if (method.getMethod().getReturnType() != Type.VOID) {
         //TODO: 

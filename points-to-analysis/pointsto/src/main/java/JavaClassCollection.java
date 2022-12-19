@@ -156,14 +156,27 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
 
         JavaClass javaclass = getClassForString(classname);
         if (javaclass == null) {
-          // System.out.println("null javaclass for " + classname);
+          System.out.println("null javaclass for " + classname);
           return null;
         }
-        for (Method m : javaclass.getMethods()) {
-          if (m.getName().equals(methodname) && m.getSignature().equals(signature))
-            return new JavaMethod(m, javaclass);
+        while (true) {
+          for (Method m : javaclass.getMethods()) {
+            // if (javaclass.getClassName().contains("store.Directory") || 
+            //     javaclass.getClassName().contains("store.FSDirectory")) {
+            //   System.out.println(m.isPublic() + " " + m.isProtected() + " " + javaclass.getClassName() + "." + m.getName() + m.getSignature());
+            // }
+            if (m.getName().equals(methodname) && m.getSignature().equals(signature))
+              return new JavaMethod(m, javaclass);
+          }
+          
+          if (!javaclass.getClassName().equals("java.lang.Object")) {
+            String supername = javaclass.getSuperclassName();
+            javaclass = getClassForString(supername);
+          } else {
+            break;
+          }
         }
-        // System.out.println(classname + methodname + signature);
+        System.out.println(classname + " " + methodname + " " + signature);
       }
     }
 

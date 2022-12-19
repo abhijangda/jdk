@@ -96,6 +96,7 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
 
   public Type javaTypeForSignature(String sig) {
     int arraydims = 0;
+    String origSig = sig;
     for (; arraydims < sig.length() && sig.charAt(arraydims) == '['; arraydims++);
     sig = sig.substring(arraydims);
     
@@ -119,10 +120,13 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
       basicType = Type.FLOAT;
     } else if (sig.equals("D")) {
       basicType = Type.DOUBLE;
+    } else {
+      JavaClass cl = getClassForString(sig);
+      basicType = JavaObjectType.getInstance(cl);
     }
     
     if (basicType == null)
-      System.out.println("Invalid signature " + sig);
+      System.out.println("128: Invalid signature " + origSig);
     
     if (arraydims > 0) 
       return new JavaArrayType(basicType, arraydims);

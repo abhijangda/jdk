@@ -180,15 +180,22 @@ public class BytecodeAnalyzer {
      * Two address bytes + offset from start of byte stream form the jump target
      */
     case Const.GOTO:
+      break;
+    case Const.JSR:
+      unhandledBytecode(opcode);
+      break;
     case Const.IFEQ:
     case Const.IFGE:
     case Const.IFGT:
     case Const.IFLE:
     case Const.IFLT:
-    case Const.JSR:
     case Const.IFNE:
     case Const.IFNONNULL:
     case Const.IFNULL:
+      bytes.getIndex();
+      bytes.readShort();
+      operandStack.pop();
+      break;
     case Const.IF_ACMPEQ:
     case Const.IF_ACMPNE:
     case Const.IF_ICMPEQ:
@@ -199,6 +206,8 @@ public class BytecodeAnalyzer {
     case Const.IF_ICMPNE:
       bytes.getIndex();
       bytes.readShort();
+      operandStack.pop();
+      operandStack.pop();
       break;
     /*
      * 32-bit wide jumps
@@ -209,9 +218,55 @@ public class BytecodeAnalyzer {
       bytes.readInt();
       break;
     
+    /*
+     * Const push instructions 
+     */
     case Const.ACONST_NULL: {
-      operandStack.push(new IntermediateVar(null, bci));
+      operandStack.push(new ConstantVal(Type.NULL, null));
+      break;
     }
+
+    case Const.ICONST_0:
+    case Const.ICONST_1:
+    case Const.ICONST_2:
+    case Const.ICONST_3:
+    case Const.ICONST_4:
+    case Const.ICONST_5: {
+      int iconst = opcode - Const.ICONST_0;
+      operandStack.push(new ConstantVal(Type.INT, new ConstantInteger(iconst)));
+      break;
+    }
+
+    case Const.ICONST_M1: {
+      operandStack.push(new ConstantVal(Type.INT, new ConstantInteger(-1)));
+      break;
+    }
+
+    case Const.LCONST_0:
+    case Const.LCONST_1: {
+      long lconst = opcode - Const.LCONST_0;
+      operandStack.push(new ConstantVal(Type.LONG, new ConstantLong(lconst)));
+      break;
+    }
+
+    case Const.DCONST_0:
+    case Const.DCONST_1: {
+      double dconst = opcode - Const.DCONST_0;
+      operandStack.push(new ConstantVal(Type.DOUBLE, new ConstantDouble(dconst)));
+      break;
+    }
+
+    case Const.FCONST_0:
+    case Const.FCONST_1: 
+    case Const.FCONST_2: {
+      float fconst = opcode - Const.FCONST_0;
+      operandStack.push(new ConstantVal(Type.FLOAT, new ConstantFloat(fconst)));
+      break;
+    }
+
+    /*
+     * Local variable load instructions 
+     */
       
     case Const.ALOAD_0:
     case Const.ALOAD_1:
@@ -277,6 +332,10 @@ public class BytecodeAnalyzer {
       break;
     }
     
+    /*
+     * Local variable store instructions 
+     */
+
     case Const.ASTORE_0:
     case Const.ASTORE_1:
     case Const.ASTORE_2:
@@ -343,10 +402,90 @@ public class BytecodeAnalyzer {
     case Const.WIDE:
         wide = true;
         break;
+      
+    /*
+     * Binary operations 
+     */
+    case Const.ISUB:
+    case Const.IUSHR:
+    case Const.IXOR:
+    case Const.IMUL:
+    case Const.IADD:
+    case Const.IOR:
+    case Const.IREM:
+    case Const.ISHR:
+    case Const.IDIV: {
+      Var v1 = operandStack.pop();
+      Var v2 = operandStack.pop();
+
+      IntermediateVar r = new IntermediateVar(Type.INT, bci);
+      operandStack.push(r);
+
+      bcUpdate.addInput(v1);
+      bcUpdate.addInput(v2);
+      bcUpdate.addOutput(r);
+      break;
+    }
+
+    case Const.LSUB:
+    case Const.LUSHR:
+    case Const.LXOR:
+    case Const.LMUL:
+    case Const.LADD:
+    case Const.LOR:
+    case Const.LREM:
+    case Const.LSHR:
+    case Const.LDIV: {
+      Var v1 = operandStack.pop();
+      Var v2 = operandStack.pop();
+
+      IntermediateVar r = new IntermediateVar(Type.LONG, bci);
+      operandStack.push(r);
+
+      bcUpdate.addInput(v1);
+      bcUpdate.addInput(v2);
+      bcUpdate.addOutput(r);
+      break;
+    }
+
+    case Const.FSUB:
+    case Const.FMUL:
+    case Const.FADD:
+    case Const.FREM:
+    case Const.FDIV: {
+      Var v1 = operandStack.pop();
+      Var v2 = operandStack.pop();
+
+      IntermediateVar r = new IntermediateVar(Type.FLOAT, bci);
+      operandStack.push(r);
+
+      bcUpdate.addInput(v1);
+      bcUpdate.addInput(v2);
+      bcUpdate.addOutput(r);
+      break;
+    }
+
+    case Const.DSUB:
+    case Const.DMUL:
+    case Const.DADD:
+    case Const.DREM:
+    case Const.DDIV: {
+      Var v1 = operandStack.pop();
+      Var v2 = operandStack.pop();
+
+      IntermediateVar r = new IntermediateVar(Type.DOUBLE, bci);
+      operandStack.push(r);
+
+      bcUpdate.addInput(v1);
+      bcUpdate.addInput(v2);
+      bcUpdate.addOutput(r);
+      break;
+    }
+
     /*
      * Array of basic type.
      */
-    case Const.NEWARRAY:
+    case Const.NEWARRAY: {
       String elem = Const.getTypeName(bytes.readByte());
       JavaClass elemClass = classCollection.getClassForString(elem);
       Var count = operandStack.pop();
@@ -354,6 +493,7 @@ public class BytecodeAnalyzer {
       bcUpdate.addInput(count);
       bcUpdate.addOutput(arr);
       break;
+    }
     /*
      * Access object/class fields.
      */
@@ -512,6 +652,10 @@ public class BytecodeAnalyzer {
       break;
     }
 
+    case Const.SIPUSH: {
+      int c = bytes.readUnsignedShort();
+      operandStack.push(new ConstantVal(Type.INT, new ConstantInteger(c)));
+    }
     case Const.BIPUSH: {
       byte c = bytes.readByte();
       operandStack.push(new ConstantVal(Type.INT, new ConstantInteger(c)));
@@ -533,6 +677,9 @@ public class BytecodeAnalyzer {
           constant = bytes.readByte();
       }
       unhandledBytecode(opcode);
+      break;
+    
+    case Const.NOP:
       break;
     default:
         unhandledBytecode(opcode);

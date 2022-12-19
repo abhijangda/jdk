@@ -109,7 +109,7 @@ public class BytecodeAnalyzer {
     return cval;
   }
 
-  public static BytecodeUpdate createThreeAddressCode(final ByteSequence bytes, int bci, final ConstantPool constantPool, 
+  public static BytecodeUpdate createThreeAddressCode(final ByteSequence bytes, int bci, int byteIndex, final ConstantPool constantPool, 
                                                       Stack<Var> operandStack, LocalVar[] localVars, ConstantVal[] constantVals, JavaClassCollection classCollection) throws IOException {
     final short opcode = (short) bytes.readUnsignedByte();
     BytecodeUpdate bcUpdate = new BytecodeUpdate(bci, opcode);
@@ -125,7 +125,7 @@ public class BytecodeAnalyzer {
     int noPadBytes = 0;
     int offset;
     boolean verbose = false;
-    System.out.println(Const.getOpcodeName(opcode) + " " + bci);
+    System.out.println(Const.getOpcodeName(opcode) + " " + byteIndex);
     /*
      * Special case: Skip (0-3) padding bytes, i.e., the following bytes are 4-byte-aligned
      */
@@ -344,6 +344,7 @@ public class BytecodeAnalyzer {
       Var v = operandStack.pop();
       bcUpdate.addInput(v);
       bcUpdate.addOutput(localVars[alocal]);
+      break;
     }
 
     case Const.ISTORE_0:
@@ -354,6 +355,7 @@ public class BytecodeAnalyzer {
       Var v = operandStack.pop();
       bcUpdate.addInput(v);
       bcUpdate.addOutput(localVars[ilocal]);
+      break;
     }
 
     case Const.FSTORE_0:
@@ -364,6 +366,7 @@ public class BytecodeAnalyzer {
       Var v = operandStack.pop();
       bcUpdate.addInput(v);
       bcUpdate.addOutput(localVars[flocal]);
+      break;
     }
 
     case Const.LSTORE_0:
@@ -374,13 +377,14 @@ public class BytecodeAnalyzer {
       Var v = operandStack.pop();
       bcUpdate.addInput(v);
       bcUpdate.addOutput(localVars[llocal]);
+      break;
     }
 
     case Const.ASTORE:
     case Const.FSTORE:
     case Const.DSTORE:
     case Const.ISTORE:
-    case Const.LSTORE:
+    case Const.LSTORE: {
       if (wide) {
         vindex = bytes.readUnsignedShort();
         wide = false; // Clear flag
@@ -391,6 +395,7 @@ public class BytecodeAnalyzer {
       bcUpdate.addInput(v);
       bcUpdate.addOutput(localVars[vindex]);
       break;
+    }
 
     case Const.RET:
       break;
@@ -542,7 +547,13 @@ public class BytecodeAnalyzer {
       break;
     }
 
-    case Const.CHECKCAST:
+    case Const.CHECKCAST: {
+      index = bytes.readUnsignedShort();
+      Var v = operandStack.peek();
+      bcUpdate.addInput(v);
+      break;
+    }
+
     case Const.INSTANCEOF: {
       index = bytes.readUnsignedShort();
       String klass = constantPool.constantToString(index, Const.CONSTANT_Class);
@@ -557,6 +568,13 @@ public class BytecodeAnalyzer {
         unhandledBytecode(opcode);
       }
       //TODO: 
+      break;
+    }
+
+    case Const.MONITORENTER: 
+    case Const.MONITOREXIT: {
+      Var v = operandStack.pop();
+      bcUpdate.addInput(v);
       break;
     }
     /*
@@ -579,6 +597,8 @@ public class BytecodeAnalyzer {
         bytes.readUnsignedByte();
       } else if (opcode == Const.INVOKESTATIC) {
         methodStr = constantPool.constantToString(index, constantPool.getConstant(index).getTag()).replace(" ", "");
+      } else {
+        unhandledBytecode(opcode);
       }
       JavaMethod method = classCollection.getMethod(methodStr);
       for (Type t : method.getMethod().getArgumentTypes()) {
@@ -655,15 +675,24 @@ public class BytecodeAnalyzer {
     case Const.SIPUSH: {
       int c = bytes.readUnsignedShort();
       operandStack.push(new ConstantVal(Type.INT, new ConstantInteger(c)));
+      break;
     }
     case Const.BIPUSH: {
       byte c = bytes.readByte();
       operandStack.push(new ConstantVal(Type.INT, new ConstantInteger(c)));
+      break;
     }
     case Const.DUP: {
       operandStack.push(operandStack.peek());
       break;
     }
+
+    case Const.ATHROW: {
+      Var v = operandStack.pop();
+      bcUpdate.addInput(v);
+      break;
+    }
+
     /*
      * Increment local variable.
      */
@@ -723,7 +752,7 @@ public class BytecodeAnalyzer {
         for (int bci = 0; bci < stream.available(); bci++) { //stream.available() > 0
           // if (i == event.bci_) 
           //   System.out.println(Const.getOpcodeName(code.getCode()[i]));
-          createThreeAddressCode(stream, bci, constPool, 
+          createThreeAddressCode(stream, bci, stream.getIndex(), constPool,
                                  operandStack, localVars, constants, classCollection);
         }
     } catch (final IOException e) {

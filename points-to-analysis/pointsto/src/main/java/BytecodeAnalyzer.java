@@ -44,6 +44,7 @@ public class BytecodeAnalyzer {
     int noPadBytes = 0;
     int offset;
     boolean verbose = false;
+    System.out.println(Const.getOpcodeName(opcode) + " " + bci);
     /*
      * Special case: Skip (0-3) padding bytes, i.e., the following bytes are 4-byte-aligned
      */
@@ -126,6 +127,51 @@ public class BytecodeAnalyzer {
       bytes.getIndex();
       bytes.readInt();
       break;
+    
+    case Const.ALOAD_0:
+    case Const.ALOAD_1:
+    case Const.ALOAD_2:
+    case Const.ALOAD_3: {
+      int alocal = opcode - Const.ALOAD_0;
+      operandStack.push(localVars[alocal]);
+      break;
+    }
+
+    case Const.ILOAD_0:
+    case Const.ILOAD_1:
+    case Const.ILOAD_2:
+    case Const.ILOAD_3: {
+      int ilocal = opcode - Const.ILOAD_0;
+      operandStack.push(localVars[ilocal]);
+      break;
+    }
+
+    case Const.LLOAD_0:
+    case Const.LLOAD_1:
+    case Const.LLOAD_2:
+    case Const.LLOAD_3: {
+      int llocal = opcode - Const.LLOAD_0;
+      operandStack.push(localVars[llocal]);
+      break;
+    }
+
+    case Const.FLOAD_0:
+    case Const.FLOAD_1:
+    case Const.FLOAD_2:
+    case Const.FLOAD_3: {
+      int flocal = opcode - Const.FLOAD_0;
+      operandStack.push(localVars[flocal]);
+      break;
+    }
+
+    case Const.DLOAD_0:
+    case Const.DLOAD_1:
+    case Const.DLOAD_2:
+    case Const.DLOAD_3: {
+      int dlocal = opcode - Const.DLOAD_0;
+      operandStack.push(localVars[dlocal]);
+      break;
+    }
     /*
      * Index byte references local variable (register)
      */
@@ -133,7 +179,7 @@ public class BytecodeAnalyzer {
     case Const.DLOAD:
     case Const.FLOAD:
     case Const.ILOAD:
-    case Const.LLOAD:
+    case Const.LLOAD: {
       if (wide) {
         vindex = bytes.readUnsignedShort();
         wide = false; // Clear flag
@@ -144,7 +190,48 @@ public class BytecodeAnalyzer {
       // bcUpdate.addOutput(localVars[vindex]);
       operandStack.push(localVars[vindex]);
       break;
-  
+    }
+    
+    case Const.ASTORE_0:
+    case Const.ASTORE_1:
+    case Const.ASTORE_2:
+    case Const.ASTORE_3: {
+      int alocal = opcode - Const.ASTORE_0;
+      Var v = operandStack.pop();
+      bcUpdate.addInput(v);
+      bcUpdate.addOutput(localVars[alocal]);
+    }
+
+    case Const.ISTORE_0:
+    case Const.ISTORE_1:
+    case Const.ISTORE_2:
+    case Const.ISTORE_3: {
+      int ilocal = opcode - Const.ISTORE_0;
+      Var v = operandStack.pop();
+      bcUpdate.addInput(v);
+      bcUpdate.addOutput(localVars[ilocal]);
+    }
+
+    case Const.FSTORE_0:
+    case Const.FSTORE_1:
+    case Const.FSTORE_2:
+    case Const.FSTORE_3: {
+      int flocal = opcode - Const.FSTORE_0;
+      Var v = operandStack.pop();
+      bcUpdate.addInput(v);
+      bcUpdate.addOutput(localVars[flocal]);
+    }
+
+    case Const.LSTORE_0:
+    case Const.LSTORE_1:
+    case Const.LSTORE_2:
+    case Const.LSTORE_3: {
+      int llocal = opcode - Const.ASTORE_0;
+      Var v = operandStack.pop();
+      bcUpdate.addInput(v);
+      bcUpdate.addOutput(localVars[llocal]);
+    }
+
     case Const.ASTORE:
     case Const.FSTORE:
     case Const.DSTORE:
@@ -286,7 +373,7 @@ public class BytecodeAnalyzer {
       bytes.readUnsignedByte(); // Thrid byte is a reserved space
       bytes.readUnsignedByte(); // Last byte is a reserved space
       constantPool.constantToString(index, Const.CONSTANT_InvokeDynamic).replace(" ", "");
-
+      unhandledBytecode(opcode);
       break;
     /*
      * Operands are references to items in constant pool
@@ -305,18 +392,34 @@ public class BytecodeAnalyzer {
     /*
      * Array of references.
      */
-    case Const.ANEWARRAY:
-      index = bytes.readUnsignedShort();
-      Utility.compactClassName(constantPool.getConstantString(index, Const.CONSTANT_Class), false);
-      break;
+    case Const.ANEWARRAY: {
+        index = bytes.readUnsignedShort();
+        String klassSig = constantPool.getConstantString(index, Const.CONSTANT_Class);
+        Type fieldType = classCollection.javaTypeForSignature(klassSig);
+        Var count1 = operandStack.pop();
+        bcUpdate.addInput(count1);
+        IntermediateVar arr1 = new IntermediateVar(new JavaArrayType(fieldType, 1), bci);
+        operandStack.push(arr1);
+        bcUpdate.addOutput(arr1);
+        break;
+      }
     /*
      * Multidimensional array of references.
      */
-    case Const.MULTIANEWARRAY:
+    case Const.MULTIANEWARRAY: {
       index = bytes.readUnsignedShort();
       final int dimensions = bytes.readUnsignedByte();
-      Utility.compactClassName(constantPool.getConstantString(index, Const.CONSTANT_Class), false);
+      Type elemType = classCollection.javaTypeForSignature(constantPool.getConstantString(index, Const.CONSTANT_Class));
+      IntermediateVar arr1 = new IntermediateVar(new JavaArrayType(elemType, dimensions), bci);
+      for (int i = 0; i < dimensions; i++) {
+        Var c = operandStack.pop();
+        bcUpdate.addInput(c);
+      }
+      bcUpdate.addOutput(arr1);
+      operandStack.push(arr1);
+      // Utility.compactClassName(, false);
       break;
+    }
     /*
      * Increment local variable.
      */
@@ -329,8 +432,10 @@ public class BytecodeAnalyzer {
           vindex = bytes.readUnsignedByte();
           constant = bytes.readByte();
       }
+      unhandledBytecode(opcode);
       break;
     default:
+        unhandledBytecode(opcode);
         if (Const.getNoOfOperands(opcode) > 0) {
             for (int i = 0; i < Const.getOperandTypeCount(opcode); i++) {
                 switch (Const.getOperandType(opcode, i)) {
@@ -361,6 +466,7 @@ public class BytecodeAnalyzer {
     for (LocalVariable v : code.getLocalVariableTable()) {
       localVars[v.getIndex()] = new LocalVar(classCollection.javaTypeForSignature(v.getSignature()), v.getIndex());
     }
+    System.out.println(code.toString(true));
     try (ByteSequence stream = new ByteSequence(code.getCode())) {
         for (int bci = 0; bci < stream.available(); bci++) { //stream.available() > 0
           // if (i == event.bci_) 

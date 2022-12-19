@@ -28,8 +28,89 @@ public class BytecodeAnalyzer {
     System.out.println("Not handling " + Const.getOpcodeName(opcode)); 
   }
 
+  public static ConstantVal getOrSetConstantVal(int constIndex, Constant c, JavaClassCollection classCollection, ConstantVal[] constantVals) {
+    if (constantVals[constIndex] != null)
+      return constantVals[constIndex];
+
+    Type type = null;
+    int i;
+    final byte tag = c.getTag();
+    switch (tag) {
+    // case Const.CONSTANT_Class:
+    //     i = ((ConstantClass) c).getNameIndex();
+    //     c = getConstantUtf8(i);
+    //     str = Utility.compactClassName(((ConstantUtf8) c).getBytes(), false);
+    //     break;
+    case Const.CONSTANT_String:
+      // i = ((ConstantString) c).getStringIndex();
+      // c = getConstantUtf8(i);
+      // str = "\"" + escape(((ConstantUtf8) c).getBytes()) + "\"";
+      type = Type.STRING;
+      break;
+    case Const.CONSTANT_Utf8:
+      type = new JavaArrayType(Type.BYTE, 1);
+      break;
+    case Const.CONSTANT_Double:
+      type = Type.DOUBLE;
+      break;
+    case Const.CONSTANT_Float:
+      type = Type.FLOAT;
+      break;
+    case Const.CONSTANT_Long:
+      type = Type.LONG;
+      break;
+    case Const.CONSTANT_Integer:
+      type = Type.INT;
+      break;
+    // case Const.CONSTANT_NameAndType:
+    //     str = constantToString(((ConstantNameAndType) c).getNameIndex(), Const.CONSTANT_Utf8) + " "
+    //             + constantToString(((ConstantNameAndType) c).getSignatureIndex(), Const.CONSTANT_Utf8);
+    //     break;
+    // case Const.CONSTANT_InterfaceMethodref:
+    // case Const.CONSTANT_Methodref:
+    // case Const.CONSTANT_Fieldref:
+    //     str = constantToString(((ConstantCP) c).getClassIndex(), Const.CONSTANT_Class) + "."
+    //             + constantToString(((ConstantCP) c).getNameAndTypeIndex(), Const.CONSTANT_NameAndType);
+    //     break;
+    // case Const.CONSTANT_MethodHandle:
+    //     // Note that the ReferenceIndex may point to a Fieldref, Methodref or
+    //     // InterfaceMethodref - so we need to peek ahead to get the actual type.
+    //     final ConstantMethodHandle cmh = (ConstantMethodHandle) c;
+    //     str = Const.getMethodHandleName(cmh.getReferenceKind()) + " "
+    //             + constantToString(cmh.getReferenceIndex(), getConstant(cmh.getReferenceIndex()).getTag());
+    //     break;
+    // case Const.CONSTANT_MethodType:
+    //     final ConstantMethodType cmt = (ConstantMethodType) c;
+    //     str = constantToString(cmt.getDescriptorIndex(), Const.CONSTANT_Utf8);
+    //     break;
+    // case Const.CONSTANT_InvokeDynamic:
+    //     final ConstantInvokeDynamic cid = (ConstantInvokeDynamic) c;
+    //     str = cid.getBootstrapMethodAttrIndex() + ":" + constantToString(cid.getNameAndTypeIndex(), Const.CONSTANT_NameAndType);
+    //     break;
+    // case Const.CONSTANT_Dynamic:
+    //     final ConstantDynamic cd = (ConstantDynamic) c;
+    //     str = cd.getBootstrapMethodAttrIndex() + ":" + constantToString(cd.getNameAndTypeIndex(), Const.CONSTANT_NameAndType);
+    //     break;
+    // case Const.CONSTANT_Module:
+    //     i = ((ConstantModule) c).getNameIndex();
+    //     c = getConstantUtf8(i);
+    //     str = Utility.compactClassName(((ConstantUtf8) c).getBytes(), false);
+    //     break;
+    // case Const.CONSTANT_Package:
+    //     i = ((ConstantPackage) c).getNameIndex();
+    //     c = getConstantUtf8(i);
+    //     str = Utility.compactClassName(((ConstantUtf8) c).getBytes(), false);
+    //     break;
+    default: // Never reached
+        System.out.println("Unknown constant type " + tag);
+    }
+    ConstantVal cval = new ConstantVal(type, c);
+    constantVals[constIndex] = cval;
+    return cval;
+  }
+
   public static BytecodeUpdate createThreeAddressCode(final ByteSequence bytes, int bci, final ConstantPool constantPool, 
-                                                      Stack<Var> operandStack, LocalVar[] localVars, JavaClassCollection classCollection) throws IOException {
+                                                      Stack<Var> operandStack, LocalVar[] localVars, ConstantVal[] constantVals, JavaClassCollection classCollection) throws IOException {
     final short opcode = (short) bytes.readUnsignedByte();
     BytecodeUpdate bcUpdate = new BytecodeUpdate(bci, opcode);
     int defaultOffset = 0;
@@ -128,6 +209,10 @@ public class BytecodeAnalyzer {
       bytes.readInt();
       break;
     
+    case Const.ACONST_NULL: {
+      operandStack.push(new IntermediateVar(null, bci));
+    }
+      
     case Const.ALOAD_0:
     case Const.ALOAD_1:
     case Const.ALOAD_2:
@@ -352,12 +437,12 @@ public class BytecodeAnalyzer {
         final int nargs = bytes.readUnsignedByte(); // historical, redundant
         methodStr = constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref).replace(" ", "");
         bytes.readUnsignedByte();
-      } else {
-        unhandledBytecode(opcode);
+      } else if (opcode == Const.INVOKESTATIC) {
+        methodStr = constantPool.constantToString(index, constantPool.getConstant(index).getTag()).replace(" ", "");
       }
       JavaMethod method = classCollection.getMethod(methodStr);
       for (Type t : method.getMethod().getArgumentTypes()) {
-        bcUpdate.addInput(operandStack.pop());
+        bcUpdate.addInput(operandStack.pop());  
       }
       if (method.getMethod().getReturnType() != Type.VOID) {
         //TODO: 
@@ -379,16 +464,22 @@ public class BytecodeAnalyzer {
      * Operands are references to items in constant pool
      */
     case Const.LDC_W:
-    case Const.LDC2_W:
+    case Const.LDC2_W: {
       index = bytes.readUnsignedShort();
-      constantPool.constantToString(index, constantPool.getConstant(index).getTag());
+      Constant c = constantPool.getConstant(index);
+      System.out.println("385: " + c.toString());
+      String s = constantPool.constantToString(index, constantPool.getConstant(index).getTag());
+      System.out.println("391: " + s);
       unhandledBytecode(opcode);
       break;
-    case Const.LDC:
+    }
+    case Const.LDC: {
       index = bytes.readUnsignedByte();
-      constantPool.constantToString(index, constantPool.getConstant(index).getTag());
-      unhandledBytecode(opcode);
+      Constant con = constantPool.getConstant(index);
+      ConstantVal c = getOrSetConstantVal(index, con, classCollection, constantVals);
+      operandStack.push(c);
       break;
+    }
     /*
      * Array of references.
      */
@@ -418,6 +509,15 @@ public class BytecodeAnalyzer {
       bcUpdate.addOutput(arr1);
       operandStack.push(arr1);
       // Utility.compactClassName(, false);
+      break;
+    }
+
+    case Const.BIPUSH: {
+      byte c = bytes.readByte();
+      operandStack.push(new ConstantVal(Type.INT, new ConstantInteger(c)));
+    }
+    case Const.DUP: {
+      operandStack.push(operandStack.peek());
       break;
     }
     /*
@@ -466,13 +566,18 @@ public class BytecodeAnalyzer {
     for (LocalVariable v : code.getLocalVariableTable()) {
       localVars[v.getIndex()] = new LocalVar(classCollection.javaTypeForSignature(v.getSignature()), v.getIndex());
     }
+    ConstantVal[] constants = new ConstantVal[constPool.getLength()];
+    // for (int c = 0; c < constPool.getLength(); c++) {
+    //   Constant co = constPool.getConstant(c);
+    //   System.out.println("484: " + co.toString());
+    // }
     System.out.println(code.toString(true));
     try (ByteSequence stream = new ByteSequence(code.getCode())) {
         for (int bci = 0; bci < stream.available(); bci++) { //stream.available() > 0
           // if (i == event.bci_) 
           //   System.out.println(Const.getOpcodeName(code.getCode()[i]));
           createThreeAddressCode(stream, bci, constPool, 
-                                 operandStack, localVars, classCollection);
+                                 operandStack, localVars, constants, classCollection);
         }
     } catch (final IOException e) {
        e.printStackTrace();

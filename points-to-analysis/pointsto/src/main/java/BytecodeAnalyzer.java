@@ -110,7 +110,7 @@ public class BytecodeAnalyzer {
   }
 
   public static BytecodeUpdate createThreeAddressCode(final ByteSequence bytes, int bci, int byteIndex, final ConstantPool constantPool, 
-                                                      Stack<Var> operandStack, LocalVar[] localVars, ConstantVal[] constantVals, JavaClassCollection classCollection, boolean print) throws IOException {
+                                                      Stack<Var> operandStack, LocalVars localVars, ConstantVal[] constantVals, JavaClassCollection classCollection, boolean print) throws IOException {
     final short opcode = (short) bytes.readUnsignedByte();
     BytecodeUpdate bcUpdate = new BytecodeUpdate(bci, opcode);
     int defaultOffset = 0;
@@ -231,7 +231,7 @@ public class BytecodeAnalyzer {
        */
     case Const.ARRAYLENGTH: {
       Var a = operandStack.pop();
-      IntermediateVar v = new IntermediateVar(Type.INT, bci);
+      IntermediateVar v = new IntermediateVar(Type.INT, byteIndex);
       operandStack.push(v);
       bcUpdate.addInput(a);
       bcUpdate.addOutput(v);
@@ -239,10 +239,10 @@ public class BytecodeAnalyzer {
     }
 
     case Const.IALOAD: {
-      Var a = operandStack.pop();
       Var i = operandStack.pop();
+      Var a = operandStack.pop();
       assert (a.type instanceof JavaArrayType);
-      IntermediateVar e = new IntermediateVar(Type.INT, bci);
+      IntermediateVar e = new IntermediateVar(Type.INT, byteIndex);
       operandStack.push(e);
       bcUpdate.addInput(a);
       bcUpdate.addInput(i);
@@ -250,10 +250,10 @@ public class BytecodeAnalyzer {
       break;
     }
     case Const.BALOAD: {
-      Var a = operandStack.pop();
       Var i = operandStack.pop();
+      Var a = operandStack.pop();
       assert (a.type instanceof JavaArrayType);
-      IntermediateVar e = new IntermediateVar(Type.BYTE, bci);
+      IntermediateVar e = new IntermediateVar(Type.BYTE, byteIndex);
       operandStack.push(e);
       bcUpdate.addInput(a);
       bcUpdate.addInput(i);
@@ -261,10 +261,10 @@ public class BytecodeAnalyzer {
       break;
     }
     case Const.CALOAD: {
-      Var a = operandStack.pop();
       Var i = operandStack.pop();
+      Var a = operandStack.pop();
       assert (a.type instanceof JavaArrayType);
-      IntermediateVar e = new IntermediateVar(Type.CHAR, bci);
+      IntermediateVar e = new IntermediateVar(Type.CHAR, byteIndex);
       operandStack.push(e);
       bcUpdate.addInput(a);
       bcUpdate.addInput(i);
@@ -272,10 +272,10 @@ public class BytecodeAnalyzer {
       break;
     }
     case Const.LALOAD: {
-      Var a = operandStack.pop();
       Var i = operandStack.pop();
+      Var a = operandStack.pop();
       assert (a.type instanceof JavaArrayType);
-      IntermediateVar e = new IntermediateVar(Type.LONG, bci);
+      IntermediateVar e = new IntermediateVar(Type.LONG, byteIndex);
       operandStack.push(e);
       bcUpdate.addInput(a);
       bcUpdate.addInput(i);
@@ -284,10 +284,11 @@ public class BytecodeAnalyzer {
     }
 
     case Const.AALOAD: {
-      Var a = operandStack.pop();
       Var i = operandStack.pop();
+      Var a = operandStack.pop();
       assert (a.type instanceof JavaArrayType);
-      IntermediateVar e = new IntermediateVar(((JavaArrayType)a.type).getBasicType(), bci);
+      // System.out.println(a.type);
+      IntermediateVar e = new IntermediateVar(((JavaArrayType)a.type).getBasicType(), byteIndex);
       operandStack.push(e);
       bcUpdate.addInput(a);
       bcUpdate.addInput(i);
@@ -296,9 +297,9 @@ public class BytecodeAnalyzer {
     }
 
     case Const.AASTORE: {
-      Var a = operandStack.pop();
-      Var i = operandStack.pop();
       Var v = operandStack.pop();
+      Var i = operandStack.pop();
+      Var a = operandStack.pop();
       assert (a.type instanceof JavaArrayType);
       bcUpdate.addInput(a);
       bcUpdate.addInput(i);
@@ -360,13 +361,13 @@ public class BytecodeAnalyzer {
     /*
      * Local variable load instructions 
      */
-      
+      //TODO: In load it should always be findLocalVar and should not add
     case Const.ALOAD_0:
     case Const.ALOAD_1:
     case Const.ALOAD_2:
     case Const.ALOAD_3: {
       int alocal = opcode - Const.ALOAD_0;
-      operandStack.push(localVars[alocal]);
+      operandStack.push(localVars.findOrAddLocalVar(JavaObjectType.getInstance(classCollection.getObjectClass()), alocal, byteIndex));
       break;
     }
 
@@ -375,7 +376,7 @@ public class BytecodeAnalyzer {
     case Const.ILOAD_2:
     case Const.ILOAD_3: {
       int ilocal = opcode - Const.ILOAD_0;
-      operandStack.push(localVars[ilocal]);
+      operandStack.push(localVars.findOrAddLocalVar(Type.INT, ilocal, byteIndex));
       break;
     }
 
@@ -384,7 +385,7 @@ public class BytecodeAnalyzer {
     case Const.LLOAD_2:
     case Const.LLOAD_3: {
       int llocal = opcode - Const.LLOAD_0;
-      operandStack.push(localVars[llocal]);
+      operandStack.push(localVars.findOrAddLocalVar(Type.LONG, llocal, byteIndex));
       break;
     }
 
@@ -393,7 +394,7 @@ public class BytecodeAnalyzer {
     case Const.FLOAD_2:
     case Const.FLOAD_3: {
       int flocal = opcode - Const.FLOAD_0;
-      operandStack.push(localVars[flocal]);
+      operandStack.push(localVars.findOrAddLocalVar(Type.FLOAT, flocal, byteIndex));
       break;
     }
 
@@ -402,7 +403,7 @@ public class BytecodeAnalyzer {
     case Const.DLOAD_2:
     case Const.DLOAD_3: {
       int dlocal = opcode - Const.DLOAD_0;
-      operandStack.push(localVars[dlocal]);
+      operandStack.push(localVars.findOrAddLocalVar(Type.DOUBLE, dlocal, byteIndex));
       break;
     }
     /*
@@ -421,7 +422,8 @@ public class BytecodeAnalyzer {
       }
       // bcUpdate.addInput(localVars[vindex]);
       // bcUpdate.addOutput(localVars[vindex]);
-      operandStack.push(localVars[vindex]);
+      Type t = null;
+      operandStack.push(localVars.findOrAddLocalVar(t, vindex, byteIndex));
       break;
     }
     
@@ -436,7 +438,7 @@ public class BytecodeAnalyzer {
       int alocal = opcode - Const.ASTORE_0;
       Var v = operandStack.pop();
       bcUpdate.addInput(v);
-      bcUpdate.addOutput(localVars[alocal]);
+      bcUpdate.addOutput(localVars.findOrAddLocalVar(v.type, alocal, byteIndex));
       break;
     }
 
@@ -446,8 +448,9 @@ public class BytecodeAnalyzer {
     case Const.ISTORE_3: {
       int ilocal = opcode - Const.ISTORE_0;
       Var v = operandStack.pop();
+      assert(v.type == Type.INT);
       bcUpdate.addInput(v);
-      bcUpdate.addOutput(localVars[ilocal]);
+      bcUpdate.addOutput(localVars.findOrAddLocalVar(Type.INT, ilocal, byteIndex));
       break;
     }
 
@@ -457,8 +460,9 @@ public class BytecodeAnalyzer {
     case Const.FSTORE_3: {
       int flocal = opcode - Const.FSTORE_0;
       Var v = operandStack.pop();
+      assert(v.type == Type.FLOAT);
       bcUpdate.addInput(v);
-      bcUpdate.addOutput(localVars[flocal]);
+      bcUpdate.addOutput(localVars.findOrAddLocalVar(Type.FLOAT, flocal, byteIndex));
       break;
     }
 
@@ -466,10 +470,11 @@ public class BytecodeAnalyzer {
     case Const.LSTORE_1:
     case Const.LSTORE_2:
     case Const.LSTORE_3: {
-      int llocal = opcode - Const.ASTORE_0;
+      int llocal = opcode - Const.LSTORE_0;
       Var v = operandStack.pop();
+      assert(v.type == Type.LONG);
       bcUpdate.addInput(v);
-      bcUpdate.addOutput(localVars[llocal]);
+      bcUpdate.addOutput(localVars.findOrAddLocalVar(Type.LONG, llocal, byteIndex));
       break;
     }
 
@@ -485,8 +490,9 @@ public class BytecodeAnalyzer {
         vindex = bytes.readUnsignedByte();
       }
       Var v = operandStack.pop();
+      //TODO: add type checks
       bcUpdate.addInput(v);
-      bcUpdate.addOutput(localVars[vindex]);
+      bcUpdate.addOutput(localVars.findOrAddLocalVar(v.type, vindex, byteIndex));
       break;
     }
 
@@ -529,8 +535,8 @@ public class BytecodeAnalyzer {
     case Const.IREM:
     case Const.ISHR:
     case Const.IDIV: {
-      Var v1 = operandStack.pop();
       Var v2 = operandStack.pop();
+      Var v1 = operandStack.pop();
 
       IntermediateVar r = new IntermediateVar(Type.INT, bci);
       operandStack.push(r);
@@ -550,8 +556,8 @@ public class BytecodeAnalyzer {
     case Const.LREM:
     case Const.LSHR:
     case Const.LDIV: {
-      Var v1 = operandStack.pop();
       Var v2 = operandStack.pop();
+      Var v1 = operandStack.pop();
 
       IntermediateVar r = new IntermediateVar(Type.LONG, bci);
       operandStack.push(r);
@@ -567,8 +573,8 @@ public class BytecodeAnalyzer {
     case Const.FADD:
     case Const.FREM:
     case Const.FDIV: {
-      Var v1 = operandStack.pop();
       Var v2 = operandStack.pop();
+      Var v1 = operandStack.pop();
 
       IntermediateVar r = new IntermediateVar(Type.FLOAT, bci);
       operandStack.push(r);
@@ -584,8 +590,8 @@ public class BytecodeAnalyzer {
     case Const.DADD:
     case Const.DREM:
     case Const.DDIV: {
-      Var v1 = operandStack.pop();
       Var v2 = operandStack.pop();
+      Var v1 = operandStack.pop();
 
       IntermediateVar r = new IntermediateVar(Type.DOUBLE, bci);
       operandStack.push(r);
@@ -734,7 +740,7 @@ public class BytecodeAnalyzer {
      */
     case Const.LDC_W:
     case Const.LDC2_W: {
-      index = bytes.readUnsignedByte();
+      index = bytes.readUnsignedShort();
       Constant con = constantPool.getConstant(index);
       ConstantVal c = getOrSetConstantVal(index, con, classCollection, constantVals);
       operandStack.push(c);
@@ -812,8 +818,9 @@ public class BytecodeAnalyzer {
           vindex = bytes.readUnsignedByte();
           constant = bytes.readByte();
       }
-      bcUpdate.addInput(localVars[vindex]);
-      bcUpdate.addOutput(localVars[vindex]);
+      //TODO: Typecheck here that local variable is present and its type is int
+      bcUpdate.addInput(localVars.findOrAddLocalVar(Type.INT, vindex, byteIndex));
+      bcUpdate.addOutput(localVars.findOrAddLocalVar(Type.INT, vindex, byteIndex));
       break;
     }
     
@@ -849,9 +856,14 @@ public class BytecodeAnalyzer {
     Code code = method.getMethod().getCode();
     ConstantPool constPool = code.getConstantPool();
     Stack<Var> operandStack = new Stack<>();
-    LocalVar[] localVars = new LocalVar[code.getLocalVariableTable().getLength()];
+    
+    LocalVars localVars = new LocalVars(code.getMaxLocals());
+    //Following initialization should go inside LocalVars constructor
     for (LocalVariable v : code.getLocalVariableTable()) {
-      localVars[v.getIndex()] = new LocalVar(classCollection.javaTypeForSignature(v.getSignature()), v.getIndex());
+      if (localVars.get(v.getIndex()) == null) {
+        localVars.set(v.getIndex(), new ArrayList<LocalVar>());
+      }
+      localVars.get(v.getIndex()).add(new LocalVar(classCollection.javaTypeForSignature(v.getSignature()), v.getIndex(), v.getStartPC(), v.getLength()));
     }
     ConstantVal[] constants = new ConstantVal[constPool.getLength()];
     // for (int c = 0; c < constPool.getLength(); c++) {
@@ -859,8 +871,9 @@ public class BytecodeAnalyzer {
     //   System.out.println("484: " + co.toString());
     // }
 
-    boolean print = method.getFullName().contains("[org.apache.lucene.store.FSDirectory.getLockID()");
-    if (print) System.out.println(method.getFullName() + " " + code.toString(true));
+    boolean print = method.getFullName().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");
+    if (true) System.out.println(method.getFullName() + " " + code.toString(true));
+    
     try (ByteSequence stream = new ByteSequence(code.getCode())) {
         for (int bci = 0; stream.available() > 0; bci++) { //stream.available() > 0
           // if (i == event.bci_) 

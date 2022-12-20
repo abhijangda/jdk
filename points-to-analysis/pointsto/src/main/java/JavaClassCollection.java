@@ -134,6 +134,9 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
       return basicType;
   }
 
+  public JavaClass getObjectClass() {
+    return getClassForString("java.lang.Object");
+  }
   public JavaClass getClassForString(String classStr) {
     if ((classStr.contains("java.") || classStr.contains("jdk.") || classStr.contains("sun.")) && !containsKey(classStr))
       loadJavaLibraryClass(classStr);

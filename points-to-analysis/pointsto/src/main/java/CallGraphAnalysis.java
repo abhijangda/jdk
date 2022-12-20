@@ -96,7 +96,7 @@ public class CallGraphAnalysis {
 
       System.out.printf("%d: %s\n", heapEventIdx, currEvent.toString());
       HeapEvent nextEvent = mainThreadEvents.get(heapEventIdx);
-      BytecodeAnalyzer.analyzeMethod(nextEvent.method_, null, staticValues, classCollection);
+      BytecodeAnalyzer.analyzeMethod(currEvent.method_, null, staticValues, classCollection);
       // BytecodeAnalyzer.analyzeEvent(nextEvent, null, staticValues);
 
       if (nextEvent.method_.getMethod() == currEvent.method_.getMethod()) {

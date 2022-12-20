@@ -307,6 +307,46 @@ public class BytecodeAnalyzer {
       break;
     }
 
+    case Const.IASTORE: {
+      Var v = operandStack.pop();
+      Var i = operandStack.pop();
+      Var a = operandStack.pop();
+      
+      bcUpdate.addInput(a);
+      bcUpdate.addInput(i);
+      bcUpdate.addInput(v);
+      break;
+    }
+    case Const.BASTORE: {
+      Var v = operandStack.pop();
+      Var i = operandStack.pop();
+      Var a = operandStack.pop();
+      
+      bcUpdate.addInput(a);
+      bcUpdate.addInput(i);
+      bcUpdate.addInput(v);
+      break;
+    }
+    case Const.CASTORE: {
+      Var v = operandStack.pop();
+      Var i = operandStack.pop();
+      Var a = operandStack.pop();
+      
+      bcUpdate.addInput(a);
+      bcUpdate.addInput(i);
+      bcUpdate.addInput(v);
+      break;
+    }
+    case Const.LASTORE: {
+      Var v = operandStack.pop();
+      Var i = operandStack.pop();
+      Var a = operandStack.pop();
+      
+      bcUpdate.addInput(a);
+      bcUpdate.addInput(i);
+      bcUpdate.addInput(v);
+      break;
+    }
     case Const.POP: {
       operandStack.pop();
       break;
@@ -534,7 +574,8 @@ public class BytecodeAnalyzer {
     case Const.IOR:
     case Const.IREM:
     case Const.ISHR:
-    case Const.IDIV: {
+    case Const.IDIV: 
+    case Const.ISHL: {
       Var v2 = operandStack.pop();
       Var v1 = operandStack.pop();
 
@@ -555,7 +596,8 @@ public class BytecodeAnalyzer {
     case Const.LOR:
     case Const.LREM:
     case Const.LSHR:
-    case Const.LDIV: {
+    case Const.LDIV: 
+    case Const.LCMP: {
       Var v2 = operandStack.pop();
       Var v1 = operandStack.pop();
 
@@ -803,6 +845,31 @@ public class BytecodeAnalyzer {
       operandStack.push(operandStack.peek());
       break;
     }
+    case Const.DUP_X1: {
+      Var v1 = operandStack.pop();
+      Var v2 = operandStack.pop();
+      operandStack.push(v1);
+      operandStack.push(v2);
+      operandStack.push(v1);
+      bcUpdate.addInput(v1);
+      bcUpdate.addInput(v2);
+      bcUpdate.addOutput(v1);
+      break;
+    }
+    case Const.DUP_X2: {
+      Var v1 = operandStack.pop();
+      Var v2 = operandStack.pop();
+      Var v3 = operandStack.pop();
+      operandStack.push(v1);
+      operandStack.push(v3);
+      operandStack.push(v2);
+      operandStack.push(v1);
+      bcUpdate.addInput(v1);
+      bcUpdate.addInput(v2);
+      bcUpdate.addInput(v3);
+      bcUpdate.addOutput(v1);
+      break;
+    }
 
     case Const.ATHROW: {
       Var v = operandStack.pop();
@@ -810,17 +877,43 @@ public class BytecodeAnalyzer {
       break;
     }
 
-    case Const.I2L: {
-      Var v = operandStack.pop();
-      IntermediateVar r = new IntermediateVar(Type.LONG, bci);
-      operandStack.push(r);
-      break;
-    }
     /**
      * Conversion instructions
      */
+    case Const.I2L: {
+      Var v = operandStack.pop();
+      IntermediateVar r = new IntermediateVar(Type.LONG, bci);
+      bcUpdate.addInput(v);
+      bcUpdate.addOutput(r);
+      operandStack.push(r);
+      break;
+    }
 
+    case Const.L2I: {
+      Var v = operandStack.pop();
+      IntermediateVar r = new IntermediateVar(Type.INT, bci);
+      bcUpdate.addInput(v);
+      bcUpdate.addOutput(r);
+      operandStack.push(r);
+      break;
+    }
 
+    case Const.I2D: {
+      Var v = operandStack.pop();
+      IntermediateVar r = new IntermediateVar(Type.DOUBLE, bci);
+      bcUpdate.addInput(v);
+      bcUpdate.addOutput(r);
+      operandStack.push(r);
+      break;
+    }
+    case Const.D2I: {
+      Var v = operandStack.pop();
+      IntermediateVar r = new IntermediateVar(Type.INT, bci);
+      bcUpdate.addInput(v);
+      bcUpdate.addOutput(r);
+      operandStack.push(r);
+      break;
+    }
     /*
      * Increment local variable.
      */
@@ -873,12 +966,14 @@ public class BytecodeAnalyzer {
     Stack<Var> operandStack = new Stack<>();
     
     LocalVars localVars = new LocalVars(code.getMaxLocals());
-    //Following initialization should go inside LocalVars constructor
-    for (LocalVariable v : code.getLocalVariableTable()) {
-      if (localVars.get(v.getIndex()) == null) {
-        localVars.set(v.getIndex(), new ArrayList<LocalVar>());
+    if (code.getLocalVariableTable() != null) {
+      //Following initialization should go inside LocalVars constructor
+      for (LocalVariable v : code.getLocalVariableTable()) {
+        if (localVars.get(v.getIndex()) == null) {
+          localVars.set(v.getIndex(), new ArrayList<LocalVar>());
+        }
+        localVars.get(v.getIndex()).add(new LocalVar(classCollection.javaTypeForSignature(v.getSignature()), v.getIndex(), v.getStartPC(), v.getLength()));
       }
-      localVars.get(v.getIndex()).add(new LocalVar(classCollection.javaTypeForSignature(v.getSignature()), v.getIndex(), v.getStartPC(), v.getLength()));
     }
     ConstantVal[] constants = new ConstantVal[constPool.getLength()];
     // for (int c = 0; c < constPool.getLength(); c++) {
@@ -886,7 +981,7 @@ public class BytecodeAnalyzer {
     //   System.out.println("484: " + co.toString());
     // }
 
-    boolean print = method.getFullName().contains("org.apache.lucene.util.UnicodeUtil$UTF16Result.<init>");
+    boolean print = method.getFullName().contains("org.apache.lucene.queryParser.QueryParser.jj_2_1");
     if (print) System.out.println(method.getFullName() + " " + code.toString(true));
     
     try (ByteSequence stream = new ByteSequence(code.getCode())) {

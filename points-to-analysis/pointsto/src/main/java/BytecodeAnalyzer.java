@@ -610,6 +610,7 @@ public class BytecodeAnalyzer {
       JavaClass elemClass = classCollection.getClassForString(elem);
       Var count = operandStack.pop();
       Var arr = new IntermediateVar(new JavaArrayType(elemClass, 1), bci);
+      operandStack.push(arr);
       bcUpdate.addInput(count);
       bcUpdate.addOutput(arr);
       break;
@@ -629,6 +630,9 @@ public class BytecodeAnalyzer {
       Type fieldType = classCollection.javaTypeForSignature(fieldTypeSig);
       
       if (opcode == Const.PUTFIELD  || opcode == Const.PUTSTATIC) {
+        if (print) {
+          System.out.println(operandStack.size());
+        }
         Var value = operandStack.pop();
         if (opcode == Const.PUTFIELD) {
           Var obj = operandStack.pop();
@@ -721,8 +725,8 @@ public class BytecodeAnalyzer {
       }
       if (method.getMethod().getReturnType() != Type.VOID) {
         //TODO: 
-        //method.getMethod().getReturnType()
-        IntermediateVar ret = new IntermediateVar(null, bci);
+        //.getReturnType()
+        IntermediateVar ret = new IntermediateVar(classCollection.javaTypeForSignature(method.getMethod().getReturnType().getSignature()), bci);
         operandStack.push(ret);
         bcUpdate.addOutput(ret);
       }
@@ -806,6 +810,17 @@ public class BytecodeAnalyzer {
       break;
     }
 
+    case Const.I2L: {
+      Var v = operandStack.pop();
+      IntermediateVar r = new IntermediateVar(Type.LONG, bci);
+      operandStack.push(r);
+      break;
+    }
+    /**
+     * Conversion instructions
+     */
+
+
     /*
      * Increment local variable.
      */
@@ -871,8 +886,8 @@ public class BytecodeAnalyzer {
     //   System.out.println("484: " + co.toString());
     // }
 
-    boolean print = method.getFullName().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");
-    if (true) System.out.println(method.getFullName() + " " + code.toString(true));
+    boolean print = method.getFullName().contains("org.apache.lucene.util.UnicodeUtil$UTF16Result.<init>");
+    if (print) System.out.println(method.getFullName() + " " + code.toString(true));
     
     try (ByteSequence stream = new ByteSequence(code.getCode())) {
         for (int bci = 0; stream.available() > 0; bci++) { //stream.available() > 0

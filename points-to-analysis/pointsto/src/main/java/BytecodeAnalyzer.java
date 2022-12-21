@@ -978,8 +978,7 @@ public class BytecodeAnalyzer {
       this.codelen = codelen;
     }
   }
-  public static BranchInfo isBranch(final ByteSequence bytes, int byteIndex, boolean print) throws IOException {
-    final short opcode = (short) bytes.readUnsignedByte();
+  public static BranchInfo isBranch(final ByteSequence bytes, int opcode, int byteIndex, boolean print) throws IOException {
     int low;
     int high;
     int npairs;
@@ -1178,25 +1177,38 @@ public class BytecodeAnalyzer {
     return size;
   }
 
+  public static boolean isReturn(int opcode) {
+    return opcode == Const.RET || opcode == Const.RETURN || 
+           opcode == Const.ARETURN || opcode == Const.IRETURN ||
+           opcode == Const.FRETURN || opcode == Const.DRETURN ||
+           opcode == Const.LRETURN;
+  }
+
   public static void createBasicBlocks(byte[] code, int start, int end) {
     ArrayList<BranchInfo> branches = new ArrayList<>();
-    //Get all the branches
+    int[] opcodeStart = new int[code.length];
+    //Get all the branches. Also get a map of code position to start of opcode
     try (ByteSequence stream = new ByteSequence(code)) {
       int idx = 0;
       for (; idx < start && stream.available() > 0; idx++)
         stream.readByte();
 
       for (; idx < end && stream.available() > 0; idx++) {
-        BranchInfo brInfo = isBranch(stream, stream.getIndex(), wide);
-        if (brInfo != null)
+        int startOfOpcode = stream.getIndex();
+        final short opcode = (short)stream.readUnsignedByte();
+        BranchInfo brInfo = isBranch(stream, opcode, startOfOpcode, wide);
+        if (brInfo != null) {
           branches.add(brInfo);
+          System.out.println("1202: " + brInfo.pc + " " + brInfo.codelen + " " + brInfo.target);
+        }
+        for (int i = startOfOpcode; i < stream.getIndex(); i++) {
+          opcodeStart[i] = startOfOpcode;
+        }
       }
     } catch(Exception e) {
       e.printStackTrace();
     }
 
-    HashMap<Integer, BasicBlock> startBciToBB = new HashMap<>();
-    HashMap<Integer, BasicBlock> endBciToBB = new HashMap<>();
     ArrayList<Integer> leaders = new ArrayList<>();
     //Add branches and their targets as leaders and then sort them
     for (BranchInfo br : branches) {
@@ -1205,30 +1217,22 @@ public class BytecodeAnalyzer {
     }
     leaders.sort(null);
 
-    int startBci = 0;
+    //Create Basic blocks
     ArrayList<BasicBlock> basicBlocks = new ArrayList<>();
-    BasicBlock currBasicBlock = null;
-    for (int i = 0; i < leaders.size(); i++) {
-      currBasicBlock = new BasicBlock(i, startBci);
-      basicBlocks.add(currBasicBlock);
-      int leader = leaders.get(i);
-      int endBci = leader;
-      System.out.println("leader " + leader + " #"+i);
-
-      currBasicBlock.setEnd(endBci);
-
-      System.out.printf("BB (%d): [%d, %d]\n", i, startBci, endBci);
-      startBci = endBci;
-    }
-
-    if (startBci < end) {
-      System.out.printf("BB (%d): [%d, %d]\n", leaders.size(), startBci, end);
-      BasicBlock last = new BasicBlock(leaders.size(), startBci);
-      basicBlocks.add(last);
-      last.setEnd(end);
-    }
-
     {
+      int startBci = 0;
+      BasicBlock currBasicBlock = null;
+      for (int i = 0; i < leaders.size(); i++) {
+        currBasicBlock = new BasicBlock(i, startBci, leaders.get(i));
+        startBci = leaders.get(i);
+        basicBlocks.add(currBasicBlock);
+      }
+
+      if (startBci < end) {
+        BasicBlock last = new BasicBlock(leaders.size(), startBci, end);
+        basicBlocks.add(last);
+      }
+
       //Remove empty basic blocks
       ArrayList<BasicBlock> nonEmptyBlocks = new ArrayList<>(basicBlocks.size());
       for (int bi = 0; bi < basicBlocks.size(); bi++) {
@@ -1241,59 +1245,65 @@ public class BytecodeAnalyzer {
     }
 
     //Check that basicBlocks covers full code
-    int prevEnd = 0;
-    for (BasicBlock b : basicBlocks) {
-      if (b.start != prevEnd) {
-        // assert false: "err";
-        System.out.println("err");
-        System.exit(0);
+    {
+      int prevEnd = 0;
+      for (BasicBlock b : basicBlocks) {
+        if (b.start != prevEnd) {
+          // assert false: "err";
+          System.out.println("err");
+          System.exit(0);
+        }
+
+        prevEnd = b.end;
+      }
+    }
+
+    HashMap<Integer, BasicBlock> startBciToBB = new HashMap<>();
+    HashMap<Integer, BasicBlock> endBciToBB = new HashMap<>();
+    {
+      //Create connections between basic blocks
+      for (BasicBlock b : basicBlocks) {
+        startBciToBB.put(b.start, b);
+        endBciToBB.put(b.end, b);
+        System.out.printf(b.toString());
       }
 
-      prevEnd = b.getEnd();
-    }
+      for (BranchInfo br : branches) {
+        BasicBlock parent = endBciToBB.get(br.pc + br.codelen);
+        BasicBlock child = startBciToBB.get(br.target);
+        
+        parent.addOut(child);
+        child.addIn(parent);
 
-    for (BasicBlock b : basicBlocks) {
-      startBciToBB.put(b.start, b);
-      endBciToBB.put(b.getEnd(), b);
-      System.out.printf("1512: BB (%d): [%d, %d] size %d\n", b.number, b.start, b.getEnd(), b.size());
-    }
-
-    for (BranchInfo br : branches) {
-      BasicBlock parent = endBciToBB.get(br.pc + br.codelen);
-      BasicBlock child = startBciToBB.get(br.target);
-      
-      System.out.println("1519: " + (br.pc + br.codelen) + " " + br.target);
-      parent.addOut(child);
-      child.addIn(parent);
-
-      if (br.isConditional) {
-        BasicBlock child2 = startBciToBB.get(br.pc + br.codelen);
-        parent.addOut(child2);
-        child2.addIn(parent);
-        System.out.println("1527: " + child.getEnd());
-        if (child.getEnd() < end) {
-          BasicBlock continuation = startBciToBB.get(child.getEnd());
-          child.addOut(continuation);
-          continuation.addIn(child);
+        if (br.isConditional) {
+          BasicBlock child2 = startBciToBB.get(br.pc + br.codelen);
+          parent.addOut(child2);
+          child2.addIn(parent);
+          if (child2.end < end && !isReturn(code[opcodeStart[child2.end - 1]])) {
+            BasicBlock continuation = startBciToBB.get(child2.end);
+            child2.addOut(continuation);
+            continuation.addIn(child2);
+          }
         }
       }
     }
 
+    //Print basic block connections
     for (BasicBlock bb : startBciToBB.values()) {
       System.out.print(bb.number + " -> ");
       for (BasicBlock out : bb.getOuts()) {
         System.out.print(out.number + ", ");
       }
-
       System.out.println("");
     }
 
+    //Check that there is a basic block starting at the target of a branch and
+    //there is an edge from basic block of branch to the target
     for (BasicBlock b : basicBlocks) {
-      System.out.printf("1546: BB (%d): [%d, %d]\n", b.number, b.start, b.getEnd());
+      System.out.printf("1546: %s\n", b.toString());
       //TODO: Fix for wide jumps
-
       if (true) {
-        for (int index = b.start; index < b.getEnd(); index++) {
+        for (int index = b.start; index < b.end; index++) {
           int opcode = code[index] & 0xff;
           int target = -1;
           boolean isbranch = false;
@@ -1301,25 +1311,32 @@ public class BytecodeAnalyzer {
           switch(opcode) {
             case Const.GOTO:
             case Const.JSR: {
-                ByteBuffer bb = ByteBuffer.allocate(2);
-                bb.order(ByteOrder.BIG_ENDIAN);
-                bb.put(code[index + 1]);
-                bb.put(code[index + 2]);
-                target = bb.getShort(0);
-                target = index + target;
-                index += 2;
-                conditional = false;
-                isbranch = true;
-                break;
+              ByteBuffer bb = ByteBuffer.allocate(2);
+              bb.order(ByteOrder.BIG_ENDIAN);
+              bb.put(code[index + 1]);
+              bb.put(code[index + 2]);
+              target = bb.getShort(0);
+              target = index + target;
+              index += 2;
+              conditional = false;
+              isbranch = true;
+              break;
             }
             case Const.GOTO_W:
-            case Const.JSR_W:
-                target = ((code[index + 1] & 0xff) << 24) | ((code[index + 2] & 0xff) << 16) | ((code[index + 3] & 0xff) << 8) | (code[index + 4] & 0xff);
-                target = index + target;
-                index += 4;
-                conditional = false;
-                isbranch = true;
-                break;
+            case Const.JSR_W: {
+              ByteBuffer bb = ByteBuffer.allocate(4);
+              bb.order(ByteOrder.BIG_ENDIAN);
+              bb.put(code[index + 1]);
+              bb.put(code[index + 2]);
+              bb.put(code[index + 3]);
+              bb.put(code[index + 4]);
+              target = bb.getInt(0);
+              target = index + target;
+              index += 4;
+              conditional = false;
+              isbranch = true;
+              break;
+            }
             case Const.IFEQ:
             case Const.IFGE:
             case Const.IFGT:
@@ -1352,23 +1369,7 @@ public class BytecodeAnalyzer {
               */
             default:
               //Not a conditional
-              if (Const.getNoOfOperands(opcode) > 0) {
-                for (int i = 0; i < Const.getOperandTypeCount(opcode); i++) {
-                    switch (Const.getOperandType(opcode, i)) {
-                    case Const.T_BYTE:
-                        index += 1;
-                        break;
-                    case Const.T_SHORT:
-                        index += 2;
-                        break;
-                    case Const.T_INT:
-                        index += 4;
-                        break;
-                    default: // Never reached
-                        throw new IllegalStateException("Unreachable default case reached!");
-                    }
-                }
-              }
+              index += getOpcodeOperandSize(opcode);
               target = -1;
               break;
           }
@@ -1386,7 +1387,9 @@ public class BytecodeAnalyzer {
                   System.out.println("found");
                   break;
                 }
+                System.out.println("1388: " + out.toString());
               }
+
               if (!found) {
                 System.out.println("1615: err not found " + target);
                 System.exit(0);
@@ -1402,8 +1405,10 @@ public class BytecodeAnalyzer {
     Code code = method.getMethod().getCode();
 
     //Create the basic block graph
-    System.out.println(method.getFullName() + " " + code.toString(true));
-    createBasicBlocks(code.getCode(), 0, code.getCode().length);
+    // if (method.getFullName().contains("org.apache.lucene.index.TermBuffer.toTerm()")) {
+      System.out.println(method.getFullName() + " " + code.toString(true));
+      createBasicBlocks(code.getCode(), 0, code.getCode().length);
+    // }
     // ConstantPool constPool = code.getConstantPool();
     // Stack<Var> operandStack = new Stack<>();
     

@@ -1548,78 +1548,109 @@ public class BytecodeAnalyzer {
     for (BasicBlock b : basicBlocks) {
       System.out.printf("1546: BB (%d): [%d, %d]\n", b.number, b.start, b.getEnd());
       //TODO: Fix for wide jumps
-      int index = b.getEnd() - 3;
-      int opcode = code[index] & 0xff;
-      int target = -1;
-      boolean conditional = false;
-      switch(opcode) {
-        case Const.GOTO:
-        case Const.JSR: {
-            ByteBuffer bb = ByteBuffer.allocate(2);
-            bb.order(ByteOrder.BIG_ENDIAN);
-            bb.put(code[index + 1]);
-            bb.put(code[index + 2]);
-            target = bb.getShort(0);
-            target = index + target;
-            conditional = false;
-            break;
-        }
-        case Const.GOTO_W:
-        case Const.JSR_W:
-            target = ((code[index + 1] & 0xff) << 24) | ((code[index + 2] & 0xff) << 16) | ((code[index + 3] & 0xff) << 8) | (code[index + 4] & 0xff);
-            target = index + target;
-            conditional = false;
-            break;
-        case Const.IFEQ:
-        case Const.IFGE:
-        case Const.IFGT:
-        case Const.IFLE:
-        case Const.IFLT:
-        case Const.IFNE:
-        case Const.IFNONNULL:
-        case Const.IFNULL:
-        case Const.IF_ACMPEQ:
-        case Const.IF_ACMPNE:
-        case Const.IF_ICMPEQ:
-        case Const.IF_ICMPGE:
-        case Const.IF_ICMPGT:
-        case Const.IF_ICMPLE:
-        case Const.IF_ICMPLT:
-        case Const.IF_ICMPNE: {
-          ByteBuffer bb = ByteBuffer.allocate(2);
-          bb.order(ByteOrder.BIG_ENDIAN);
-          bb.put(code[index + 1]);
-          bb.put(code[index + 2]);
-          target = bb.getShort(0);
-            target = index + target;
-          conditional = true;
-          break;
-        }
-        /*
-          * 32-bit wide jumps
-          */
-        default:
-          //Not a conditional
-          target = -1;
-          break;
-      }
 
-      if (target >= code.length) {
-        System.out.println("1603: err target " + target + " " + Const.getOpcodeName(opcode) + " at " + index);
-        System.exit(0);
-      }
-      if (target != -1) {
-        boolean found = false;
-        for (BasicBlock out : b.getOuts()) {
-          if (out.start == target) {
-            found = true;
-            break;
+      if (true) {
+        for (int index = b.start; index < b.getEnd(); index++) {
+          int opcode = code[index] & 0xff;
+          int target = -1;
+          boolean isbranch = false;
+          boolean conditional = false;
+          switch(opcode) {
+            case Const.GOTO:
+            case Const.JSR: {
+                ByteBuffer bb = ByteBuffer.allocate(2);
+                bb.order(ByteOrder.BIG_ENDIAN);
+                bb.put(code[index + 1]);
+                bb.put(code[index + 2]);
+                target = bb.getShort(0);
+                target = index + target;
+                index += 2;
+                conditional = false;
+                isbranch = true;
+                break;
+            }
+            case Const.GOTO_W:
+            case Const.JSR_W:
+                target = ((code[index + 1] & 0xff) << 24) | ((code[index + 2] & 0xff) << 16) | ((code[index + 3] & 0xff) << 8) | (code[index + 4] & 0xff);
+                target = index + target;
+                index += 4;
+                conditional = false;
+                isbranch = true;
+                break;
+            case Const.IFEQ:
+            case Const.IFGE:
+            case Const.IFGT:
+            case Const.IFLE:
+            case Const.IFLT:
+            case Const.IFNE:
+            case Const.IFNONNULL:
+            case Const.IFNULL:
+            case Const.IF_ACMPEQ:
+            case Const.IF_ACMPNE:
+            case Const.IF_ICMPEQ:
+            case Const.IF_ICMPGE:
+            case Const.IF_ICMPGT:
+            case Const.IF_ICMPLE:
+            case Const.IF_ICMPLT:
+            case Const.IF_ICMPNE: {
+              ByteBuffer bb = ByteBuffer.allocate(2);
+              bb.order(ByteOrder.BIG_ENDIAN);
+              bb.put(code[index + 1]);
+              bb.put(code[index + 2]);
+              target = bb.getShort(0);
+              target = index + target;
+              index += 2;
+              conditional = true;
+              isbranch = true;
+              break;
+            }
+            /*
+              * 32-bit wide jumps
+              */
+            default:
+              //Not a conditional
+              if (Const.getNoOfOperands(opcode) > 0) {
+                for (int i = 0; i < Const.getOperandTypeCount(opcode); i++) {
+                    switch (Const.getOperandType(opcode, i)) {
+                    case Const.T_BYTE:
+                        index += 1;
+                        break;
+                    case Const.T_SHORT:
+                        index += 2;
+                        break;
+                    case Const.T_INT:
+                        index += 4;
+                        break;
+                    default: // Never reached
+                        throw new IllegalStateException("Unreachable default case reached!");
+                    }
+                }
+              }
+              target = -1;
+              break;
+          }
+          // System.out.println(Const.getOpcodeName(opcode));
+          if (isbranch) {
+            if (target >= code.length) {
+              System.out.println("1603: err target " + target + " " + Const.getOpcodeName(opcode) + " at " + index);
+              System.exit(0);
+            }
+            if (target != -1) {
+              boolean found = false;
+              for (BasicBlock out : b.getOuts()) {
+                if (out.start == target) {
+                  found = true;
+                  System.out.println("found");
+                  break;
+                }
+              }
+              if (!found) {
+                System.out.println("1615: err not found " + target);
+                System.exit(0);
+              }     
+            }
           }
         }
-        if (!found) {
-          System.out.println("1615: err not found " + target);
-          System.exit(0);
-        }     
       }
     }
   }

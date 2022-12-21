@@ -1050,9 +1050,6 @@ public class BytecodeAnalyzer {
     }
     case Const.JSR: {
       int t = bytes.getIndex() - 1 + bytes.readShort();
-      // ConstantVal v = new ConstantVal(Type.INT, new ConstantInteger(t));
-      // operandStack.push(v);
-      // bcUpdate.addOutput(v);
       return new BranchInfo(byteIndex, 1 + 2, t, false);
     }
     case Const.IFEQ:
@@ -1078,70 +1075,6 @@ public class BytecodeAnalyzer {
     case Const.GOTO_W:
     case Const.JSR_W:
       return new BranchInfo(byteIndex, 1 + 4, bytes.getIndex() - 1 + bytes.readInt(), false);
-      /**
-       * Array operations
-       */
-    case Const.ARRAYLENGTH: {
-      break;
-    }
-
-    case Const.IALOAD:
-    case Const.BALOAD:
-    case Const.CALOAD:
-    case Const.LALOAD:
-    case Const.AALOAD:
-    case Const.AASTORE:
-    case Const.IASTORE:
-    case Const.BASTORE:
-    case Const.CASTORE:
-    case Const.LASTORE:
-    case Const.POP:
-      break;
-    
-    /*
-     * Const push instructions 
-     */
-    case Const.ACONST_NULL:
-    case Const.ICONST_0:
-    case Const.ICONST_1:
-    case Const.ICONST_2:
-    case Const.ICONST_3:
-    case Const.ICONST_4:
-    case Const.ICONST_5:
-    case Const.ICONST_M1:
-    case Const.LCONST_0:
-    case Const.LCONST_1:
-    case Const.DCONST_0:
-    case Const.DCONST_1:
-    case Const.FCONST_0:
-    case Const.FCONST_1: 
-    case Const.FCONST_2:
-    /*
-     * Local variable load instructions 
-     */
-      //TODO: In load it should always be findLocalVar and should not add
-    case Const.ALOAD_0:
-    case Const.ALOAD_1:
-    case Const.ALOAD_2:
-    case Const.ALOAD_3:
-    case Const.ILOAD_0:
-    case Const.ILOAD_1:
-    case Const.ILOAD_2:
-    case Const.ILOAD_3:
-    case Const.LLOAD_0:
-    case Const.LLOAD_1:
-    case Const.LLOAD_2:
-    case Const.LLOAD_3:
-    case Const.FLOAD_0:
-    case Const.FLOAD_1:
-    case Const.FLOAD_2:
-    case Const.FLOAD_3:
-    case Const.DLOAD_0:
-    case Const.DLOAD_1:
-    case Const.DLOAD_2:
-    case Const.DLOAD_3: {
-      break;
-    }
     /*
      * Index byte references local variable (register)
      */
@@ -1158,28 +1091,6 @@ public class BytecodeAnalyzer {
       }
       break;
     }
-    
-    /*
-     * Local variable store instructions 
-     */
-
-    case Const.ASTORE_0:
-    case Const.ASTORE_1:
-    case Const.ASTORE_2:
-    case Const.ASTORE_3:
-    case Const.ISTORE_0:
-    case Const.ISTORE_1:
-    case Const.ISTORE_2:
-    case Const.ISTORE_3:
-    case Const.FSTORE_0:
-    case Const.FSTORE_1:
-    case Const.FSTORE_2:
-    case Const.FSTORE_3:
-    case Const.LSTORE_0:
-    case Const.LSTORE_1:
-    case Const.LSTORE_2:
-    case Const.LSTORE_3:
-      break;
 
     case Const.ASTORE:
     case Const.FSTORE:
@@ -1200,15 +1111,6 @@ public class BytecodeAnalyzer {
      */
     case Const.RET: //TODO: it requires an argument?
       break;
-    
-    case Const.RETURN:    
-    case Const.LRETURN:
-    case Const.IRETURN:
-    case Const.DRETURN:
-    case Const.ARETURN:
-    case Const.FRETURN: {
-      break;
-    }
     /*
      * Remember wide byte which is used to form a 16-bit address in the following instruction. Relies on that the method is
      * called again with the following opcode.
@@ -1216,160 +1118,6 @@ public class BytecodeAnalyzer {
     case Const.WIDE:
         wide = true;
         break;
-      
-    /*
-     * Binary operations 
-     */
-    case Const.ISUB:
-    case Const.IUSHR:
-    case Const.IXOR:
-    case Const.IMUL:
-    case Const.IADD:
-    case Const.IAND:
-    case Const.IOR:
-    case Const.IREM:
-    case Const.ISHR:
-    case Const.IDIV: 
-    case Const.ISHL:
-    case Const.LSUB:
-    case Const.LUSHR:
-    case Const.LXOR:
-    case Const.LMUL:
-    case Const.LADD:
-    case Const.LOR:
-    case Const.LREM:
-    case Const.LSHR:
-    case Const.LDIV: 
-    case Const.LCMP:
-    case Const.FSUB:
-    case Const.FMUL:
-    case Const.FADD:
-    case Const.FREM:
-    case Const.FDIV:
-    case Const.DSUB:
-    case Const.DMUL:
-    case Const.DADD:
-    case Const.DREM:
-    case Const.DDIV: {
-      break;
-    }
-
-    /*
-     * Array of basic type.
-     */
-    case Const.NEWARRAY: {
-      bytes.readByte();
-      break;
-    }
-    /*
-     * Access object/class fields.
-     */
-    case Const.GETFIELD:
-    case Const.GETSTATIC:
-    case Const.PUTFIELD:
-    case Const.PUTSTATIC: {
-      index = bytes.readUnsignedShort();
-      break;
-    }
-    /*
-     * Operands are references to classes in constant pool
-     */
-    case Const.NEW: {
-      index = bytes.readUnsignedShort();
-      break;
-    }
-
-    case Const.CHECKCAST: {
-      index = bytes.readUnsignedShort();
-      break;
-    }
-
-    case Const.INSTANCEOF: {
-      index = bytes.readUnsignedShort();
-      //TODO: 
-      break;
-    }
-
-    case Const.MONITORENTER: 
-    case Const.MONITOREXIT: {
-      break;
-    }
-    /*
-     * Operands are references to methods in constant pool
-     */
-    case Const.INVOKESPECIAL:
-    case Const.INVOKESTATIC: 
-    case Const.INVOKEINTERFACE: 
-    case Const.INVOKEVIRTUAL: {
-      index = bytes.readUnsignedShort();
-      break;
-    }
-    case Const.INVOKEDYNAMIC:
-      index = bytes.readUnsignedShort();
-      bytes.readUnsignedByte(); // Thrid byte is a reserved space
-      bytes.readUnsignedByte(); // Last byte is a reserved space
-      // constantPool.constantToString(index, Const.CONSTANT_InvokeDynamic).replace(" ", "");
-      unhandledBytecode(opcode);
-      break;
-    /*
-     * Operands are references to items in constant pool
-     */
-    case Const.LDC_W:
-    case Const.LDC2_W: {
-      index = bytes.readUnsignedShort();
-      break;
-    }
-    case Const.LDC: {
-      index = bytes.readUnsignedByte();
-      break;
-    }
-    /*
-     * Array of references.
-     */
-    case Const.ANEWARRAY: {
-        index = bytes.readUnsignedShort();
-        break;
-      }
-    /*
-     * Multidimensional array of references.
-     */
-    case Const.MULTIANEWARRAY: {
-      index = bytes.readUnsignedShort();
-      final int dimensions = bytes.readUnsignedByte();
-      // Utility.compactClassName(, false);
-      break;
-    }
-
-    case Const.SIPUSH: {
-      int c = bytes.readUnsignedShort();
-      break;
-    }
-    case Const.BIPUSH: {
-      byte c = bytes.readByte();
-      break;
-    }
-    case Const.DUP: {
-      break;
-    }
-    case Const.DUP_X1: {
-      break;
-    }
-    case Const.DUP_X2: {
-      break;
-    }
-
-    case Const.ATHROW: {
-      break;
-    }
-
-    /**
-     * Conversion instructions
-     */
-    case Const.I2L:
-    case Const.L2I:
-    case Const.I2D:
-    case Const.D2I:
-      break;
     /*
      * Increment local variable.
      */
@@ -1384,13 +1132,7 @@ public class BytecodeAnalyzer {
       }
       break;
     }
-    
-    case Const.IMPDEP1:
-    case Const.IMPDEP2:
-    case Const.NOP:
-      break;
     default:
-        unhandledBytecode(opcode);
         if (Const.getNoOfOperands(opcode) > 0) {
             for (int i = 0; i < Const.getOperandTypeCount(opcode); i++) {
                 switch (Const.getOperandType(opcode, i)) {
@@ -1413,6 +1155,29 @@ public class BytecodeAnalyzer {
     return null;
   }
 
+  public static int getOpcodeOperandSize(int opcode) {
+    int size = 0;
+    if (Const.getNoOfOperands(opcode) > 0) {
+      for (int i = 0; i < Const.getOperandTypeCount(opcode); i++) {
+        switch (Const.getOperandType(opcode, i)) {
+          case Const.T_BYTE:
+            size += 1;
+            break;
+          case Const.T_SHORT:
+            size += 2;
+            break;
+          case Const.T_INT:
+            size += 4;
+            break;
+          default: // Never reached
+              throw new IllegalStateException("Unreachable default case reached!");
+        }
+      }
+    }
+
+    return size;
+  }
+
   public static void createBasicBlocks(byte[] code, int start, int end) {
     ArrayList<BranchInfo> branches = new ArrayList<>();
     //Get all the branches
@@ -1432,43 +1197,19 @@ public class BytecodeAnalyzer {
 
     HashMap<Integer, BasicBlock> startBciToBB = new HashMap<>();
     HashMap<Integer, BasicBlock> endBciToBB = new HashMap<>();
-    int numBB = 0;
     ArrayList<Integer> leaders = new ArrayList<>();
-    ArrayList<Boolean> isBranchOrTarget = new ArrayList<>();
-
+    //Add branches and their targets as leaders and then sort them
     for (BranchInfo br : branches) {
       leaders.add(br.pc + br.codelen);
-      isBranchOrTarget.add(true);
-      int targetOpcode = (code[br.target] & 0xff);
-      int targetSize = 0;
-      System.out.printf("target %d pc %d len %d\n", br.target, br.pc, br.codelen);
-      if (Const.getNoOfOperands(targetOpcode) > 0) {
-        for (int i = 0; i < Const.getOperandTypeCount(targetOpcode); i++) {
-            switch (Const.getOperandType(targetOpcode, i)) {
-            case Const.T_BYTE:
-                targetSize += 1;
-                break;
-            case Const.T_SHORT:
-                targetSize += 2;
-                break;
-            case Const.T_INT:
-                targetSize += 4;
-                break;
-            default: // Never reached
-                throw new IllegalStateException("Unreachable default case reached!");
-            }
-        }
-      }
-      System.out.printf("target %d (%s) targetSize %d pc %d len %d\n", br.target, Const.getOpcodeName(targetOpcode), targetSize, br.pc, br.codelen);
       leaders.add(br.target);
-      isBranchOrTarget.add(false);
     }
     leaders.sort(null);
+
     int startBci = 0;
     ArrayList<BasicBlock> basicBlocks = new ArrayList<>();
     BasicBlock currBasicBlock = null;
     for (int i = 0; i < leaders.size(); i++) {
-      currBasicBlock = new BasicBlock(numBB, startBci);
+      currBasicBlock = new BasicBlock(i, startBci);
       basicBlocks.add(currBasicBlock);
       int leader = leaders.get(i);
       int endBci = leader;
@@ -1476,26 +1217,28 @@ public class BytecodeAnalyzer {
 
       currBasicBlock.setEnd(endBci);
 
-      System.out.printf("BB (%d): [%d, %d]\n", numBB, startBci, endBci);
+      System.out.printf("BB (%d): [%d, %d]\n", i, startBci, endBci);
       startBci = endBci;
-      numBB++;
     }
 
     if (startBci < end) {
-      System.out.printf("BB (%d): [%d, %d]\n", numBB, startBci, end);
-      BasicBlock last = new BasicBlock(numBB, startBci);
+      System.out.printf("BB (%d): [%d, %d]\n", leaders.size(), startBci, end);
+      BasicBlock last = new BasicBlock(leaders.size(), startBci);
       basicBlocks.add(last);
       last.setEnd(end);
     }
 
-    ArrayList<BasicBlock> nonEmptyBlocks = new ArrayList<>();
-    for (int bi = 0; bi < basicBlocks.size(); bi++) {
-      if (basicBlocks.get(bi).size() != 0) {
-        nonEmptyBlocks.add(basicBlocks.get(bi));
+    {
+      //Remove empty basic blocks
+      ArrayList<BasicBlock> nonEmptyBlocks = new ArrayList<>(basicBlocks.size());
+      for (int bi = 0; bi < basicBlocks.size(); bi++) {
+        if (basicBlocks.get(bi).size() != 0) {
+          nonEmptyBlocks.add(basicBlocks.get(bi));
+        }
       }
-    }
 
-    basicBlocks = nonEmptyBlocks;
+      basicBlocks = nonEmptyBlocks;
+    }
 
     //Check that basicBlocks covers full code
     int prevEnd = 0;

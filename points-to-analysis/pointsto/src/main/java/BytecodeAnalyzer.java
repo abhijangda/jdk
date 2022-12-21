@@ -2,27 +2,14 @@ import java.io.IOException;
 
 import org.apache.bcel.classfile.*;
 import org.apache.bcel.*;
-import org.apache.bcel.generic.GETFIELD;
-import org.apache.bcel.generic.PUTFIELD;
-import org.apache.bcel.generic.PUTSTATIC;
 import org.apache.bcel.generic.Type;
 import org.apache.bcel.util.*;
 
 import javatypes.*;
 
-import java.util.jar.*;
-
-import javax.print.attribute.IntegerSyntax;
-import javax.swing.plaf.basic.BasicArrowButton;
-import javax.swing.plaf.basic.BasicInternalFrameTitlePane.SystemMenuBar;
-import javax.swing.text.DefaultEditorKit.DefaultKeyTypedAction;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.file.*;
 import java.util.*;
-import java.io.*;
-import java.util.zip.ZipInputStream;
 
 import threeaddresscode.*;
 
@@ -38,7 +25,6 @@ public class BytecodeAnalyzer {
       return constantVals[constIndex];
 
     Type type = null;
-    int i;
     final byte tag = c.getTag();
     switch (tag) {
     // case Const.CONSTANT_Class:
@@ -145,7 +131,7 @@ public class BytecodeAnalyzer {
             }
         }
         // Both cases have a field default_offset in common
-        defaultOffset = bytes.readInt();
+        // defaultOffset = bytes.readInt();
     }
     switch (opcode) {
     /*
@@ -186,11 +172,11 @@ public class BytecodeAnalyzer {
      * Two address bytes + offset from start of byte stream form the jump target
      */
     case Const.GOTO: {
-      int t = bytes.readUnsignedShort();
+      bytes.readUnsignedShort();
       break;
     }
     case Const.JSR: {
-      int t = bytes.readUnsignedShort();
+      bytes.readUnsignedShort();
       // ConstantVal v = new ConstantVal(Type.INT, new ConstantInteger(t));
       // operandStack.push(v);
       // bcUpdate.addOutput(v);
@@ -758,7 +744,7 @@ public class BytecodeAnalyzer {
       } else if (opcode == Const.INVOKEVIRTUAL) {
         methodStr = constantPool.constantToString(index, Const.CONSTANT_Methodref).replace(" ", "");
       } else if (opcode == Const.INVOKEINTERFACE) {
-        final int nargs = bytes.readUnsignedByte(); // historical, redundant
+        bytes.readUnsignedByte(); // historical, redundant
         methodStr = constantPool.constantToString(index, Const.CONSTANT_InterfaceMethodref).replace(" ", "");
         bytes.readUnsignedByte();
       } else if (opcode == Const.INVOKESTATIC) {
@@ -1186,7 +1172,7 @@ public class BytecodeAnalyzer {
 
   public static void createBasicBlocks(byte[] code, int start, int end) {
     ArrayList<BranchInfo> branches = new ArrayList<>();
-    int[] opcodeStart = new int[code.length];
+    int[] opcodeStartOffset = new int[code.length];
     //Get all the branches. Also get a map of code position to start of opcode
     try (ByteSequence stream = new ByteSequence(code)) {
       int idx = 0;
@@ -1199,10 +1185,9 @@ public class BytecodeAnalyzer {
         BranchInfo brInfo = isBranch(stream, opcode, startOfOpcode, wide);
         if (brInfo != null) {
           branches.add(brInfo);
-          System.out.println("1202: " + brInfo.pc + " " + brInfo.codelen + " " + brInfo.target);
         }
         for (int i = startOfOpcode; i < stream.getIndex(); i++) {
-          opcodeStart[i] = startOfOpcode;
+          opcodeStartOffset[i] = startOfOpcode;
         }
       }
     } catch(Exception e) {
@@ -1279,7 +1264,8 @@ public class BytecodeAnalyzer {
           BasicBlock child2 = startBciToBB.get(br.pc + br.codelen);
           parent.addOut(child2);
           child2.addIn(parent);
-          if (child2.end < end && !isReturn(code[opcodeStart[child2.end - 1]])) {
+
+          if (child2.end < end && !isReturn(code[opcodeStartOffset[child2.end - 1]] & 0xff)) {
             BasicBlock continuation = startBciToBB.get(child2.end);
             child2.addOut(continuation);
             continuation.addIn(child2);
@@ -1289,111 +1275,115 @@ public class BytecodeAnalyzer {
     }
 
     //Print basic block connections
-    for (BasicBlock bb : startBciToBB.values()) {
-      System.out.print(bb.number + " -> ");
-      for (BasicBlock out : bb.getOuts()) {
-        System.out.print(out.number + ", ");
+    if (Main.DEBUG_PRINT) {
+      for (BasicBlock bb : startBciToBB.values()) {
+        System.out.print(bb.number + " -> ");
+        for (BasicBlock out : bb.getOuts()) {
+          System.out.print(out.number + ", ");
+        }
+        System.out.println("");
       }
-      System.out.println("");
-    }
-
-    //Check that there is a basic block starting at the target of a branch and
-    //there is an edge from basic block of branch to the target
-    for (BasicBlock b : basicBlocks) {
-      System.out.printf("1546: %s\n", b.toString());
-      //TODO: Fix for wide jumps
-      if (true) {
-        for (int index = b.start; index < b.end; index++) {
-          int opcode = code[index] & 0xff;
-          int target = -1;
-          boolean isbranch = false;
-          boolean conditional = false;
-          switch(opcode) {
-            case Const.GOTO:
-            case Const.JSR: {
-              ByteBuffer bb = ByteBuffer.allocate(2);
-              bb.order(ByteOrder.BIG_ENDIAN);
-              bb.put(code[index + 1]);
-              bb.put(code[index + 2]);
-              target = bb.getShort(0);
-              target = index + target;
-              index += 2;
-              conditional = false;
-              isbranch = true;
-              break;
-            }
-            case Const.GOTO_W:
-            case Const.JSR_W: {
-              ByteBuffer bb = ByteBuffer.allocate(4);
-              bb.order(ByteOrder.BIG_ENDIAN);
-              bb.put(code[index + 1]);
-              bb.put(code[index + 2]);
-              bb.put(code[index + 3]);
-              bb.put(code[index + 4]);
-              target = bb.getInt(0);
-              target = index + target;
-              index += 4;
-              conditional = false;
-              isbranch = true;
-              break;
-            }
-            case Const.IFEQ:
-            case Const.IFGE:
-            case Const.IFGT:
-            case Const.IFLE:
-            case Const.IFLT:
-            case Const.IFNE:
-            case Const.IFNONNULL:
-            case Const.IFNULL:
-            case Const.IF_ACMPEQ:
-            case Const.IF_ACMPNE:
-            case Const.IF_ICMPEQ:
-            case Const.IF_ICMPGE:
-            case Const.IF_ICMPGT:
-            case Const.IF_ICMPLE:
-            case Const.IF_ICMPLT:
-            case Const.IF_ICMPNE: {
-              ByteBuffer bb = ByteBuffer.allocate(2);
-              bb.order(ByteOrder.BIG_ENDIAN);
-              bb.put(code[index + 1]);
-              bb.put(code[index + 2]);
-              target = bb.getShort(0);
-              target = index + target;
-              index += 2;
-              conditional = true;
-              isbranch = true;
-              break;
-            }
-            /*
-              * 32-bit wide jumps
-              */
-            default:
-              //Not a conditional
-              index += getOpcodeOperandSize(opcode);
-              target = -1;
-              break;
-          }
-          // System.out.println(Const.getOpcodeName(opcode));
-          if (isbranch) {
-            if (target >= code.length) {
-              System.out.println("1603: err target " + target + " " + Const.getOpcodeName(opcode) + " at " + index);
-              System.exit(0);
-            }
-            if (target != -1) {
-              boolean found = false;
-              for (BasicBlock out : b.getOuts()) {
-                if (out.start == target) {
-                  found = true;
-                  System.out.println("found");
-                  break;
-                }
-                System.out.println("1388: " + out.toString());
+      
+      //Check that there is a basic block starting at the target of a branch and
+      //there is an edge from basic block of branch to the target
+      for (BasicBlock b : basicBlocks) {
+        System.out.printf("1546: %s\n", b.toString());
+        //TODO: Fix for wide jumps
+        if (true) {
+          for (int index = b.start; index < b.end; index++) {
+            int opcode = code[index] & 0xff;
+            int target = -1;
+            boolean isbranch = false;
+            boolean conditional = false;
+            switch(opcode) {
+              case Const.GOTO:
+              case Const.JSR: {
+                ByteBuffer bb = ByteBuffer.allocate(2);
+                bb.order(ByteOrder.BIG_ENDIAN);
+                bb.put(code[index + 1]);
+                bb.put(code[index + 2]);
+                target = bb.getShort(0);
+                target = index + target;
+                index += 2;
+                conditional = false;
+                isbranch = true;
+                break;
               }
-
-              if (!found) {
-                System.out.println("1615: err not found " + target);
+              case Const.GOTO_W:
+              case Const.JSR_W: {
+                ByteBuffer bb = ByteBuffer.allocate(4);
+                bb.order(ByteOrder.BIG_ENDIAN);
+                bb.put(code[index + 1]);
+                bb.put(code[index + 2]);
+                bb.put(code[index + 3]);
+                bb.put(code[index + 4]);
+                target = bb.getInt(0);
+                target = index + target;
+                index += 4;
+                conditional = false;
+                isbranch = true;
+                break;
+              }
+              case Const.IFEQ:
+              case Const.IFGE:
+              case Const.IFGT:
+              case Const.IFLE:
+              case Const.IFLT:
+              case Const.IFNE:
+              case Const.IFNONNULL:
+              case Const.IFNULL:
+              case Const.IF_ACMPEQ:
+              case Const.IF_ACMPNE:
+              case Const.IF_ICMPEQ:
+              case Const.IF_ICMPGE:
+              case Const.IF_ICMPGT:
+              case Const.IF_ICMPLE:
+              case Const.IF_ICMPLT:
+              case Const.IF_ICMPNE: {
+                ByteBuffer bb = ByteBuffer.allocate(2);
+                bb.order(ByteOrder.BIG_ENDIAN);
+                bb.put(code[index + 1]);
+                bb.put(code[index + 2]);
+                target = bb.getShort(0);
+                target = index + target;
+                index += 2;
+                conditional = true;
+                isbranch = true;
+                break;
+              }
+              /*
+                * 32-bit wide jumps
+                */
+              default:
+                //Not a conditional
+                index += getOpcodeOperandSize(opcode);
+                target = -1;
+                break;
+            }
+            // System.out.println(Const.getOpcodeName(opcode));
+            if (isbranch) {
+              if (target >= code.length) {
+                System.out.println("1603: err target " + target + " " + Const.getOpcodeName(opcode) + " at " + index);
                 System.exit(0);
-              }     
+              }
+              if (target != -1) {
+                if (b.outForStartBCIndex(target) != null) {
+                  System.out.println("found");
+                } else {
+                  System.out.println("1615: err not found " + target);
+                  System.exit(0);
+                }
+
+                if (conditional) {
+                  int notTaken = index+1;
+                  if (b.outForStartBCIndex(notTaken) != null) {
+                    System.out.println("found");
+                  } else {
+                    System.out.println("1395: err not found " + notTaken);
+                    System.exit(0);
+                  }
+                }
+              }
             }
           }
         }

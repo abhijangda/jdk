@@ -55,4 +55,9 @@ public final class JavaArrayType extends ReferenceType {
 
     return buf.toString();
   }
+
+  @Override
+  public String toString() {
+    return getSignatureString();
+  }
 }

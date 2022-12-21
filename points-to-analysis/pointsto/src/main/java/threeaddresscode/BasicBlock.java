@@ -21,7 +21,14 @@ public class BasicBlock {
   public int size() {return end - start;}
   public void addIn(BasicBlock in) {ins.add(in);}
   public void addOut(BasicBlock out) {outs.add(out);}
-  
+  public final BasicBlock outForStartBCIndex(int bci) {
+    for (BasicBlock b : outs) {
+      if (b.start == bci)
+        return b;
+    }
+
+    return null;
+  }
   public final ArrayList<BasicBlock> getOuts() {return outs;}
 
   public final String toString() {

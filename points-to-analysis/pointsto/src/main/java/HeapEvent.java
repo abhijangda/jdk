@@ -1,17 +1,8 @@
-import java.util.jar.*;
-
-import javax.print.attribute.IntegerSyntax;
-import javax.swing.plaf.basic.BasicInternalFrameTitlePane.SystemMenuBar;
-import java.nio.file.*;
 import java.util.*;
 import java.io.*;
-import java.util.zip.ZipInputStream;
 
 import org.apache.bcel.classfile.*;
-import org.apache.bcel.*;
 import org.apache.bcel.generic.Type;
-import org.apache.bcel.util.*;
-import org.apache.bcel.util.Repository;
 
 public class HeapEvent {
   //TODO: Use constant table indices to represent class and method?
@@ -19,11 +10,11 @@ public class HeapEvent {
   public final String methodStr_;
   public final int bci_;
   public final long srcPtr_;
-  public final JavaClass srcClass_;
+  public final Type srcClass_;
   public final long dstPtr_;
-  public final JavaClass dstClass_;
+  public final Type dstClass_;
 
-  public HeapEvent(JavaMethod method, String methodStr, int bci, long src, JavaClass srcClass, long dst, JavaClass dstClass) {
+  public HeapEvent(JavaMethod method, String methodStr, int bci, long src, Type srcClass, long dst, Type dstClass) {
     this.method_ = method;
     this.methodStr_ = methodStr;
     this.bci_ = bci;
@@ -34,24 +25,25 @@ public class HeapEvent {
   }
 
   public static HeapEvent fromString(String repr, JavaClassCollection classes) {
-    assert repr.charAt(0) == '[' && repr.charAt(repr.length() - 1) == ']';
+    Main.debugAssert(repr.charAt(0) == '[' && repr.charAt(repr.length() - 1) == ']', 
+                    "Invalid " + repr);
     // System.out.println(": " + repr);
     String[] split = repr.split(",");
     String method = split[0].substring(1).strip();
     JavaMethod m = classes.getMethod(method);
     if (JavaClassCollection.methodToCare(method))
-      assert (m != null);
+      Main.debugAssert(m != null, "Method not found " + method);
     int bci = Integer.parseInt(split[1].strip());
     String[] src = split[2].split(":");
-    JavaClass srcClass = classes.getClassForString(Utility.pathToPackage(src[1].strip()));
+    Type srcClass = classes.javaTypeForSignature(Utility.pathToPackage(src[1].strip()));
     if (JavaClassCollection.classToCare(src[1].strip()))
-      assert(srcClass != null);
+      Main.debugAssert(srcClass != null, "class not found " + src[1]);
 
     String[] dst = split[3].substring(0, split[3].length() - 1).split(":");
 
-    JavaClass dstClass = classes.getClassForString(Utility.pathToPackage(dst[1].strip()));
+    Type dstClass = classes.javaTypeForSignature(Utility.pathToPackage(dst[1].strip()));
     if (JavaClassCollection.classToCare(dst[1].strip()))
-      assert(dstClass != null);
+      Main.debugAssert(dstClass != null, "class not found " + dst[1]);
 
     return new HeapEvent(m, method, bci,
                          Long.parseLong(src[0].strip()),
@@ -72,8 +64,21 @@ public class HeapEvent {
       ArrayList<HeapEvent> currEvents = null;
 
       while (line != null) {
-        if (line.charAt(0) == '[' && line.charAt(line.length() - 1) == ']') {
-          assert(currEvents != null);
+        if (line.contains(": {[")) {
+          //TODO: Fix this case
+          currThread = line.substring(0, line.indexOf(":"));
+          if (heapEvents.containsKey(currThread) == false) {
+              currEvents = new ArrayList<>();
+              heapEvents.put(currThread, currEvents);
+          }
+
+          currEvents = heapEvents.get(currThread);
+          line = line.substring(line.indexOf("["));
+          Main.debugAssert(currEvents != null, "");
+          HeapEvent he = HeapEvent.fromString(line, classes);
+          currEvents.add(he);
+        } else if (line.charAt(0) == '[' && line.charAt(line.length() - 1) == ']') {
+          Main.debugAssert(currEvents != null, "");
           HeapEvent he = HeapEvent.fromString(line, classes);
           currEvents.add(he);
         } else if (line.contains(":")) {
@@ -100,7 +105,7 @@ public class HeapEvent {
 
   public String toString() {
     return "[" + method_.getFullName() + "," + Integer.toString(bci_) + "," + 
-            Long.toString(srcPtr_) + ":" + ((srcClass_ != null) ? srcClass_.getClassName() : "NULL") + "," + 
-            Long.toString(dstPtr_) + ":" + ((dstClass_ != null) ? dstClass_.getClassName() : "NULL") + "]";
+            Long.toString(srcPtr_) + ":" + ((srcClass_ != null) ? srcClass_.toString() : "NULL") + "," + 
+            Long.toString(dstPtr_) + ":" + ((dstClass_ != null) ? dstClass_.toString() : "NULL") + "]";
   }
 }

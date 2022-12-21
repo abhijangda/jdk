@@ -1,19 +1,27 @@
 import java.io.IOException;
 
 import org.apache.bcel.classfile.*;
-import org.apache.bcel.*;
 import org.apache.bcel.generic.Type;
-import org.apache.bcel.util.*;
 import java.util.jar.*;
-
-import javax.print.attribute.IntegerSyntax;
-import javax.swing.plaf.basic.BasicInternalFrameTitlePane.SystemMenuBar;
-import java.nio.file.*;
 import java.util.*;
-import java.io.*;
-import java.util.zip.ZipInputStream;
 
 public class Main {
+  public static boolean DEBUG_PRINT = true;
+  public static void debugLog(String fmt, Object... args) {
+    if (DEBUG_PRINT) {
+      System.err.printf(fmt, args);
+    }
+  }
+
+  public static void debugAssert(boolean b, String fmt, Object... args) {
+    if (DEBUG_PRINT) {
+      if (!b) {
+        System.err.printf(fmt, args);
+        throw new AssertionError(b);
+      }
+    }
+  }
+  
   public static ArrayList<Method> findMainMethods(String jarFile, JarFile jar) {
     ArrayList<Method> mainMethods = new ArrayList<>();
     try {
@@ -50,7 +58,7 @@ public class Main {
     //Read the jarfile
     String jarFile = "/mnt/homes/aabhinav/jdk/dacapo-9.12-MR1-bach.jar";
     JavaClassCollection javaClasses = JavaClassCollection.createFromJar(jarFile);
-    
+  
     //Read and process heap events
     String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events";
     HashMap<String, ArrayList<HeapEvent>> heapEvents = HeapEvent.processHeapEventsFile(heapEventsFile, javaClasses);

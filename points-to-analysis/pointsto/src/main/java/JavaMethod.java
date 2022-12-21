@@ -1,5 +1,4 @@
 import org.apache.bcel.classfile.*;
-import org.apache.bcel.*;
 
 public class JavaMethod {
   private Method method;
@@ -10,10 +9,10 @@ public class JavaMethod {
     this.klass = k;
   }
 
-  Method getMethod() {return method;}
-  JavaClass getKlass() {return klass;}
+  public Method getMethod() {return method;}
+  public JavaClass getKlass() {return klass;}
 
-  String getFullName() {
+  public String getFullName() {
     return getKlass().getClassName() + "." + getMethod().getName() + getMethod().getSignature();
   }
 }

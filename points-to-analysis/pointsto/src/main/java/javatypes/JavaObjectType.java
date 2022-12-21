@@ -32,4 +32,11 @@ public class JavaObjectType extends ReferenceType {
   public boolean equals(final Object type) {
       return type instanceof JavaObjectType && ((JavaObjectType) type).klass.equals(klass);
   }
+
+  @Override
+  public String toString() {
+    if (this.klass != null)
+        return klass.getClassName();
+    return "";
+  }
 }

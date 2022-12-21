@@ -1,19 +1,13 @@
 import org.apache.bcel.classfile.*;
-import org.apache.bcel.*;
 import org.apache.bcel.generic.Type;
-import org.apache.bcel.util.*;
 
 import javatypes.JavaArrayType;
 import javatypes.JavaObjectType;
 
 import java.util.jar.*;
-
-import javax.print.attribute.IntegerSyntax;
-import javax.swing.plaf.basic.BasicInternalFrameTitlePane.SystemMenuBar;
 import java.nio.file.*;
 import java.util.*;
 import java.io.*;
-import java.util.zip.ZipInputStream;
 
 public class JavaClassCollection extends HashMap<String, JavaClass> {
   /**
@@ -40,7 +34,6 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
 
   private static void _createFromJar(String jarFile, JavaClassCollection collection) {
     try {
-      JarFile jar = new JarFile(jarFile);
       JarInputStream jarIn = new JarInputStream(new FileInputStream (jarFile));
       JarEntry entry = jarIn.getNextJarEntry();
       while (entry != null) {
@@ -72,11 +65,11 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
   }
 
   public static boolean methodToCare(String name) {
-    return !name.equals("NULL") && !name.contains("<clinit>");
+    return !name.equals("NULL") && !name.contains("<clinit>") && !name.contains("0x") && !name.contains("_LL");
   }
 
   public static boolean classToCare(String name) {
-    return !name.equals("NULL") && !name.contains("<clinit>");
+    return !name.equals("NULL") && !name.contains("<clinit>") && !name.contains("0x") && !name.contains("_LL");
   }
 
   private void loadJavaLibraryClass(String classStr) {

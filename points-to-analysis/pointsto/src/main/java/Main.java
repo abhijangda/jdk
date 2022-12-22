@@ -2,6 +2,9 @@ import java.io.IOException;
 
 import org.apache.bcel.classfile.*;
 import org.apache.bcel.generic.Type;
+
+import soot.options.Options;
+
 import java.util.jar.*;
 import java.util.*;
 
@@ -22,33 +25,33 @@ public class Main {
     }
   }
   
-  public static ArrayList<Method> findMainMethods(String jarFile, JarFile jar) {
-    ArrayList<Method> mainMethods = new ArrayList<>();
-    try {
-      Enumeration<JarEntry> entries = jar.entries();
-      while (entries.hasMoreElements()) {
-          JarEntry entry = entries.nextElement();
-          if (!entry.getName().endsWith(".class")) {
-              continue;
-          }
+  // public static ArrayList<Method> findMainMethods(String jarFile, JarFile jar) {
+  //   ArrayList<Method> mainMethods = new ArrayList<>();
+  //   try {
+  //     Enumeration<JarEntry> entries = jar.entries();
+  //     while (entries.hasMoreElements()) {
+  //         JarEntry entry = entries.nextElement();
+  //         if (!entry.getName().endsWith(".class")) {
+  //             continue;
+  //         }
 
-          ClassParser parser = new ClassParser(jarFile, entry.getName());
-          JavaClass javaClass = parser.parse();
-          // System.out.println(javaClass.getClassName());
-          for (Method m : javaClass.getMethods()) {
-            // System.out.println(m.getName());
-            if (m.getName().equals("main") && m.isStatic() && m.isPublic() && 
-                m.getReturnType() == Type.VOID) {
-                mainMethods.add(m);
-            }
-          }
-      }
-    } catch (Exception e) {
+  //         ClassParser parser = new ClassParser(jarFile, entry.getName());
+  //         JavaClass javaClass = parser.parse();
+  //         // System.out.println(javaClass.getClassName());
+  //         for (Method m : javaClass.getMethods()) {
+  //           // System.out.println(m.getName());
+  //           if (m.getName().equals("main") && m.isStatic() && m.isPublic() && 
+  //               m.getReturnType() == Type.VOID) {
+  //               mainMethods.add(m);
+  //           }
+  //         }
+  //     }
+  //   } catch (Exception e) {
 
-    }
+  //   }
 
-    return mainMethods;
-  }
+  //   return mainMethods;
+  // }
 
   public static boolean methodToCare(String name) {
     return !name.equals("NULL") && !name.contains("java.") && !name.contains("jdk.") && !name.contains("sun.") && !name.contains("<clinit>");
@@ -57,14 +60,14 @@ public class Main {
   public static void main(String[] args) throws ClassFormatException, IOException {
     //Read the jarfile
     String jarFile = "/mnt/homes/aabhinav/jdk/dacapo-9.12-MR1-bach.jar";
+    Options.v().parse(args);
     JavaClassCollection javaClasses = JavaClassCollection.createFromJar(jarFile);
-  
     //Read and process heap events
-    String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events";
-    HashMap<String, ArrayList<HeapEvent>> heapEvents = HeapEvent.processHeapEventsFile(heapEventsFile, javaClasses);
-    System.out.println("HeapEvents loaded");
+    // String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events";
+    // HashMap<String, ArrayList<HeapEvent>> heapEvents = HeapEvent.processHeapEventsFile(heapEventsFile, javaClasses);
+    // System.out.println("HeapEvents loaded");
     
-    CallGraphAnalysis.callGraph(heapEvents, javaClasses);
+    // CallGraphAnalysis.callGraph(heapEvents, javaClasses);
 
     
     // //Find all main methods in the jar and also find those method in the heap events

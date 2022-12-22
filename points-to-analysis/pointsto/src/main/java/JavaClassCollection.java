@@ -3,6 +3,9 @@ import org.apache.bcel.generic.Type;
 
 import javatypes.JavaArrayType;
 import javatypes.JavaObjectType;
+import soot.Scene;
+import soot.SootClass;
+import soot.options.Options;
 
 import java.util.jar.*;
 import java.nio.file.*;
@@ -10,6 +13,7 @@ import java.util.*;
 import java.io.*;
 
 public class JavaClassCollection extends HashMap<String, JavaClass> {
+  private Scene scene;
   /**
    * Extracts a zip entry (file entry)
    * @param zipIn
@@ -20,44 +24,59 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
     BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
     byte[] bytesIn = new byte[1024*1024];
     int read = 0;
-    while ((read = zipIn.read(bytesIn)) != -1) {
+    try {
+      while ((read = zipIn.read(bytesIn)) != -1) {
         bos.write(bytesIn, 0, read);
+      }
+    } catch (Exception e) {
     }
     bos.close();
+    System.out.println("writing to file " + filePath + " " + Files.size(Paths.get(filePath)));
   }
 
   public static JavaClassCollection createFromJar(String jarFile) {
     JavaClassCollection collection = new JavaClassCollection();
-    _createFromJar(jarFile, collection);
+    ArrayList<String> jars = new ArrayList<>();
+    String extractPath = "/mnt/homes/aabhinav/jdk/points-to-analysis/pointsto/";
+    jarFile = extractPath + "dacapo-9.12-MR1-bach.jar";
+    getJars(jarFile, extractPath, jars);
+    
+    System.out.println(jars);
+    Options.v().set_allow_phantom_refs(true);
+    Options.v().set_whole_program(true);
+
+    Options.v().set_process_dir(jars);
+    Options.v().set_soot_classpath(extractPath);
+    Options.v().set_prepend_classpath(true);
+
+    collection.scene = Scene.v();
+    collection.scene.loadNecessaryClasses();
+    collection.scene.loadBasicClasses();
+    for (SootClass clazz : Scene.v().getClasses()) {
+        if (!clazz.getName().equals("java.lang.Object")) {
+          SootClass s = clazz.getSuperclass();
+          System.out.println("Class name: " + clazz.getName() + " " + clazz.getMethods().size() + " " + ((s == null) ? "" : s.getName())); 
+        }
+      }
+
     return collection;
   }
 
-  private static void _createFromJar(String jarFile, JavaClassCollection collection) {
+  private static void getJars(String jarFile, String extractPath, ArrayList<String> jars) {
+    jars.add(jarFile);
     try {
       JarInputStream jarIn = new JarInputStream(new FileInputStream (jarFile));
       JarEntry entry = jarIn.getNextJarEntry();
       while (entry != null) {
-        if (entry.getName().endsWith(".class")) {
-          ClassParser parser = new ClassParser(jarIn, entry.getName());
-          JavaClass javaClass = parser.parse();
-          collection.put(javaClass.getClassName(), javaClass);
-          // System.out.println(javaClass.getClassName());
-          // for (Method m : javaClass.getMethods()) {
-          //   String methodName = javaClass.getClassName() +
-          //                       "." + m.getName() + m.getSignature();
-          //   // if (methodName.contains("org.apache.lucene.store.FSDirectory."))
-          //   //   System.out.println(methodName);
-          //   methodNameMap.put(methodName, m);
-          // }
-        } else if (entry.getName().endsWith(".jar")) {
+        if (entry.getName().endsWith(".jar") && !entry.getName().contains("antlr-3.1.3.jar")) {
           Path entryPath = Paths.get(entry.getName());
-          String extractedJarFile = "/tmp/"+entryPath.getFileName();
+          String extractedJarFile = extractPath+entryPath.getFileName();
           extractFile(jarIn, extractedJarFile);
-          _createFromJar(extractedJarFile, collection);
+          getJars(extractedJarFile, extractPath, jars);
         }
         jarIn.closeEntry();
         entry = jarIn.getNextJarEntry();
-    }
+      }
       jarIn.close();
     } catch (Exception e) {
       e.printStackTrace();

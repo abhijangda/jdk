@@ -16,6 +16,10 @@ import threeaddresscode.*;
 public class BytecodeAnalyzer {
   public static boolean wide;
 
+  public static class BCIndexToBasicBlock extends HashMap<Integer, BasicBlock> {
+
+  }
+
   static void unhandledBytecode(int opcode) {
     System.out.println("Not handling " + Const.getOpcodeName(opcode)); 
   }
@@ -1170,7 +1174,8 @@ public class BytecodeAnalyzer {
            opcode == Const.LRETURN;
   }
 
-  public static void createBasicBlocks(byte[] code, int start, int end) {
+  public static void createBasicBlocks(byte[] code, ArrayList<BasicBlock> basicBlocks, 
+                                       BCIndexToBasicBlock startBciToBB, BCIndexToBasicBlock endBciToBB, int start, int end) {
     ArrayList<BranchInfo> branches = new ArrayList<>();
     int[] opcodeStartOffset = new int[code.length];
     //Get all the branches. Also get a map of code position to start of opcode
@@ -1203,7 +1208,6 @@ public class BytecodeAnalyzer {
     leaders.sort(null);
 
     //Create Basic blocks
-    ArrayList<BasicBlock> basicBlocks = new ArrayList<>();
     {
       int startBci = 0;
       BasicBlock currBasicBlock = null;
@@ -1226,7 +1230,8 @@ public class BytecodeAnalyzer {
         }
       }
 
-      basicBlocks = nonEmptyBlocks;
+      basicBlocks.clear();
+      basicBlocks.addAll(nonEmptyBlocks);
     }
 
     //Check that basicBlocks covers full code
@@ -1243,8 +1248,6 @@ public class BytecodeAnalyzer {
       }
     }
 
-    HashMap<Integer, BasicBlock> startBciToBB = new HashMap<>();
-    HashMap<Integer, BasicBlock> endBciToBB = new HashMap<>();
     {
       //Create connections between basic blocks
       for (BasicBlock b : basicBlocks) {
@@ -1396,41 +1399,45 @@ public class BytecodeAnalyzer {
 
     //Create the basic block graph
     // if (method.getFullName().contains("org.apache.lucene.index.TermBuffer.toTerm()")) {
+      ArrayList<BasicBlock> basicBlocks = new ArrayList<>();
+      BCIndexToBasicBlock startBciToBB = new BCIndexToBasicBlock();
+      BCIndexToBasicBlock endBciToBB = new BCIndexToBasicBlock();
       System.out.println(method.getFullName() + " " + code.toString(true));
-      createBasicBlocks(code.getCode(), 0, code.getCode().length);
+      createBasicBlocks(code.getCode(), basicBlocks, startBciToBB, endBciToBB, 0, code.getCode().length);
     // }
-    // ConstantPool constPool = code.getConstantPool();
-    // Stack<Var> operandStack = new Stack<>();
-    
-    // LocalVars localVars = new LocalVars(code.getMaxLocals());
-    // if (code.getLocalVariableTable() != null) {
-    //   //Following initialization should go inside LocalVars constructor
-    //   for (LocalVariable v : code.getLocalVariableTable()) {
-    //     if (localVars.get(v.getIndex()) == null) {
-    //       localVars.set(v.getIndex(), new ArrayList<LocalVar>());
-    //     }
-    //     localVars.get(v.getIndex()).add(new LocalVar(classCollection.javaTypeForSignature(v.getSignature()), v.getIndex(), v.getStartPC(), v.getLength()));
-    //   }
-    // }
-    // ConstantVal[] constants = new ConstantVal[constPool.getLength()];
-    // // for (int c = 0; c < constPool.getLength(); c++) {
-    // //   Constant co = constPool.getConstant(c);
-    // //   System.out.println("484: " + co.toString());
-    // // }
+    ConstantPool constPool = code.getConstantPool();
+    Stack<Var> operandStack = new Stack<>();
+    LocalVars localVars = new LocalVars(code.getMaxLocals());
 
+    if (code.getLocalVariableTable() != null) {
+      //Following initialization should go inside LocalVars constructor
+      for (LocalVariable v : code.getLocalVariableTable()) {
+        if (localVars.get(v.getIndex()) == null) {
+          localVars.set(v.getIndex(), new ArrayList<LocalVar>());
+        }
+        localVars.get(v.getIndex()).add(new LocalVar(classCollection.javaTypeForSignature(v.getSignature()), v.getIndex(), v.getStartPC(), v.getLength()));
+      }
+    }
+    ConstantVal[] constants = new ConstantVal[constPool.getLength()];
+    // for (int c = 0; c < constPool.getLength(); c++) {
+    //   Constant co = constPool.getConstant(c);
+    //   System.out.println("484: " + co.toString());
+    // }
+
+    boolean print = false;
     // boolean print = method.getFullName().contains("org.apache.lucene.queryParser.QueryParser.jj_2_1");
     // if (print) System.out.println(method.getFullName() + " " + code.toString(true));
     
-    // try (ByteSequence stream = new ByteSequence(code.getCode())) {
-    //     for (int bci = 0; stream.available() > 0; bci++) { //stream.available() > 0
-    //       // if (i == event.bci_) 
-    //       //   System.out.println(Const.getOpcodeName(code.getCode()[i]));
-    //       createThreeAddressCode(stream, bci, stream.getIndex(), constPool,
-    //                              operandStack, localVars, constants, classCollection, print);
-    //     }
-    // } catch (final IOException e) {
-    //    e.printStackTrace();
-    // }
+    try (ByteSequence stream = new ByteSequence(code.getCode())) {
+        for (int bci = 0; stream.available() > 0; bci++) { //stream.available() > 0
+          // if (i == event.bci_) 
+          //   System.out.println(Const.getOpcodeName(code.getCode()[i]));
+          createThreeAddressCode(stream, bci, stream.getIndex(), constPool,
+                                 operandStack, localVars, constants, classCollection, print);
+        }
+    } catch (final IOException e) {
+       e.printStackTrace();
+    }
     // if (print)
     // System.out.println("\n");
     // int opcode = Byte.toUnsignedInt(code.getCode()[event.bci_]);

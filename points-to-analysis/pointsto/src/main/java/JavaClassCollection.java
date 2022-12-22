@@ -1,5 +1,6 @@
 import javatypes.JavaArrayType;
 import javatypes.JavaObjectType;
+import soot.AbstractJasminClass;
 import soot.ArrayType;
 import soot.BooleanType;
 import soot.ByteType;
@@ -22,7 +23,7 @@ import java.io.*;
 
 public class JavaClassCollection extends HashMap<String, SootClass> {
   private Scene scene;
-
+  
   public static JavaClassCollection loadFromJar(String jarFile) {
     JavaClassCollection collection = new JavaClassCollection();
     ArrayList<String> jars = new ArrayList<>();
@@ -90,12 +91,12 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
 
   public static boolean methodToCare(String name) {
     return !name.equals("NULL") && !name.contains("<clinit>") && !name.contains("0x") && !name.contains("_LL") &&
-      !name.contains("jdk.internal.util.Preconditions$4") && !name.contains("sun.launcher.LauncherHelper");
+      !name.contains("jdk.internal.util.Preconditions$4") && !name.contains("sun.launcher.LauncherHelper") && !name.contains("sun.security.provider");
   }
 
   public static boolean classToCare(String name) {
     return !name.equals("NULL") && !name.contains("<clinit>") && !name.contains("0x") && !name.contains("_LL")
-    && !name.contains("sun.launcher.LauncherHelper");
+    && !name.contains("sun.launcher.LauncherHelper") && !name.contains("sun.security.provider");
   }
 
   public Type javaTypeForSignature(String sig) {
@@ -127,6 +128,7 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
       basicType = DoubleType.v();
     } else {
       SootClass cl = getClassForString(sig);
+      if (cl == null) System.out.println(sig);
       basicType = cl.getType();
     }
     
@@ -164,6 +166,10 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
         String classname = methodStr.substring(0, dotBeforeMethod);
         String methodname = methodStr.substring(dotBeforeMethod + 1, bracket);
         String signature = methodStr.substring(bracket);
+        int returnStrIdx = signature.indexOf(")") + 1;
+        String returnStr = signature.substring(returnStrIdx);
+        //params between "(" and ")"
+        String paramsStr = signature.substring(1, returnStrIdx - 1);
         // System.out.println("\n158: " + classname + " " + methodname + " " + signature);
         SootClass javaclass = getClassForString(classname);
         if (javaclass == null) {
@@ -172,24 +178,37 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
         }
         while (javaclass != null) {
           for (SootMethod m : javaclass.getMethods()) {
-            // if (javaclass.getClassName().contains("store.Directory") || 
-            //     javaclass.getClassName().contains("store.FSDirectory")) {
-            //   System.out.println(m.isPublic() + " " + m.isProtected() + " " + javaclass.getClassName() + "." + m.getName() + m.getSignature());
-            // }
-            // System.out.println("170: " + m.getName());
-            // System.out.println("171: " + m.getBytecodeSignature());
-            String bytecodesig = m.getBytecodeSignature();
-            bytecodesig = bytecodesig.substring(bytecodesig.indexOf(":") + 2, bytecodesig.length() - 1);
-            // System.out.println("172 " + bytecodesig + " == " + methodname+signature);
-            if(bytecodesig.equals(methodname+signature))
-              return m;
+            if (m.getName().equals(methodname)) {
+              if (AbstractJasminClass.jasminDescriptorOf(m.getReturnType()).equals(returnStr)) {
+                List<Type> paramTypes = m.getParameterTypes();
+                boolean paramTypesSame = true;
+                String _paramsStr = paramsStr;
+                if (!_paramsStr.isEmpty() && paramTypes.size() > 0) {
+                  for (int p = 0; p < paramTypes.size(); p++) {
+                    String jasminTypeStr = AbstractJasminClass.jasminDescriptorOf(paramTypes.get(p));
+                    if (!_paramsStr.isEmpty() && _paramsStr.startsWith(jasminTypeStr)) {
+                      _paramsStr = _paramsStr.substring(jasminTypeStr.length());
+                    } else {
+                      paramTypesSame = false;
+                      break;
+                    }
+                  }
+                }
+
+                if (paramTypesSame)
+                  return m;
+              }
+            }
           }
           // System.out.println("173: " + javaclass.getName() + " " + javaclass.getMethodCount());
-          if (!javaclass.getName().equals("java.lang.Object")) {
+          // if (!javaclass.getName().equals("java.lang.Object")) {
+          if (javaclass.hasSuperclass())
             javaclass = javaclass.getSuperclass();
-          } else {
-            break;
-          }
+          else
+            javaclass = null;
+          // } else {
+          //   break;
+          // }
         }
         // System.out.println(classname + " " + methodname + " " + signature);
       }

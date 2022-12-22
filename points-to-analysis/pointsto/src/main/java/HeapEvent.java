@@ -36,13 +36,13 @@ public class HeapEvent {
     int bci = Integer.parseInt(split[1].strip());
     String[] src = split[2].split(":");
     Type srcClass = classes.javaTypeForSignature(Main.pathToPackage(src[1].strip()));
-    if (JavaClassCollection.classToCare(src[1].strip()))
+    if (JavaClassCollection.classToCare(Main.pathToPackage(src[1].strip())))
       Main.debugAssert(srcClass != null, "class not found " + src[1]);
 
     String[] dst = split[3].substring(0, split[3].length() - 1).split(":");
 
     Type dstClass = classes.javaTypeForSignature(Main.pathToPackage(dst[1].strip()));
-    if (JavaClassCollection.classToCare(dst[1].strip()))
+    if (JavaClassCollection.classToCare(Main.pathToPackage(dst[1].strip())))
       Main.debugAssert(dstClass != null, "class not found " + dst[1]);
 
     return new HeapEvent(m, method, bci,
@@ -64,7 +64,7 @@ public class HeapEvent {
       ArrayList<HeapEvent> currEvents = null;
 
       while (line != null) {
-        if (line.contains(": {") || line.contains("org.dacapo") || line.contains("apache")) {
+        if (true || line.contains(": {") || line.contains("org.dacapo") || line.contains("apache")) {
           // if (currEvents != null) System.out.println(currEvents.size() + ": " + line);
         if (line.contains(": {[")) {
           //TODO: Fix this case

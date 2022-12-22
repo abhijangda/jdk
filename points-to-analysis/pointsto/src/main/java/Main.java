@@ -75,7 +75,11 @@ public class Main {
     //Read and process heap events
     String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events";
     HashMap<String, ArrayList<HeapEvent>> heapEvents = HeapEvent.processHeapEventsFile(heapEventsFile, javaClasses);
-    System.out.println("Loaded " + heapEvents.size() + " heapevents");
+    long loaded = 0;
+    for (Map.Entry<String, ArrayList<HeapEvent>> l : heapEvents.entrySet()) {
+      loaded += l.getValue().size();
+    }
+    System.out.println("Loaded " + loaded + " heapevents");
     
     // CallGraphAnalysis.callGraph(heapEvents, javaClasses);
 

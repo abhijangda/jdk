@@ -1,5 +1,8 @@
 import java.util.*;
 
+import jas.Method;
+import soot.SootMethod;
+
 public class CallGraphAnalysis {
   // public static boolean isMethodReachable(HashMap<String, Method> methodNameMap, Stack<JavaStackElement> stack, String startMethod, int startBytecode, String endMethod) {
   //   Method m = methodNameMap.get(startMethod);
@@ -34,8 +37,8 @@ public class CallGraphAnalysis {
     return !name.equals("NULL") && !name.contains("java.") && !name.contains("jdk.") && !name.contains("sun.") && !name.contains("<clinit>");
   }
   
-  public static boolean methodToCare(JavaMethod m) {
-    return methodToCare(m.getKlass().getClassName());
+  public static boolean methodToCare(SootMethod m) {
+    return methodToCare(m.getClass().getName());
   }
 
   public static void callGraph(HashMap<String, ArrayList<HeapEvent>> heapEvents, JavaClassCollection classCollection) {
@@ -60,12 +63,13 @@ public class CallGraphAnalysis {
 
     heapEventIdx = 0;
     for (HeapEvent he : mainThreadEvents) {
-      if (he.method_ != null && he.method_.getKlass().getClassName().contains("lusearch"))
+      if (he.method_ != null && he.method_.getClass().getName().contains("lusearch"))
         break;
       heapEventIdx++;
     }
 
-    System.out.printf("Starting heap event from %d with method %s\n", heapEventIdx, mainThreadEvents.get(heapEventIdx).method_.getFullName());
+    System.out.printf("Starting heap event from %d with method %s\n", 
+    heapEventIdx, Main.methodFullName(mainThreadEvents.get(heapEventIdx).method_));
 
     Stack<CallFrame> callStack = new Stack<>();
     StaticValue staticValues = new StaticValue();
@@ -73,7 +77,7 @@ public class CallGraphAnalysis {
     
     for (int iterations = 0; heapEventIdx < mainThreadEvents.size(); heapEventIdx++,iterations++) {
       for (int idx2 = heapEventIdx + 1; idx2 < mainThreadEvents.size(); idx2++) {
-        JavaMethod nextMethod = mainThreadEvents.get(idx2).method_;
+        SootMethod nextMethod = mainThreadEvents.get(idx2).method_;
         if (nextMethod != null && methodToCare(nextMethod)) {
           heapEventIdx = idx2;
           break;
@@ -82,16 +86,16 @@ public class CallGraphAnalysis {
 
       System.out.printf("%d: %s\n", heapEventIdx, currEvent.toString());
       HeapEvent nextEvent = mainThreadEvents.get(heapEventIdx);
-      BytecodeAnalyzer.analyzeMethod(currEvent.method_, null, staticValues, classCollection);
+      // BytecodeAnalyzer.analyzeMethod(currEvent.method_, null, staticValues, classCollection);
       // BytecodeAnalyzer.analyzeEvent(nextEvent, null, staticValues);
 
-      if (nextEvent.method_.getMethod() == currEvent.method_.getMethod()) {
-        //Same method
-        //TODO: Assuming no recursions
-        // BytecodeAnalyzer.analyzeEvent(mainThreadEvents.get(heapEventIdx), null, staticValues);
-      } else {
-        // BytecodeAnalyzer.analyzeMethod(mainThreadEvents.get(heapEventIdx), );
-      }
+      // if (nextEvent.method_.getMethod() == currEvent.method_.getMethod()) {
+      //   //Same method
+      //   //TODO: Assuming no recursions
+      //   // BytecodeAnalyzer.analyzeEvent(mainThreadEvents.get(heapEventIdx), null, staticValues);
+      // } else {
+      //   // BytecodeAnalyzer.analyzeMethod(mainThreadEvents.get(heapEventIdx), );
+      // }
 
       currEvent = nextEvent;
       if (iterations > 1000) break;

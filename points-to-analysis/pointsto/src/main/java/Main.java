@@ -1,12 +1,9 @@
 import java.io.IOException;
+import java.util.*;
 
 import org.apache.bcel.classfile.*;
-import org.apache.bcel.generic.Type;
-
+import soot.*;
 import soot.options.Options;
-
-import java.util.jar.*;
-import java.util.*;
 
 public class Main {
   public static boolean DEBUG_PRINT = true;
@@ -24,7 +21,18 @@ public class Main {
       }
     }
   }
+
+  public static String pathToPackage(String path) {
+    return path.replace("/", ".");
+  }
   
+  public static String packageToPath(String path) {
+    return path.replace(".", "/");
+  }
+
+  public static String methodFullName(SootMethod meth) {
+    return meth.getDeclaringClass().getName() + "." + meth.getName() + meth.getSignature();
+  }
   // public static ArrayList<Method> findMainMethods(String jarFile, JarFile jar) {
   //   ArrayList<Method> mainMethods = new ArrayList<>();
   //   try {
@@ -61,11 +69,13 @@ public class Main {
     //Read the jarfile
     String jarFile = "/mnt/homes/aabhinav/jdk/dacapo-9.12-MR1-bach.jar";
     Options.v().parse(args);
-    JavaClassCollection javaClasses = JavaClassCollection.createFromJar(jarFile);
+    Options.v().set_include(Arrays.asList("org.dacapo.harness."));
+    JavaClassCollection javaClasses = JavaClassCollection.loadFromJar(jarFile);
+    System.out.println("Loaded " + javaClasses.values().size() + " classes");
     //Read and process heap events
-    // String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events";
-    // HashMap<String, ArrayList<HeapEvent>> heapEvents = HeapEvent.processHeapEventsFile(heapEventsFile, javaClasses);
-    // System.out.println("HeapEvents loaded");
+    String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events";
+    HashMap<String, ArrayList<HeapEvent>> heapEvents = HeapEvent.processHeapEventsFile(heapEventsFile, javaClasses);
+    System.out.println("Loaded " + heapEvents.size() + " heapevents");
     
     // CallGraphAnalysis.callGraph(heapEvents, javaClasses);
 

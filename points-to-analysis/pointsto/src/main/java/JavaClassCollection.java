@@ -1,10 +1,18 @@
-import org.apache.bcel.classfile.*;
-import org.apache.bcel.generic.Type;
-
 import javatypes.JavaArrayType;
 import javatypes.JavaObjectType;
+import soot.ArrayType;
+import soot.BooleanType;
+import soot.ByteType;
+import soot.CharType;
+import soot.DoubleType;
+import soot.FloatType;
+import soot.IntType;
+import soot.LongType;
 import soot.Scene;
+import soot.ShortType;
 import soot.SootClass;
+import soot.SootMethod;
+import soot.Type;
 import soot.options.Options;
 
 import java.util.jar.*;
@@ -12,8 +20,33 @@ import java.nio.file.*;
 import java.util.*;
 import java.io.*;
 
-public class JavaClassCollection extends HashMap<String, JavaClass> {
+public class JavaClassCollection extends HashMap<String, SootClass> {
   private Scene scene;
+
+  public static JavaClassCollection loadFromJar(String jarFile) {
+    JavaClassCollection collection = new JavaClassCollection();
+    ArrayList<String> jars = new ArrayList<>();
+    String extractPath = "/mnt/homes/aabhinav/jdk/points-to-analysis/pointsto/";
+    jarFile = extractPath + "dacapo-9.12-MR1-bach.jar";
+    getJars(jarFile, extractPath, jars);
+    
+    System.out.println(jars);
+    Options.v().set_allow_phantom_refs(true);
+    Options.v().set_whole_program(true);
+    Options.v().set_process_dir(jars);
+    // Options.v().set_soot_classpath(extractPath + "dacapo-9.12-MR1-bach.jar");
+    // Options.v().set_prepend_classpath(true);
+
+    collection.scene = Scene.v();
+    collection.scene.loadNecessaryClasses();
+
+    for (SootClass c : collection.scene.getClasses()) {
+      collection.put(c.getName(), c);
+      System.out.println(c.getName());
+    }
+    return collection;
+  }
+
   /**
    * Extracts a zip entry (file entry)
    * @param zipIn
@@ -32,34 +65,6 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
     }
     bos.close();
     System.out.println("writing to file " + filePath + " " + Files.size(Paths.get(filePath)));
-  }
-
-  public static JavaClassCollection createFromJar(String jarFile) {
-    JavaClassCollection collection = new JavaClassCollection();
-    ArrayList<String> jars = new ArrayList<>();
-    String extractPath = "/mnt/homes/aabhinav/jdk/points-to-analysis/pointsto/";
-    jarFile = extractPath + "dacapo-9.12-MR1-bach.jar";
-    getJars(jarFile, extractPath, jars);
-    
-    System.out.println(jars);
-    Options.v().set_allow_phantom_refs(true);
-    Options.v().set_whole_program(true);
-
-    Options.v().set_process_dir(jars);
-    Options.v().set_soot_classpath(extractPath);
-    Options.v().set_prepend_classpath(true);
-
-    collection.scene = Scene.v();
-    collection.scene.loadNecessaryClasses();
-    collection.scene.loadBasicClasses();
-    for (SootClass clazz : Scene.v().getClasses()) {
-        if (!clazz.getName().equals("java.lang.Object")) {
-          SootClass s = clazz.getSuperclass();
-          System.out.println("Class name: " + clazz.getName() + " " + clazz.getMethods().size() + " " + ((s == null) ? "" : s.getName())); 
-        }
-      }
-
-    return collection;
   }
 
   private static void getJars(String jarFile, String extractPath, ArrayList<String> jars) {
@@ -84,29 +89,17 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
   }
 
   public static boolean methodToCare(String name) {
-    return !name.equals("NULL") && !name.contains("<clinit>") && !name.contains("0x") && !name.contains("_LL");
+    return !name.equals("NULL") && !name.contains("<clinit>") && !name.contains("0x") && !name.contains("_LL") &&
+      !name.contains("jdk.internal.util.Preconditions$4") && !name.contains("sun.launcher.LauncherHelper");
   }
 
   public static boolean classToCare(String name) {
-    return !name.equals("NULL") && !name.contains("<clinit>") && !name.contains("0x") && !name.contains("_LL");
-  }
-
-  private void loadJavaLibraryClass(String classStr) {
-    Path javaBase = Paths.get("/mnt/homes/aabhinav/jdk/build/linux-x86_64-server-release/jdk/modules/java.base/");
-    Path classPath = javaBase.resolve(Utility.packageToPath(classStr) + ".class");
-    if (!Files.exists(classPath, LinkOption.NOFOLLOW_LINKS))
-      ;//System.out.println(classPath + " do not exists for " + classStr);
-    
-    ClassParser parser = new ClassParser(classPath.toString());
-    try {
-      JavaClass javaClass = parser.parse();
-      put(javaClass.getClassName(), javaClass);
-    } catch (Exception e) {
-      // e.printStackTrace();
-    }
+    return !name.equals("NULL") && !name.contains("<clinit>") && !name.contains("0x") && !name.contains("_LL")
+    && !name.contains("sun.launcher.LauncherHelper");
   }
 
   public Type javaTypeForSignature(String sig) {
+    if (!classToCare(sig)) return null;
     int arraydims = 0;
     String origSig = sig;
     for (; arraydims < sig.length() && sig.charAt(arraydims) == '['; arraydims++);
@@ -114,49 +107,52 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
     
     Type basicType = null;
     if (sig.charAt(0) == 'L' && sig.charAt(sig.length() - 1) == ';') {
-      JavaClass cl = getClassForString(sig.substring(1, sig.length() - 1));
-      basicType = JavaObjectType.getInstance(cl);
-    } else if (sig.equals("Z")) {
-      basicType = Type.BOOLEAN;
-    } else if (sig.equals("B")) {
-      basicType = Type.BYTE;
-    } else if (sig.equals("I")) {
-      basicType = Type.INT;
-    } else if (sig.equals("C")) {
-      basicType = Type.CHAR;
-    } else if (sig.equals("S")) {
-      basicType = Type.SHORT;
-    } else if (sig.equals("J")) {
-      basicType = Type.LONG;
-    } else if (sig.equals("F")) {
-      basicType = Type.FLOAT;
-    } else if (sig.equals("D")) {
-      basicType = Type.DOUBLE;
+      SootClass cl = getClassForString(sig.substring(1, sig.length() - 1));
+      basicType = cl.getType();
+    } else if (sig.equals("Z") || sig.equals("boolean")) {
+      basicType = BooleanType.v();
+    } else if (sig.equals("B") || sig.equals("byte")) {
+      basicType = ByteType.v();
+    } else if (sig.equals("I") || sig.equals("int")) {
+      basicType = IntType.v();
+    } else if (sig.equals("C") || sig.equals("char")) {
+      basicType = CharType.v();
+    } else if (sig.equals("S") || sig.equals("short")) {
+      basicType = ShortType.v();
+    } else if (sig.equals("J") || sig.equals("long")) {
+      basicType = LongType.v();
+    } else if (sig.equals("F") || sig.equals("float")) {
+      basicType = FloatType.v();
+    } else if (sig.equals("D") || sig.equals("double")) {
+      basicType = DoubleType.v();
     } else {
-      JavaClass cl = getClassForString(sig);
-      basicType = JavaObjectType.getInstance(cl);
+      SootClass cl = getClassForString(sig);
+      basicType = cl.getType();
     }
     
     if (basicType == null)
       System.out.println("128: Invalid signature " + origSig);
     
     if (arraydims > 0) 
-      return new JavaArrayType(basicType, arraydims);
+      return ArrayType.v(basicType, arraydims);
     else
       return basicType;
   }
 
-  public JavaClass getObjectClass() {
+  public SootClass getObjectClass() {
     return getClassForString("java.lang.Object");
   }
-  public JavaClass getClassForString(String classStr) {
-    if ((classStr.contains("java.") || classStr.contains("jdk.") || classStr.contains("sun.")) && !containsKey(classStr))
-      loadJavaLibraryClass(classStr);
+  public SootClass getClassForString(String classStr) {
     if (!classToCare(classStr)) return null;
-    return get(classStr);
+    //Due to Soot's weird class loading, it loads classes from Jar as harness.org.dacapo.harness instead of
+    //org.dacapo.harness
+    if ((classStr.startsWith("org.dacapo") || classStr.startsWith("org.apache.commons")) && !classStr.startsWith("org.dacapo.lusearch")) {
+      classStr = "harness." + classStr;
+    }
+    return get(classStr); //scene.loadClassAndSupport(classStr);
   }
 
-  public JavaMethod getMethod(String methodStr) {
+  public SootMethod getMethod(String methodStr) {
     if (!methodToCare(methodStr)) {      
       return null;
     }
@@ -168,30 +164,34 @@ public class JavaClassCollection extends HashMap<String, JavaClass> {
         String classname = methodStr.substring(0, dotBeforeMethod);
         String methodname = methodStr.substring(dotBeforeMethod + 1, bracket);
         String signature = methodStr.substring(bracket);
-
-        JavaClass javaclass = getClassForString(classname);
+        // System.out.println("\n158: " + classname + " " + methodname + " " + signature);
+        SootClass javaclass = getClassForString(classname);
         if (javaclass == null) {
           System.out.println("null javaclass for " + classname);
           return null;
         }
-        while (true) {
-          for (Method m : javaclass.getMethods()) {
+        while (javaclass != null) {
+          for (SootMethod m : javaclass.getMethods()) {
             // if (javaclass.getClassName().contains("store.Directory") || 
             //     javaclass.getClassName().contains("store.FSDirectory")) {
             //   System.out.println(m.isPublic() + " " + m.isProtected() + " " + javaclass.getClassName() + "." + m.getName() + m.getSignature());
             // }
-            if (m.getName().equals(methodname) && m.getSignature().equals(signature))
-              return new JavaMethod(m, javaclass);
+            // System.out.println("170: " + m.getName());
+            // System.out.println("171: " + m.getBytecodeSignature());
+            String bytecodesig = m.getBytecodeSignature();
+            bytecodesig = bytecodesig.substring(bytecodesig.indexOf(":") + 2, bytecodesig.length() - 1);
+            // System.out.println("172 " + bytecodesig + " == " + methodname+signature);
+            if(bytecodesig.equals(methodname+signature))
+              return m;
           }
-          
-          if (!javaclass.getClassName().equals("java.lang.Object")) {
-            String supername = javaclass.getSuperclassName();
-            javaclass = getClassForString(supername);
+          // System.out.println("173: " + javaclass.getName() + " " + javaclass.getMethodCount());
+          if (!javaclass.getName().equals("java.lang.Object")) {
+            javaclass = javaclass.getSuperclass();
           } else {
             break;
           }
         }
-        System.out.println(classname + " " + methodname + " " + signature);
+        // System.out.println(classname + " " + methodname + " " + signature);
       }
     }
 

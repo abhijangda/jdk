@@ -1,12 +1,12 @@
 import java.util.*;
 import java.io.*;
 
-import org.apache.bcel.classfile.*;
-import org.apache.bcel.generic.Type;
+import soot.SootMethod;
+import soot.Type;
 
 public class HeapEvent {
   //TODO: Use constant table indices to represent class and method?
-  public final JavaMethod method_;
+  public final SootMethod method_;
   public final String methodStr_;
   public final int bci_;
   public final long srcPtr_;
@@ -14,7 +14,7 @@ public class HeapEvent {
   public final long dstPtr_;
   public final Type dstClass_;
 
-  public HeapEvent(JavaMethod method, String methodStr, int bci, long src, Type srcClass, long dst, Type dstClass) {
+  public HeapEvent(SootMethod method, String methodStr, int bci, long src, Type srcClass, long dst, Type dstClass) {
     this.method_ = method;
     this.methodStr_ = methodStr;
     this.bci_ = bci;
@@ -27,21 +27,21 @@ public class HeapEvent {
   public static HeapEvent fromString(String repr, JavaClassCollection classes) {
     Main.debugAssert(repr.charAt(0) == '[' && repr.charAt(repr.length() - 1) == ']', 
                     "Invalid " + repr);
-    // System.out.println(": " + repr);
     String[] split = repr.split(",");
     String method = split[0].substring(1).strip();
-    JavaMethod m = classes.getMethod(method);
+    SootMethod m = classes.getMethod(method);
     if (JavaClassCollection.methodToCare(method))
       Main.debugAssert(m != null, "Method not found " + method);
+
     int bci = Integer.parseInt(split[1].strip());
     String[] src = split[2].split(":");
-    Type srcClass = classes.javaTypeForSignature(Utility.pathToPackage(src[1].strip()));
+    Type srcClass = classes.javaTypeForSignature(Main.pathToPackage(src[1].strip()));
     if (JavaClassCollection.classToCare(src[1].strip()))
       Main.debugAssert(srcClass != null, "class not found " + src[1]);
 
     String[] dst = split[3].substring(0, split[3].length() - 1).split(":");
 
-    Type dstClass = classes.javaTypeForSignature(Utility.pathToPackage(dst[1].strip()));
+    Type dstClass = classes.javaTypeForSignature(Main.pathToPackage(dst[1].strip()));
     if (JavaClassCollection.classToCare(dst[1].strip()))
       Main.debugAssert(dstClass != null, "class not found " + dst[1]);
 
@@ -64,6 +64,8 @@ public class HeapEvent {
       ArrayList<HeapEvent> currEvents = null;
 
       while (line != null) {
+        if (line.contains(": {") || line.contains("org.dacapo") || line.contains("apache")) {
+          // if (currEvents != null) System.out.println(currEvents.size() + ": " + line);
         if (line.contains(": {[")) {
           //TODO: Fix this case
           currThread = line.substring(0, line.indexOf(":"));
@@ -75,8 +77,8 @@ public class HeapEvent {
           currEvents = heapEvents.get(currThread);
           line = line.substring(line.indexOf("["));
           Main.debugAssert(currEvents != null, "");
-          HeapEvent he = HeapEvent.fromString(line, classes);
-          currEvents.add(he);
+          // HeapEvent he = HeapEvent.fromString(line, classes);
+          // currEvents.add(he);
         } else if (line.charAt(0) == '[' && line.charAt(line.length() - 1) == ']') {
           Main.debugAssert(currEvents != null, "");
           HeapEvent he = HeapEvent.fromString(line, classes);
@@ -90,7 +92,7 @@ public class HeapEvent {
 
           currEvents = heapEvents.get(currThread);
         }
-
+        }
         // read next line
         line = reader.readLine();
       }
@@ -104,7 +106,7 @@ public class HeapEvent {
   }
 
   public String toString() {
-    return "[" + method_.getFullName() + "," + Integer.toString(bci_) + "," + 
+    return "[" + Main.methodFullName(method_) + "," + Integer.toString(bci_) + "," + 
             Long.toString(srcPtr_) + ":" + ((srcClass_ != null) ? srcClass_.toString() : "NULL") + "," + 
             Long.toString(dstPtr_) + ":" + ((dstClass_ != null) ? dstClass_.toString() : "NULL") + "]";
   }

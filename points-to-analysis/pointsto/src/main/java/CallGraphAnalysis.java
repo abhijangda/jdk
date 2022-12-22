@@ -2,6 +2,7 @@ import java.util.*;
 
 import jas.Method;
 import soot.SootMethod;
+import soot.shimple.ShimpleBody;
 
 public class CallGraphAnalysis {
   // public static boolean isMethodReachable(HashMap<String, Method> methodNameMap, Stack<JavaStackElement> stack, String startMethod, int startBytecode, String endMethod) {
@@ -63,7 +64,7 @@ public class CallGraphAnalysis {
 
     heapEventIdx = 0;
     for (HeapEvent he : mainThreadEvents) {
-      if (he.method_ != null && he.method_.getClass().getName().contains("lusearch"))
+      if (he.method_ != null && he.method_.getDeclaringClass().getName().contains("lusearch"))
         break;
       heapEventIdx++;
     }
@@ -85,7 +86,10 @@ public class CallGraphAnalysis {
       }
 
       System.out.printf("%d: %s\n", heapEventIdx, currEvent.toString());
+      ShimpleBody shimpleBody = ParsedMethodMap.v().getOrParseToShimple(currEvent.method_);
+
       HeapEvent nextEvent = mainThreadEvents.get(heapEventIdx);
+
       // BytecodeAnalyzer.analyzeMethod(currEvent.method_, null, staticValues, classCollection);
       // BytecodeAnalyzer.analyzeEvent(nextEvent, null, staticValues);
 

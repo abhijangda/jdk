@@ -64,7 +64,7 @@ public class HeapEvent {
       ArrayList<HeapEvent> currEvents = null;
 
       while (line != null) {
-        if (true || line.contains(": {") || line.contains("org.dacapo") || line.contains("apache")) {
+        if (line.contains(": {") || line.contains("org.dacapo") || line.contains("apache")) {
           // if (currEvents != null) System.out.println(currEvents.size() + ": " + line);
         if (line.contains(": {[")) {
           //TODO: Fix this case

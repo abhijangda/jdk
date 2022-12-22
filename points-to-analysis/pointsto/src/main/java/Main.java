@@ -7,6 +7,11 @@ import soot.options.Options;
 
 public class Main {
   public static boolean DEBUG_PRINT = true;
+  public static void debugPrintln(String x) {
+    if (DEBUG_PRINT) {
+      System.out.println(x);
+    }
+  }
   public static void debugLog(String fmt, Object... args) {
     if (DEBUG_PRINT) {
       System.err.printf(fmt, args);
@@ -81,7 +86,7 @@ public class Main {
     }
     System.out.println("Loaded " + loaded + " heapevents");
     
-    // CallGraphAnalysis.callGraph(heapEvents, javaClasses);
+    CallGraphAnalysis.callGraph(heapEvents, javaClasses);
 
     
     // //Find all main methods in the jar and also find those method in the heap events

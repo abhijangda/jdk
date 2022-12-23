@@ -86,7 +86,7 @@ public class CallGraphAnalysis {
       }
 
       System.out.printf("%d\n", heapEventIdx);
-      ShimpleBody shimpleBody = ParsedMethodMap.v().getOrParseToShimple(currEvent.method_);
+      ShimpleMethod shimpleBody = ParsedMethodMap.v().getOrParseToShimple(currEvent.method_);
 
       HeapEvent nextEvent = mainThreadEvents.get(heapEventIdx);
 

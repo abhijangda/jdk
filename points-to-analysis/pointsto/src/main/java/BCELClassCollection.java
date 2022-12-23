@@ -40,7 +40,6 @@ public class BCELClassCollection extends HashMap<String, JavaClass> {
 
   private static void _createFromJar(String jarFile, BCELClassCollection collection) {
     try {
-      JarFile jar = new JarFile(jarFile);
       JarInputStream jarIn = new JarInputStream(new FileInputStream (jarFile));
       JarEntry entry = jarIn.getNextJarEntry();
       while (entry != null) {
@@ -48,14 +47,6 @@ public class BCELClassCollection extends HashMap<String, JavaClass> {
           ClassParser parser = new ClassParser(jarIn, entry.getName());
           JavaClass javaClass = parser.parse();
           collection.put(javaClass.getClassName(), javaClass);
-          // System.out.println(javaClass.getClassName());
-          // for (Method m : javaClass.getMethods()) {
-          //   String methodName = javaClass.getClassName() +
-          //                       "." + m.getName() + m.getSignature();
-          //   // if (methodName.contains("org.apache.lucene.store.FSDirectory."))
-          //   //   System.out.println(methodName);
-          //   methodNameMap.put(methodName, m);
-          // }
         } else if (entry.getName().endsWith(".jar")) {
           Path entryPath = Paths.get(entry.getName());
           String extractedJarFile = "/tmp/"+entryPath.getFileName();
@@ -92,27 +83,6 @@ public class BCELClassCollection extends HashMap<String, JavaClass> {
     } catch (Exception e) {
       // e.printStackTrace();
     }
-  }
-
-  public JavaClass getClassForSignature(String sig) {
-    boolean isArray = false;
-    if (sig.charAt(0) == '[') {
-      isArray = true;
-      sig = sig.substring(1);
-    }
-
-    if (sig.charAt(0) == 'L' && sig.charAt(sig.length() - 1) == ';') {
-      return getClassForString(sig.substring(1, sig.length() - 1));
-    } else if (sig.equals("B")) {
-      return null;
-    } else if (sig.equals("Z")) {
-      return null;
-    } else if (sig.equals("I")) {
-      return null;
-    }
-
-    System.out.println("Invalid signature " + sig);
-    return null;
   }
 
   public JavaClass getClassForString(String classStr) {

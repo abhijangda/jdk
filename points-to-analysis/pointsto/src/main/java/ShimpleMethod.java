@@ -51,7 +51,7 @@ public class ShimpleMethod {
     return size;
   }
 
-  private static HashMap<Short, ArrayList<Integer>> createopcodeTypeToBCIndexMap(SootMethod method) {
+  private static HashMap<Short, ArrayList<Integer>> createOpcodeTypeToBCIndexMap(SootMethod method, boolean hasRet[]) {
     Method bcelMethod = BCELClassCollection.v().getMethod(Main.methodFullName(method));
     Main.debugAssert(bcelMethod != null, "%s is null\n", Main.methodFullName(method));
     byte[] code = bcelMethod.getCode().getCode();
@@ -87,8 +87,7 @@ public class ShimpleMethod {
             for (int i = 0; i < jumpTableLen; i++) {
               stream.readInt();
             }
-            return null;
-            // break;
+            break;
           }
           case Const.LOOKUPSWITCH: {
             int npairs = stream.readInt();
@@ -98,12 +97,11 @@ public class ShimpleMethod {
                 if (i < npairs - 1) {
                 }
             }
-          return null;
-            // break;
+            break;
           }
           case Const.RET:
-            System.out.println("RET");
-            return null;
+            hasRet[0] = true;
+            break;
 
           default:
             // int sz = opcodeSize(opcode);
@@ -163,8 +161,8 @@ public class ShimpleMethod {
   }
   
   private static BciToJAssignStmt buildBytecodeIndexToInsnMap(SootMethod method, ShimpleBody sb) {
-    HashMap<Short, ArrayList<Integer>> opcodeTypeToBCIndex = createopcodeTypeToBCIndexMap(method);
-    if (opcodeTypeToBCIndex == null) return null;
+    boolean[] hasRet = new boolean[1];
+    HashMap<Short, ArrayList<Integer>> opcodeTypeToBCIndex = createOpcodeTypeToBCIndexMap(method, hasRet);
 
     int[] numJExprsForOpcodeType = new int[Const.OPCODE_NAMES_LENGTH];
     Arrays.fill(numJExprsForOpcodeType, 0);
@@ -176,9 +174,14 @@ public class ShimpleMethod {
         soot.jimple.internal.JAssignStmt stmt = (soot.jimple.internal.JAssignStmt) u;
         short opcode = opcodeForJAssign(stmt);
         if (opcode != -1) {
-          int bci = opcodeTypeToBCIndex.get(opcode).get(numJExprsForOpcodeType[opcode]);
-          numJExprsForOpcodeType[opcode]++;
-          bciToJAssignStmt.put(bci, stmt);
+          if (numJExprsForOpcodeType[opcode] >= opcodeTypeToBCIndex.get(opcode).size() && hasRet[0]) {
+            //TODO: With ret/jsr Shimple copies two nodes, so ignore it.
+            continue;
+          } else {
+            int bci = opcodeTypeToBCIndex.get(opcode).get(numJExprsForOpcodeType[opcode]);
+            numJExprsForOpcodeType[opcode]++;
+            bciToJAssignStmt.put(bci, stmt);
+          }
         }
       }
     }
@@ -199,14 +202,15 @@ public class ShimpleMethod {
   private final BciToJAssignStmt bciToJAssignStmt;
   private final SootMethod sootMethod;
   private final ShimpleBody shimpleBody;
+
   public BciToJAssignStmt getBciToJAssignStmt() {return bciToJAssignStmt;}
   public SootMethod       getSootMethod()       {return sootMethod;}
   public ShimpleBody      getShimpleBody()      {return shimpleBody;}
 
   private ShimpleMethod(BciToJAssignStmt bciToJAssignStmt, SootMethod sootMethod, ShimpleBody shimpleBody) {
     this.bciToJAssignStmt = bciToJAssignStmt;
-    this.sootMethod = sootMethod;
-    this.shimpleBody = shimpleBody;
+    this.sootMethod       = sootMethod;
+    this.shimpleBody      = shimpleBody;
   }
 
   public static ShimpleMethod v(SootMethod method) {

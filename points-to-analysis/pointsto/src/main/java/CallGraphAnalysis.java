@@ -85,8 +85,11 @@ public class CallGraphAnalysis {
         }
       }
 
-      System.out.printf("%d\n", heapEventIdx);
-      ShimpleMethod shimpleBody = ParsedMethodMap.v().getOrParseToShimple(currEvent.method_);
+      if (!ParsedMethodMap.v().containsKey(currEvent.method_)) {
+        System.out.printf("%d\n", heapEventIdx);
+        ShimpleMethod shimpleBody = ParsedMethodMap.v().getOrParseToShimple(currEvent.method_);
+
+      }
 
       HeapEvent nextEvent = mainThreadEvents.get(heapEventIdx);
 
@@ -102,7 +105,7 @@ public class CallGraphAnalysis {
       // }
 
       currEvent = nextEvent;
-      if (iterations > 10000) break;
+      // if (iterations > 10000) break;
     }
    }
 }

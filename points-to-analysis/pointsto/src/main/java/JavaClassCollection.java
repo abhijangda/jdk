@@ -43,7 +43,7 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
 
     for (SootClass c : collection.scene.getClasses()) {
       collection.put(c.getName(), c);
-      System.out.println(c.getName());
+      // System.out.println(c.getName());
     }
     return collection;
   }

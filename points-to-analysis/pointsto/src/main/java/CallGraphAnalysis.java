@@ -42,7 +42,7 @@ public class CallGraphAnalysis {
     return methodToCare(m.getClass().getName());
   }
 
-  public static void callGraph(HashMap<String, ArrayList<HeapEvent>> heapEvents, JavaClassCollection classCollection) {
+  public static void callGraph(HashMap<String, ArrayList<HeapEvent>> heapEvents, JavaClassCollection classCollection, BCELClassCollection bcelClassCollection) {
     String mainThread = "";
     int heapEventIdx = -1;
     String threadWithMaxEvents = "";

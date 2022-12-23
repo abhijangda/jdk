@@ -36,7 +36,17 @@ public class Main {
   }
 
   public static String methodFullName(SootMethod meth) {
-    return meth.getDeclaringClass().getName() + "." + meth.getName() + meth.getSignature();
+    StringBuilder builder = new StringBuilder();
+    builder.append(meth.getDeclaringClass().getName());
+    builder.append(".");
+    builder.append(meth.getName());
+    builder.append("(");
+    for (Type t : meth.getParameterTypes()) {
+      builder.append(AbstractJasminClass.jasminDescriptorOf(t));
+    }
+    builder.append(")");
+    builder.append(AbstractJasminClass.jasminDescriptorOf(meth.getReturnType()));
+    return builder.toString();
   }
   // public static ArrayList<Method> findMainMethods(String jarFile, JarFile jar) {
   //   ArrayList<Method> mainMethods = new ArrayList<>();
@@ -86,7 +96,9 @@ public class Main {
     }
     System.out.println("Loaded " + loaded + " heapevents");
     
-    CallGraphAnalysis.callGraph(heapEvents, javaClasses);
+    //Also load classes through BCEL
+    BCELClassCollection bcelClassCollection = BCELClassCollection.createFromJar(jarFile);
+    CallGraphAnalysis.callGraph(heapEvents, javaClasses, bcelClassCollection);
 
     
     // //Find all main methods in the jar and also find those method in the heap events

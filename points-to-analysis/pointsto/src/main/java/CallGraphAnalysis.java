@@ -5,35 +5,6 @@ import soot.SootMethod;
 import soot.shimple.ShimpleBody;
 
 public class CallGraphAnalysis {
-  // public static boolean isMethodReachable(HashMap<String, Method> methodNameMap, Stack<JavaStackElement> stack, String startMethod, int startBytecode, String endMethod) {
-  //   Method m = methodNameMap.get(startMethod);
-  //   if (m == null) {
-  //     System.out.println("not found " + startMethod);
-  //     return false;
-  //   }
-  //   if (m.isAbstract())
-  //     return false;
-  //   HashMap<Integer, String> invokeBC = findInvokeBytecode(m);
-  //   assert(methodNameMap.containsKey(startMethod));
-  //   assert(methodNameMap.containsKey(endMethod));
-
-  //   for (Map.Entry<Integer, String> entry : invokeBC.entrySet()) {
-  //     if (startBytecode <= entry.getKey() && methodToCare(entry.getValue())) {
-  //       if (endMethod.equals(entry.getValue())) {
-  //         stack.push(new JavaStackElement(startMethod, entry.getKey()));
-  //         return true;
-  //       } else {
-  //         stack.push(new JavaStackElement(startMethod, entry.getKey()));
-  //         if (isMethodReachable(methodNameMap, stack, entry.getValue(), 0, endMethod))
-  //           return true;
-  //         stack.pop();
-  //       }
-  //     }
-  //   }
-
-  //   return false;
-  // }
-
   public static boolean methodToCare(String name) {
     return !name.equals("NULL") && !name.contains("java.") && !name.contains("jdk.") && !name.contains("sun.") && !name.contains("<clinit>");
   }
@@ -86,26 +57,12 @@ public class CallGraphAnalysis {
       }
 
       if (!ParsedMethodMap.v().containsKey(currEvent.method_)) {
-        System.out.printf("%d\n", heapEventIdx);
         ShimpleMethod shimpleBody = ParsedMethodMap.v().getOrParseToShimple(currEvent.method_);
 
       }
 
       HeapEvent nextEvent = mainThreadEvents.get(heapEventIdx);
-
-      // BytecodeAnalyzer.analyzeMethod(currEvent.method_, null, staticValues, classCollection);
-      // BytecodeAnalyzer.analyzeEvent(nextEvent, null, staticValues);
-
-      // if (nextEvent.method_.getMethod() == currEvent.method_.getMethod()) {
-      //   //Same method
-      //   //TODO: Assuming no recursions
-      //   // BytecodeAnalyzer.analyzeEvent(mainThreadEvents.get(heapEventIdx), null, staticValues);
-      // } else {
-      //   // BytecodeAnalyzer.analyzeMethod(mainThreadEvents.get(heapEventIdx), );
-      // }
-
       currEvent = nextEvent;
-      // if (iterations > 10000) break;
     }
    }
 }

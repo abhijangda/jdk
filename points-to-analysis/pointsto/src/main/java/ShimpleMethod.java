@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 
 import org.apache.bcel.Const;
 import org.apache.bcel.classfile.Method;
@@ -16,6 +17,8 @@ import soot.LongType;
 import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
+import soot.ValueBox;
+import soot.jimple.StaticFieldRef;
 import soot.jimple.internal.JArrayRef;
 import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JInstanceFieldRef;
@@ -24,6 +27,8 @@ import soot.jimple.internal.JNewExpr;
 import soot.jimple.internal.JNewMultiArrayExpr;
 import soot.shimple.ShimpleBody;
 import soot.shimple.ShimpleMethodSource;
+import soot.toolkits.graph.Block;
+import soot.toolkits.graph.ExceptionalBlockGraph;
 
 public class ShimpleMethod {
   public static class BciToJAssignStmt extends HashMap<Integer, JAssignStmt> {}
@@ -138,8 +143,10 @@ public class ShimpleMethod {
     Value left = stmt.getLeftOp();
     Value right = stmt.getRightOp();
     short opcode = -1;
-
-    if (left instanceof JInstanceFieldRef) {
+    
+    if (left instanceof StaticFieldRef) {
+      opcode = Const.PUTSTATIC;
+    } if (left instanceof JInstanceFieldRef) {
       opcode = Const.PUTFIELD;
     } else if (left instanceof JArrayRef) {
       if (!isPrimitiveType(((JArrayRef)left).getType())) {
@@ -202,22 +209,119 @@ public class ShimpleMethod {
   private final BciToJAssignStmt bciToJAssignStmt;
   private final SootMethod sootMethod;
   private final ShimpleBody shimpleBody;
+  private final ExceptionalBlockGraph basicBlockGraph;
+  private HashMap<Block, HashMap<Unit, VariableValues>> allVariableValues;
+  private HashMap<Block, ArrayList<Unit>> blockStmts;
+  private HashMap<Value, Unit> valueToDefStmt;
 
-  public BciToJAssignStmt getBciToJAssignStmt() {return bciToJAssignStmt;}
-  public SootMethod       getSootMethod()       {return sootMethod;}
-  public ShimpleBody      getShimpleBody()      {return shimpleBody;}
+  public JAssignStmt getAssignStmtForBci(int bci) {return bciToJAssignStmt.get(bci);}
+  public SootMethod  getSootMethod()              {return sootMethod;}
+  public ShimpleBody getShimpleBody()             {return shimpleBody;}
 
   private ShimpleMethod(BciToJAssignStmt bciToJAssignStmt, SootMethod sootMethod, ShimpleBody shimpleBody) {
     this.bciToJAssignStmt = bciToJAssignStmt;
     this.sootMethod       = sootMethod;
     this.shimpleBody      = shimpleBody;
+    basicBlockGraph       = new ExceptionalBlockGraph(shimpleBody);
+
+    initVariableValuesMap();
   }
 
   public static ShimpleMethod v(SootMethod method) {
     ShimpleMethodSource sm = new ShimpleMethodSource(method.getSource());
     ShimpleBody sb = (ShimpleBody)sm.getBody(method, "");
     BciToJAssignStmt bciToJAssignStmt = buildBytecodeIndexToInsnMap(method, sb);
-
     return new ShimpleMethod(bciToJAssignStmt, method, sb);
+  }
+
+  private void initVariableValuesMap() {
+    allVariableValues = new HashMap<>();
+    blockStmts = new HashMap<>();
+    valueToDefStmt = new HashMap<>();
+
+    for (Block block : basicBlockGraph.getBlocks()) {
+      HashMap<Unit, VariableValues> known = new HashMap<>();
+      allVariableValues.put(block, known);
+      ArrayList<Unit> stmts = new ArrayList<Unit>();
+      blockStmts.put(block, stmts);
+      Iterator<Unit> unitIter = block.iterator();
+      while (unitIter.hasNext()) {
+        Unit unit = unitIter.next();
+        for (ValueBox def : unit.getDefBoxes()) {
+          known.put(unit, new VariableValues(def.getValue(), unit));
+          Main.debugAssert(!valueToDefStmt.containsKey(def.getValue()), "value already in map");
+          valueToDefStmt.put(def.getValue(), unit);
+        }
+        stmts.add(unit);
+      }
+    }
+  }
+
+  private Block blockForUnit(Unit unit) {
+    for (Block block : basicBlockGraph.getBlocks()) {
+      Iterator<Unit> unitIter = block.iterator();
+      while (unitIter.hasNext()) {
+        Unit unit1 = unitIter.next();
+        if (unit1 == unit) return block;
+      }
+    }
+
+    return null;
+  }
+
+  private void propogateValues(Block block, boolean fwdOrBckwd) {
+    var stmts = blockStmts.get(block);
+    var blockVarVals = allVariableValues.get(block);
+    for (Unit unit : stmts) {
+      for (ValueBox vbox : unit.getUseBoxes()) {
+        Value val = vbox.getValue();
+        Unit stmt = valueToDefStmt.get(val);
+        
+        // System.out.println(val.getClass());
+        // blockVarVals.get();
+      }
+    }
+  }
+
+  public void updateValuesWithHeapEvent(HeapEvent heapEvent) {
+    JAssignStmt stmt = getAssignStmtForBci(heapEvent.bci);
+    Block block = blockForUnit(stmt);
+    short opcode = ShimpleMethod.opcodeForJAssign(stmt);
+    VariableValues varVals = allVariableValues.get(block).get(stmt);
+
+    //Add value of the heap event
+    switch (opcode) {
+      case Const.PUTFIELD:
+        // lvalSet.add(new ActualValue(currEvent.dstClass_, currEvent.dstPtr_));
+        // rvalSet.add(new ActualValue(currEvent.srcClass, currEvent.srcPtr));
+        Main.debugAssert(stmt.getUseBoxes().size() <= 2, "Only one use in " + stmt.toString());
+        break;
+      case Const.AASTORE:
+        // lvalSet.add(new ActualValue(currEvent.dstClass_, currEvent.dstPtr_));
+        // rvalSet.add(new ActualValue(currEvent.srcClass, currEvent.srcPtr));
+        Main.debugAssert(stmt.getUseBoxes().size() <= 2, "Only one use in " + stmt.toString());
+        break;
+      case Const.PUTSTATIC:
+        break;
+      case Const.NEW:
+        varVals.add(new VariableValue(heapEvent.dstClass, heapEvent.dstPtr));
+        Main.debugAssert(stmt.getUseBoxes().size() <= 1, "Only one use in " + stmt.toString());
+        break;
+      case Const.NEWARRAY:
+        // lvalSet.add(new ActualValue(currEvent.dstClass, currEvent.dstPtr));
+        Main.debugAssert(stmt.getUseBoxes().size() <= 1, "Only one use in " + stmt.toString());
+        break;
+      case Const.ANEWARRAY:
+        Main.debugAssert(stmt.getUseBoxes().size() <= 1, "Only one use in " + stmt.toString());
+        break;
+      case Const.MULTIANEWARRAY:
+        // Main.debugAssert(stmt.getUseBoxes().size() <= 1, "Only one use in " + stmt.toString());
+        break;
+      
+      default:
+        Main.debugAssert(false, "not handling " + Const.getOpcodeName(opcode));
+    }
+
+    propogateValues(block, true);
   }
 }

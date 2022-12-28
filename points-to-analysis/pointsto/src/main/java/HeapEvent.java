@@ -6,46 +6,49 @@ import soot.Type;
 
 public class HeapEvent {
   //TODO: Use constant table indices to represent class and method?
-  public final SootMethod method_;
-  public final String methodStr_;
-  public final int bci_;
-  public final long srcPtr_;
-  public final Type srcClass_;
-  public final long dstPtr_;
-  public final Type dstClass_;
+  public final int eventType;
+  public final SootMethod method;
+  public final String methodStr;
+  public final int bci;
+  public final long srcPtr;
+  public final Type srcClass;
+  public final long dstPtr;
+  public final Type dstClass;
 
-  public HeapEvent(SootMethod method, String methodStr, int bci, long src, Type srcClass, long dst, Type dstClass) {
-    this.method_ = method;
-    this.methodStr_ = methodStr;
-    this.bci_ = bci;
-    this.srcPtr_ = src;
-    this.srcClass_ = srcClass;
-    this.dstPtr_ = dst;
-    this.dstClass_ = dstClass;
+  public HeapEvent(int eventType, SootMethod method, String methodStr, int bci, long src, Type srcClass, long dst, Type dstClass) {
+    this.eventType = eventType;
+    this.method = method;
+    this.methodStr = methodStr;
+    this.bci = bci;
+    this.srcPtr = src;
+    this.srcClass = srcClass;
+    this.dstPtr = dst;
+    this.dstClass = dstClass;
   }
 
   public static HeapEvent fromString(String repr, JavaClassCollection classes) {
     Main.debugAssert(repr.charAt(0) == '[' && repr.charAt(repr.length() - 1) == ']', 
                     "Invalid " + repr);
     String[] split = repr.split(",");
-    String method = split[0].substring(1).strip();
+    int eventType = Integer.parseInt(split[0].substring(1));
+    String method = split[1].strip();
     SootMethod m = classes.getMethod(method);
     if (JavaClassCollection.methodToCare(method))
       Main.debugAssert(m != null, "Method not found " + method);
 
-    int bci = Integer.parseInt(split[1].strip());
-    String[] src = split[2].split(":");
+    int bci = Integer.parseInt(split[2].strip());
+    String[] src = split[3].split(":");
     Type srcClass = classes.javaTypeForSignature(Main.pathToPackage(src[1].strip()));
     if (JavaClassCollection.classToCare(Main.pathToPackage(src[1].strip())))
       Main.debugAssert(srcClass != null, "class not found " + src[1]);
 
-    String[] dst = split[3].substring(0, split[3].length() - 1).split(":");
+    String[] dst = split[4].substring(0, split[4].length() - 1).split(":");
 
     Type dstClass = classes.javaTypeForSignature(Main.pathToPackage(dst[1].strip()));
     if (JavaClassCollection.classToCare(Main.pathToPackage(dst[1].strip())))
       Main.debugAssert(dstClass != null, "class not found " + dst[1]);
 
-    return new HeapEvent(m, method, bci,
+    return new HeapEvent(eventType, m, method, bci,
                          Long.parseLong(src[0].strip()),
                          srcClass,
                          Long.parseLong(dst[0].strip()),
@@ -106,8 +109,8 @@ public class HeapEvent {
   }
 
   public String toString() {
-    return "[" + Main.methodFullName(method_) + "," + Integer.toString(bci_) + "," + 
-            Long.toString(srcPtr_) + ":" + ((srcClass_ != null) ? srcClass_.toString() : "NULL") + "," + 
-            Long.toString(dstPtr_) + ":" + ((dstClass_ != null) ? dstClass_.toString() : "NULL") + "]";
+    return "[" + Main.methodFullName(method) + "," + Integer.toString(bci) + "," + 
+            Long.toString(srcPtr) + ":" + ((srcClass != null) ? srcClass.toString() : "NULL") + "," + 
+            Long.toString(dstPtr) + ":" + ((dstClass != null) ? dstClass.toString() : "NULL") + "]";
   }
 }

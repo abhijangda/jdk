@@ -1525,6 +1525,7 @@ void Universe::verify_heap_graph() {
       char src_class[1024] = "NULL";
       char dst_class[1024] = "NULL";
       int bci = -1;
+      
       if (HeapEventsFileDump) {
         if (event.getmethod() != 0) {
           Method* m = (Method*)event.getmethod();
@@ -1541,6 +1542,8 @@ void Universe::verify_heap_graph() {
               strcpy(src_class, "int");
               if (event.dst != 0)
                 get_oop_klass_name(oop((oopDesc*)event.dst), dst_class);
+              
+              sprintf(heap_dump_buf, "[%ld, %s, %d, %ld:%s, %ld:%s]\n", heap_event_type, m_name, bci, event.src, src_class, event.dst, dst_class);
             }
 
             checkBytecodeForHeapEvent(heap_event_type, event);
@@ -1609,6 +1612,7 @@ void Universe::verify_heap_graph() {
               if (event.dst != 0) {
                 get_oop_klass_name(obj, dst_class);
               }
+              sprintf(heap_dump_buf, "[%ld, %s, %d, %ld:%s, %ld:%s]\n", heap_event_type, m_name, bci, event.src, src_class, (uint64_t)obj, dst_class);
             }
             ObjectNode::oop_to_obj_node[obj].update_or_add_field((void*)field, (oopDesc*)event.src, 
                                                                 0);
@@ -1818,8 +1822,7 @@ void Universe::verify_heap_graph() {
         printf("Unknown event %ld 0x%lx 0x%lx at %ld\n", heap_event_type, event.src, event.dst, event_iter);
       }
 
-      if (HeapEventsFileDump) {  
-        sprintf(heap_dump_buf, "[%s, %d, %ld:%s, %ld:%s]\n", m_name, bci, event.src, src_class, event.dst, dst_class);
+      if (HeapEventsFileDump) {
         heap_dump += Universe::string(heap_dump_buf);
       }
     }

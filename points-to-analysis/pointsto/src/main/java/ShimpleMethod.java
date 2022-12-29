@@ -1,7 +1,12 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.TreeSet;
+import java.util.concurrent.BlockingDeque;
 
 import org.apache.bcel.Const;
 import org.apache.bcel.classfile.Method;
@@ -14,21 +19,49 @@ import soot.DoubleType;
 import soot.FloatType;
 import soot.IntegerType;
 import soot.LongType;
+import soot.SootField;
+import soot.SootFieldRef;
 import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
 import soot.ValueBox;
+import soot.jimple.BinopExpr;
+import soot.jimple.CaughtExceptionRef;
 import soot.jimple.StaticFieldRef;
+import soot.jimple.Stmt;
+import soot.jimple.UnopExpr;
 import soot.jimple.internal.JArrayRef;
 import soot.jimple.internal.JAssignStmt;
+import soot.jimple.internal.JCastExpr;
+import soot.jimple.internal.JEnterMonitorStmt;
+import soot.jimple.internal.JExitMonitorStmt;
+import soot.jimple.internal.JGotoStmt;
+import soot.jimple.internal.JIdentityStmt;
+import soot.jimple.internal.JIfStmt;
 import soot.jimple.internal.JInstanceFieldRef;
+import soot.jimple.internal.JInstanceOfExpr;
+import soot.jimple.internal.JInterfaceInvokeExpr;
+import soot.jimple.internal.JInvokeStmt;
+import soot.jimple.internal.JLookupSwitchStmt;
 import soot.jimple.internal.JNewArrayExpr;
 import soot.jimple.internal.JNewExpr;
 import soot.jimple.internal.JNewMultiArrayExpr;
+import soot.jimple.internal.JNopStmt;
+import soot.jimple.internal.JRetStmt;
+import soot.jimple.internal.JReturnStmt;
+import soot.jimple.internal.JReturnVoidStmt;
+import soot.jimple.internal.JSpecialInvokeExpr;
+import soot.jimple.internal.JStaticInvokeExpr;
+import soot.jimple.internal.JTableSwitchStmt;
+import soot.jimple.internal.JThrowStmt;
+import soot.jimple.internal.JVirtualInvokeExpr;
 import soot.shimple.ShimpleBody;
 import soot.shimple.ShimpleMethodSource;
+import soot.shimple.internal.SPhiExpr;
+import soot.shimple.internal.SPiExpr;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ExceptionalBlockGraph;
+import soot.toolkits.scalar.ValueUnitPair;
 
 public class ShimpleMethod {
   public static class BciToJAssignStmt extends HashMap<Integer, JAssignStmt> {}
@@ -210,9 +243,11 @@ public class ShimpleMethod {
   private final SootMethod sootMethod;
   private final ShimpleBody shimpleBody;
   private final ExceptionalBlockGraph basicBlockGraph;
-  private HashMap<Block, HashMap<Unit, VariableValues>> allVariableValues;
-  private HashMap<Block, ArrayList<Unit>> blockStmts;
-  private HashMap<Value, Unit> valueToDefStmt;
+  private final HashMap<Block, ArrayList<Unit>> blockStmts;
+  private final HashMap<Value, Unit> valueToDefStmt;
+  private final HashMap<Unit, Block> stmtToBlock;
+
+  private HashMap<Value, VariableValues> allVariableValues;
 
   public JAssignStmt getAssignStmtForBci(int bci) {return bciToJAssignStmt.get(bci);}
   public SootMethod  getSootMethod()              {return sootMethod;}
@@ -222,9 +257,36 @@ public class ShimpleMethod {
     this.bciToJAssignStmt = bciToJAssignStmt;
     this.sootMethod       = sootMethod;
     this.shimpleBody      = shimpleBody;
-    basicBlockGraph       = new ExceptionalBlockGraph(shimpleBody);
 
-    initVariableValuesMap();
+    ExceptionalBlockGraph basicBlockGraph            = new ExceptionalBlockGraph(shimpleBody);
+    HashMap<Block, ArrayList<Unit>> blockStmts       = new HashMap<>();
+    HashMap<Value, Unit> valueToDefStmt              = new HashMap<>();
+    HashMap<Unit, Block> stmtToBlock                 = new HashMap<>();
+    allVariableValues = new HashMap<>();
+
+    for (Block block : basicBlockGraph.getBlocks()) {
+      ArrayList<Unit> stmts = new ArrayList<Unit>();
+      blockStmts.put(block, stmts);
+      Iterator<Unit> unitIter = block.iterator();
+      while (unitIter.hasNext()) {
+        Unit unit = unitIter.next();
+        for (ValueBox def : unit.getDefBoxes()) {
+          allVariableValues.put(def.getValue(), new VariableValues(def.getValue(), unit));
+          Main.debugAssert(!valueToDefStmt.containsKey(def.getValue()), "value already in map");
+          valueToDefStmt.put(def.getValue(), unit);
+        }
+        stmts.add(unit);
+        stmtToBlock.put(unit, block);
+      }
+    }
+
+    Value thisLocal = shimpleBody.getThisLocal();
+    allVariableValues.get(thisLocal).add(new VariableValue(thisLocal.getType(), VariableValue.ThisPtr));
+
+    this.basicBlockGraph = basicBlockGraph;
+    this.blockStmts      = blockStmts;
+    this.valueToDefStmt  = valueToDefStmt;
+    this.stmtToBlock     = stmtToBlock;
   }
 
   public static ShimpleMethod v(SootMethod method) {
@@ -232,29 +294,6 @@ public class ShimpleMethod {
     ShimpleBody sb = (ShimpleBody)sm.getBody(method, "");
     BciToJAssignStmt bciToJAssignStmt = buildBytecodeIndexToInsnMap(method, sb);
     return new ShimpleMethod(bciToJAssignStmt, method, sb);
-  }
-
-  private void initVariableValuesMap() {
-    allVariableValues = new HashMap<>();
-    blockStmts = new HashMap<>();
-    valueToDefStmt = new HashMap<>();
-
-    for (Block block : basicBlockGraph.getBlocks()) {
-      HashMap<Unit, VariableValues> known = new HashMap<>();
-      allVariableValues.put(block, known);
-      ArrayList<Unit> stmts = new ArrayList<Unit>();
-      blockStmts.put(block, stmts);
-      Iterator<Unit> unitIter = block.iterator();
-      while (unitIter.hasNext()) {
-        Unit unit = unitIter.next();
-        for (ValueBox def : unit.getDefBoxes()) {
-          known.put(unit, new VariableValues(def.getValue(), unit));
-          Main.debugAssert(!valueToDefStmt.containsKey(def.getValue()), "value already in map");
-          valueToDefStmt.put(def.getValue(), unit);
-        }
-        stmts.add(unit);
-      }
-    }
   }
 
   private Block blockForUnit(Unit unit) {
@@ -269,25 +308,151 @@ public class ShimpleMethod {
     return null;
   }
 
+  private VariableValues obtainVariableValues(Unit stmt, Value val) {
+    if (val instanceof JNewExpr) {
+      return null;
+    } else if (val instanceof JNewArrayExpr) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (val instanceof JNewMultiArrayExpr) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (val instanceof BinopExpr) {
+      VariableValues vals = new VariableValues(val, stmt);
+      Value v1 = ((BinopExpr)val).getOp1();
+      Value v2 = ((BinopExpr)val).getOp2();
+      vals.add(new VariableValue(val.getType()));
+      return vals;
+    } else if (val instanceof UnopExpr) {
+      VariableValues vals = new VariableValues(val, stmt);
+      vals.add(new VariableValue(val.getType()));
+      return vals;
+    } else if (val instanceof JCastExpr) {
+      VariableValues vals = new VariableValues(val, stmt);
+      Value op = ((JCastExpr)val).getOp();
+      for (VariableValue v : allVariableValues.get(op)) {
+        vals.add(new VariableValue(op.getType(), v.refValue));
+      }
+      return vals;
+    } else if (val instanceof JInstanceOfExpr) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (val instanceof JStaticInvokeExpr) {
+      return null;
+    } else if (val instanceof JVirtualInvokeExpr) {
+      return null;
+    } else if (val instanceof JSpecialInvokeExpr) {
+      boolean isspecial = ((JSpecialInvokeExpr)val).getMethod().isConstructor();
+      Main.debugAssert(isspecial, "not special? " + val.toString());
+      return null;
+    } else if (val instanceof JInstanceFieldRef) {
+      VariableValues vals = new VariableValues(val, stmt);
+      Value base = ((JInstanceFieldRef)val).getBase();
+      SootFieldRef field = ((JInstanceFieldRef)val).getFieldRef();
+      VariableValues baseVals = allVariableValues.get(base);
+      for (VariableValue baseVal : baseVals) {
+        vals.add(new FieldRefValue(baseVal, field));
+      }
+      return vals;
+    } else if (val instanceof JInterfaceInvokeExpr) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (val instanceof SPhiExpr) {
+      SPhiExpr phi = (SPhiExpr)val;
+      VariableValues vals = new VariableValues(val, stmt);
+      for (ValueUnitPair pair : phi.getArgs()) {
+        vals.addAll(allVariableValues.get(pair.getValue()));
+      }
+      return vals;
+    } else if (val instanceof SPiExpr) {
+      Main.debugAssert(false, stmt.toString());
+    } else {
+      Main.debugAssert(false, "Unsupported Jimple expr " + val.getClass() + "'" + stmt.toString() + "'");
+    }
+
+    return null;
+  }
+
+  private void propogateValues(Unit stmt, HashMap<Value, VariableValues> varVals) {
+    if (stmt instanceof JIdentityStmt) {
+      if (((JIdentityStmt)stmt).getRightOp() instanceof CaughtExceptionRef) {
+        return;
+      } else {
+        Main.debugAssert(false, "");
+      }
+    } else if (stmt instanceof JAssignStmt) {
+      Value leftVal = ((JAssignStmt)stmt).getLeftOp();
+      Value rightVal =((JAssignStmt)stmt).getRightOp();
+      VariableValues valsForLeft = obtainVariableValues(stmt, rightVal);
+      if (valsForLeft != null) {
+        allVariableValues.put(leftVal, valsForLeft);
+        // blockVarVals.put(stmt, valsForLeft);
+      }
+    } else if (stmt instanceof JEnterMonitorStmt) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (stmt instanceof JExitMonitorStmt) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (stmt instanceof JReturnStmt) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (stmt instanceof JThrowStmt) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (stmt instanceof JLookupSwitchStmt) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (stmt instanceof JTableSwitchStmt) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (stmt instanceof JGotoStmt) {
+      return;
+    } else if (stmt instanceof JIfStmt) {
+      Stmt target = ((JIfStmt)stmt).getTarget();
+      Value cond = ((JIfStmt)stmt).getCondition();
+      // System.out.println("398: " + val);
+      // Unit u = ((JGotoStmt)target).getTarget();
+      // System.out.println("402: " + u.toString());
+      // System.out.println("403: " + stmtToBlock.get(u));
+      // for (Unit uu : stmtToBlock.keySet()) {
+      //   System.out.print(uu.toString() + " "); //stmtToBlock.get(uu).getIndexInMethod()
+      // }
+    } else if (stmt instanceof JInvokeStmt) {
+      obtainVariableValues(stmt, ((JInvokeStmt)stmt).getInvokeExpr());
+    } else if (stmt instanceof JNopStmt) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (stmt instanceof JReturnVoidStmt) {
+      return;
+    } else if (stmt instanceof JRetStmt) {
+      Main.debugAssert(false, stmt.toString());
+    } else if (stmt instanceof JReturnStmt) {
+      Main.debugAssert(false, stmt.toString());
+    } else {
+      Main.debugAssert(false, "Unhandled statement " + stmt.getClass());
+    }
+  }
+
   private void propogateValues(Block block, boolean fwdOrBckwd) {
-    var stmts = blockStmts.get(block);
-    var blockVarVals = allVariableValues.get(block);
+    ArrayList<Unit> stmts = blockStmts.get(block);
     for (Unit unit : stmts) {
-      for (ValueBox vbox : unit.getUseBoxes()) {
-        Value val = vbox.getValue();
-        Unit stmt = valueToDefStmt.get(val);
-        
-        // System.out.println(val.getClass());
-        // blockVarVals.get();
+      propogateValues(unit, allVariableValues);
+      // obtainVariableValues(val, useToVals);
+    }
+  }
+
+  private void propogateValuesToSucc(Block block) {
+    Queue<Block> q = new LinkedList<Block>();
+    q.add(block);
+    HashSet<Block> visited = new HashSet<>();
+    while (!q.isEmpty()) {
+      Block b = q.remove();
+      if (visited.contains(b)) continue;
+      visited.add(b);
+      for (var succ : b.getSuccs()) {
+        propogateValues(succ, false);
+        q.add(succ);
       }
     }
   }
 
   public void updateValuesWithHeapEvent(HeapEvent heapEvent) {
+    System.out.println(heapEvent.toString());
+    System.out.print(basicBlockGraph.toString());
+    
     JAssignStmt stmt = getAssignStmtForBci(heapEvent.bci);
     Block block = blockForUnit(stmt);
     short opcode = ShimpleMethod.opcodeForJAssign(stmt);
-    VariableValues varVals = allVariableValues.get(block).get(stmt);
 
     //Add value of the heap event
     switch (opcode) {
@@ -303,10 +468,13 @@ public class ShimpleMethod {
         break;
       case Const.PUTSTATIC:
         break;
-      case Const.NEW:
+      case Const.NEW: {
+        Main.debugAssert(stmt.getRightOp() instanceof JNewExpr, "sanity");
+        VariableValues varVals = allVariableValues.get(stmt.getLeftOp());
         varVals.add(new VariableValue(heapEvent.dstClass, heapEvent.dstPtr));
         Main.debugAssert(stmt.getUseBoxes().size() <= 1, "Only one use in " + stmt.toString());
         break;
+      }
       case Const.NEWARRAY:
         // lvalSet.add(new ActualValue(currEvent.dstClass, currEvent.dstPtr));
         Main.debugAssert(stmt.getUseBoxes().size() <= 1, "Only one use in " + stmt.toString());
@@ -322,6 +490,12 @@ public class ShimpleMethod {
         Main.debugAssert(false, "not handling " + Const.getOpcodeName(opcode));
     }
 
+    //Propagate values inside the block
     propogateValues(block, true);
+
+    //Propagate values to the successors
+    propogateValuesToSucc(block);
+
+    //Propagate values to the predecessors
   }
 }

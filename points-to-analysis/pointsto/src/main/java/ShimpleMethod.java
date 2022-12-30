@@ -25,8 +25,10 @@ import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
 import soot.ValueBox;
+import soot.dava.toolkits.base.AST.traversals.AllVariableUses;
 import soot.jimple.BinopExpr;
 import soot.jimple.CaughtExceptionRef;
+import soot.jimple.InvokeStmt;
 import soot.jimple.StaticFieldRef;
 import soot.jimple.Stmt;
 import soot.jimple.UnopExpr;
@@ -240,19 +242,15 @@ public class ShimpleMethod {
   }
 
   private final BciToJAssignStmt bciToJAssignStmt;
-  private final SootMethod sootMethod;
-  private final ShimpleBody shimpleBody;
+  public final SootMethod sootMethod;
+  public final ShimpleBody shimpleBody;
   private final ExceptionalBlockGraph basicBlockGraph;
   private final HashMap<Block, ArrayList<Unit>> blockStmts;
   private final HashMap<Value, Unit> valueToDefStmt;
   private final HashMap<Unit, Block> stmtToBlock;
 
-  private HashMap<Value, VariableValues> allVariableValues;
-
   public JAssignStmt getAssignStmtForBci(int bci) {return bciToJAssignStmt.get(bci);}
-  public SootMethod  getSootMethod()              {return sootMethod;}
-  public ShimpleBody getShimpleBody()             {return shimpleBody;}
-
+  
   private ShimpleMethod(BciToJAssignStmt bciToJAssignStmt, SootMethod sootMethod, ShimpleBody shimpleBody) {
     this.bciToJAssignStmt = bciToJAssignStmt;
     this.sootMethod       = sootMethod;
@@ -262,7 +260,6 @@ public class ShimpleMethod {
     HashMap<Block, ArrayList<Unit>> blockStmts       = new HashMap<>();
     HashMap<Value, Unit> valueToDefStmt              = new HashMap<>();
     HashMap<Unit, Block> stmtToBlock                 = new HashMap<>();
-    allVariableValues = new HashMap<>();
 
     for (Block block : basicBlockGraph.getBlocks()) {
       ArrayList<Unit> stmts = new ArrayList<Unit>();
@@ -271,7 +268,6 @@ public class ShimpleMethod {
       while (unitIter.hasNext()) {
         Unit unit = unitIter.next();
         for (ValueBox def : unit.getDefBoxes()) {
-          allVariableValues.put(def.getValue(), new VariableValues(def.getValue(), unit));
           Main.debugAssert(!valueToDefStmt.containsKey(def.getValue()), "value already in map");
           valueToDefStmt.put(def.getValue(), unit);
         }
@@ -280,16 +276,46 @@ public class ShimpleMethod {
       }
     }
 
-    Value thisLocal = shimpleBody.getThisLocal();
-    allVariableValues.get(thisLocal).add(new VariableValue(thisLocal.getType(), VariableValue.ThisPtr));
-
     this.basicBlockGraph = basicBlockGraph;
     this.blockStmts      = blockStmts;
     this.valueToDefStmt  = valueToDefStmt;
     this.stmtToBlock     = stmtToBlock;
   }
 
+  public HashMap<Value, VariableValues> initVarValues() {
+    HashMap<Value, VariableValues> allVariableValues = new HashMap<>();
+
+    for (Block block : basicBlockGraph.getBlocks()) {
+      Iterator<Unit> unitIter = block.iterator();
+      while (unitIter.hasNext()) {
+        Unit unit = unitIter.next();
+        for (ValueBox def : unit.getDefBoxes()) {
+          allVariableValues.put(def.getValue(), new VariableValues(def.getValue(), unit));
+        }
+      }
+    }
+
+    if (!sootMethod.isStatic()) {
+      Value thisLocal = shimpleBody.getThisLocal();
+      allVariableValues.get(thisLocal).add(new VariableValue(thisLocal.getType(), VariableValue.ThisPtr));
+    }
+
+    return allVariableValues;
+  }
+
+  public ArrayList<InvokeStmt> getInvokeStmts() {
+    ArrayList<InvokeStmt> invokes = new ArrayList<InvokeStmt>();
+    for (Unit stmt : stmtToBlock.keySet()) {
+      if (stmt instanceof InvokeStmt) {
+        invokes.add((InvokeStmt)stmt);
+      }
+    }
+
+    return invokes;
+  }
   public static ShimpleMethod v(SootMethod method) {
+    if (method.getSource() == null)
+      return null;
     ShimpleMethodSource sm = new ShimpleMethodSource(method.getSource());
     ShimpleBody sb = (ShimpleBody)sm.getBody(method, "");
     BciToJAssignStmt bciToJAssignStmt = buildBytecodeIndexToInsnMap(method, sb);
@@ -308,7 +334,8 @@ public class ShimpleMethod {
     return null;
   }
 
-  private VariableValues obtainVariableValues(Unit stmt, Value val) {
+  private VariableValues obtainVariableValues(HashMap<Value, VariableValues> allVariableValues,
+                                              Unit stmt, Value val) {
     if (val instanceof JNewExpr) {
       return null;
     } else if (val instanceof JNewArrayExpr) {
@@ -369,7 +396,8 @@ public class ShimpleMethod {
     return null;
   }
 
-  private void propogateValues(Unit stmt, HashMap<Value, VariableValues> varVals) {
+  private void propogateValues(HashMap<Value, VariableValues> allVariableValues,
+                               Unit stmt) {
     if (stmt instanceof JIdentityStmt) {
       if (((JIdentityStmt)stmt).getRightOp() instanceof CaughtExceptionRef) {
         return;
@@ -379,7 +407,7 @@ public class ShimpleMethod {
     } else if (stmt instanceof JAssignStmt) {
       Value leftVal = ((JAssignStmt)stmt).getLeftOp();
       Value rightVal =((JAssignStmt)stmt).getRightOp();
-      VariableValues valsForLeft = obtainVariableValues(stmt, rightVal);
+      VariableValues valsForLeft = obtainVariableValues(allVariableValues, stmt, rightVal);
       if (valsForLeft != null) {
         allVariableValues.put(leftVal, valsForLeft);
         // blockVarVals.put(stmt, valsForLeft);
@@ -409,7 +437,7 @@ public class ShimpleMethod {
       //   System.out.print(uu.toString() + " "); //stmtToBlock.get(uu).getIndexInMethod()
       // }
     } else if (stmt instanceof JInvokeStmt) {
-      obtainVariableValues(stmt, ((JInvokeStmt)stmt).getInvokeExpr());
+      obtainVariableValues(allVariableValues, stmt, ((JInvokeStmt)stmt).getInvokeExpr());
     } else if (stmt instanceof JNopStmt) {
       Main.debugAssert(false, stmt.toString());
     } else if (stmt instanceof JReturnVoidStmt) {
@@ -423,15 +451,16 @@ public class ShimpleMethod {
     }
   }
 
-  private void propogateValues(Block block, boolean fwdOrBckwd) {
+  private void propogateValues(HashMap<Value, VariableValues> allVariableValues,
+                               Block block, boolean fwdOrBckwd) {
     ArrayList<Unit> stmts = blockStmts.get(block);
     for (Unit unit : stmts) {
-      propogateValues(unit, allVariableValues);
+      propogateValues(allVariableValues, unit);
       // obtainVariableValues(val, useToVals);
     }
   }
 
-  private void propogateValuesToSucc(Block block) {
+  private void propogateValuesToSucc(HashMap<Value, VariableValues> allVariableValues, Block block) {
     Queue<Block> q = new LinkedList<Block>();
     q.add(block);
     HashSet<Block> visited = new HashSet<>();
@@ -440,16 +469,14 @@ public class ShimpleMethod {
       if (visited.contains(b)) continue;
       visited.add(b);
       for (var succ : b.getSuccs()) {
-        propogateValues(succ, false);
+        propogateValues(allVariableValues, succ, false);
         q.add(succ);
       }
     }
   }
 
-  public void updateValuesWithHeapEvent(HeapEvent heapEvent) {
-    System.out.println(heapEvent.toString());
-    System.out.print(basicBlockGraph.toString());
-    
+  public void updateValuesWithHeapEvent(HashMap<Value, VariableValues> allVariableValues,
+                                        HeapEvent heapEvent) {
     JAssignStmt stmt = getAssignStmtForBci(heapEvent.bci);
     Block block = blockForUnit(stmt);
     short opcode = ShimpleMethod.opcodeForJAssign(stmt);
@@ -491,10 +518,10 @@ public class ShimpleMethod {
     }
 
     //Propagate values inside the block
-    propogateValues(block, true);
+    propogateValues(allVariableValues, block, true);
 
     //Propagate values to the successors
-    propogateValuesToSucc(block);
+    propogateValuesToSucc(allVariableValues, block);
 
     //Propagate values to the predecessors
   }

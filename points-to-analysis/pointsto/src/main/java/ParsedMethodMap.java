@@ -18,7 +18,6 @@ public class ParsedMethodMap extends HashMap<SootMethod, ShimpleMethod> {
 
   public ShimpleMethod getOrParseToShimple(SootMethod method) {
     if (!containsKey(method)) {
-      Main.debugPrintln("Parsing " + Main.methodFullName(method));
       ShimpleMethod sm = ShimpleMethod.v(method);
       put(method, sm);
     }

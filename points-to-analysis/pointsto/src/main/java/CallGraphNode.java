@@ -1,4 +1,9 @@
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+
+import soot.shimple.Shimple;
 
 public class CallGraphNode {
   public final CallFrame frame;
@@ -18,6 +23,7 @@ public class CallGraphNode {
   public String toString() {
     return toString(0);
   }
+
   public String toString(int stackDepth) {
     StringBuffer buf = new StringBuffer();
     
@@ -36,5 +42,32 @@ public class CallGraphNode {
     buf.append("\n");
 
     return buf.toString();
+  }
+  
+  private void getEdges(Set<Pair<ShimpleMethod, ShimpleMethod>> callEdges) {
+    for (CallGraphNode child : children) {
+      callEdges.add(Pair.v(frame.method, child.frame.method));
+    }
+
+    for (CallGraphNode child : children) {
+      child.getEdges(callEdges);
+    }
+  }
+
+  public Set<Pair<ShimpleMethod, ShimpleMethod>> getEdges() {
+    Set<Pair<ShimpleMethod, ShimpleMethod>> callEdges = new HashSet<>();
+    getEdges(callEdges);
+    return callEdges;
+  }
+
+  public String edgesToString() {
+    Set<Pair<ShimpleMethod, ShimpleMethod>> edges = getEdges();
+    StringBuilder builder = new StringBuilder();
+  
+    for (Pair<ShimpleMethod, ShimpleMethod> edge : edges) {
+      builder.append(Main.methodFullName(edge.first.sootMethod) + " " + Main.methodFullName(edge.second.sootMethod) + "\n");
+    }
+
+    return builder.toString();
   }
 }

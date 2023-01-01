@@ -101,9 +101,10 @@ public class CallGraphAnalysis {
       }
     }
     
-    String callGraphTxt = rootNode.toString();
+    System.out.println(rootNode.edgesToString()); 
+    //String callGraphTxt = rootNode.toString();
 
-    System.out.println(callGraphTxt);
+    // System.out.println(callGraphTxt);
     // for (int iterations = 0; heapEventIdx < mainThreadEvents.size(); heapEventIdx++,iterations++) {
     //   for (int idx2 = heapEventIdx + 1; idx2 < mainThreadEvents.size(); idx2++) {
     //     SootMethod nextMethod = mainThreadEvents.get(idx2).method;

@@ -30,6 +30,9 @@ def parseCallTrace(s):
       mode = "end"
     stackdepth = int(re.findall(r'\[(\d+)\]', d)[0])
     func = d[d.find(']', d.find(']')) + 1:]
+    if func.find(":") != -1:
+      func = func[:func.find("=")]
+      func = func.replace(":", ".")
     parent = stack[-1] if len(stack) > 0 else None
     if mode == "start":
       child = CallGraphNode(parent, func)
@@ -44,9 +47,26 @@ def parseCallTrace(s):
       assert stackdepth == len(stack), "Not same " +str(stackdepth) + " == " + str(len(stack)) + " for " + d
   return rootNode
 
+def findNodeForFunc(rootNode, func):
+  # print(rootNode.func, "    ---    ", func)
+  if rootNode.func == func:
+    return rootNode
+  
+  ret = None
+  for child in rootNode.children:
+    ret = findNodeForFunc(child, func)
+    if ret != None:
+      break
+  
+  return ret
+
 s1 = slurp(file1)
 s2 = slurp(file2)
 
 firstRoot = parseCallTrace(s1)
 secondRoot = parseCallTrace(s2)
 
+firstRoot = findNodeForFunc(firstRoot, "org.dacapo.lusearch.Search$QueryThread.run")
+# secondRoot = findNodeForFunc(secondRoot, "org.dacapo.lusearch.Search$QueryThread.run()V")
+
+print (firstRoot)

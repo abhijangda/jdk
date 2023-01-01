@@ -256,27 +256,33 @@ public class ShimpleMethod {
     this.sootMethod       = sootMethod;
     this.shimpleBody      = shimpleBody;
 
-    ExceptionalBlockGraph basicBlockGraph            = new ExceptionalBlockGraph(shimpleBody);
     HashMap<Block, ArrayList<Unit>> blockStmts       = new HashMap<>();
     HashMap<Value, Unit> valueToDefStmt              = new HashMap<>();
     HashMap<Unit, Block> stmtToBlock                 = new HashMap<>();
 
-    for (Block block : basicBlockGraph.getBlocks()) {
-      ArrayList<Unit> stmts = new ArrayList<Unit>();
-      blockStmts.put(block, stmts);
-      Iterator<Unit> unitIter = block.iterator();
-      while (unitIter.hasNext()) {
-        Unit unit = unitIter.next();
-        for (ValueBox def : unit.getDefBoxes()) {
-          Main.debugAssert(!valueToDefStmt.containsKey(def.getValue()), "value already in map");
-          valueToDefStmt.put(def.getValue(), unit);
+    if (shimpleBody != null) { 
+      ExceptionalBlockGraph basicBlockGraph            = new ExceptionalBlockGraph(shimpleBody);
+    
+      for (Block block : basicBlockGraph.getBlocks()) {
+        ArrayList<Unit> stmts = new ArrayList<Unit>();
+        blockStmts.put(block, stmts);
+        Iterator<Unit> unitIter = block.iterator();
+        while (unitIter.hasNext()) {
+          Unit unit = unitIter.next();
+          for (ValueBox def : unit.getDefBoxes()) {
+            Main.debugAssert(!valueToDefStmt.containsKey(def.getValue()), "value already in map");
+            valueToDefStmt.put(def.getValue(), unit);
+          }
+          stmts.add(unit);
+          stmtToBlock.put(unit, block);
         }
-        stmts.add(unit);
-        stmtToBlock.put(unit, block);
       }
+    
+      this.basicBlockGraph = basicBlockGraph;
+    } else {
+      this.basicBlockGraph = null;
     }
-
-    this.basicBlockGraph = basicBlockGraph;
+    
     this.blockStmts      = blockStmts;
     this.valueToDefStmt  = valueToDefStmt;
     this.stmtToBlock     = stmtToBlock;
@@ -285,19 +291,21 @@ public class ShimpleMethod {
   public HashMap<Value, VariableValues> initVarValues() {
     HashMap<Value, VariableValues> allVariableValues = new HashMap<>();
 
-    for (Block block : basicBlockGraph.getBlocks()) {
-      Iterator<Unit> unitIter = block.iterator();
-      while (unitIter.hasNext()) {
-        Unit unit = unitIter.next();
-        for (ValueBox def : unit.getDefBoxes()) {
-          allVariableValues.put(def.getValue(), new VariableValues(def.getValue(), unit));
+    if (basicBlockGraph != null) {
+      for (Block block : basicBlockGraph.getBlocks()) {
+        Iterator<Unit> unitIter = block.iterator();
+        while (unitIter.hasNext()) {
+          Unit unit = unitIter.next();
+          for (ValueBox def : unit.getDefBoxes()) {
+            allVariableValues.put(def.getValue(), new VariableValues(def.getValue(), unit));
+          }
         }
       }
-    }
 
-    if (!sootMethod.isStatic()) {
-      Value thisLocal = shimpleBody.getThisLocal();
-      allVariableValues.get(thisLocal).add(new VariableValue(thisLocal.getType(), VariableValue.ThisPtr));
+      if (!sootMethod.isStatic()) {
+        Value thisLocal = shimpleBody.getThisLocal();
+        allVariableValues.get(thisLocal).add(new VariableValue(thisLocal.getType(), VariableValue.ThisPtr));
+      } 
     }
 
     return allVariableValues;
@@ -315,7 +323,7 @@ public class ShimpleMethod {
   }
   public static ShimpleMethod v(SootMethod method) {
     if (method.getSource() == null)
-      return null;
+      return new ShimpleMethod(null, method, null);
     ShimpleMethodSource sm = new ShimpleMethodSource(method.getSource());
     ShimpleBody sb = (ShimpleBody)sm.getBody(method, "");
     BciToJAssignStmt bciToJAssignStmt = buildBytecodeIndexToInsnMap(method, sb);

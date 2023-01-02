@@ -12,12 +12,14 @@ public class CallFrame {
   private HashMap<Value, VariableValues> allVariableValues;
   public final ArrayList<InvokeStmt> invokeStmts;
   public final CallFrame root;
+  private Iterator<InvokeStmt> invokeStmtIterator;
 
   CallFrame(ShimpleMethod m, CallFrame root) {
     method = m;
     allVariableValues = method.initVarValues();
     invokeStmts = method.getInvokeStmts();
     this.root = root;
+    invokeStmtIterator = invokeStmts.iterator();
   }
 
   CallFrame(HeapEvent event, CallFrame root) {
@@ -28,7 +30,11 @@ public class CallFrame {
     method.updateValuesWithHeapEvent(allVariableValues, event);
   }
 
-  public Iterator<InvokeStmt> iterateInvokeStmts() {
-    return invokeStmts.iterator();
+  public boolean hasNextInvokeStmt() {
+    return invokeStmtIterator.hasNext();
+  }
+
+  public InvokeStmt nextInvokeStmt() {
+    return invokeStmtIterator.next();
   }
 }

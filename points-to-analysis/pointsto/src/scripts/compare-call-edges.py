@@ -26,6 +26,7 @@ secondEdges = parseCallEdges(s2)
 found = 0
 for e in firstEdges:
   if e in secondEdges:
+    print(e)
     found += 1
 
 print("Edges of first found in second: ", found, "not found", len(firstEdges) - found)

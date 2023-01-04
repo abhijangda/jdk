@@ -957,7 +957,7 @@ oopDesc* oop_for_address(Map& oop_map, oopDesc* field) {
   return obj;
 }
 
-bool get_field_name(oop obj, uint64_t field_offset, char field_name[]) {
+bool get_field_name(oop obj, uint64_t field_offset, char* field_name) {
   Klass* klass = obj->klass();
 
   if(!klass->is_instance_klass()) return false;
@@ -1633,13 +1633,14 @@ void Universe::verify_heap_graph() {
             // if(checking == 3) printf("FieldSet (%p) of oop %p to %p in %p\n", field, (oopDesc*)obj, (oopDesc*)event.src, th_heap_events);
             if (HeapEventsFileDump) {
               char field_name[1024] = "\0";
+              memset(field_name, 0, 1024);
               if (event.dst != 0) {
                 get_oop_klass_name(obj, dst_class);
               }
               if (obj->klass()->id()==InstanceKlassID) {
-                bool hasfield = get_field_name(obj, event.dst - (uint64_t)(oopDesc*)obj, field_name);
+                field_name[0] = '.';
+                bool hasfield = get_field_name(obj, event.dst - (uint64_t)(oopDesc*)obj, &field_name[1]);
                 if (!hasfield) printf("Cannot find field %p %ld\n", (oopDesc*)obj, event.dst - (uint64_t)(oopDesc*)obj);
-                sprintf(field_name, ".%s", field_name);
               } else if (obj->klass()->is_array_klass()) {
                 uint64_t offset = event.dst - ObjectNode::oop_to_obj_node[obj].start_address();
                 int index = (int)(offset/sizeof(oop));

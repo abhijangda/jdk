@@ -957,6 +957,29 @@ oopDesc* oop_for_address(Map& oop_map, oopDesc* field) {
   return obj;
 }
 
+bool get_field_name(oop obj, uint64_t field_offset, char field_name[]) {
+  Klass* klass = obj->klass();
+
+  if(!klass->is_instance_klass()) return false;
+  
+  InstanceKlass* ik = (InstanceKlass*)klass;
+
+  do {
+    for(int f = 0; f < ik->java_fields_count(); f++) {
+      //Only go through non static and reference fields here.
+      if (AccessFlags(ik->field_access_flags(f)).is_static()) continue;
+      
+      if (is_field_of_reference_type(ik, f) && (uint64_t)ik->field_offset(f) == field_offset) {
+        ik->field_name(f)->as_C_string(field_name, 1024);
+        return true;
+      }
+    }
+    ik = ik->superklass();
+  } while (ik && ik->is_klass());
+
+  return false;
+}
+
 bool Universe::is_verify_cause_full_gc = false;
 bool Universe::is_verify_from_exit = false;
 bool Universe::is_verify_from_gc = false;
@@ -1609,10 +1632,23 @@ void Universe::verify_heap_graph() {
             // }
             // if(checking == 3) printf("FieldSet (%p) of oop %p to %p in %p\n", field, (oopDesc*)obj, (oopDesc*)event.src, th_heap_events);
             if (HeapEventsFileDump) {
+              char field_name[1024] = "\0";
               if (event.dst != 0) {
                 get_oop_klass_name(obj, dst_class);
               }
-              sprintf(heap_dump_buf, "[%ld, %s, %d, %ld:%s, %ld:%s]\n", heap_event_type, m_name, bci, event.src, src_class, (uint64_t)obj, dst_class);
+              if (obj->klass()->id()==InstanceKlassID) {
+                bool hasfield = get_field_name(obj, event.dst - (uint64_t)(oopDesc*)obj, field_name);
+                if (!hasfield) printf("Cannot find field %p %ld\n", (oopDesc*)obj, event.dst - (uint64_t)(oopDesc*)obj);
+                sprintf(field_name, ".%s", field_name);
+              } else if (obj->klass()->is_array_klass()) {
+                uint64_t offset = event.dst - ObjectNode::oop_to_obj_node[obj].start_address();
+                int index = (int)(offset/sizeof(oop));
+                if (index >= ((objArrayOop)obj)->length())
+                  ShouldNotReachHere();
+                sprintf(field_name, "[%d]", index);
+              }
+
+              sprintf(heap_dump_buf, "[%ld, %s, %d, %ld:%s, %ld:%s%s]\n", heap_event_type, m_name, bci, event.src, src_class, (uint64_t)obj, dst_class, field_name);
             }
             ObjectNode::oop_to_obj_node[obj].update_or_add_field((void*)field, (oopDesc*)event.src, 
                                                                 0);

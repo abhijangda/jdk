@@ -1,3 +1,5 @@
+package classcollections;
+
 import javatypes.JavaArrayType;
 import javatypes.JavaObjectType;
 import soot.AbstractJasminClass;

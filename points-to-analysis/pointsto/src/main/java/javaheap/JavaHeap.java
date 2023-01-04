@@ -2,8 +2,65 @@ package javaheap;
 
 import java.util.HashMap;
 
+import soot.ArrayType;
+import soot.RefType;
+
 public class JavaHeap extends HashMap<Long, JavaHeapElem> {
   public void updateWithHeapEvent(HeapEvent event) {
+    if (event.eventType == HeapEvent.EventType.NewObject) {
+      put(event.dstPtr, new JavaObject((RefType)event.dstClass));
+    } else if (event.eventType == HeapEvent.EventType.NewArray || 
+               event.eventType == HeapEvent.EventType.NewPrimitiveArray) {
+      put(event.dstPtr, new JavaArray((ArrayType)event.dstClass, (int)event.srcPtr));
+    } else if (event.eventType == HeapEvent.EventType.ObjectFieldSet) {
+      JavaHeapElem val = null;
+      if (event.srcClass == null && event.srcPtr != 0) utils.Utils.debugPrintln("srcClass is null in " + event.toString());
+      if (event.srcPtr == 0) val = null;
+      else {
+        if (!containsKey(event.srcPtr)) {
+          utils.Utils.debugLog("Creating the object %d not found in heap\n", event.srcPtr);
+          if (event.srcClass instanceof RefType) {
+            val = new JavaObject((RefType)event.srcClass);
+          } else if (event.srcClass instanceof ArrayType) {
+            val = new JavaArray((ArrayType)event.srcClass,1000);
+          }
+          put(event.srcPtr, val);
+        }
+        utils.Utils.debugAssert(containsKey(event.srcPtr), 
+                                "Heap does not contain object %d of class %s\n", 
+                                event.srcPtr, 
+                                (event.srcClass != null) ? event.srcClass.toString() : "");
+        val = get(event.srcPtr);
+      }
+      if (!containsKey(event.dstPtr)) {
+        utils.Utils.debugLog("Creating the object %d not found in heap\n", event.dstPtr);
+        put(event.dstPtr, new JavaObject((RefType)event.dstClass));
+      }
+      ((JavaObject)get(event.dstPtr)).addField(event.fieldName, val);
+    } else if (event.eventType == HeapEvent.EventType.ArrayElementSet) {
+      JavaHeapElem val = null;
+      if (event.srcPtr == 0) val = null;
+      else {
+        if (!containsKey(event.srcPtr)) {
+          utils.Utils.debugLog("Creating the object %d not found in heap\n", event.srcPtr);
+          if (event.srcClass instanceof RefType) {
+            val = new JavaObject((RefType)event.srcClass);
+          } else if (event.srcClass instanceof ArrayType) {
+            val = new JavaArray((ArrayType)event.srcClass,1000);
+          }
+          put(event.srcPtr, val);
+        }
+        val = get(event.srcPtr);
+      }
 
+      if (!containsKey(event.dstPtr)) {
+        utils.Utils.debugLog("Creating the object %d not found in heap\n", event.dstPtr);
+        put(event.dstPtr, new JavaArray(event.dstClass, 1000));
+      }
+
+      ((JavaArray)get(event.dstPtr)).setElem(event.elemIndex, val);
+    } else {
+      utils.Utils.debugAssert(false, "not handled event type");
+    }
   }
 }

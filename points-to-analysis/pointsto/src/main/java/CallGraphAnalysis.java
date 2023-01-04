@@ -2,7 +2,7 @@ import java.util.*;
 
 import classcollections.*;
 import javaheap.HeapEvent;
-
+import javaheap.JavaHeap;
 import soot.SootMethod;
 import utils.Utils;
 
@@ -19,6 +19,7 @@ public class CallGraphAnalysis {
     String mainThread = "";
     int heapEventIdx = -1;
     String threadWithMaxEvents = "";
+    JavaHeap javaHeap = new JavaHeap();
 
     for (String thread : heapEvents.keySet()) {
       if (threadWithMaxEvents == "") {
@@ -37,6 +38,7 @@ public class CallGraphAnalysis {
 
     heapEventIdx = 0;
     for (HeapEvent he : mainThreadEvents) {
+      javaHeap.updateWithHeapEvent(he);
       if (he.method != null && he.method.getDeclaringClass().getName().contains("lusearch"))
         break;
 
@@ -53,7 +55,7 @@ public class CallGraphAnalysis {
     CallFrame rootFrame = new CallFrame(mainThreadEvents.get(heapEventIdx), null, null);
     CallGraphNode rootNode = new CallGraphNode(rootFrame, null);
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
-    
+
     remainingFrames.push(Pair.v(rootFrame, 0));
     callStack.push(rootFrame);
     frameToGraphNode.put(rootFrame, rootNode);
@@ -65,28 +67,29 @@ public class CallGraphAnalysis {
         continue;
       }
       
-      while (mainThreadEvents.get(heapEventIdx).method != null && !Utils.methodToCare(mainThreadEvents.get(heapEventIdx).method)) {
-        heapEventIdx++;
-      }
+      // while (mainThreadEvents.get(heapEventIdx).method != null && !Utils.methodToCare(mainThreadEvents.get(heapEventIdx).method)) {
+      //   heapEventIdx++;
+      // }
 
-      while (mainThreadEvents.get(heapEventIdx).method == frame.method.sootMethod) {
-        frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+      while(mainThreadEvents.get(heapEventIdx).method == frame.method.sootMethod) {
+        javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+        // frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
         heapEventIdx++;
       }
       
-      CallGraphNode parentNode = frameToGraphNode.get(frame);
-      CallFrame nextFrame = frame.nextInvokeMethod();
-      if (nextFrame != null && nextFrame.method != null && nextFrame.method != frame.method &&
-          ((frame.root != null && nextFrame.method != frame.root.method) || frame.root == null) &&
-          !Utils.methodFullName(nextFrame.method.sootMethod).contains("java.lang.SecurityManager.checkPermission") &&
-          Utils.methodToCare(frame.method.sootMethod)) {
-        //Skip recursion
-        callStack.push(nextFrame);
-        CallGraphNode childNode = new CallGraphNode(nextFrame, parentNode);
-        parentNode.addChild(childNode);
-        frameToGraphNode.put(nextFrame, childNode);
-      } else {
-      }
+      // CallGraphNode parentNode = frameToGraphNode.get(frame);
+      // CallFrame nextFrame = frame.nextInvokeMethod();
+      // if (nextFrame != null && nextFrame.method != null && nextFrame.method != frame.method &&
+      //     ((frame.root != null && nextFrame.method != frame.root.method) || frame.root == null) &&
+      //     !Utils.methodFullName(nextFrame.method.sootMethod).contains("java.lang.SecurityManager.checkPermission") &&
+      //     Utils.methodToCare(frame.method.sootMethod)) {
+      //   //Skip recursion
+      //   callStack.push(nextFrame);
+      //   CallGraphNode childNode = new CallGraphNode(nextFrame, parentNode);
+      //   parentNode.addChild(childNode);
+      //   frameToGraphNode.put(nextFrame, childNode);
+      // } else {
+      // }
     }
     
     System.out.println("Edges:");

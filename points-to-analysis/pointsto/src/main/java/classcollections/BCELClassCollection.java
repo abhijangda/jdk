@@ -1,3 +1,5 @@
+package classcollections;
+
 import org.apache.bcel.classfile.*;
 import java.util.jar.*;
 

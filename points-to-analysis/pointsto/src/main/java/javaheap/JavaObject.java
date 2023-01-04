@@ -4,10 +4,11 @@ import java.util.HashMap;
 import soot.RefType;
 
 public class JavaObject extends JavaHeapElem {
-  protected HashMap<String, JavaHeapElem> fieldValues;
+  protected final HashMap<String, JavaHeapElem> fieldValues;
 
   public JavaObject(RefType type) {
-    super(type);    
+    super(type);
+    this.fieldValues = new HashMap<>();
   }
 
   public RefType getType() {

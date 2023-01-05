@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.TreeSet;
 import java.util.concurrent.BlockingDeque;
@@ -15,6 +16,9 @@ import org.apache.bcel.util.ByteSequence;
 
 import classcollections.BCELClassCollection;
 import javaheap.HeapEvent;
+import javaheap.JavaHeap;
+import javaheap.JavaHeapElem;
+import javaheap.JavaObject;
 import soot.BooleanType;
 import soot.ByteType;
 import soot.CharType;
@@ -23,6 +27,8 @@ import soot.FloatType;
 import soot.IntegerType;
 import soot.Local;
 import soot.LongType;
+import soot.RefLikeType;
+import soot.RefType;
 import soot.SootField;
 import soot.SootFieldRef;
 import soot.SootMethod;
@@ -33,12 +39,14 @@ import soot.dava.toolkits.base.AST.traversals.AllVariableUses;
 import soot.jimple.BinopExpr;
 import soot.jimple.CaughtExceptionRef;
 import soot.jimple.Constant;
+import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
 import soot.jimple.ParameterRef;
 import soot.jimple.StaticFieldRef;
 import soot.jimple.Stmt;
 import soot.jimple.StringConstant;
 import soot.jimple.UnopExpr;
+import soot.jimple.internal.AbstractInstanceInvokeExpr;
 import soot.jimple.internal.JArrayRef;
 import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JCastExpr;
@@ -261,9 +269,10 @@ public class ShimpleMethod {
   private final DominatorTree<Block> dominatorTree;
   private final HashMap<Block, ArrayList<Unit>> blockStmts;
   private final HashMap<Value, Unit> valueToDefStmt;
+  private final HashMap<Value, ArrayList<Unit>> valueToUseStmts;
   private final HashMap<Unit, Block> stmtToBlock;
   public final ArrayList<ParameterRef> parameterRefs;
-
+  public boolean canPrint;
   public JAssignStmt getAssignStmtForBci(int bci) {return bciToJAssignStmt.get(bci);}
   
   private ShimpleMethod(BciToJAssignStmt bciToJAssignStmt, SootMethod sootMethod, ShimpleBody shimpleBody) {
@@ -271,13 +280,27 @@ public class ShimpleMethod {
     this.sootMethod       = sootMethod;
     this.shimpleBody      = shimpleBody;
 
+    canPrint = false;
+    if (sootMethod.getDeclaringClass().getName().contains("QueryProcessor") &&
+        sootMethod.getName().contains("<init>")) {
+      Utils.debugPrintln(shimpleBody.toString());
+      canPrint = true;
+    }
+
     HashMap<Block, ArrayList<Unit>> blockStmts       = new HashMap<>();
     HashMap<Value, Unit> valueToDefStmt              = new HashMap<>();
     HashMap<Unit, Block> stmtToBlock                 = new HashMap<>();
-
-    if (shimpleBody != null) { 
-      ExceptionalBlockGraph basicBlockGraph            = new ExceptionalBlockGraph(shimpleBody);
     
+    if (shimpleBody != null) {
+      // for (Unit b : shimpleBody.getUnits()) {
+      //   if (canPrint) {
+      //     Utils.debugPrintln(b.toString());
+      //   }
+      // }
+
+      ExceptionalBlockGraph basicBlockGraph            = new ExceptionalBlockGraph(shimpleBody);
+      HashMap<Value, ArrayList<Unit>> valueToUseStmts  = new HashMap<>();
+
       for (Block block : basicBlockGraph.getBlocks()) {
         ArrayList<Unit> stmts = new ArrayList<Unit>();
         blockStmts.put(block, stmts);
@@ -287,13 +310,27 @@ public class ShimpleMethod {
           for (ValueBox def : unit.getDefBoxes()) {
             Utils.debugAssert(!valueToDefStmt.containsKey(def.getValue()), "value already in map");
             valueToDefStmt.put(def.getValue(), unit);
+
+            //Also update the valeuToUseStmts with defs
+            if (!valueToUseStmts.containsKey(def.getValue())) {
+              valueToUseStmts.put(def.getValue(), new ArrayList<>());
+            }
           }
           stmts.add(unit);
           stmtToBlock.put(unit, block);
+
+          for (ValueBox used : unit.getUseBoxes()) {
+            if (!valueToUseStmts.containsKey(used.getValue())) {
+              valueToUseStmts.put(used.getValue(), new ArrayList<>());
+            }
+             
+            valueToUseStmts.get(used.getValue()).add(unit);
+          }
         }
       }
     
       this.basicBlockGraph = basicBlockGraph;
+      this.valueToUseStmts = valueToUseStmts;
       this.dominatorTree = new DominatorTree<>(new MHGDominatorsFinder<>(basicBlockGraph));
       this.parameterRefs = new ArrayList<>();
       for (Value param : shimpleBody.getParameterRefs()) {
@@ -302,8 +339,9 @@ public class ShimpleMethod {
       }
     } else {
       this.basicBlockGraph = null;
-      this.dominatorTree = null;
-      this.parameterRefs = null;
+      this.dominatorTree   = null;
+      this.parameterRefs   = null;
+      this.valueToUseStmts = null;
     }
 
     this.blockStmts      = blockStmts;
@@ -327,7 +365,7 @@ public class ShimpleMethod {
     return this.dominatorTree.isDominatorOf(parentNode, childNode);
   }
 
-  public HashMap<Value, VariableValues> initVarValues() {
+  public HashMap<Value, VariableValues> initVarValues(InvokeExpr invokeExpr, HashMap<Value, VariableValues> callerVariableValues) {
     HashMap<Value, VariableValues> allVariableValues = new HashMap<>();
     
     if (basicBlockGraph != null) {
@@ -341,10 +379,60 @@ public class ShimpleMethod {
         }
       }
 
-      if (!sootMethod.isStatic()) {
-        Value thisLocal = shimpleBody.getThisLocal();
-        allVariableValues.get(thisLocal).add(new VariableValue(thisLocal.getType(), VariableValue.ThisPtr));
-      } 
+      if (invokeExpr != null) {
+        // utils.Utils.debugPrintln(invokeExpr.toString() + "   " + utils.Utils.methodFullName(sootMethod));
+        // Utils.debugPrintln(invokeStmt.toString() + "   " + m.toString());
+        Utils.debugAssert(parameterRefs.size() == invokeExpr.getArgs().size(), "sanity");
+        for (int i = 0; i < parameterRefs.size(); i++) {
+          ParameterRef param = parameterRefs.get(i);
+          Value arg = invokeExpr.getArg(i);
+          // utils.Utils.debugPrintln(arg.toString() + " has values " + callerVariableValues.get(arg));
+          if (callerVariableValues.containsKey(arg))
+            allVariableValues.put(param, callerVariableValues.get(arg));
+        }
+
+        if (!sootMethod.isStatic()) {
+          Value base = ((AbstractInstanceInvokeExpr)invokeExpr).getBase();
+          
+          utils.Utils.debugAssert(!(invokeExpr instanceof JStaticInvokeExpr), "sanity");
+          Unit thisUnit = shimpleBody.getThisUnit();
+          utils.Utils.debugAssert(thisUnit instanceof JIdentityStmt, "sanity");
+          JIdentityStmt thisIdentityStmt = (JIdentityStmt)thisUnit;
+          allVariableValues.put(thisIdentityStmt.getRightOp(), callerVariableValues.get(base));
+          // if (allVariableValues.get(thisIdentityStmt.getRightOp()) == null) {
+          //   // utils.Utils.debugPrintln(thisUnit.toString());
+          // }
+          //TODO: Pass parameters as a reference or as a copy?
+          allVariableValues.put(thisIdentityStmt.getLeftOp(), allVariableValues.get(thisIdentityStmt.getRightOp()));
+        }
+      }
+
+      //For all statements using these parameters set their values too
+      Queue<Value> q = new LinkedList<>();
+      for (Value variable : allVariableValues.keySet()) {
+        // if (canPrint)
+        //   Utils.debugPrintln("381: " + variable.toString());
+        q.add(variable);
+      }
+
+      while(!q.isEmpty()) {
+        Value variable = q.remove();
+        if (allVariableValues.get(variable).size() == 0) continue;
+        // if (canPrint)
+        //   Utils.debugPrintln("388: " + variable.toString() + " " + variable.getClass());
+        for (Unit use : valueToUseStmts.get(variable)) {
+          Utils.debugAssert(use instanceof Unit, "not of Unit " + use.toString() + " " + variable.toString());
+          // if (canPrint)
+          //   Utils.debugPrintln("400: " + use.toString());
+          propogateValues(allVariableValues, use);
+
+          for (ValueBox def : use.getDefBoxes()) {
+            // if (canPrint)
+            //   Utils.debugPrintln("394: " + def.getValue().toString() + " " + allVariableValues.get(def.getValue()).size());
+            q.add(def.getValue());
+          }
+        }
+      }
     }
 
     return allVariableValues;
@@ -390,20 +478,21 @@ public class ShimpleMethod {
     } else if (val instanceof JNewMultiArrayExpr) {
       Utils.debugAssert(false, stmt.toString());
     } else if (val instanceof BinopExpr) {
-      VariableValues vals = new VariableValues(val, stmt);
-      Value v1 = ((BinopExpr)val).getOp1();
-      Value v2 = ((BinopExpr)val).getOp2();
-      vals.add(new VariableValue(val.getType()));
-      return vals;
+      utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString());
+      // VariableValues vals = new VariableValues(val, stmt);
+      // Value v1 = ((BinopExpr)val).getOp1();
+      // Value v2 = ((BinopExpr)val).getOp2();
+      // return vals;
     } else if (val instanceof UnopExpr) {
-      VariableValues vals = new VariableValues(val, stmt);
-      vals.add(new VariableValue(val.getType()));
-      return vals;
+      utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString());
+      // VariableValues vals = new VariableValues(val, stmt);
+      // vals.add(new VariableValue(val.getType()));
+      // return vals;
     } else if (val instanceof JCastExpr) {
       VariableValues vals = new VariableValues(val, stmt);
       Value op = ((JCastExpr)val).getOp();
-      for (VariableValue v : allVariableValues.get(op)) {
-        vals.add(new VariableValue(op.getType(), v.refValue));
+      for (var v : allVariableValues.get(op)) {
+        vals.add(v);
       }
       return vals;
     } else if (val instanceof JInstanceOfExpr) {
@@ -417,12 +506,15 @@ public class ShimpleMethod {
       Utils.debugAssert(isspecial, "not special? " + val.toString());
       return null;
     } else if (val instanceof JInstanceFieldRef) {
+      utils.Utils.debugPrintln(stmt.toString());
       VariableValues vals = new VariableValues(val, stmt);
       Value base = ((JInstanceFieldRef)val).getBase();
       SootFieldRef field = ((JInstanceFieldRef)val).getFieldRef();
       VariableValues baseVals = allVariableValues.get(base);
-      for (VariableValue baseVal : baseVals) {
-        vals.add(new FieldRefValue(baseVal, field));
+      
+      for (JavaHeapElem baseVal : baseVals) {
+        utils.Utils.debugAssert(baseVal instanceof JavaObject, "");
+        vals.add(((JavaObject)baseVal).getField(field.name()));
       }
       return vals;
     } else if (val instanceof JInterfaceInvokeExpr) {
@@ -441,10 +533,17 @@ public class ShimpleMethod {
       vals.addAll(allVariableValues.get(val));
       return vals;
     } else if (val instanceof Constant) {
-      VariableValues vals = new VariableValues(val, stmt);
-      //TODO:
-      vals.add(new VariableValue(val.getType(), VariableValue.UnkownPtr));
-      return vals;
+      if (val.getType() instanceof RefType && 
+          ((RefType)val.getType()).getSootClass().getName().equals("java.lang.String")) {
+        VariableValues vals = new VariableValues(val, stmt);
+        vals.add(JavaHeap.v().createNewObject(((RefType)val.getType())));
+      } else {
+        utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString());
+      }
+      // VariableValues vals = new VariableValues(val, stmt);
+      // //TODO:
+      // vals.add(new VariableValue(val.getType()));
+      // return vals;
     } else {
       Utils.debugAssert(false, "Unsupported Jimple expr " + val.getClass() + "'" + stmt.toString() + "'");
     }
@@ -457,7 +556,7 @@ public class ShimpleMethod {
     if (stmt instanceof JIdentityStmt) {
       if (((JIdentityStmt)stmt).getRightOp() instanceof CaughtExceptionRef) {
         return;
-      } else if (stmt == shimpleBody.getThisUnit()) {
+      } else if (!sootMethod.isStatic() && stmt == shimpleBody.getThisUnit()) {
         //Ignore because this is already assigned
       } else if (((JIdentityStmt)stmt).getRightOp() instanceof ParameterRef) {
         Value leftVal = ((JIdentityStmt)stmt).getLeftOp();
@@ -479,11 +578,11 @@ public class ShimpleMethod {
         // blockVarVals.put(stmt, valsForLeft);
       }
     } else if (stmt instanceof JEnterMonitorStmt) {
-      Utils.debugAssert(false, stmt.toString());
+      // Utils.debugAssert(false, stmt.toString());
     } else if (stmt instanceof JExitMonitorStmt) {
-      Utils.debugAssert(false, stmt.toString());
+      // Utils.debugAssert(false, stmt.toString());
     } else if (stmt instanceof JReturnStmt) {
-      Utils.debugAssert(false, stmt.toString());
+      Utils.debugLog("613: To handle return");
     } else if (stmt instanceof JThrowStmt) {
       Utils.debugAssert(false, stmt.toString());
     } else if (stmt instanceof JLookupSwitchStmt) {
@@ -510,8 +609,6 @@ public class ShimpleMethod {
       return;
     } else if (stmt instanceof JRetStmt) {
       Utils.debugAssert(false, stmt.toString());
-    } else if (stmt instanceof JReturnStmt) {
-      Utils.debugAssert(false, stmt.toString());
     } else {
       Utils.debugAssert(false, "Unhandled statement " + stmt.getClass());
     }
@@ -533,10 +630,10 @@ public class ShimpleMethod {
     while (!q.isEmpty()) {
       Block b = q.remove();
       if (visited.contains(b)) continue;
-      visited.add(b);
       for (var succ : b.getSuccs()) {
         propogateValues(allVariableValues, succ, false);
         q.add(succ);
+        visited.add(succ);
       }
     }
   }
@@ -546,7 +643,7 @@ public class ShimpleMethod {
     JAssignStmt stmt = getAssignStmtForBci(heapEvent.bci);
     Block block = blockForUnit(stmt);
     short opcode = ShimpleMethod.opcodeForJAssign(stmt);
-
+    utils.Utils.debugPrintln(stmt.toString() + "  for " + heapEvent.toString());
     //Add value of the heap event
     switch (opcode) {
       case Const.PUTFIELD:
@@ -564,7 +661,7 @@ public class ShimpleMethod {
       case Const.NEW: {
         Utils.debugAssert(stmt.getRightOp() instanceof JNewExpr, "sanity");
         VariableValues varVals = allVariableValues.get(stmt.getLeftOp());
-        varVals.add(new VariableValue(heapEvent.dstClass, heapEvent.dstPtr));
+        varVals.add(JavaHeap.v().get(heapEvent.dstPtr));
         Utils.debugAssert(stmt.getUseBoxes().size() <= 1, "Only one use in " + stmt.toString());
         break;
       }
@@ -588,7 +685,6 @@ public class ShimpleMethod {
 
     //Propagate values to the successors
     propogateValuesToSucc(allVariableValues, block);
-
     //Propagate values to the predecessors
   }
 }

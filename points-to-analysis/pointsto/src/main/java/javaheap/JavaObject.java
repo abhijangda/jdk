@@ -11,7 +11,7 @@ public class JavaObject extends JavaHeapElem {
     this.fieldValues = new HashMap<>();
   }
 
-  public RefType getType() {
+  public RefType getClassType() {
     return (RefType)type;
   }
 
@@ -20,6 +20,7 @@ public class JavaObject extends JavaHeapElem {
   }
 
   public JavaHeapElem getField(String field) {
+    utils.Utils.debugAssert(getClassType().getSootClass().getFieldByNameUnsafe(field) != null, "field '%s' not present in '%s'", field, getClassType().getClassName());
     return fieldValues.get(field);
   }
 }

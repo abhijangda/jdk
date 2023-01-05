@@ -6,15 +6,25 @@ import soot.AbstractJasminClass;
 
 public abstract class Utils {
   public static boolean DEBUG_PRINT = true;
+
   public static void debugPrintln(String x) {
     if (DEBUG_PRINT) {
       System.out.println(x);
     }
   }
+
+  public static void debugPrintln(Object x) {
+    debugPrintln(x.toString());
+  }
+
   public static void debugLog(String fmt, Object... args) {
     if (DEBUG_PRINT) {
       System.err.printf(fmt, args);
     }
+  }
+
+  public static void shouldNotReachHere() {
+    debugAssert(false, "Should not reach here\n");
   }
 
   public static void debugAssert(boolean b, String fmt, Object... args) {
@@ -35,6 +45,7 @@ public abstract class Utils {
   }
 
   public static String methodFullName(SootMethod meth) {
+    if (meth == null) return "NULL";
     StringBuilder builder = new StringBuilder();
     builder.append(meth.getDeclaringClass().getName());
     builder.append(".");
@@ -53,6 +64,7 @@ public abstract class Utils {
   }
 
   public static boolean methodToCare(String name) {
-    return !name.equals("NULL") && !name.contains("java.") && !name.contains("jdk.") && !name.contains("sun.") && !name.contains("<clinit>");
+    return !name.equals("NULL") && !name.startsWith("java.") && !name.startsWith("jdk.") && 
+            !name.startsWith("sun.") && !name.contains("<clinit>");
   }
 }

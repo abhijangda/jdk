@@ -195,7 +195,6 @@ public class HeapEvent {
       } else if (eventType == EventType.ArrayElementSet) {
         builder.append("[" + elemIndex + "]");
       } else {
-        builder.append(dstClass.toString());
       }
     } else {
       builder.append("NULL");

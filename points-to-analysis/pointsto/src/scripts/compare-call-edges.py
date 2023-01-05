@@ -23,10 +23,21 @@ s2 = slurp(file2)
 firstEdges = parseCallEdges(s1)
 secondEdges = parseCallEdges(s2)
 
+print("Edges of first", len(firstEdges))
+print("Edges of second", len(secondEdges))
+
 found = 0
 for e in firstEdges:
   if e in secondEdges:
-    print(e)
+    #print(e)
     found += 1
 
-print("Edges of first found in second: ", found, "not found", len(firstEdges) - found)
+print("Edges of first found in second: ", found, "Edges NOT found in second: ", len(firstEdges) - found)
+
+found = 0
+for e in secondEdges:
+  if e in firstEdges:
+    #print(e)
+    found += 1
+
+print("Edges of second found in first: ", found, "Edges NOT found in first: ", len(secondEdges) - found)

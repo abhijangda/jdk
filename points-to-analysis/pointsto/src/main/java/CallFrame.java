@@ -4,6 +4,7 @@ import soot.SootMethod;
 import soot.Type;
 import soot.Unit;
 import soot.Value;
+import soot.ValueBox;
 import soot.shimple.Shimple;
 import soot.shimple.ShimpleBody;
 import soot.toolkits.graph.Block;
@@ -13,11 +14,15 @@ import java.util.Iterator;
 import java.util.List;
 
 import javaheap.HeapEvent;
+import javaheap.JavaHeapElem;
 
 import java.util.ArrayList;
+
+import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
 import soot.jimple.ParameterRef;
 import soot.jimple.VirtualInvokeExpr;
+import soot.jimple.internal.AbstractInstanceInvokeExpr;
 import soot.jimple.internal.JSpecialInvokeExpr;
 import soot.jimple.internal.JStaticInvokeExpr;
 import soot.jimple.internal.JVirtualInvokeExpr;
@@ -81,28 +86,19 @@ public class CallFrame {
   private final ProgramCounter pc;
   private final HashMap<ParameterRef, VariableValues> paramValues;
 
-  CallFrame(ShimpleMethod m, InvokeStmt invokeStmt, CallFrame root) {
+  CallFrame(ShimpleMethod m, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
     method = m;
-    allVariableValues = method.initVarValues();
+    allVariableValues = method.initVarValues(invokeExpr, (root == null) ? null : root.allVariableValues);
     invokeStmts = method.getInvokeStmts();
     this.root = root;
     invokeStmtIterator = invokeStmts.iterator();
     pc = new ProgramCounter(method.shimpleBody);
     this.paramValues = new HashMap<>();
-    Utils.debugAssert(invokeStmt != null || (invokeStmt == null && root == null), "sanity");
-    if (invokeStmt != null) {
-      // Utils.debugPrintln(invokeStmt.toString() + "   " + m.toString());
-      Utils.debugAssert(method.parameterRefs.size() == invokeStmt.getInvokeExpr().getArgs().size(), "sanity");
-      for (int i = 0; i < method.parameterRefs.size(); i++) {
-        ParameterRef param = method.parameterRefs.get(i);
-        Value arg = invokeStmt.getInvokeExpr().getArg(i);
-        allVariableValues.put(param, root.allVariableValues.get(arg));
-      }
-    }
+    Utils.debugAssert(invokeExpr != null || (invokeExpr == null && root == null), "sanity");
   }
 
-  CallFrame(HeapEvent event, InvokeStmt invokeStmt, CallFrame root) {
-    this(ParsedMethodMap.v().getOrParseToShimple(event.method), invokeStmt, root);
+  CallFrame(HeapEvent event, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
+    this(ParsedMethodMap.v().getOrParseToShimple(event.method), invokeExpr, stmt, root);
   }
 
   public void updateValuesWithHeapEvent(HeapEvent event) {
@@ -113,12 +109,14 @@ public class CallFrame {
     return pc.hasNextStmt();
   }
 
-  private InvokeStmt nextInvokeStmt() {
+  private Pair<InvokeExpr, Unit> nextInvokeExpr() {
     Unit currStmt = null;
     while (pc.hasNextStmt()) {
       currStmt = pc.nextStmt();
-      if (currStmt instanceof InvokeStmt) {
-        return (InvokeStmt)currStmt;
+      for (ValueBox use : currStmt.getUseBoxes()) {
+        if (use.getValue() instanceof InvokeExpr) {
+          return Pair.v((InvokeExpr)use.getValue(), currStmt);
+        }
       }
     }
     return null;
@@ -153,24 +151,30 @@ public class CallFrame {
   }
 
   public CallFrame nextInvokeMethod() {
-    InvokeStmt stmt = nextInvokeStmt();
-    if (stmt == null) return null;
-    System.out.println(Utils.methodFullName(method.sootMethod) + " --> " + stmt.toString());
+    Pair<InvokeExpr, Unit> invokeExprAndStmt = nextInvokeExpr();
+    if (invokeExprAndStmt == null) return null;
+    InvokeExpr invokeExpr = invokeExprAndStmt.first;
+    System.out.println(invokeExpr.getClass() + " " +  invokeExpr.toString());
     SootMethod method = null;
-    if (!Utils.methodToCare(stmt.getInvokeExpr().getMethod()))
+    if (!Utils.methodToCare(invokeExpr.getMethod()))
       return null;
-    if (stmt.getInvokeExpr() instanceof JSpecialInvokeExpr) {
-      method = stmt.getInvokeExpr().getMethod();
-    } else if (stmt.getInvokeExpr() instanceof JVirtualInvokeExpr) {
-      JVirtualInvokeExpr virtInvoke = (JVirtualInvokeExpr)stmt.getInvokeExpr();
+    if (invokeExpr instanceof JSpecialInvokeExpr) {
+      method = invokeExpr.getMethod();
+    } else if (invokeExpr instanceof AbstractInstanceInvokeExpr) {
+      AbstractInstanceInvokeExpr virtInvoke = (AbstractInstanceInvokeExpr)invokeExpr;
       VariableValues vals = allVariableValues.get(virtInvoke.getBase());
+      // if (this.method.sootMethod.getDeclaringClass().getName().contains("QueryProcessor") &&
+      //     this.method.sootMethod.getName().contains("run")) {
+      //   Utils.debugPrintln("454: " + stmt.toString() + " " + virtInvoke.getBase() + " " + vals.size());
+      // }
       if (vals.size() == 0) {
         Utils.debugPrintln("0 values for " + virtInvoke.getBase());
         method = virtInvoke.getMethod();
       } else {
-        VariableValue[] valuesArray = new VariableValue[vals.size()];
-        valuesArray = vals.toArray(valuesArray);
-        Type type = valuesArray[0].sootType;
+        // JavaHeapElem[] valuesArray = new JavaHeapElem[vals.size()];
+        // valuesArray = vals.toArray(valuesArray);
+        JavaHeapElem val = vals.iterator().next();
+        Type type = val.getType();
         Utils.debugAssert(type instanceof RefType, "");
         SootClass klass = ((RefType)type).getSootClass();
         while(klass != null && !klass.declaresMethod(virtInvoke.getMethod().getSubSignature())) {
@@ -180,14 +184,14 @@ public class CallFrame {
         method = klass.getMethod(virtInvoke.getMethod().getSubSignature());
         Utils.debugPrintln("new method " + method.toString());
       }
-    } else if (stmt.getInvokeExpr() instanceof JStaticInvokeExpr) {
-      method = stmt.getInvokeExpr().getMethod();
+    } else if (invokeExpr instanceof JStaticInvokeExpr) {
+      method = invokeExpr.getMethod();
     } else {
-      Utils.debugAssert(false, "Unknown invoke expr type");
+      Utils.debugAssert(false, "Unknown invoke expr type " + invokeExpr.toString());
     }
 
     Utils.debugAssert(ParsedMethodMap.v().getOrParseToShimple(method) != null, "%s not found\n", Utils.methodFullName(method));
     
-    return new CallFrame(ParsedMethodMap.v().getOrParseToShimple(method), stmt, this);
+    return new CallFrame(ParsedMethodMap.v().getOrParseToShimple(method), invokeExpr, invokeExprAndStmt.second, this);
   }
 }

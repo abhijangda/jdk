@@ -1,9 +1,10 @@
 import java.util.HashSet;
 
+import javaheap.JavaHeapElem;
 import soot.Unit;
 import soot.Value;
 
-public class VariableValues extends HashSet<VariableValue> {
+public class VariableValues extends HashSet<JavaHeapElem> {
   public final Value variable;
   public final Unit stmt;
 

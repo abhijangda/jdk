@@ -19,7 +19,7 @@ public class CallGraphAnalysis {
     String mainThread = "";
     int heapEventIdx = -1;
     String threadWithMaxEvents = "";
-    JavaHeap javaHeap = new JavaHeap();
+    JavaHeap javaHeap = JavaHeap.v();
 
     for (String thread : heapEvents.keySet()) {
       if (threadWithMaxEvents == "") {
@@ -52,7 +52,7 @@ public class CallGraphAnalysis {
     StaticValue staticValues = new StaticValue();
     HeapEvent currEvent = mainThreadEvents.get(heapEventIdx);
     Stack<Pair<CallFrame, Integer>> remainingFrames = new Stack<>();
-    CallFrame rootFrame = new CallFrame(mainThreadEvents.get(heapEventIdx), null, null);
+    CallFrame rootFrame = new CallFrame(mainThreadEvents.get(heapEventIdx), null, null, null);
     CallGraphNode rootNode = new CallGraphNode(rootFrame, null);
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
 
@@ -60,36 +60,46 @@ public class CallGraphAnalysis {
     callStack.push(rootFrame);
     frameToGraphNode.put(rootFrame, rootNode);
     int iterations = 0;
-    while (!callStack.isEmpty()) {
+    while (!callStack.isEmpty() && iterations++ < 1000) {
       CallFrame frame = callStack.peek();
       if (!frame.hasNextInvokeStmt()) {
         callStack.pop();
         continue;
       }
       
-      // while (mainThreadEvents.get(heapEventIdx).method != null && !Utils.methodToCare(mainThreadEvents.get(heapEventIdx).method)) {
-      //   heapEventIdx++;
-      // }
+      Utils.debugPrintln("curr event: " + mainThreadEvents.get(heapEventIdx).toString());
+
+      while (!Utils.methodToCare(mainThreadEvents.get(heapEventIdx).method)) {
+        // Utils.debugPrintln(mainThreadEvents.get(heapEventIdx).toString());
+        javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+        heapEventIdx++;
+      }
 
       while(mainThreadEvents.get(heapEventIdx).method == frame.method.sootMethod) {
         javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
-        // frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+        Utils.debugPrintln(mainThreadEvents.get(heapEventIdx).toString());
+        frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
         heapEventIdx++;
       }
       
-      // CallGraphNode parentNode = frameToGraphNode.get(frame);
-      // CallFrame nextFrame = frame.nextInvokeMethod();
-      // if (nextFrame != null && nextFrame.method != null && nextFrame.method != frame.method &&
-      //     ((frame.root != null && nextFrame.method != frame.root.method) || frame.root == null) &&
-      //     !Utils.methodFullName(nextFrame.method.sootMethod).contains("java.lang.SecurityManager.checkPermission") &&
-      //     Utils.methodToCare(frame.method.sootMethod)) {
-      //   //Skip recursion
-      //   callStack.push(nextFrame);
-      //   CallGraphNode childNode = new CallGraphNode(nextFrame, parentNode);
-      //   parentNode.addChild(childNode);
-      //   frameToGraphNode.put(nextFrame, childNode);
-      // } else {
-      // }
+      CallGraphNode parentNode = frameToGraphNode.get(frame);
+      CallFrame nextFrame = frame.nextInvokeMethod();
+      if (nextFrame != null && nextFrame.method != null && nextFrame.method != frame.method &&
+          ((frame.root != null && nextFrame.method != frame.root.method) || frame.root == null) &&
+          !Utils.methodFullName(nextFrame.method.sootMethod).contains("java.lang.SecurityManager.checkPermission") &&
+          Utils.methodToCare(frame.method.sootMethod)) {
+        //Skip recursion
+        Utils.debugPrintln("next frame: " + utils.Utils.methodFullName(nextFrame.method.sootMethod));
+        if (nextFrame.method.sootMethod.getDeclaringClass().getName().contains("QueryProcessor") &&
+          nextFrame.method.sootMethod.getName().contains("run")) {
+          // Utils.debugPrintln(nextFrame.method.shimpleBody.toString());
+        }
+        callStack.push(nextFrame);
+        CallGraphNode childNode = new CallGraphNode(nextFrame, parentNode);
+        parentNode.addChild(childNode);
+        frameToGraphNode.put(nextFrame, childNode);
+      } else {
+      }
     }
     
     System.out.println("Edges:");

@@ -6,6 +6,18 @@ import soot.ArrayType;
 import soot.RefType;
 
 public class JavaHeap extends HashMap<Long, JavaHeapElem> {
+  private JavaHeap() {
+    super();
+  }
+
+  private static JavaHeap javaHeap = null;
+
+  public static JavaHeap v() {
+    if (javaHeap == null) 
+      javaHeap = new JavaHeap();
+    return javaHeap;
+  }
+  
   public void updateWithHeapEvent(HeapEvent event) {
     if (event.eventType == HeapEvent.EventType.NewObject) {
       put(event.dstPtr, new JavaObject((RefType)event.dstClass));
@@ -62,5 +74,15 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
     } else {
       utils.Utils.debugAssert(false, "not handled event type");
     }
+  }
+
+  public JavaObject createNewObject(RefType type) {
+    long address = size();
+    while(!containsKey(address)) address++;
+
+    JavaObject obj = new JavaObject(type);
+    put(address, obj);
+
+    return obj;
   }
 }

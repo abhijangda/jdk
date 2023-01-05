@@ -1,18 +1,17 @@
+import javaheap.JavaHeapElem;
 import soot.Type;
 
 public class VariableValue {
   public final Type sootType;
-  public final long refValue;
-  public static final long ThisPtr = 1;
-  public static final long UnkownPtr = 1;
+  public final JavaHeapElem ref;
 
-  public VariableValue(Type sootType, long refValue) {
+  public VariableValue(Type sootType, JavaHeapElem refValue) {
     this.sootType = sootType;
-    this.refValue = refValue;
+    this.ref = refValue;
   }
 
   public VariableValue(Type sootType) {
     this.sootType = sootType;
-    this.refValue = UnkownPtr;
+    this.ref = null;
   }
 }

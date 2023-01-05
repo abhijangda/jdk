@@ -78,7 +78,7 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
 
   public JavaObject createNewObject(RefType type) {
     long address = size();
-    while(!containsKey(address)) address++;
+    while(containsKey(address)) address++;
 
     JavaObject obj = new JavaObject(type);
     put(address, obj);

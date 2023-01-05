@@ -66,7 +66,8 @@ public class CallGraphNode {
     StringBuilder builder = new StringBuilder();
   
     for (Pair<ShimpleMethod, ShimpleMethod> edge : edges) {
-      builder.append(Utils.methodFullName(edge.first.sootMethod) + " " + Utils.methodFullName(edge.second.sootMethod) + "\n");
+      builder.append(Utils.methodFullName(edge.first.sootMethod) + " " + 
+                     Utils.methodFullName(edge.second.sootMethod) + "\n");
     }
 
     return builder.toString();

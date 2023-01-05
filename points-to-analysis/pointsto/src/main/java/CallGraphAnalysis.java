@@ -1,5 +1,7 @@
 import java.util.*;
 
+import org.slf4j.helpers.Util;
+
 import classcollections.*;
 import javaheap.HeapEvent;
 import javaheap.JavaHeap;
@@ -60,28 +62,28 @@ public class CallGraphAnalysis {
     callStack.push(rootFrame);
     frameToGraphNode.put(rootFrame, rootNode);
     int iterations = 0;
-    while (!callStack.isEmpty() && iterations++ < 1000) {
+    while (!callStack.isEmpty() && iterations++ < 10000) {
       CallFrame frame = callStack.peek();
       if (!frame.hasNextInvokeStmt()) {
         callStack.pop();
         continue;
       }
-      
-      Utils.debugPrintln("curr event: " + mainThreadEvents.get(heapEventIdx).toString());
 
       while (!Utils.methodToCare(mainThreadEvents.get(heapEventIdx).method)) {
         // Utils.debugPrintln(mainThreadEvents.get(heapEventIdx).toString());
         javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
         heapEventIdx++;
       }
-
+      while (Utils.methodFullName(mainThreadEvents.get(heapEventIdx).method).contains("org.apache.lucene.store.FSDirectory.<init>()V")) {
+        javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+        heapEventIdx++;
+      }
       while(mainThreadEvents.get(heapEventIdx).method == frame.method.sootMethod) {
         javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
         Utils.debugPrintln(mainThreadEvents.get(heapEventIdx).toString());
         frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
         heapEventIdx++;
       }
-      
       CallGraphNode parentNode = frameToGraphNode.get(frame);
       CallFrame nextFrame = frame.nextInvokeMethod();
       if (nextFrame != null && nextFrame.method != null && nextFrame.method != frame.method &&

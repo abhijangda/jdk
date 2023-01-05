@@ -67,4 +67,12 @@ public abstract class Utils {
     return !name.equals("NULL") && !name.startsWith("java.") && !name.startsWith("jdk.") && 
             !name.startsWith("sun.") && !name.contains("<clinit>");
   }
+
+  public static String getCurrFileAndLine(int index) {
+    return Thread.currentThread().getStackTrace()[index].toString();
+  }
+
+  public static void debugPrintFileAndLine() {
+    debugPrintln(getCurrFileAndLine(3));
+  }
 }

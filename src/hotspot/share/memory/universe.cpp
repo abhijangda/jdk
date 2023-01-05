@@ -1316,6 +1316,9 @@ void Universe::dump_heap_events_to_file() {
         Method* m = (Method*)event.getmethod();
         m->name_and_sig_as_C_string(m_name, 1024);          
         bci = m->bci_from((address)event.getbci());
+        if (strstr(m_name, "org.apache.lucene.store.FSDirectory.getDirectory") != NULL) {
+          printf("1320: %s\n",m_name);
+        }
       }
 
       char src_class[1024] = "NULL";

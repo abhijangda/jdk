@@ -70,8 +70,11 @@ public class HeapEvent {
     EventType eventType = typefromInt(eventTypeInt);
     String method = split[1].strip();
     SootMethod m = classes.getMethod(method);
-    if (JavaClassCollection.methodToCare(method))
+    if (JavaClassCollection.methodToCare(method)) {
       Utils.debugAssert(m != null, "Method not found " + method);
+      Utils.debugAssert(Utils.methodFullName(m).equals(method) ||
+                        Utils.methodFullName(m).equals("harness."+method), "not equal %s != %s", Utils.methodFullName(m), method);
+    }
 
     int bci = Integer.parseInt(split[2].strip());
     String[] src = split[3].split(":");

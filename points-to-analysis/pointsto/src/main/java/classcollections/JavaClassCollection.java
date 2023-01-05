@@ -17,6 +17,7 @@ import soot.SootClass;
 import soot.SootMethod;
 import soot.Type;
 import soot.options.Options;
+import utils.Utils;
 
 import java.util.jar.*;
 import java.nio.file.*;
@@ -178,16 +179,29 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
           System.out.println("null javaclass for " + classname);
           return null;
         }
+
+        // for (SootMethod m : javaclass.getMethods()) {
+        //   Utils.debugPrintln(m.toString());
+        // }
+
         while (javaclass != null) {
           for (SootMethod m : javaclass.getMethods()) {
             if (m.getName().equals(methodname)) {
               if (AbstractJasminClass.jasminDescriptorOf(m.getReturnType()).equals(returnStr)) {
                 List<Type> paramTypes = m.getParameterTypes();
-                boolean paramTypesSame = true;
                 String _paramsStr = paramsStr;
+
+                if (_paramsStr.isEmpty() && paramTypes.size() == 0)
+                  return m;
+
                 if (!_paramsStr.isEmpty() && paramTypes.size() > 0) {
-                  for (int p = 0; p < paramTypes.size(); p++) {
+                  boolean paramTypesSame = true;
+                  int p;
+                  for (p = 0; p < paramTypes.size(); p++) {
                     String jasminTypeStr = AbstractJasminClass.jasminDescriptorOf(paramTypes.get(p));
+                    // if (m.getDeclaringClass().getName().contains("Set")) {
+                    //   Utils.debugPrintln(m.toString() + " " + _paramsStr + " " + jasminTypeStr);
+                    // }
                     if (!_paramsStr.isEmpty() && _paramsStr.startsWith(jasminTypeStr)) {
                       _paramsStr = _paramsStr.substring(jasminTypeStr.length());
                     } else {
@@ -195,10 +209,11 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
                       break;
                     }
                   }
-                }
 
-                if (paramTypesSame)
-                  return m;
+                  paramTypesSame = paramTypesSame && _paramsStr.isEmpty() && p == paramTypes.size();
+                  if (paramTypesSame)
+                    return m;
+                }
               }
             }
           }

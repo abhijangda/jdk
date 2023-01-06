@@ -69,15 +69,16 @@ public class CallGraphAnalysis {
         continue;
       }
 
-      while (!Utils.methodToCare(mainThreadEvents.get(heapEventIdx).method)) {
-        // Utils.debugPrintln(mainThreadEvents.get(heapEventIdx).toString());
+      Utils.debugPrintln("currevent " + mainThreadEvents.get(heapEventIdx).toString());
+
+      while (!Utils.methodToCare(mainThreadEvents.get(heapEventIdx).method) ||
+             mainThreadEvents.get(heapEventIdx).methodStr.contains("org.apache.lucene.store.FSDirectory.<init>()V") ||
+             mainThreadEvents.get(heapEventIdx).methodStr.contains("org.apache.lucene.analysis.CharArraySet.add")) {
         javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
         heapEventIdx++;
       }
-      while (Utils.methodFullName(mainThreadEvents.get(heapEventIdx).method).contains("org.apache.lucene.store.FSDirectory.<init>()V")) {
-        javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
-        heapEventIdx++;
-      }
+      
+      Utils.debugPrintln("new curr event" + mainThreadEvents.get(heapEventIdx).toString());
       while(mainThreadEvents.get(heapEventIdx).method == frame.method.sootMethod) {
         javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
         Utils.debugPrintln(mainThreadEvents.get(heapEventIdx).toString());
@@ -86,12 +87,23 @@ public class CallGraphAnalysis {
       }
       CallGraphNode parentNode = frameToGraphNode.get(frame);
       CallFrame nextFrame = frame.nextInvokeMethod();
+      if (frame.method.fullname().contains("QueryProcessor.<init>")) {
+        while (!Utils.methodFullName(mainThreadEvents.get(heapEventIdx).method).contains("QueryProcessor.run")) {
+          Utils.debugPrintln("currevent " + mainThreadEvents.get(heapEventIdx));
+          if (mainThreadEvents.get(heapEventIdx).methodStr.contains("QueryProcessor.<init>"))
+            frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+          javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+          heapEventIdx++;
+        } 
+        callStack.pop();
+        continue;
+      }
       if (nextFrame != null && nextFrame.method != null && nextFrame.method != frame.method &&
           ((frame.root != null && nextFrame.method != frame.root.method) || frame.root == null) &&
           !Utils.methodFullName(nextFrame.method.sootMethod).contains("java.lang.SecurityManager.checkPermission") &&
           Utils.methodToCare(frame.method.sootMethod)) {
         //Skip recursion
-        Utils.debugPrintln("next frame: " + utils.Utils.methodFullName(nextFrame.method.sootMethod));
+        Utils.debugPrintln("next frame: " + utils.Utils.methodFullName(nextFrame.method.sootMethod) + " parent " + ((frame == null) ?  "" : frame.method.fullname()));
         if (nextFrame.method.sootMethod.getDeclaringClass().getName().contains("QueryProcessor") &&
           nextFrame.method.sootMethod.getName().contains("run")) {
           // Utils.debugPrintln(nextFrame.method.shimpleBody.toString());

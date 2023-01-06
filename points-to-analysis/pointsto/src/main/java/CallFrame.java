@@ -89,7 +89,6 @@ public class CallFrame {
   CallFrame(ShimpleMethod m, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
     method = m;
     allVariableValues = method.initVarValues(invokeExpr, (root == null) ? null : root.allVariableValues);
-    Utils.debugPrintln("CallFrame. 92:");
     invokeStmts = method.getInvokeStmts();
     this.root = root;
     invokeStmtIterator = invokeStmts.iterator();
@@ -156,9 +155,12 @@ public class CallFrame {
     if (invokeExprAndStmt == null) return null;
     InvokeExpr invokeExpr = invokeExprAndStmt.first;
     SootMethod method = null;
+    
     if (!Utils.methodToCare(invokeExpr.getMethod()))
       return null;
-    System.out.println(invokeExpr.getClass() + " " +  invokeExpr.toString());
+    
+    Utils.debugPrintln(invokeExpr.toString() + " in " + this.method.fullname());
+
     if (invokeExpr instanceof JSpecialInvokeExpr) {
       method = invokeExpr.getMethod();
     } else if (invokeExpr instanceof AbstractInstanceInvokeExpr) {
@@ -178,6 +180,7 @@ public class CallFrame {
         Type type = val.getType();
         Utils.debugAssert(type instanceof RefType, "");
         SootClass klass = ((RefType)type).getSootClass();
+        Utils.debugPrintln(klass.getName());
         while(klass != null && !klass.declaresMethod(virtInvoke.getMethod().getSubSignature())) {
           klass = klass.getSuperclass();
         }
@@ -192,7 +195,6 @@ public class CallFrame {
     }
 
     Utils.debugAssert(ParsedMethodMap.v().getOrParseToShimple(method) != null, "%s not found\n", Utils.methodFullName(method));
-    Utils.debugPrintFileAndLine();
     return new CallFrame(ParsedMethodMap.v().getOrParseToShimple(method), invokeExpr, invokeExprAndStmt.second, this);
   }
 }

@@ -385,7 +385,7 @@ public class ShimpleMethod {
         Utils.debugPrintln(shimpleBody.toString());
       }
 
-      Utils.debugPrintFileAndLine();
+
 
       if (invokeExpr != null) {
         // utils.Utils.debugPrintln(invokeExpr.toString() + "   " + utils.Utils.methodFullName(sootMethod));
@@ -424,13 +424,12 @@ public class ShimpleMethod {
           q.add(variable);
       }
 
-      Utils.debugPrintFileAndLine();
+
       //TODO: do it until there is no change?
       Set<Value> visited = new HashSet<>();
 
       while(!q.isEmpty()) {
         Value variable = q.remove();
-        Utils.debugPrintln(variable.toString());
         if (visited.contains(variable)) continue;
         visited.add(variable);
         if (allVariableValues.get(variable).size() == 0) continue;
@@ -439,11 +438,9 @@ public class ShimpleMethod {
         for (Unit use : valueToUseStmts.get(variable)) {
           Utils.debugAssert(use instanceof Unit, "not of Unit " + use.toString() + " " + variable.toString());
           // if (canPrint)
-          //   Utils.debugPrintln("400: " + use.toString());
-          Utils.debugPrintFileAndLine();
-          Utils.debugPrintln(use.toString());
+          //   Utils.debugPrintln("400: " + use.toString());    
           propogateValues(allVariableValues, use);
-          Utils.debugPrintFileAndLine();  
+      
           for (ValueBox def : use.getDefBoxes()) {
             // if (canPrint)
             //   Utils.debugPrintln("394: " + def.getValue().toString() + " " + allVariableValues.get(def.getValue()).size());
@@ -452,7 +449,7 @@ public class ShimpleMethod {
         }
       }
 
-      Utils.debugPrintFileAndLine();
+
     }
 
     return allVariableValues;
@@ -491,11 +488,10 @@ public class ShimpleMethod {
 
   private VariableValues obtainVariableValues(HashMap<Value, VariableValues> allVariableValues,
                                               Unit stmt, Value val) {
-    Utils.debugPrintFileAndLine();
     if (val instanceof JNewExpr) {
       return null;
     } else if (val instanceof JNewArrayExpr) {
-      Utils.debugAssert(false, stmt.toString());
+      return null;// Utils.debugAssert(false, stmt.toString());
     } else if (val instanceof JNewMultiArrayExpr) {
       Utils.debugAssert(false, stmt.toString());
     } else if (val instanceof BinopExpr) {
@@ -527,7 +523,6 @@ public class ShimpleMethod {
       Utils.debugAssert(isspecial, "not special? " + val.toString());
       return null;
     } else if (val instanceof JInstanceFieldRef) {
-      utils.Utils.debugPrintln(stmt.toString());
       VariableValues vals = new VariableValues(val, stmt);
       Value base = ((JInstanceFieldRef)val).getBase();
       SootFieldRef field = ((JInstanceFieldRef)val).getFieldRef();
@@ -554,19 +549,14 @@ public class ShimpleMethod {
       vals.addAll(allVariableValues.get(val));
       return vals;
     } else if (val instanceof Constant) {
-      Utils.debugPrintFileAndLine();
       if (val.getType() instanceof RefType && 
           ((RefType)val.getType()).getSootClass().getName().equals("java.lang.String")) {
-        Utils.debugPrintFileAndLine();
         VariableValues vals = new VariableValues(val, stmt);
-        Utils.debugPrintFileAndLine();
-        vals.add(JavaHeap.v().createNewObject(((RefType)val.getType())));
-        Utils.debugPrintFileAndLine();
+        vals.add(JavaHeap.v().createNewObject(((RefType)val.getType())));  
       } else {
-        Utils.debugPrintFileAndLine();
         utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString());
       }
-      Utils.debugPrintFileAndLine();
+
       // VariableValues vals = new VariableValues(val, stmt);
       // //TODO:
       // vals.add(new VariableValue(val.getType()));
@@ -576,13 +566,11 @@ public class ShimpleMethod {
     } else {
       Utils.debugAssert(false, "Unsupported Jimple expr " + val.getClass() + "'" + stmt.toString() + "'");
     }
-    Utils.debugPrintFileAndLine();
     return null;
   }
 
   private void propogateValues(HashMap<Value, VariableValues> allVariableValues,
                                Unit stmt) {
-    Utils.debugPrintFileAndLine();
     if (stmt instanceof JIdentityStmt) {
       if (((JIdentityStmt)stmt).getRightOp() instanceof CaughtExceptionRef) {
         return;
@@ -600,7 +588,7 @@ public class ShimpleMethod {
         Utils.debugAssert(false, "%s %s %s\n", stmt.toString(), stmt.getClass(), ((JIdentityStmt)stmt).getRightOp().getClass());
       }
     } else if (stmt instanceof JAssignStmt) {
-      Utils.debugPrintFileAndLine();
+
       Value leftVal = ((JAssignStmt)stmt).getLeftOp();
       Value rightVal =((JAssignStmt)stmt).getRightOp();
       VariableValues valsForLeft = obtainVariableValues(allVariableValues, stmt, rightVal);
@@ -608,7 +596,7 @@ public class ShimpleMethod {
         allVariableValues.put(leftVal, valsForLeft);
         // blockVarVals.put(stmt, valsForLeft);
       }
-      Utils.debugPrintFileAndLine();
+
     } else if (stmt instanceof JEnterMonitorStmt) {
       // Utils.debugAssert(false, stmt.toString());
     } else if (stmt instanceof JExitMonitorStmt) {
@@ -712,14 +700,15 @@ public class ShimpleMethod {
         Utils.debugAssert(false, "not handling " + Const.getOpcodeName(opcode));
     }
 
-    Utils.debugPrintln("685:");
-
     //Propagate values inside the block
     propogateValues(allVariableValues, block, true);
 
     //Propagate values to the successors
     propogateValuesToSucc(allVariableValues, block);
     //Propagate values to the predecessors
-    Utils.debugPrintln("692:");
+  }
+
+  public String fullname() {
+    return Utils.methodFullName(sootMethod);
   }
 }

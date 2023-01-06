@@ -9,7 +9,8 @@ public abstract class Utils {
 
   public static void debugPrintln(String x) {
     if (DEBUG_PRINT) {
-      System.out.println(x);
+      String fileline = getCurrFileAndLine(3);
+      System.out.println(fileline + ": " + x);
     }
   }
 
@@ -19,7 +20,8 @@ public abstract class Utils {
 
   public static void debugLog(String fmt, Object... args) {
     if (DEBUG_PRINT) {
-      System.err.printf(fmt, args);
+      String fileline = getCurrFileAndLine(3);
+      System.err.printf(fileline + ": " +fmt, args);
     }
   }
 
@@ -65,14 +67,18 @@ public abstract class Utils {
 
   public static boolean methodToCare(String name) {
     return !name.equals("NULL") && !name.startsWith("java.") && !name.startsWith("jdk.") && 
-            !name.startsWith("sun.") && !name.contains("<clinit>");
+            !name.startsWith("sun.") && !name.contains("<clinit>") && 
+            !name.contains("QueryParser.parse");
   }
 
   public static String getCurrFileAndLine(int index) {
-    return Thread.currentThread().getStackTrace()[index].toString();
+    String methodFileAndLine = Thread.currentThread().getStackTrace()[index].toString();
+    return "\033[0;31m" + methodFileAndLine.substring(methodFileAndLine.indexOf("(")+1,methodFileAndLine.indexOf(")")) + "\033[0m";
   }
 
   public static void debugPrintFileAndLine() {
-    debugPrintln(getCurrFileAndLine(3));
+    if (DEBUG_PRINT) {
+      System.out.println(getCurrFileAndLine(3));
+    }
   }
 }

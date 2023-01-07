@@ -42,6 +42,7 @@ import soot.jimple.CaughtExceptionRef;
 import soot.jimple.Constant;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
+import soot.jimple.NullConstant;
 import soot.jimple.ParameterRef;
 import soot.jimple.StaticFieldRef;
 import soot.jimple.Stmt;
@@ -272,6 +273,8 @@ public class ShimpleMethod {
   private final HashMap<Value, Unit> valueToDefStmt;
   private final HashMap<Value, ArrayList<Unit>> valueToUseStmts;
   private final HashMap<Unit, Block> stmtToBlock;
+  public final ArrayList<Unit> statements;
+  public final HashMap<Unit, Integer> stmtToIndex;
   public final ArrayList<ParameterRef> parameterRefs;
   public boolean canPrint;
   public JAssignStmt getAssignStmtForBci(int bci) {return bciToJAssignStmt.get(bci);}
@@ -282,11 +285,6 @@ public class ShimpleMethod {
     this.shimpleBody      = shimpleBody;
 
     canPrint = false;
-    if (sootMethod.getDeclaringClass().getName().contains("QueryProcessor") &&
-        sootMethod.getName().contains("<init>")) {
-      Utils.debugPrintln(shimpleBody.toString());
-      canPrint = true;
-    }
 
     HashMap<Block, ArrayList<Unit>> blockStmts       = new HashMap<>();
     HashMap<Value, Unit> valueToDefStmt              = new HashMap<>();
@@ -338,16 +336,57 @@ public class ShimpleMethod {
         Utils.debugAssert(param instanceof ParameterRef, "sanity");
         this.parameterRefs.add((ParameterRef)param);
       }
+      
+      this.statements      = new ArrayList<>();
+      this.stmtToIndex     = new HashMap<>();
+
+      Iterator<Unit> iter  = shimpleBody.getUnits().iterator();
+      while (iter.hasNext()) {
+        Unit stmt = iter.next();
+        this.stmtToIndex.put(stmt, this.statements.size());
+        this.statements.add(stmt);
+        // if (fullname().contains("org.apache.lucene.store.FSDirectory.getDirectory(")) {
+        //   Utils.debugPrintln(this.statements.size() + "   " + stmt.toString());
+        // }
+      }
     } else {
       this.basicBlockGraph = null;
       this.dominatorTree   = null;
       this.parameterRefs   = null;
       this.valueToUseStmts = null;
+      this.statements      = null;
+      this.stmtToIndex     = null;
     }
 
     this.blockStmts      = blockStmts;
     this.valueToDefStmt  = valueToDefStmt;
     this.stmtToBlock     = stmtToBlock;
+  }
+
+  public Block getBlockForStmt(Unit stmt) {
+    return stmtToBlock.get(stmt);
+  }
+
+  public Block getBlockForBci(int bci) {
+    return stmtToBlock.get(getAssignStmtForBci(bci));
+  }
+
+  public boolean isEventInPathFromBlock(Block block, HeapEvent event) {
+    Block eventBlock = getBlockForBci(event.bci);
+    Queue<Block> q = new LinkedList<>();
+    Set<Block> visited = new HashSet<>();
+
+    q.add(block);
+    while (!q.isEmpty()) {
+      Block b = q.remove();
+      if (visited.contains(b)) continue;
+      if (b == eventBlock) return true;
+
+      visited.add(b);
+      q.addAll(b.getSuccs());
+    }
+
+    return false;
   }
 
   public Block getStartBlock() {
@@ -379,13 +418,6 @@ public class ShimpleMethod {
           }
         }
       }
-
-      if (Utils.methodFullName(sootMethod).contains("org.apache.lucene.store.LockFactory.<init>()V")) {
-        canPrint = true;
-        Utils.debugPrintln(shimpleBody.toString());
-      }
-
-
 
       if (invokeExpr != null) {
         // utils.Utils.debugPrintln(invokeExpr.toString() + "   " + utils.Utils.methodFullName(sootMethod));
@@ -553,8 +585,11 @@ public class ShimpleMethod {
           ((RefType)val.getType()).getSootClass().getName().equals("java.lang.String")) {
         VariableValues vals = new VariableValues(val, stmt);
         vals.add(JavaHeap.v().createNewObject(((RefType)val.getType())));  
+      } else if (val instanceof NullConstant) {
+        VariableValues vals = new VariableValues(val, stmt);
+        vals.add(null);  
       } else {
-        utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString());
+        utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString() + " " + val.getClass());
       }
 
       // VariableValues vals = new VariableValues(val, stmt);

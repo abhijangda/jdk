@@ -15,7 +15,10 @@ public abstract class Utils {
   }
 
   public static void debugPrintln(Object x) {
-    debugPrintln(x.toString());
+    if (DEBUG_PRINT) {
+      String fileline = getCurrFileAndLine(3);
+      System.out.println(fileline + ": " + x.toString());
+    }
   }
 
   public static void debugLog(String fmt, Object... args) {
@@ -67,8 +70,7 @@ public abstract class Utils {
 
   public static boolean methodToCare(String name) {
     return !name.equals("NULL") && !name.startsWith("java.") && !name.startsWith("jdk.") && 
-            !name.startsWith("sun.") && !name.contains("<clinit>") && 
-            !name.contains("QueryParser.parse");
+            !name.startsWith("sun.") && !name.contains("<clinit>");
   }
 
   public static String getCurrFileAndLine(int index) {

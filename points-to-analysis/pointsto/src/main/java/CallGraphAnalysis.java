@@ -6,6 +6,7 @@ import classcollections.*;
 import javaheap.HeapEvent;
 import javaheap.JavaHeap;
 import soot.SootMethod;
+import utils.ArrayListIterator;
 import utils.Utils;
 
 public class CallGraphAnalysis {
@@ -19,7 +20,6 @@ public class CallGraphAnalysis {
 
   public static void callGraph(HashMap<String, ArrayList<HeapEvent>> heapEvents, JavaClassCollection classCollection, BCELClassCollection bcelClassCollection) {
     String mainThread = "";
-    int heapEventIdx = -1;
     String threadWithMaxEvents = "";
     JavaHeap javaHeap = JavaHeap.v();
 
@@ -38,23 +38,24 @@ public class CallGraphAnalysis {
     mainThread = threadWithMaxEvents;
     ArrayList<HeapEvent> mainThreadEvents = heapEvents.get(mainThread);
 
-    heapEventIdx = 0;
-    for (HeapEvent he : mainThreadEvents) {
-      javaHeap.updateWithHeapEvent(he);
-      if (he.method != null && he.method.getDeclaringClass().getName().contains("lusearch"))
+    ArrayListIterator<HeapEvent> eventIterator = new ArrayListIterator<>(mainThreadEvents);
+    HeapEvent startEvent = null;
+    while(eventIterator.hasNext()) {
+      startEvent = eventIterator.get();
+      javaHeap.updateWithHeapEvent(startEvent);
+      if (startEvent.method != null && startEvent.method.getDeclaringClass().getName().contains("lusearch"))
         break;
-
-      heapEventIdx++;
+      eventIterator.moveNext();
     }
 
-    System.out.printf("Starting heap event from %d with method %s\n", 
-    heapEventIdx, Utils.methodFullName(mainThreadEvents.get(heapEventIdx).method));
+    System.out.printf("Starting heap event from with method %s\n", 
+    startEvent, Utils.methodFullName(startEvent.method));
 
     Stack<CallFrame> callStack = new Stack<>();
     StaticValue staticValues = new StaticValue();
-    HeapEvent currEvent = mainThreadEvents.get(heapEventIdx);
+    HeapEvent currEvent = startEvent;
     Stack<Pair<CallFrame, Integer>> remainingFrames = new Stack<>();
-    CallFrame rootFrame = new CallFrame(mainThreadEvents.get(heapEventIdx), null, null, null);
+    CallFrame rootFrame = new CallFrame(startEvent, null, null, null);
     CallGraphNode rootNode = new CallGraphNode(rootFrame, null);
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
 
@@ -68,36 +69,38 @@ public class CallGraphAnalysis {
         callStack.pop();
         continue;
       }
-
-      Utils.debugPrintln("currevent " + mainThreadEvents.get(heapEventIdx).toString());
-
-      while (!Utils.methodToCare(mainThreadEvents.get(heapEventIdx).method) ||
-             mainThreadEvents.get(heapEventIdx).methodStr.contains("org.apache.lucene.store.FSDirectory.<init>()V") ||
-             mainThreadEvents.get(heapEventIdx).methodStr.contains("org.apache.lucene.analysis.CharArraySet.add")) {
-        javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
-        heapEventIdx++;
+      
+      Utils.debugPrintln("currevent " + currEvent.toString());
+      currEvent = eventIterator.get();
+      while (!Utils.methodToCare(currEvent.method) ||
+            //  currEvent.methodStr.contains("org.apache.lucene.store.FSDirectory") ||
+             currEvent.methodStr.contains("org.apache.lucene.analysis.CharArraySet.add") || 
+            //  currEvent.methodStr.contains("IndexFileNameFilter.<init>()") || 
+             currEvent.methodStr.contains("IndexFileNames.<clinit>")) {
+        javaHeap.updateWithHeapEvent(currEvent);
+        eventIterator.moveNext();
       }
       
-      Utils.debugPrintln("new curr event" + mainThreadEvents.get(heapEventIdx).toString());
-      while(mainThreadEvents.get(heapEventIdx).method == frame.method.sootMethod) {
-        javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
-        Utils.debugPrintln(mainThreadEvents.get(heapEventIdx).toString());
-        frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
-        heapEventIdx++;
-      }
+      Utils.debugPrintln("new curr event" + currEvent.toString());
+      // while(mainThreadEvents.get(heapEventIdx).method == frame.method.sootMethod) {
+      //   javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+      //   Utils.debugPrintln(mainThreadEvents.get(heapEventIdx).toString());
+      //   frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+      //   heapEventIdx++;
+      // }
       CallGraphNode parentNode = frameToGraphNode.get(frame);
-      CallFrame nextFrame = frame.nextInvokeMethod();
-      if (frame.method.fullname().contains("QueryProcessor.<init>")) {
-        while (!Utils.methodFullName(mainThreadEvents.get(heapEventIdx).method).contains("QueryProcessor.run")) {
-          Utils.debugPrintln("currevent " + mainThreadEvents.get(heapEventIdx));
-          if (mainThreadEvents.get(heapEventIdx).methodStr.contains("QueryProcessor.<init>"))
-            frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
-          javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
-          heapEventIdx++;
-        } 
-        callStack.pop();
-        continue;
-      }
+      CallFrame nextFrame = frame.nextInvokeMethod(eventIterator);
+      // if (frame.method.fullname().contains("QueryProcessor.<init>")) {
+      //   while (!Utils.methodFullName(mainThreadEvents.get(heapEventIdx).method).contains("QueryProcessor.run")) {
+      //     Utils.debugPrintln("currevent " + mainThreadEvents.get(heapEventIdx));
+      //     if (mainThreadEvents.get(heapEventIdx).methodStr.contains("QueryProcessor.<init>"))
+      //       frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+      //     javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
+      //     heapEventIdx++;
+      //   } 
+      //   callStack.pop();
+      //   continue;
+      // }
       if (nextFrame != null && nextFrame.method != null && nextFrame.method != frame.method &&
           ((frame.root != null && nextFrame.method != frame.root.method) || frame.root == null) &&
           !Utils.methodFullName(nextFrame.method.sootMethod).contains("java.lang.SecurityManager.checkPermission") &&

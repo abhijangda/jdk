@@ -20,7 +20,9 @@ public class JavaObject extends JavaHeapElem {
   }
 
   public JavaHeapElem getField(String field) {
-    utils.Utils.debugAssert(getClassType().getSootClass().getFieldByNameUnsafe(field) != null, "field '%s' not present in '%s'", field, getClassType().getClassName());
+    utils.Utils.debugAssert(getClassType().getSootClass().getFieldByNameUnsafe(field) != null || 
+                            (getClassType().getSootClass().getSuperclassUnsafe() != null && getClassType().getSootClass().getSuperclassUnsafe().getFieldByNameUnsafe(field) != null), 
+                            "field '%s' not present in '%s'", field, getClassType().getClassName());
     return fieldValues.get(field);
   }
 }

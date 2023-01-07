@@ -45,7 +45,7 @@ public class Main {
     JavaClassCollection javaClasses = JavaClassCollection.loadFromJar(jarFile);
     System.out.println("Loaded " + javaClasses.values().size() + " classes");
     //Read and process heap events
-    String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events";
+    String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events-2";
     HashMap<String, ArrayList<HeapEvent>> heapEvents = HeapEvent.processHeapEventsFile(heapEventsFile, javaClasses);
     long loaded = 0;
     for (Map.Entry<String, ArrayList<HeapEvent>> l : heapEvents.entrySet()) {

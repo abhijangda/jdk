@@ -79,7 +79,7 @@ public class CallFrame {
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
 
     if (canPrint) {
       Utils.debugPrintln(method.shimpleBody);
@@ -138,8 +138,8 @@ public class CallFrame {
         if (invokeExpr != null) {
           break;
         }
-        
-        currStmt = method.statements.get(pc.counter);
+        if (pc.counter < method.statements.size())
+          currStmt = method.statements.get(pc.counter);
       }
 
       return invokeExpr;
@@ -231,10 +231,15 @@ public class CallFrame {
             System.exit(0);
           }
         } else {
-          //Otherwise?
-          Utils.debugPrintln(method.fullname() + "\n" +  method.shimpleBody.toString());
-          Utils.debugPrintln("method not matches currevent " + currEvent + " at " + currStmt);
-          System.exit(0);
+          if(isMethodInCallStack(this, method)) {
+            //Then continue with next statement
+            pc.counter++;
+          } else {
+            //Otherwise?
+            Utils.debugPrintln(method.fullname() + "\n" +  method.shimpleBody.toString());
+            Utils.debugPrintln("method not matches currevent " + currEvent + " at " + currStmt);
+            System.exit(0);
+          }
         }
       } else if (currStmt instanceof JGotoStmt) {
         //Has to go to target
@@ -374,6 +379,24 @@ public class CallFrame {
 
     Utils.debugAssert(ParsedMethodMap.v().getOrParseToShimple(invokeMethod) != null, "%s not found\n", Utils.methodFullName(invokeMethod));
     return new CallFrame(ParsedMethodMap.v().getOrParseToShimple(invokeMethod), invokeExpr, invokeExprAndStmt.second, this);
+  }
+
+  /*
+   * Starting from the leaf CallFrame search if the method is present in any of the 
+   * above call frames in the stack
+   */
+  public static boolean isMethodInCallStack(CallFrame leaf, ShimpleMethod method) {
+    CallFrame frame = leaf;
+
+    while (frame != null) {
+      if (frame.method == method) {
+        return true;
+      }
+
+      frame = frame.parent;
+    }
+
+    return false;
   }
 
   public String toString() {

@@ -700,10 +700,18 @@ public class ShimpleMethod {
     short opcode = ShimpleMethod.opcodeForJAssign(stmt);
     utils.Utils.debugPrintln(stmt.toString() + "  for " + heapEvent.toString());
     //Add value of the heap event
+    Value left = stmt.getLeftOp();
+    VariableValues leftVals = allVariableValues.get(left);
     switch (opcode) {
       case Const.PUTFIELD:
-        // lvalSet.add(new ActualValue(currEvent.dstClass_, currEvent.dstPtr_));
-        // rvalSet.add(new ActualValue(currEvent.srcClass, currEvent.srcPtr));
+        leftVals.add(JavaHeap.v().get(heapEvent.srcPtr));
+        if (!(stmt.getRightOp() instanceof Constant)) {
+          VariableValues rightVals = allVariableValues.get(stmt.getRightOp());
+          rightVals.add(JavaHeap.v().get(heapEvent.srcPtr));
+        }
+        Utils.debugAssert(left instanceof JInstanceFieldRef, "sanity");
+        Value base = ((JInstanceFieldRef)left).getBase();
+        allVariableValues.get(base).add(JavaHeap.v().get(heapEvent.dstPtr));
         Utils.debugAssert(stmt.getUseBoxes().size() <= 2, "Only one use in " + stmt.toString());
         break;
       case Const.AASTORE:
@@ -715,8 +723,8 @@ public class ShimpleMethod {
         break;
       case Const.NEW: {
         Utils.debugAssert(stmt.getRightOp() instanceof JNewExpr, "sanity");
-        VariableValues varVals = allVariableValues.get(stmt.getLeftOp());
-        varVals.add(JavaHeap.v().get(heapEvent.dstPtr));
+        
+        leftVals.add(JavaHeap.v().get(heapEvent.dstPtr));
         Utils.debugAssert(stmt.getUseBoxes().size() <= 1, "Only one use in " + stmt.toString());
         break;
       }

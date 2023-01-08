@@ -65,20 +65,25 @@ public class CallFrame {
   public final ShimpleMethod method;
   private HashMap<Value, VariableValues> allVariableValues;
   public final ArrayList<InvokeStmt> invokeStmts;
-  public final CallFrame root;
+  public final CallFrame parent;
   private Iterator<InvokeStmt> invokeStmtIterator;
   private final ProgramCounter pc;
   private final HashMap<ParameterRef, VariableValues> paramValues;
-
-  CallFrame(ShimpleMethod m, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
+  boolean canPrint = false;
+  CallFrame(ShimpleMethod m, InvokeExpr invokeExpr, Unit stmt, CallFrame parent) {
     method = m;
-    allVariableValues = method.initVarValues(invokeExpr, (root == null) ? null : root.allVariableValues);
+    allVariableValues = method.initVarValues(invokeExpr, (parent == null) ? null : parent.allVariableValues);
     invokeStmts = method.getInvokeStmts();
-    this.root = root;
+    this.parent = parent;
     invokeStmtIterator = invokeStmts.iterator();
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
-    Utils.debugAssert(invokeExpr != null || (invokeExpr == null && root == null), "sanity");
+    Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
+    canPrint = this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+
+    if (canPrint) {
+      Utils.debugPrintln(method.shimpleBody);
+    }
   }
 
   CallFrame(HeapEvent event, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
@@ -87,6 +92,10 @@ public class CallFrame {
 
   public void updateValuesWithHeapEvent(HeapEvent event) {
     method.updateValuesWithHeapEvent(allVariableValues, event);
+    if (canPrint) {
+      Utils.debugPrintln("After updating event " + event + " for stmt " + method.getAssignStmtForBci(event.bci));
+      Utils.debugPrintln(getAllVarValsToString());
+    }
   }
 
   public boolean hasNextInvokeStmt() {
@@ -107,6 +116,7 @@ public class CallFrame {
         currEvent = eventsIterator.get();
         if (currStmt instanceof JIfStmt) {
         } else if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
+          JavaHeap.v().update(currEvent);
           updateValuesWithHeapEvent(currEvent);
           eventsIterator.moveNext();
           methodMatches = currEvent.method == method.sootMethod;
@@ -123,18 +133,24 @@ public class CallFrame {
           }
         }
 
+        ++pc.counter;
+        
         if (invokeExpr != null) {
           break;
         }
         
-        currStmt = method.statements.get(++pc.counter);
+        currStmt = method.statements.get(pc.counter);
       }
 
       return invokeExpr;
     } else {
     while (hasNextInvokeStmt()) {
       currEvent = eventsIterator.get();
-      Utils.debugPrintln(currStmt + " " + currEvent);
+      if (this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>")) {
+        // Utils.debugPrintln(pc.counter + " " + this.method.statements.size());
+        // Utils.debugPrintln(this.method.fullname() + "   " + this.method.shimpleBody.toString());
+        // System.exit(0);
+      }
       if (currStmt instanceof JIfStmt) {
         Unit target = ((JIfStmt)currStmt).getTarget();
         Utils.debugAssert(method.stmtToIndex.containsKey(target), "sanity");
@@ -181,8 +197,8 @@ public class CallFrame {
 
         //Get the blocks that are part of the then branch
         Block ifBlock = method.getBlockForStmt(currStmt);
-        List<Block> ifBlockSuccs = ifBlock.getSuccs();
-        Utils.debugAssert(ifBlockSuccs.size() == 2, "ifBlock.getSuccs().size() == %d", ifBlock.getSuccs().size());
+        List<Block> ifBlockSuccs = method.filterNonCatchBlocks(ifBlock.getSuccs());
+        Utils.debugAssert(ifBlockSuccs.size() == 2, "ifBlockSuccs.size() == %d", ifBlockSuccs.size());
         //Get blocks that are part of the else branch
 
         if (methodMatches) {
@@ -190,17 +206,18 @@ public class CallFrame {
           //if the event is in both paths then the event is in the path starting 
           //from exit of if-else
           //otherwise set the pc to either of the successor
-          
           Block succ1 = ifBlockSuccs.get(0);
           Block succ2 = ifBlockSuccs.get(1);
           boolean inPath1 = method.isEventInPathFromBlock(succ1, currEvent);
           boolean inPath2 = method.isEventInPathFromBlock(succ2, currEvent);
-          Utils.debugPrintln(currEvent);
           if (inPath1 && inPath2) {
             Utils.debugPrintln("Found in both");
             //TODO: Currently goes through one of the successors, but should go through both
             //and search through the call graph to find which succ should be taken.
-            currStmt = method.statements.get(pc.counter++);
+            // Utils.debugPrintln(succ1);
+            // Utils.debugPrintln(succ2);
+            currStmt = method.statements.get(++pc.counter);
+            // Utils.debugPrintln(currStmt);
           } else if (inPath1) {
             currStmt = succ1.getHead();
             pc.counter = method.stmtToIndex.get(currStmt);
@@ -208,7 +225,10 @@ public class CallFrame {
             currStmt = succ2.getHead();
             pc.counter = method.stmtToIndex.get(currStmt);
           } else {
-            Utils.debugPrintln("NOT found in any");
+            Utils.debugPrintln("NOT found in any " + currEvent + " " + currStmt);
+            // Utils.debugPrintln(method.fullname() + "   " + method.shimpleBody.toString());
+            // Utils.debugPrintln(method.basicBlockStr());
+            System.exit(0);
           }
         } else {
           //Otherwise?
@@ -223,6 +243,7 @@ public class CallFrame {
         currStmt = method.statements.get(method.stmtToIndex.get(target));
       } else {
         if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
+          JavaHeap.v().update(currEvent);
           updateValuesWithHeapEvent(currEvent);
           eventsIterator.moveNext();
           methodMatches = currEvent.method == method.sootMethod;
@@ -236,12 +257,14 @@ public class CallFrame {
             break;
           }
         }
-
+        
+        pc.counter += 1;
+        Utils.debugPrintln(this.method.fullname() + " " + pc.counter + " " + this.method.statements.size());
+        if (pc.counter < method.statements.size())
+          currStmt = method.statements.get(pc.counter);
         if (invokeExpr != null) {
           break;
         }
-        
-        currStmt = method.statements.get(++pc.counter);
       }
     }
 
@@ -288,11 +311,11 @@ public class CallFrame {
     if (method.fullname().contains("org.apache.lucene.store.FSDirectory.getDirectory(Ljava/io/File;Lorg/apache/lucene/store/LockFactory;)")) {
       //Go through FSDirectory.<init> events 
       HeapEvent currEvent = eventIterator.get();
-      JavaHeap.v().updateWithHeapEvent(currEvent);
+      JavaHeap.v().update(currEvent);
       eventIterator.moveNext();
       while(currEvent.methodStr.contains("org.apache.lucene.store.FSDirectory.<init>")) {
         currEvent = eventIterator.get();
-        JavaHeap.v().updateWithHeapEvent(currEvent);
+        JavaHeap.v().update(currEvent);
         eventIterator.moveNext();
       }
       Utils.debugPrintln(eventIterator.get());
@@ -312,7 +335,6 @@ public class CallFrame {
       invokeExprAndStmt = nextInvokeExpr(eventIterator);
       if (invokeExprAndStmt == null) return null;
       invokeExpr = invokeExprAndStmt.first;
-      pc.counter++;
     }
     
     Utils.debugPrintln(invokeExpr.toString() + " in " + this.method.fullname() + " for " + eventIterator.get());
@@ -352,5 +374,38 @@ public class CallFrame {
 
     Utils.debugAssert(ParsedMethodMap.v().getOrParseToShimple(invokeMethod) != null, "%s not found\n", Utils.methodFullName(invokeMethod));
     return new CallFrame(ParsedMethodMap.v().getOrParseToShimple(invokeMethod), invokeExpr, invokeExprAndStmt.second, this);
+  }
+
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+
+    builder.append(method.fullname() + "\n");
+    builder.append(getAllVarValsToString());
+
+    return builder.toString();
+  }
+
+  public String getAllVarValsToString() {
+    StringBuilder builder = new StringBuilder();
+
+    builder.append("[\n");
+    for (var vals : allVariableValues.entrySet()) {
+      if (vals.getValue().size() == 0)
+        continue;
+      builder.append(vals.getKey());
+      builder.append(" = {");
+      for (var val : vals.getValue()) {
+        if (val != null) {
+          builder.append(val.getType());
+        } else {
+          builder.append("null");
+        }
+        builder.append(", ");
+      }
+      builder.append("};\n");
+    }
+    builder.append("]\n");
+
+    return builder.toString();
   }
 }

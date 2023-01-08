@@ -743,7 +743,27 @@ public class ShimpleMethod {
     //Propagate values to the predecessors
   }
 
+  public String basicBlockStr() {
+    return this.basicBlockGraph.toString();
+  }
+
   public String fullname() {
     return Utils.methodFullName(sootMethod);
+  }
+
+  public ArrayList<Block> filterNonCatchBlocks(List<Block> blocks) {
+    ArrayList<Block> nonCatchBlocks = new ArrayList<>();
+
+    for (Block b : blocks) {
+      Utils.debugPrintln(b.getIndexInMethod() + " " + b.getHead() + " " + b.getHead().getClass());
+      if(b.getHead() instanceof JIdentityStmt &&
+        ((JIdentityStmt)b.getHead()).getRightOp() instanceof CaughtExceptionRef) {
+          continue;
+      }
+
+      nonCatchBlocks.add(b);
+    }
+
+    return nonCatchBlocks;
   }
 }

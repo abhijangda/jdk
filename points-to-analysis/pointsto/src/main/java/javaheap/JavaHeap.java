@@ -18,7 +18,7 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
     return javaHeap;
   }
   
-  public void updateWithHeapEvent(HeapEvent event) {
+  public void update(HeapEvent event) {
     if (event.eventType == HeapEvent.EventType.NewObject) {
       put(event.dstPtr, new JavaObject((RefType)event.dstClass));
     } else if (event.eventType == HeapEvent.EventType.NewArray || 

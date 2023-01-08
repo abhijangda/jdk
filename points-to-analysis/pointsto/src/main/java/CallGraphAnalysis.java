@@ -42,7 +42,7 @@ public class CallGraphAnalysis {
     HeapEvent startEvent = null;
     while(eventIterator.hasNext()) {
       startEvent = eventIterator.get();
-      javaHeap.updateWithHeapEvent(startEvent);
+      javaHeap.update(startEvent);
       if (startEvent.method != null && startEvent.method.getDeclaringClass().getName().contains("lusearch"))
         break;
       eventIterator.moveNext();
@@ -65,6 +65,9 @@ public class CallGraphAnalysis {
     int iterations = 0;
     while (!callStack.isEmpty() && iterations++ < 10000) {
       CallFrame frame = callStack.peek();
+      if (frame.parent != null)
+        Utils.debugPrintln("parent frame " + frame.parent.toString());
+      Utils.debugPrintln("current frame " + frame);
       if (!frame.hasNextInvokeStmt()) {
         callStack.pop();
         continue;
@@ -77,7 +80,7 @@ public class CallGraphAnalysis {
              currEvent.methodStr.contains("org.apache.lucene.analysis.CharArraySet.add") || 
             //  currEvent.methodStr.contains("IndexFileNameFilter.<init>()") || 
              currEvent.methodStr.contains("IndexFileNames.<clinit>")) {
-        javaHeap.updateWithHeapEvent(currEvent);
+        javaHeap.update(currEvent);
         eventIterator.moveNext();
       }
       
@@ -102,7 +105,7 @@ public class CallGraphAnalysis {
       //   continue;
       // }
       if (nextFrame != null && nextFrame.method != null && nextFrame.method != frame.method &&
-          ((frame.root != null && nextFrame.method != frame.root.method) || frame.root == null) &&
+          ((frame.parent != null && nextFrame.method != frame.parent.method) || frame.parent == null) &&
           !Utils.methodFullName(nextFrame.method.sootMethod).contains("java.lang.SecurityManager.checkPermission") &&
           Utils.methodToCare(frame.method.sootMethod)) {
         //Skip recursion

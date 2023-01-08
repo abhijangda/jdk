@@ -763,7 +763,6 @@ public class ShimpleMethod {
     ArrayList<Block> nonCatchBlocks = new ArrayList<>();
 
     for (Block b : blocks) {
-      Utils.debugPrintln(b.getIndexInMethod() + " " + b.getHead() + " " + b.getHead().getClass());
       if(b.getHead() instanceof JIdentityStmt &&
         ((JIdentityStmt)b.getHead()).getRightOp() instanceof CaughtExceptionRef) {
           continue;

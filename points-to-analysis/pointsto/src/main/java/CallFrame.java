@@ -264,7 +264,6 @@ public class CallFrame {
         }
         
         pc.counter += 1;
-        Utils.debugPrintln(this.method.fullname() + " " + pc.counter + " " + this.method.statements.size());
         if (pc.counter < method.statements.size())
           currStmt = method.statements.get(pc.counter);
         if (invokeExpr != null) {
@@ -312,7 +311,6 @@ public class CallFrame {
     
     InvokeExpr invokeExpr = invokeExprAndStmt.first;
     SootMethod invokeMethod = null;
-    Utils.debugPrintln(eventIterator.get());
     if (method.fullname().contains("org.apache.lucene.store.FSDirectory.getDirectory(Ljava/io/File;Lorg/apache/lucene/store/LockFactory;)")) {
       //Go through FSDirectory.<init> events 
       HeapEvent currEvent = eventIterator.get();
@@ -323,7 +321,6 @@ public class CallFrame {
         JavaHeap.v().update(currEvent);
         eventIterator.moveNext();
       }
-      Utils.debugPrintln(eventIterator.get());
     }
     
     Utils.debugPrintln(eventIterator.get());

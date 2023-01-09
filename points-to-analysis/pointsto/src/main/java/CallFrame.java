@@ -79,7 +79,7 @@ public class CallFrame {
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
 
     if (canPrint) {
       Utils.debugPrintln(method.shimpleBody);
@@ -114,12 +114,13 @@ public class CallFrame {
     if (isFSDirGetDir) {
       while (hasNextInvokeStmt()) {
         currEvent = eventsIterator.get();
+        methodMatches = currEvent.method == method.sootMethod;
+        currStmt = method.statements.get(pc.counter);
         if (currStmt instanceof JIfStmt) {
         } else if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
           JavaHeap.v().update(currEvent);
           updateValuesWithHeapEvent(currEvent);
           eventsIterator.moveNext();
-          methodMatches = currEvent.method == method.sootMethod;
         }
 
         invokeExpr = null;
@@ -133,19 +134,20 @@ public class CallFrame {
           }
         }
 
-        ++pc.counter;
+        pc.counter++;
         
         if (invokeExpr != null) {
           break;
-        }
-        if (pc.counter < method.statements.size())
-          currStmt = method.statements.get(pc.counter);
+        } 
       }
 
       return invokeExpr;
     } else {
     while (hasNextInvokeStmt()) {
       currEvent = eventsIterator.get();
+      methodMatches = currEvent.method == method.sootMethod;
+      currStmt = method.statements.get(pc.counter);
+      Utils.debugPrintln(currStmt + " at " + pc.counter);
       if (this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>")) {
         // Utils.debugPrintln(pc.counter + " " + this.method.statements.size());
         // Utils.debugPrintln(this.method.fullname() + "   " + this.method.shimpleBody.toString());
@@ -210,13 +212,19 @@ public class CallFrame {
           Block succ2 = ifBlockSuccs.get(1);
           boolean inPath1 = method.isEventInPathFromBlock(succ1, currEvent);
           boolean inPath2 = method.isEventInPathFromBlock(succ2, currEvent);
+          if (canPrint) {
+            Utils.debugPrintln(currStmt);
+            Utils.debugPrintln(succ1);
+            Utils.debugPrintln(succ2);
+          }
           if (inPath1 && inPath2) {
             Utils.debugPrintln("Found in both");
             //TODO: Currently goes through one of the successors, but should go through both
             //and search through the call graph to find which succ should be taken.
             // Utils.debugPrintln(succ1);
             // Utils.debugPrintln(succ2);
-            currStmt = method.statements.get(++pc.counter);
+            pc.counter++;
+            // currStmt = method.statements.get(++pc.counter);
             // Utils.debugPrintln(currStmt);
           } else if (inPath1) {
             currStmt = succ1.getHead();
@@ -231,7 +239,7 @@ public class CallFrame {
             System.exit(0);
           }
         } else {
-          if(isMethodInCallStack(this, method)) {
+          if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
             //Then continue with next statement
             pc.counter++;
           } else {
@@ -245,13 +253,13 @@ public class CallFrame {
         //Has to go to target
         Unit target = ((JGotoStmt)currStmt).getTarget();
         Utils.debugAssert(method.stmtToIndex.containsKey(target), "sanity");
-        currStmt = method.statements.get(method.stmtToIndex.get(target));
+        pc.counter = method.stmtToIndex.get(target);
+        currStmt = method.statements.get(pc.counter);
       } else {
         if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
           JavaHeap.v().update(currEvent);
           updateValuesWithHeapEvent(currEvent);
           eventsIterator.moveNext();
-          methodMatches = currEvent.method == method.sootMethod;
         }
 
         invokeExpr = null;
@@ -313,12 +321,8 @@ public class CallFrame {
     SootMethod invokeMethod = null;
     if (method.fullname().contains("org.apache.lucene.store.FSDirectory.getDirectory(Ljava/io/File;Lorg/apache/lucene/store/LockFactory;)")) {
       //Go through FSDirectory.<init> events 
-      HeapEvent currEvent = eventIterator.get();
-      JavaHeap.v().update(currEvent);
-      eventIterator.moveNext();
-      while(currEvent.methodStr.contains("org.apache.lucene.store.FSDirectory.<init>")) {
-        currEvent = eventIterator.get();
-        JavaHeap.v().update(currEvent);
+      while(eventIterator.get().methodStr.contains("org.apache.lucene.store.FSDirectory.<init>")) {
+        JavaHeap.v().update(eventIterator.get());
         eventIterator.moveNext();
       }
     }

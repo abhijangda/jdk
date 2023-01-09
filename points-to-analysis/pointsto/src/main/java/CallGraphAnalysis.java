@@ -69,6 +69,7 @@ public class CallGraphAnalysis {
         Utils.debugPrintln("parent frame " + frame.parent.toString());
       Utils.debugPrintln("current frame " + frame);
       if (!frame.hasNextInvokeStmt()) {
+        if (frame.canPrint) return;
         callStack.pop();
         continue;
       }
@@ -82,6 +83,7 @@ public class CallGraphAnalysis {
              currEvent.methodStr.contains("IndexFileNames.<clinit>")) {
         javaHeap.update(currEvent);
         eventIterator.moveNext();
+        currEvent = eventIterator.get();
       }
       
       Utils.debugPrintln("new curr event" + currEvent.toString());

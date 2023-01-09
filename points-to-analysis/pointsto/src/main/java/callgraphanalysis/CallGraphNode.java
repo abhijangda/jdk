@@ -1,10 +1,15 @@
+package callgraphanalysis;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
 import soot.shimple.Shimple;
+import utils.Pair;
 import utils.Utils;
+
+import parsedmethod.*;
+import callstack.*;
 
 public class CallGraphNode {
   public final CallFrame frame;

@@ -1,3 +1,5 @@
+package callstack;
+
 import soot.RefType;
 import soot.SootClass;
 import soot.SootMethod;
@@ -17,6 +19,7 @@ import java.util.ListIterator;
 import javaheap.HeapEvent;
 import javaheap.JavaHeap;
 import javaheap.JavaHeapElem;
+import parsedmethod.ParsedMethodMap;
 
 import java.util.ArrayList;
 
@@ -32,8 +35,11 @@ import soot.jimple.internal.JSpecialInvokeExpr;
 import soot.jimple.internal.JStaticInvokeExpr;
 import soot.jimple.internal.JVirtualInvokeExpr;
 import soot.jimple.toolkits.annotation.callgraph.MethInfo;
+
 import utils.ArrayListIterator;
+import utils.Pair;
 import utils.Utils;
+import parsedmethod.*;
 
 class ProgramCounter {
   public int counter;
@@ -69,8 +75,9 @@ public class CallFrame {
   private Iterator<InvokeStmt> invokeStmtIterator;
   private final ProgramCounter pc;
   private final HashMap<ParameterRef, VariableValues> paramValues;
-  boolean canPrint = false;
-  CallFrame(ShimpleMethod m, InvokeExpr invokeExpr, Unit stmt, CallFrame parent) {
+  public boolean canPrint = false;
+  
+  public CallFrame(ShimpleMethod m, InvokeExpr invokeExpr, Unit stmt, CallFrame parent) {
     method = m;
     allVariableValues = method.initVarValues(invokeExpr, (parent == null) ? null : parent.allVariableValues);
     invokeStmts = method.getInvokeStmts();
@@ -86,7 +93,7 @@ public class CallFrame {
     }
   }
 
-  CallFrame(HeapEvent event, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
+  public CallFrame(HeapEvent event, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
     this(ParsedMethodMap.v().getOrParseToShimple(event.method), invokeExpr, stmt, root);
   }
 

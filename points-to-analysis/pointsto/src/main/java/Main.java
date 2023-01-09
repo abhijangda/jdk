@@ -3,6 +3,7 @@ import java.util.*;
 
 import org.apache.bcel.classfile.*;
 
+import callgraphanalysis.CallGraphAnalysis;
 import classcollections.*;
 import javaheap.HeapEvent;
 import soot.*;

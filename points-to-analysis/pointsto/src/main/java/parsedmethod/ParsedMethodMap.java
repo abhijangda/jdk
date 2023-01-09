@@ -1,3 +1,4 @@
+package parsedmethod;
 import java.util.HashMap;
 
 import soot.SootMethod;
@@ -19,8 +20,8 @@ public class ParsedMethodMap extends HashMap<SootMethod, ShimpleMethod> {
   public ShimpleMethod getOrParseToShimple(SootMethod method) {
     if (!containsKey(method)) {
       ShimpleMethod sm = ShimpleMethod.v(method);
-      put(method, sm);
+      super.put(method, sm);
     }
-    return get(method);
+    return super.get(method);
   }
 }

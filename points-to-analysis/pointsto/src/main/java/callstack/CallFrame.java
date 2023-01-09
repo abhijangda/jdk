@@ -70,9 +70,7 @@ class ProgramCounter {
 public class CallFrame {
   public final ShimpleMethod method;
   private HashMap<Value, VariableValues> allVariableValues;
-  public final ArrayList<InvokeStmt> invokeStmts;
   public final CallFrame parent;
-  private Iterator<InvokeStmt> invokeStmtIterator;
   private final ProgramCounter pc;
   private final HashMap<ParameterRef, VariableValues> paramValues;
   public boolean canPrint = false;
@@ -80,9 +78,7 @@ public class CallFrame {
   public CallFrame(ShimpleMethod m, InvokeExpr invokeExpr, Unit stmt, CallFrame parent) {
     method = m;
     allVariableValues = method.initVarValues(invokeExpr, (parent == null) ? null : parent.allVariableValues);
-    invokeStmts = method.getInvokeStmts();
     this.parent = parent;
-    invokeStmtIterator = invokeStmts.iterator();
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");

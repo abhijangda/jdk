@@ -490,11 +490,13 @@ public class ShimpleMethod {
     return allVariableValues;
   }
 
-  public ArrayList<InvokeStmt> getInvokeStmts() {
-    ArrayList<InvokeStmt> invokes = new ArrayList<InvokeStmt>();
+  public ArrayList<InvokeExpr> getInvokeExprs() {
+    ArrayList<InvokeExpr> invokes = new ArrayList<InvokeExpr>();
     for (Unit stmt : stmtToBlock.keySet()) {
-      if (stmt instanceof InvokeStmt) {
-        invokes.add((InvokeStmt)stmt);
+      for (ValueBox valBox : stmt.getUseBoxes()) {
+        if (valBox.getValue() instanceof InvokeExpr) {
+          invokes.add((InvokeExpr)valBox.getValue());
+        }
       }
     }
 

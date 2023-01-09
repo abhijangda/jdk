@@ -4,7 +4,8 @@ import utils.Pair;
 import utils.Utils;
 
 import java.io.InvalidObjectException;
-import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Collection;
 import java.util.HashMap;
 import parsedmethod.*;
 import soot.SootClass;
@@ -21,32 +22,32 @@ import soot.toolkits.astmetrics.StmtSumWeightedByDepth;
 
 public class CHACaller {
   private final ShimpleMethod caller;
-  private final HashMap<InvokeExpr, ArrayList<ShimpleMethod>> invokesToCallees;
+  private final HashMap<InvokeExpr, HashSet<ShimpleMethod>> invokesToCallees;
 
   CHACaller(ShimpleMethod caller, ClassHierarchyGraph chaGraph) {
     this.caller = caller;
     this.invokesToCallees = new HashMap<>();
     for (InvokeExpr invokeExpr : caller.getInvokeExprs()) {
-      this.invokesToCallees.put(invokeExpr, new ArrayList<>()); 
+      this.invokesToCallees.put(invokeExpr, new HashSet<>()); 
     }
     build(chaGraph);
   }
 
-  private void addCallee(ArrayList<ShimpleMethod> callees, ShimpleMethod callee) {
+  private void addCallee(HashSet<ShimpleMethod> callees, ShimpleMethod callee) {
     callees.add(callee);
   }
 
-  private void addCallee(ArrayList<ShimpleMethod> callees, SootMethod callee) {
-    callees.add(ParsedMethodMap.v().getOrParseToShimple(callee));
+  private void addCallee(HashSet<ShimpleMethod> callees, SootMethod callee) {
+    addCallee(callees, ParsedMethodMap.v().getOrParseToShimple(callee));
   }
 
-  public ArrayList<ShimpleMethod> getCalleesForInvoke(InvokeExpr invokeExpr) {
+  public HashSet<ShimpleMethod> getCalleesForInvoke(InvokeExpr invokeExpr) {
     return invokesToCallees.get(invokeExpr);
   }
 
   public void build(ClassHierarchyGraph chaGraph) {
     for (InvokeExpr invokeExpr : this.invokesToCallees.keySet()) {
-      ArrayList<ShimpleMethod> callees = getCalleesForInvoke(invokeExpr);
+      HashSet<ShimpleMethod> callees = getCalleesForInvoke(invokeExpr);
       if (invokeExpr instanceof JStaticInvokeExpr || invokeExpr instanceof JSpecialInvokeExpr) {
         ShimpleMethod callee = ParsedMethodMap.v().getOrParseToShimple(invokeExpr.getMethod());
         callees.add(callee);
@@ -67,5 +68,9 @@ public class CHACaller {
         Utils.debugAssert(false, "sanity %s", invokeExpr.toString());
       }
     }
+  }
+
+  public Collection<HashSet<ShimpleMethod>> getAllCallees() {
+    return invokesToCallees.values();
   }
 }

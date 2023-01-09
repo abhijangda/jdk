@@ -5,6 +5,7 @@ import org.apache.bcel.classfile.*;
 
 import callgraphanalysis.CallGraphAnalysis;
 import classcollections.*;
+import classhierarchyanalysis.ClassHierarchyGraph;
 import javaheap.HeapEvent;
 import soot.*;
 import soot.options.Options;
@@ -54,11 +55,15 @@ public class Main {
     }
     System.out.println("Loaded " + loaded + " heapevents");
     
+    System.out.println("Build Class Heirarchy");
+    ClassHierarchyGraph.v().build(javaClasses);
+
     //Also load classes through BCEL
     BCELClassCollection bcelClassCollection = BCELClassCollection.createFromJar(jarFile);
+    System.out.println("Running Call Graph Analysis");
+    //Run Call Graph Analysis
     CallGraphAnalysis.callGraph(heapEvents, javaClasses, bcelClassCollection);
 
-    
     // //Find all main methods in the jar and also find those method in the heap events
     // ArrayList<Method> mainMethods = findMainMethods(jarFile, jar);
     // HashMap<String, Method> methodNameMap = new HashMap<>();

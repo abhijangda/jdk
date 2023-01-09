@@ -20,7 +20,7 @@ public class ClassHierarchyGraph extends HashMap<SootClass, ArrayList<SootClass>
   public void build(JavaClassCollection classCollection) {
     for (SootClass klass : classCollection.values()) {
       if (klass.hasSuperclass()) {
-        get(klass.getSuperclass()).add(klass);
+        getSubClasses(klass.getSuperclass()).add(klass);
       }
     }
   }

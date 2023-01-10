@@ -3,6 +3,7 @@ package classhierarchyanalysis;
 import java.util.*;
 import parsedmethod.*;
 import soot.jimple.InvokeExpr;
+import utils.Utils;
 
 public class ClassHierarchyAnalysis extends HashMap<ShimpleMethod, CHACaller> {
   private static ClassHierarchyAnalysis instance = null;
@@ -26,7 +27,7 @@ public class ClassHierarchyAnalysis extends HashMap<ShimpleMethod, CHACaller> {
   }
 
   public boolean mayCall(ClassHierarchyGraph chaGraph, ShimpleMethod caller, ShimpleMethod callee) {
-    Stack<ShimpleMethod> stack = new Stack();
+    Stack<ShimpleMethod> stack = new Stack<ShimpleMethod>();
     stack.push(caller);
     Set<ShimpleMethod> visited = new HashSet<>();
 
@@ -46,6 +47,9 @@ public class ClassHierarchyAnalysis extends HashMap<ShimpleMethod, CHACaller> {
   } 
 
   public boolean mayCallAtInvoke(ClassHierarchyGraph chaGraph, ShimpleMethod caller, InvokeExpr invokeExpr, ShimpleMethod callee) {
+    if (!Utils.methodToCare(invokeExpr.getMethod())) {
+      return false;
+    } 
     HashSet<ShimpleMethod> callees = getCallees(chaGraph, caller).getCalleesForInvoke(invokeExpr);
 
     if (callees.contains(callee))

@@ -2,6 +2,7 @@ package utils;
 
 import soot.SootMethod;
 import soot.Type;
+import parsedmethod.ShimpleMethod;
 import soot.AbstractJasminClass;
 
 public abstract class Utils {
@@ -62,6 +63,10 @@ public abstract class Utils {
     builder.append(")");
     builder.append(AbstractJasminClass.jasminDescriptorOf(meth.getReturnType()));
     return builder.toString();
+  }
+
+  public static boolean methodToCare(ShimpleMethod method) {
+    return methodToCare(method.sootMethod);
   }
 
   public static boolean methodToCare(SootMethod method) {

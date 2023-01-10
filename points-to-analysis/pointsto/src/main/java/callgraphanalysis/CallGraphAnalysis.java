@@ -73,14 +73,15 @@ public class CallGraphAnalysis {
       if (frame.parent != null)
         Utils.debugPrintln("parent frame " + frame.parent.toString());
       Utils.debugPrintln("current frame " + frame);
+      currEvent = eventIterator.get();
+      Utils.debugPrintln("currevent " + currEvent.toString());
+
       if (!frame.hasNextInvokeStmt()) {
         if (frame.canPrint) return;
         callStack.pop();
         continue;
       }
       
-      Utils.debugPrintln("currevent " + currEvent.toString());
-      currEvent = eventIterator.get();
       while (!Utils.methodToCare(currEvent.method) ||
             //  currEvent.methodStr.contains("org.apache.lucene.store.FSDirectory") ||
              currEvent.methodStr.contains("org.apache.lucene.analysis.CharArraySet.add") || 

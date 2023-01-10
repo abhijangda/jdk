@@ -31,6 +31,9 @@ import soot.jimple.internal.AbstractInstanceInvokeExpr;
 import soot.jimple.internal.JGotoStmt;
 import soot.jimple.internal.JIfStmt;
 import soot.jimple.internal.JInterfaceInvokeExpr;
+import soot.jimple.internal.JRetStmt;
+import soot.jimple.internal.JReturnStmt;
+import soot.jimple.internal.JReturnVoidStmt;
 import soot.jimple.internal.JSpecialInvokeExpr;
 import soot.jimple.internal.JStaticInvokeExpr;
 import soot.jimple.internal.JVirtualInvokeExpr;
@@ -82,7 +85,7 @@ public class CallFrame {
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
 
     if (canPrint) {
       Utils.debugPrintln(method.shimpleBody);
@@ -103,7 +106,18 @@ public class CallFrame {
 
   public boolean hasNextInvokeStmt() {
     //TODO: fix
-    return method.statements != null && method.statements.size() > pc.counter;
+    if (method.statements != null && method.statements.size() > pc.counter) {
+      Unit stmt = method.statements.get(pc.counter);
+      if (stmt instanceof JRetStmt || 
+          stmt instanceof JReturnStmt || 
+          stmt instanceof JReturnVoidStmt)
+        return false;
+
+      return true;
+    } else {
+      return false;
+    }
+    
   }
 
   private Pair<InvokeExpr, Unit> nextInvokeExpr(ArrayListIterator<HeapEvent> eventsIterator) {
@@ -205,14 +219,15 @@ public class CallFrame {
         List<Block> ifBlockSuccs = method.filterNonCatchBlocks(ifBlock.getSuccs());
         Utils.debugAssert(ifBlockSuccs.size() == 2, "ifBlockSuccs.size() == %d", ifBlockSuccs.size());
         //Get blocks that are part of the else branch
+        Block succ1 = ifBlockSuccs.get(0);
+        Block succ2 = ifBlockSuccs.get(1);
 
         if (methodMatches) {
           //See if the event is in the paths starting from succ1 and succ2.
           //if the event is in both paths then the event is in the path starting 
           //from exit of if-else
           //otherwise set the pc to either of the successor
-          Block succ1 = ifBlockSuccs.get(0);
-          Block succ2 = ifBlockSuccs.get(1);
+          
           boolean inPath1 = method.isEventInPathFromBlock(succ1, currEvent);
           boolean inPath2 = method.isEventInPathFromBlock(succ2, currEvent);
           if (canPrint) {
@@ -246,10 +261,25 @@ public class CallFrame {
             //Then continue with next statement
             pc.counter++;
           } else {
-            //Otherwise?
-            Utils.debugPrintln(method.fullname() + "\n" +  method.shimpleBody.toString());
-            Utils.debugPrintln("method not matches currevent " + currEvent + " at " + currStmt);
-            System.exit(0);
+            boolean mayCall1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+            boolean mayCall2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
+            if (canPrint) Utils.debugPrintln(currStmt + " " + mayCall1 + " " + mayCall2);
+            if (mayCall1 && mayCall2) {
+              pc.counter++;
+            } else if (mayCall1) {
+              currStmt = succ1.getHead();
+              pc.counter = method.stmtToIndex.get(currStmt);
+            } else if (mayCall2) {
+              currStmt = succ2.getHead();
+              pc.counter = method.stmtToIndex.get(currStmt);
+            } else {
+              Block lca = method.findLCAInPostDom(succ1, succ2);
+              pc.counter = method.stmtToIndex.get(lca.getHead());
+            }
+            // //Otherwise?
+            // Utils.debugPrintln(method.fullname() + "\n" +  method.shimpleBody.toString());
+            // Utils.debugPrintln("method not matches currevent " + currEvent + " at " + currStmt);
+            // System.exit(0);
           }
         }
       } else if (currStmt instanceof JGotoStmt) {
@@ -263,6 +293,8 @@ public class CallFrame {
           JavaHeap.v().update(currEvent);
           updateValuesWithHeapEvent(currEvent);
           eventsIterator.moveNext();
+
+          Utils.debugPrintln("next event " + eventsIterator.get());
         }
 
         invokeExpr = null;

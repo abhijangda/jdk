@@ -2,6 +2,7 @@ package parsedmethod;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -18,6 +19,8 @@ import org.apache.bcel.classfile.Method;
 import org.apache.bcel.util.ByteSequence;
 
 import classcollections.BCELClassCollection;
+import classhierarchyanalysis.ClassHierarchyAnalysis;
+import classhierarchyanalysis.ClassHierarchyGraph;
 import javaheap.HeapEvent;
 import javaheap.JavaHeap;
 import javaheap.JavaHeapElem;
@@ -83,9 +86,13 @@ import soot.shimple.internal.SPhiExpr;
 import soot.shimple.internal.SPiExpr;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.DirectedGraph;
+import soot.toolkits.graph.DominatorAnalysis;
+import soot.toolkits.graph.DominatorNode;
 import soot.toolkits.graph.DominatorTree;
 import soot.toolkits.graph.ExceptionalBlockGraph;
 import soot.toolkits.graph.MHGDominatorsFinder;
+import soot.toolkits.graph.MHGPostDominatorsFinder;
+import soot.toolkits.graph.PostDominatorAnalysis;
 import soot.toolkits.scalar.ValueUnitPair;
 
 import utils.Utils;
@@ -272,6 +279,7 @@ public class ShimpleMethod {
   public final ShimpleBody shimpleBody;
   private final ExceptionalBlockGraph basicBlockGraph;
   private final DominatorTree<Block> dominatorTree;
+  private final DominatorTree<Block> postDominatorTree;
   private final HashMap<Block, ArrayList<Unit>> blockStmts;
   private final HashMap<Value, Unit> valueToDefStmt;
   private final HashMap<Value, ArrayList<Unit>> valueToUseStmts;
@@ -334,6 +342,7 @@ public class ShimpleMethod {
       this.basicBlockGraph = basicBlockGraph;
       this.valueToUseStmts = valueToUseStmts;
       this.dominatorTree = new DominatorTree<>(new MHGDominatorsFinder<>(basicBlockGraph));
+      this.postDominatorTree = new DominatorTree<>(new MHGPostDominatorsFinder<>(basicBlockGraph));
       this.parameterRefs = new ArrayList<>();
       for (Value param : shimpleBody.getParameterRefs()) {
         Utils.debugAssert(param instanceof ParameterRef, "sanity");
@@ -353,12 +362,13 @@ public class ShimpleMethod {
         // }
       }
     } else {
-      this.basicBlockGraph = null;
-      this.dominatorTree   = null;
-      this.parameterRefs   = null;
-      this.valueToUseStmts = null;
-      this.statements      = null;
-      this.stmtToIndex     = null;
+      this.basicBlockGraph   = null;
+      this.dominatorTree     = null;
+      this.postDominatorTree = null;
+      this.parameterRefs     = null;
+      this.valueToUseStmts   = null;
+      this.statements        = null;
+      this.stmtToIndex       = null;
     }
 
     this.blockStmts      = blockStmts;
@@ -390,6 +400,76 @@ public class ShimpleMethod {
     }
 
     return false;
+  }
+
+  public boolean mayCallMethodInPathFromBlock(Block block, SootMethod method) {
+    return mayCallMethodInPathFromBlock(block, ParsedMethodMap.v().getOrParseToShimple(method));
+  }
+
+  public boolean mayCallMethodInPathFromBlock(Block block, ShimpleMethod method) {
+    Queue<Block> q = new LinkedList<>();
+    Set<Block> visited = new HashSet<>();
+
+    q.add(block);
+    while (!q.isEmpty()) {
+      Block b = q.remove();
+      if (visited.contains(b)) continue;
+      
+      Iterator<Unit> stmtIter = block.iterator();
+
+      while (stmtIter.hasNext()) {
+        Unit stmt = stmtIter.next();
+        for (ValueBox val : stmt.getUseBoxes()) {
+          if (val.getValue() instanceof InvokeExpr) {
+            if (ClassHierarchyAnalysis.v().mayCallAtInvoke(ClassHierarchyGraph.v(), this, (InvokeExpr)val.getValue(), method))
+              return true;
+          }
+        }
+
+        //TODO: If a heap event bytecode is in this block then this path is not taken
+      }
+      visited.add(b);
+      q.addAll(b.getSuccs());
+    }
+    
+    return false;
+  }
+
+  private ArrayList<DominatorNode<Block>> pathToRoot(DominatorNode<Block> node) {
+    ArrayList<DominatorNode<Block>> pathToRoot = new ArrayList<>();
+    while(node != null) {
+      pathToRoot.add(node);
+      node = node.getParent();
+    }
+    
+    return pathToRoot;
+  }
+
+  public Block findLCAInPostDom(Block block1, Block block2) {
+    DominatorNode<Block> node1 = this.postDominatorTree.getDode(block1);
+    DominatorNode<Block> node2 = this.postDominatorTree.getDode(block2);
+
+    ArrayList<DominatorNode<Block>> pathToRoot1 = pathToRoot(node1);
+    ArrayList<DominatorNode<Block>> pathToRoot2 = pathToRoot(node2);
+
+    Collections.reverse(pathToRoot1);
+    Collections.reverse(pathToRoot2);
+    int minLength = Math.min(pathToRoot1.size(), pathToRoot2.size());
+
+    for (int i = 0; i < minLength; i++) {
+      if (pathToRoot1.get(i).getGode() != pathToRoot2.get(i).getGode()) {
+        return pathToRoot1.get(i-1).getGode();
+      }
+    }
+    
+    if (pathToRoot1.get(minLength - 1).getGode() == pathToRoot2.get(minLength - 1).getGode())
+      return pathToRoot1.get(minLength - 1).getGode();
+       
+    Utils.debugPrintln(pathToRoot1.toString());
+    Utils.debugPrintln("LLLL:");
+    Utils.debugPrintln(pathToRoot2.toString());
+    Utils.debugAssert(false, "sanity");
+    return null;
   }
 
   public Block getStartBlock() {

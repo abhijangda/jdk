@@ -44,7 +44,8 @@ public class Main {
     String jarFile = "/mnt/homes/aabhinav/jdk/dacapo-9.12-MR1-bach.jar";
     Options.v().parse(args);
     Options.v().set_include(Arrays.asList("org.dacapo.harness."));
-    JavaClassCollection javaClasses = JavaClassCollection.loadFromJar(jarFile);
+    JavaClassCollection javaClasses = JavaClassCollection.v();
+    javaClasses.loadFromJar(jarFile);
     System.out.println("Loaded " + javaClasses.values().size() + " classes");
     //Read and process heap events
     String heapEventsFile = "/mnt/homes/aabhinav/jdk/heap-events-2";

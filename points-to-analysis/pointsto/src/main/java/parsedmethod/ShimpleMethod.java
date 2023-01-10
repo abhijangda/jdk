@@ -455,7 +455,10 @@ public class ShimpleMethod {
     Collections.reverse(pathToRoot1);
     Collections.reverse(pathToRoot2);
     int minLength = Math.min(pathToRoot1.size(), pathToRoot2.size());
+    Utils.debugPrintln(block1);
+    Utils.debugPrintln(block2);
 
+    Utils.debugPrintln(basicBlockGraph);
     for (int i = 0; i < minLength; i++) {
       if (pathToRoot1.get(i).getGode() != pathToRoot2.get(i).getGode()) {
         return pathToRoot1.get(i-1).getGode();
@@ -570,12 +573,14 @@ public class ShimpleMethod {
     return allVariableValues;
   }
 
-  public ArrayList<InvokeExpr> getInvokeExprs() {
-    ArrayList<InvokeExpr> invokes = new ArrayList<InvokeExpr>();
+  public ArrayList<Value> getCallExprs() {
+    ArrayList<Value> invokes = new ArrayList<>();
     for (Unit stmt : stmtToBlock.keySet()) {
       for (ValueBox valBox : stmt.getUseBoxes()) {
-        if (valBox.getValue() instanceof InvokeExpr) {
-          invokes.add((InvokeExpr)valBox.getValue());
+        if (valBox.getValue() instanceof InvokeExpr ||
+            valBox.getValue() instanceof StaticFieldRef) {
+          //For static fields <clinit>()V can also be called
+          invokes.add(valBox.getValue());
         }
       }
     }

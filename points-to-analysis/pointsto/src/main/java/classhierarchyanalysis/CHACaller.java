@@ -10,9 +10,8 @@ import java.util.HashMap;
 import parsedmethod.*;
 import soot.SootClass;
 import soot.SootMethod;
-import soot.SootMethodInterface;
-import soot.jimple.InvokeExpr;
-import soot.jimple.Stmt;
+import soot.Value;
+import soot.jimple.*;
 import soot.jimple.internal.JInterfaceInvokeExpr;
 import soot.jimple.internal.JSpecialInvokeExpr;
 import soot.jimple.internal.JStaticInvokeExpr;
@@ -22,13 +21,13 @@ import soot.toolkits.astmetrics.StmtSumWeightedByDepth;
 
 public class CHACaller {
   private final ShimpleMethod caller;
-  private final HashMap<InvokeExpr, HashSet<ShimpleMethod>> invokesToCallees;
+  private final HashMap<Value, HashSet<ShimpleMethod>> exprToCallees;
 
   CHACaller(ShimpleMethod caller, ClassHierarchyGraph chaGraph) {
     this.caller = caller;
-    this.invokesToCallees = new HashMap<>();
-    for (InvokeExpr invokeExpr : caller.getInvokeExprs()) {
-      this.invokesToCallees.put(invokeExpr, new HashSet<>()); 
+    this.exprToCallees = new HashMap<>();
+    for (Value expr : caller.getCallExprs()) {
+      this.exprToCallees.put(expr, new HashSet<>()); 
     }
     build(chaGraph);
   }
@@ -41,36 +40,53 @@ public class CHACaller {
     addCallee(callees, ParsedMethodMap.v().getOrParseToShimple(callee));
   }
 
-  public HashSet<ShimpleMethod> getCalleesForInvoke(InvokeExpr invokeExpr) {
-    return invokesToCallees.get(invokeExpr);
+  public HashSet<ShimpleMethod> getCalleesAtExpr(Value expr) {
+    return exprToCallees.get(expr);
   }
 
   public void build(ClassHierarchyGraph chaGraph) {
-    for (InvokeExpr invokeExpr : this.invokesToCallees.keySet()) {
-      HashSet<ShimpleMethod> callees = getCalleesForInvoke(invokeExpr);
-      if (invokeExpr instanceof JStaticInvokeExpr || invokeExpr instanceof JSpecialInvokeExpr) {
-        ShimpleMethod callee = ParsedMethodMap.v().getOrParseToShimple(invokeExpr.getMethod());
-        callees.add(callee);
-      } else if (invokeExpr instanceof JVirtualInvokeExpr || invokeExpr instanceof JInterfaceInvokeExpr) {
+    for (Value val : this.exprToCallees.keySet()) {
+      if (val instanceof InvokeExpr) {
+        InvokeExpr invokeExpr = (InvokeExpr)val;
         SootMethod sootCallee = invokeExpr.getMethod();
-        SootClass sootCalleeClass = sootCallee.getDeclaringClass();
-        if (sootCallee.isConcrete()) {
-          addCallee(callees, sootCallee);
-        }
-        if (!sootCallee.isNative() && !sootCallee.isFinal()) {
-          for (SootClass subclass : chaGraph.getSubClasses(sootCalleeClass)) {
-            if (subclass.declaresMethod(sootCallee.getSubSignature())) {
-              addCallee(callees, subclass.getMethodUnsafe(sootCallee.getSubSignature()));
+        if (!Utils.methodToCare(sootCallee))
+          continue;
+        
+        HashSet<ShimpleMethod> callees = getCalleesAtExpr(val);
+        if (invokeExpr instanceof JStaticInvokeExpr || invokeExpr instanceof JSpecialInvokeExpr) {
+          ShimpleMethod callee = ParsedMethodMap.v().getOrParseToShimple(sootCallee);
+          callees.add(callee);
+        } else if (invokeExpr instanceof JVirtualInvokeExpr || invokeExpr instanceof JInterfaceInvokeExpr) {
+          SootClass sootCalleeClass = sootCallee.getDeclaringClass();
+          if (sootCallee.isConcrete()) {
+            addCallee(callees, sootCallee);
+          }
+          if (!sootCallee.isNative() && !sootCallee.isFinal()) {
+            for (SootClass subclass : chaGraph.getSubClasses(sootCalleeClass)) {
+              if (subclass.declaresMethod(sootCallee.getSubSignature())) {
+                addCallee(callees, subclass.getMethodUnsafe(sootCallee.getSubSignature()));
+              }
             }
           }
+        } else {
+          Utils.debugAssert(false, "sanity %s", invokeExpr.toString());
         }
-      } else {
-        Utils.debugAssert(false, "sanity %s", invokeExpr.toString());
+      } else if (val instanceof StaticFieldRef) {
+        //Add a potential clinit whenever a field of a class is accessed
+        StaticFieldRef staticField = (StaticFieldRef)val;
+        // Utils.debugPrintln(val);
+        // Utils.debugPrintln(staticField.getFieldRef().declaringClass().getName());
+
+        // for (SootMethod m : staticField.getFieldRef().declaringClass().getMethods()) {
+        //   Utils.debugPrintln(m.getName());
+        // }
+        SootMethod clinit = staticField.getFieldRef().declaringClass().getMethodByName("<clinit>");
+        Utils.debugAssert(clinit != null, "clinit cannot be null");
       }
     }
   }
 
   public Collection<HashSet<ShimpleMethod>> getAllCallees() {
-    return invokesToCallees.values();
+    return exprToCallees.values();
   }
 }

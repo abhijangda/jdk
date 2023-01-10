@@ -26,9 +26,17 @@ import java.io.*;
 
 public class JavaClassCollection extends HashMap<String, SootClass> {
   private Scene scene;
-  
-  public static JavaClassCollection loadFromJar(String jarFile) {
-    JavaClassCollection collection = new JavaClassCollection();
+  private static JavaClassCollection collection;
+
+  public static JavaClassCollection v() {
+    if (collection == null) {
+      collection = new JavaClassCollection();
+    }
+
+    return collection;
+  }
+
+  public void loadFromJar(String jarFile) {
     ArrayList<String> jars = new ArrayList<>();
     String extractPath = "/mnt/homes/aabhinav/jdk/points-to-analysis/pointsto/";
     jarFile = extractPath + "dacapo-9.12-MR1-bach.jar";
@@ -41,14 +49,13 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
     // Options.v().set_soot_classpath(extractPath + "dacapo-9.12-MR1-bach.jar");
     // Options.v().set_prepend_classpath(true);
 
-    collection.scene = Scene.v();
-    collection.scene.loadNecessaryClasses();
+    this.scene = Scene.v();
+    this.scene.loadNecessaryClasses();
 
-    for (SootClass c : collection.scene.getClasses()) {
-      collection.put(c.getName(), c);
+    for (SootClass c : this.scene.getClasses()) {
+      this.put(c.getName(), c);
       // System.out.println(c.getName());
     }
-    return collection;
   }
 
   /**

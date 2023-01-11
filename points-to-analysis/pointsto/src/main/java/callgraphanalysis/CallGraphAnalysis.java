@@ -75,7 +75,10 @@ public class CallGraphAnalysis {
       Utils.debugPrintln("current frame " + frame);
       currEvent = eventIterator.get();
       Utils.debugPrintln("currevent " + currEvent.toString());
-
+      if (frame.canPrint) {
+        Utils.debugPrintln(frame.method.basicBlockStr());
+        return;
+      }
       if (!frame.hasNextInvokeStmt()) {
         if (frame.canPrint) return;
         callStack.pop();

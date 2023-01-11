@@ -36,6 +36,7 @@ import soot.jimple.InvokeStmt;
 import soot.jimple.NeExpr;
 import soot.jimple.ParameterRef;
 import soot.jimple.StaticFieldRef;
+import soot.jimple.StaticInvokeExpr;
 import soot.jimple.VirtualInvokeExpr;
 import soot.jimple.internal.AbstractInstanceInvokeExpr;
 import soot.jimple.internal.JGotoStmt;
@@ -56,11 +57,27 @@ import utils.Utils;
 import parsedmethod.*;
 
 class FuncCall extends Pair<Value, Unit> {
+  public boolean isStaticInit;
+
+  public boolean isStaticInit() {
+    return this.isStaticInit;
+  }
+
   public FuncCall(Value v, Unit stmt) {
     super(v, stmt);
+    this.isStaticInit = false;
+  }
+
+  public FuncCall(JStaticInvokeExpr v, Unit stmt, boolean isStaticInit) {
+    this((Value)v, stmt);
+    this.isStaticInit = isStaticInit;
   }
 
   public ShimpleMethod getCallee() {
+    if (this.first instanceof JStaticInvokeExpr && isStaticInit()) {
+      return Utils.getStaticInitializer((JStaticInvokeExpr)this.first);
+    }
+
     if (this.first instanceof InvokeExpr) {
       return ParsedMethodMap.v().getOrParseToShimple(((InvokeExpr)this.first).getMethod());
     }
@@ -72,6 +89,18 @@ class FuncCall extends Pair<Value, Unit> {
     Utils.debugAssert(false, "");
 
     return null;
+  }
+
+  public boolean callsStaticInit() {
+    if (this.first instanceof StaticFieldRef) {
+      return true;
+    }
+
+    if (this.first instanceof JStaticInvokeExpr && isStaticInit()) {
+      return true;
+    }
+
+    return false;
   }
 }
 
@@ -116,7 +145,7 @@ public class CallFrame {
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.getFilter()Lorg/apache/lucene/index/IndexFileNameFilter;");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.<init>()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
 
     if (canPrint) {
       Utils.debugPrintln(method.shimpleBody);
@@ -401,23 +430,41 @@ public class CallFrame {
         }
 
         funcToCall = null;
-
+        boolean incrementPC = true;
         for (ValueBox use : currStmt.getUseBoxes()) {
+          if (use.getValue() instanceof StaticFieldRef) {
+            ShimpleMethod clinit = Utils.getStaticInitializer((StaticFieldRef)use.getValue());
+            if (!StaticInitializers.v().wasExecuted(clinit)) {
+              funcToCall = new FuncCall(use.getValue(), currStmt);
+              if (funcToCall.getCallee() != null) {
+                break;
+              }
+            }
+            funcToCall = null;
+          } else if (use.getValue() instanceof JStaticInvokeExpr) {
+            ShimpleMethod clinit = Utils.getStaticInitializer((JStaticInvokeExpr)use.getValue());
+            Utils.debugPrintln("clinit " + clinit + " " + StaticInitializers.v().wasExecuted(clinit));
+            if (!StaticInitializers.v().wasExecuted(clinit)) {
+              funcToCall = new FuncCall((JStaticInvokeExpr)use.getValue(), currStmt, true);
+              if (funcToCall.getCallee() != null) {
+                incrementPC = false;
+                break;
+              }
+            }
+            funcToCall = null;
+          } 
           if (use.getValue() instanceof InvokeExpr) {
             funcToCall = new FuncCall((InvokeExpr)use.getValue(), currStmt);
             break;
-          } else if (use.getValue() instanceof StaticFieldRef) {
-            funcToCall = new FuncCall(use.getValue(), currStmt);
-            if (funcToCall.getCallee() != null) {
-              break;
-            }
-            funcToCall = null;
           }
         }
         
-        pc.counter += 1;
-        if (pc.counter < method.statements.size())
-          currStmt = method.statements.get(pc.counter);
+        if (incrementPC) {
+          pc.counter += 1;
+          if (pc.counter < method.statements.size())
+            currStmt = method.statements.get(pc.counter);
+        }
+    
         if (funcToCall != null) {
           break;
         }
@@ -473,7 +520,9 @@ public class CallFrame {
     
     Utils.debugPrintln(eventIterator.get());
 
-    while (!Utils.methodToCare(calleeExprAndStmt.getCallee())) {
+    while (!Utils.methodToCare(calleeExprAndStmt.getCallee()) ||
+           (calleeExprAndStmt.first instanceof StaticFieldRef && 
+            StaticInitializers.v().wasExecuted(calleeExprAndStmt.getCallee()))) {
       // HeapEvent currEvent = eventIterator.current();
       // boolean executed = false;
       // while (!Utils.methodToCare(currEvent.method)) {
@@ -485,6 +534,9 @@ public class CallFrame {
       calleeExprAndStmt = nextFuncCall(eventIterator);
       if (calleeExprAndStmt == null) return null;
       invokeExpr = calleeExprAndStmt.first;
+      if (calleeExprAndStmt.callsStaticInit()) {
+        StaticInitializers.v().setExecuted(calleeExprAndStmt.getCallee());
+      }
     }
     
     Utils.debugPrintln(invokeExpr.toString() + " in " + this.method.fullname() + " for " + eventIterator.get());
@@ -520,6 +572,7 @@ public class CallFrame {
       invokeMethod = calleeExprAndStmt.getCallee();
     } else if (invokeExpr instanceof StaticFieldRef) {
       invokeMethod = calleeExprAndStmt.getCallee();
+      Utils.debugPrintln("set executed " + invokeMethod);
       StaticInitializers.v().setExecuted(invokeMethod);
     } else {
       Utils.debugAssert(false, "Unknown invoke expr type " + invokeExpr.toString());

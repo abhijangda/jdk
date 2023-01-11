@@ -11,9 +11,11 @@ import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JNewArrayExpr;
 import soot.jimple.internal.JNewExpr;
 import soot.jimple.internal.JNewMultiArrayExpr;
+import soot.jimple.internal.JStaticInvokeExpr;
 import parsedmethod.ParsedMethodMap;
 import parsedmethod.ShimpleMethod;
 import soot.AbstractJasminClass;
+import soot.SootClass;
 
 public abstract class Utils {
   public static boolean DEBUG_PRINT = true;
@@ -33,6 +35,13 @@ public abstract class Utils {
   }
 
   public static void debugLog(String fmt, Object... args) {
+    if (DEBUG_PRINT) {
+      String fileline = getCurrFileAndLine(3);
+      System.err.printf(fileline + ": " +fmt, args);
+    }
+  }
+
+  public static void debugPrintf(String fmt, Object... args) {
     if (DEBUG_PRINT) {
       String fileline = getCurrFileAndLine(3);
       System.err.printf(fileline + ": " +fmt, args);
@@ -99,8 +108,16 @@ public abstract class Utils {
     }
   }
 
+  public static ShimpleMethod getStaticInitializer(JStaticInvokeExpr invokeExpr) {
+    return getStaticInitializer(invokeExpr.getMethod().getDeclaringClass());
+  }
+
   public static ShimpleMethod getStaticInitializer(StaticFieldRef fieldRef) {
-    SootMethod clinit = fieldRef.getFieldRef().declaringClass().getMethodByNameUnsafe("<clinit>");
+    return getStaticInitializer(fieldRef.getFieldRef().declaringClass());
+  }
+
+  public static ShimpleMethod getStaticInitializer(SootClass klass) {
+    SootMethod clinit = klass.getMethodByNameUnsafe("<clinit>");
     if (clinit != null)
       return ParsedMethodMap.v().getOrParseToShimple(clinit);
     return null;

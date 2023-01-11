@@ -396,7 +396,13 @@ public class ShimpleMethod {
       if (b == eventBlock) return true;
 
       visited.add(b);
-      q.addAll(b.getSuccs());
+      for (Block succ : b.getSuccs()) {
+        if (isDominator(succ, b)) {
+          Utils.debugPrintf("found back edge: %s -> %s", succ.getIndexInMethod(), b.getIndexInMethod());
+          continue;
+        }
+        q.add(succ);
+      }
     }
 
     return false;
@@ -617,7 +623,8 @@ public class ShimpleMethod {
       for (ValueBox valBox : stmt.getUseBoxes()) {
         if (valBox.getValue() instanceof InvokeExpr ||
             valBox.getValue() instanceof StaticFieldRef) {
-          //For static fields <clinit>()V can also be called
+          //Before a reference to static fields and invoking a static method
+          //<clinit>()V for the class may be called
           invokes.add(valBox.getValue());
         }
       }
@@ -767,7 +774,7 @@ public class ShimpleMethod {
     } else if (stmt instanceof JReturnStmt) {
       Utils.debugLog("613: To handle return");
     } else if (stmt instanceof JThrowStmt) {
-      Utils.debugAssert(false, stmt.toString());
+      Utils.debugLog("613: To handle throw");
     } else if (stmt instanceof JLookupSwitchStmt) {
       Utils.debugAssert(false, stmt.toString());
     } else if (stmt instanceof JTableSwitchStmt) {

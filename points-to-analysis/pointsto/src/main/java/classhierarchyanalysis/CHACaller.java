@@ -5,6 +5,9 @@ import utils.Utils;
 
 import java.io.InvalidObjectException;
 import java.util.HashSet;
+
+import callstack.StaticInitializers;
+
 import java.util.Collection;
 import java.util.HashMap;
 import parsedmethod.*;
@@ -55,7 +58,10 @@ public class CHACaller {
         HashSet<ShimpleMethod> callees = getCalleesAtExpr(val);
         if (invokeExpr instanceof JStaticInvokeExpr || invokeExpr instanceof JSpecialInvokeExpr) {
           ShimpleMethod callee = ParsedMethodMap.v().getOrParseToShimple(sootCallee);
-          callees.add(callee);
+          addCallee(callees, callee);
+          if (invokeExpr instanceof JStaticInvokeExpr) {
+            addCallee(callees, Utils.getStaticInitializer((JStaticInvokeExpr)invokeExpr));
+          }
         } else if (invokeExpr instanceof JVirtualInvokeExpr || invokeExpr instanceof JInterfaceInvokeExpr) {
           SootClass sootCalleeClass = sootCallee.getDeclaringClass();
           if (sootCallee.isConcrete()) {

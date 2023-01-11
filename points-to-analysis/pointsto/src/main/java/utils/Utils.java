@@ -2,7 +2,15 @@ package utils;
 
 import soot.SootMethod;
 import soot.Type;
+import soot.Unit;
+import soot.Value;
+import soot.jimple.ArrayRef;
+import soot.jimple.FieldRef;
 import soot.jimple.StaticFieldRef;
+import soot.jimple.internal.JAssignStmt;
+import soot.jimple.internal.JNewArrayExpr;
+import soot.jimple.internal.JNewExpr;
+import soot.jimple.internal.JNewMultiArrayExpr;
 import parsedmethod.ParsedMethodMap;
 import parsedmethod.ShimpleMethod;
 import soot.AbstractJasminClass;
@@ -20,7 +28,7 @@ public abstract class Utils {
   public static void debugPrintln(Object x) {
     if (DEBUG_PRINT) {
       String fileline = getCurrFileAndLine(3);
-      System.out.println(fileline + ": " + x.toString());
+      System.out.println(fileline + ": " + ((x == null) ? "null" : x.toString()));
     }
   }
 
@@ -91,10 +99,30 @@ public abstract class Utils {
     }
   }
 
-  public static ShimpleMethod getClassInit(StaticFieldRef fieldRef) {
-    SootMethod clinit = fieldRef.getFieldRef().declaringClass().getMethodByNameUnsafe("clinit");
+  public static ShimpleMethod getStaticInitializer(StaticFieldRef fieldRef) {
+    SootMethod clinit = fieldRef.getFieldRef().declaringClass().getMethodByNameUnsafe("<clinit>");
     if (clinit != null)
       return ParsedMethodMap.v().getOrParseToShimple(clinit);
     return null;
+  }
+
+  public static boolean canStmtUpdateHeap(Unit stmt) {
+    if (stmt instanceof JAssignStmt) {
+      Value left = ((JAssignStmt)stmt).getLeftOp();
+      Value right = ((JAssignStmt)stmt).getRightOp();
+
+      if (right instanceof JNewExpr || 
+          right instanceof JNewMultiArrayExpr ||
+          right instanceof JNewArrayExpr) {
+            return true;
+      }
+      
+      if (left instanceof FieldRef || 
+          left instanceof ArrayRef) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

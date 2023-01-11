@@ -482,20 +482,35 @@ public class ShimpleMethod {
     return heads.get(0);
   }
 
-  public static boolean hasInvokeOrStaticRefExpr(Block block) {
-    Iterator<Unit> iter = block.iterator();
+  public static boolean mayCallInPath(Block block, boolean falseOnHeapEventBci) {
+    Queue<Block> q = new LinkedList<>();
+    Set<Block> visited = new HashSet<>();
 
-    while (iter.hasNext()) {
-      Unit stmt = iter.next();
+    q.add(block);
 
-      for (ValueBox vbox : stmt.getUseBoxes()) {
-        Value val = vbox.getValue();
+    while (!q.isEmpty()) {
+      Block b = q.remove();
+      if (visited.contains(b)) continue;
+      
+      Iterator<Unit> stmtIter = b.iterator();
 
-        if (val instanceof InvokeExpr || val instanceof StaticFieldRef)
-          return true;
+      while (stmtIter.hasNext()) {
+        Unit stmt = stmtIter.next();
+        for (ValueBox val : stmt.getUseBoxes()) {
+          if (val.getValue() instanceof InvokeExpr) {
+            return true;
+          } else if (val.getValue() instanceof StaticFieldRef) {
+            return true;
+          } else if (falseOnHeapEventBci && Utils.canStmtUpdateHeap(stmt)) {
+            return false;
+          }
+        }
       }
-    }
 
+      visited.add(b);
+      q.addAll(b.getSuccs());
+    }
+    
     return false;
   }
 

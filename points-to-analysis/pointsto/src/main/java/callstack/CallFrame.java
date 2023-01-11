@@ -66,7 +66,7 @@ class FuncCall extends Pair<Value, Unit> {
     }
 
     if (this.first instanceof StaticFieldRef) {
-      return Utils.getClassInit((StaticFieldRef)this.first);
+      return Utils.getStaticInitializer((StaticFieldRef)this.first);
     }
 
     Utils.debugAssert(false, "");
@@ -116,7 +116,7 @@ public class CallFrame {
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.getFilter()Lorg/apache/lucene/index/IndexFileNameFilter;");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
 
     if (canPrint) {
       Utils.debugPrintln(method.shimpleBody);
@@ -148,7 +148,6 @@ public class CallFrame {
     } else {
       return false;
     }
-    
   }
 
   private JavaHeapElem evaluate(Value val) {
@@ -343,9 +342,10 @@ public class CallFrame {
             //Then continue with next statement
             pc.counter++;
           } else {
-            boolean succCanCall1 = method.hasInvokeOrStaticRefExpr(succ1);
-            boolean succCanCall2 = method.hasInvokeOrStaticRefExpr(succ2);
+            boolean succCanCall1 = ShimpleMethod.mayCallInPath(succ1, true);
+            boolean succCanCall2 = ShimpleMethod.mayCallInPath(succ2, true);
 
+            Utils.debugPrintln(succCanCall1 + " " + succCanCall2);
             boolean mayCallMeth1 = false;
             boolean mayCallMeth2 = false;
 
@@ -408,13 +408,11 @@ public class CallFrame {
             break;
           } else if (use.getValue() instanceof StaticFieldRef) {
             funcToCall = new FuncCall(use.getValue(), currStmt);
-            if (funcToCall.getCallee() == null) {
-              funcToCall = null;
-              continue;
+            if (funcToCall.getCallee() != null) {
+              break;
             }
-            break;
+            funcToCall = null;
           }
-          
         }
         
         pc.counter += 1;

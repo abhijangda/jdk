@@ -2,6 +2,8 @@ package utils;
 
 import soot.SootMethod;
 import soot.Type;
+import soot.jimple.StaticFieldRef;
+import parsedmethod.ParsedMethodMap;
 import parsedmethod.ShimpleMethod;
 import soot.AbstractJasminClass;
 
@@ -75,7 +77,7 @@ public abstract class Utils {
 
   public static boolean methodToCare(String name) {
     return !name.equals("NULL") && !name.startsWith("java.") && !name.startsWith("jdk.") && 
-            !name.startsWith("sun.") && !name.contains("<clinit>");
+            !name.startsWith("sun.");
   }
 
   public static String getCurrFileAndLine(int index) {
@@ -87,5 +89,12 @@ public abstract class Utils {
     if (DEBUG_PRINT) {
       System.out.println(getCurrFileAndLine(3));
     }
+  }
+
+  public static ShimpleMethod getClassInit(StaticFieldRef fieldRef) {
+    SootMethod clinit = fieldRef.getFieldRef().declaringClass().getMethodByNameUnsafe("clinit");
+    if (clinit != null)
+      return ParsedMethodMap.v().getOrParseToShimple(clinit);
+    return null;
   }
 }

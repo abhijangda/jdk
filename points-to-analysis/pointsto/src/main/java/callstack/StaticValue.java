@@ -1,6 +1,8 @@
 package callstack;
 import java.util.*;
 
-public class StaticValue extends HashMap<String, Long> {
+import javaheap.JavaHeapElem;
 
+public class StaticValue extends HashMap<String, JavaHeapElem> {
+  
 }

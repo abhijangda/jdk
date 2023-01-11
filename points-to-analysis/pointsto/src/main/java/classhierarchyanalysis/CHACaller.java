@@ -81,6 +81,7 @@ public class CHACaller {
         //   Utils.debugPrintln(m.getName());
         // }
         SootMethod clinit = staticField.getFieldRef().declaringClass().getMethodByName("<clinit>");
+        addCallee(getCalleesAtExpr(val), clinit);
         Utils.debugAssert(clinit != null, "clinit cannot be null");
       }
     }

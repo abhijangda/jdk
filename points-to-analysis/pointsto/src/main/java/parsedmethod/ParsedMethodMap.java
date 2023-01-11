@@ -1,6 +1,7 @@
 package parsedmethod;
 import java.util.HashMap;
 
+import classcollections.JavaClassCollection;
 import soot.SootMethod;
 
 public class ParsedMethodMap extends HashMap<SootMethod, ShimpleMethod> {
@@ -15,6 +16,10 @@ public class ParsedMethodMap extends HashMap<SootMethod, ShimpleMethod> {
     }
 
     return map;
+  }
+
+  public ShimpleMethod getOrParseToShimple(String method) {
+    return getOrParseToShimple(JavaClassCollection.v().getMethod(method));
   }
 
   public ShimpleMethod getOrParseToShimple(SootMethod method) {

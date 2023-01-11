@@ -415,13 +415,13 @@ public class ShimpleMethod {
       Block b = q.remove();
       if (visited.contains(b)) continue;
       
-      Iterator<Unit> stmtIter = block.iterator();
+      Iterator<Unit> stmtIter = b.iterator();
 
       while (stmtIter.hasNext()) {
         Unit stmt = stmtIter.next();
         for (ValueBox val : stmt.getUseBoxes()) {
           if (val.getValue() instanceof InvokeExpr) {
-            if (ClassHierarchyAnalysis.v().mayCallAtInvoke(ClassHierarchyGraph.v(), this, (InvokeExpr)val.getValue(), method))
+            if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val.getValue(), method))
               return true;
           }
         }
@@ -454,10 +454,11 @@ public class ShimpleMethod {
 
     Collections.reverse(pathToRoot1);
     Collections.reverse(pathToRoot2);
+    // Utils.debugPrintln(pathToRoot1.toString());
+    // Utils.debugPrintln("LLLL:");
+    // Utils.debugPrintln(pathToRoot2.toString());
     int minLength = Math.min(pathToRoot1.size(), pathToRoot2.size());
-    Utils.debugPrintln(block1);
-    Utils.debugPrintln(block2);
-
+  
     Utils.debugPrintln(basicBlockGraph);
     for (int i = 0; i < minLength; i++) {
       if (pathToRoot1.get(i).getGode() != pathToRoot2.get(i).getGode()) {
@@ -467,10 +468,7 @@ public class ShimpleMethod {
     
     if (pathToRoot1.get(minLength - 1).getGode() == pathToRoot2.get(minLength - 1).getGode())
       return pathToRoot1.get(minLength - 1).getGode();
-       
-    Utils.debugPrintln(pathToRoot1.toString());
-    Utils.debugPrintln("LLLL:");
-    Utils.debugPrintln(pathToRoot2.toString());
+  
     Utils.debugAssert(false, "sanity");
     return null;
   }
@@ -484,6 +482,23 @@ public class ShimpleMethod {
     return heads.get(0);
   }
 
+  public static boolean hasInvokeOrStaticRefExpr(Block block) {
+    Iterator<Unit> iter = block.iterator();
+
+    while (iter.hasNext()) {
+      Unit stmt = iter.next();
+
+      for (ValueBox vbox : stmt.getUseBoxes()) {
+        Value val = vbox.getValue();
+
+        if (val instanceof InvokeExpr || val instanceof StaticFieldRef)
+          return true;
+      }
+    }
+
+    return false;
+  }
+
   public boolean isDominator(Block parent, Block child) {
     var childNode = this.dominatorTree.getDode(child);
     var parentNode = this.dominatorTree.getDode(parent);
@@ -491,7 +506,7 @@ public class ShimpleMethod {
     return this.dominatorTree.isDominatorOf(parentNode, childNode);
   }
 
-  public HashMap<Value, VariableValues> initVarValues(InvokeExpr invokeExpr, HashMap<Value, VariableValues> callerVariableValues) {
+  public HashMap<Value, VariableValues> initVarValues(Value calleeExpr, HashMap<Value, VariableValues> callerVariableValues) {
     HashMap<Value, VariableValues> allVariableValues = new HashMap<>();
     
     if (basicBlockGraph != null) {
@@ -505,31 +520,39 @@ public class ShimpleMethod {
         }
       }
 
-      if (invokeExpr != null) {
+      if (calleeExpr != null) {
         // utils.Utils.debugPrintln(invokeExpr.toString() + "   " + utils.Utils.methodFullName(sootMethod));
         // Utils.debugPrintln(invokeStmt.toString() + "   " + m.toString());
-        Utils.debugAssert(parameterRefs.size() == invokeExpr.getArgs().size(), "sanity");
-        for (int i = 0; i < parameterRefs.size(); i++) {
-          ParameterRef param = parameterRefs.get(i);
-          Value arg = invokeExpr.getArg(i);
-          // utils.Utils.debugPrintln(arg.toString() + " has values " + callerVariableValues.get(arg));
-          if (callerVariableValues.containsKey(arg))
-            allVariableValues.put(param, callerVariableValues.get(arg));
-        }
 
-        if (!sootMethod.isStatic()) {
-          Value base = ((AbstractInstanceInvokeExpr)invokeExpr).getBase();
-          
-          utils.Utils.debugAssert(!(invokeExpr instanceof JStaticInvokeExpr), "sanity");
-          Unit thisUnit = shimpleBody.getThisUnit();
-          utils.Utils.debugAssert(thisUnit instanceof JIdentityStmt, "sanity");
-          JIdentityStmt thisIdentityStmt = (JIdentityStmt)thisUnit;
-          allVariableValues.put(thisIdentityStmt.getRightOp(), callerVariableValues.get(base));
-          // if (allVariableValues.get(thisIdentityStmt.getRightOp()) == null) {
-          //   // utils.Utils.debugPrintln(thisUnit.toString());
-          // }
-          //TODO: Pass parameters as a reference or as a copy?
-          allVariableValues.put(thisIdentityStmt.getLeftOp(), allVariableValues.get(thisIdentityStmt.getRightOp()));
+        if (sootMethod.isStaticInitializer()) {
+          //There are no parameters and this variable in a static initializer
+        } else {
+          if (calleeExpr instanceof InvokeExpr) {
+            InvokeExpr invokeExpr = (InvokeExpr)calleeExpr;
+            for (int i = 0; i < parameterRefs.size(); i++) {
+              ParameterRef param = parameterRefs.get(i);
+              Value arg = invokeExpr.getArg(i);
+              // utils.Utils.debugPrintln(arg.toString() + " has values " + callerVariableValues.get(arg));
+              if (callerVariableValues.containsKey(arg))
+                allVariableValues.put(param, callerVariableValues.get(arg));
+            }
+
+            if (!sootMethod.isStatic()) {
+              //Fill the "this" variable value from parameter of an instance method
+              Value base = ((AbstractInstanceInvokeExpr)invokeExpr).getBase();
+              
+              utils.Utils.debugAssert(!(invokeExpr instanceof JStaticInvokeExpr), "sanity");
+              Unit thisUnit = shimpleBody.getThisUnit();
+              utils.Utils.debugAssert(thisUnit instanceof JIdentityStmt, "sanity");
+              JIdentityStmt thisIdentityStmt = (JIdentityStmt)thisUnit;
+              allVariableValues.put(thisIdentityStmt.getRightOp(), callerVariableValues.get(base));
+              // if (allVariableValues.get(thisIdentityStmt.getRightOp()) == null) {
+              //   // utils.Utils.debugPrintln(thisUnit.toString());
+              // }
+              //TODO: Pass parameters as a reference or as a copy?
+              allVariableValues.put(thisIdentityStmt.getLeftOp(), allVariableValues.get(thisIdentityStmt.getRightOp()));
+            }
+          }
         }
       }
 

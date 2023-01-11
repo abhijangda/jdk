@@ -4,6 +4,8 @@ import java.util.*;
 
 import classcollections.JavaClassCollection;
 import parsedmethod.*;
+import soot.SootMethod;
+import soot.Value;
 import soot.jimple.InvokeExpr;
 import soot.shimple.Shimple;
 import utils.Utils;
@@ -42,6 +44,13 @@ public class ClassHierarchyAnalysis extends HashMap<ShimpleMethod, CHACaller> {
   public boolean mayCall(ClassHierarchyGraph chaGraph, ShimpleMethod caller, ShimpleMethod callee) {
     if (caller.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()") && !callee.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.<clinit>()V")) { //!callee.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.getFilter()Lorg/apache/lucene/index/IndexFileNameFilter;")
       Utils.debugPrintln("Does run reaches?");
+      ShimpleMethod sm = ParsedMethodMap.v().getOrParseToShimple("org.apache.lucene.index.IndexFileNameFilter.getFilter()Lorg/apache/lucene/index/IndexFileNameFilter;");
+      for (Value expr : sm.getCallExprs()) {
+        Utils.debugPrintln(expr);
+      }
+      for (HashSet<ShimpleMethod> c : getCallees(chaGraph, sm).getAllCallees()) {
+        Utils.debugPrintln(c);
+      }
       boolean f = mayCall(chaGraph, caller, "org.apache.lucene.index.IndexFileNameFilter.<clinit>()V");
       Utils.debugPrintln(f);
     }
@@ -64,12 +73,19 @@ public class ClassHierarchyAnalysis extends HashMap<ShimpleMethod, CHACaller> {
     return false;
   } 
 
-  public boolean mayCallAtInvoke(ClassHierarchyGraph chaGraph, ShimpleMethod caller, InvokeExpr invokeExpr, ShimpleMethod callee) {
-    if (!Utils.methodToCare(invokeExpr.getMethod())) {
+  public boolean mayCallInExpr(ClassHierarchyGraph chaGraph, ShimpleMethod caller, Value expr, ShimpleMethod callee) {
+    SootMethod exprCallee = null;
+    if (expr instanceof InvokeExpr) {
+      exprCallee = ((InvokeExpr)expr).getMethod();
+    } else {
+      Utils.debugAssert(false, "");
+    }
+
+    if (!Utils.methodToCare(exprCallee)) {
       return false;
     }
 
-    HashSet<ShimpleMethod> callees = getCallees(chaGraph, caller).getCalleesAtExpr(invokeExpr);
+    HashSet<ShimpleMethod> callees = getCallees(chaGraph, caller).getCalleesAtExpr(expr);
 
     if (callees.contains(callee))
       return true;

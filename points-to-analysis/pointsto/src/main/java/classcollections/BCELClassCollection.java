@@ -64,14 +64,6 @@ public class BCELClassCollection extends HashMap<String, JavaClass> {
     }
   }
 
-  public static boolean methodToCare(String name) {
-    return !name.equals("NULL") && !name.contains("<clinit>");
-  }
-
-  public static boolean classToCare(String name) {
-    return !name.equals("NULL") && !name.contains("<clinit>");
-  }
-
   private void loadJavaLibraryClass(String classStr) {
     Path javaBase = Paths.get("/mnt/homes/aabhinav/jdk/build/linux-x86_64-server-release/jdk/modules/java.base/");
     Path classPath = javaBase.resolve(classStr.replace(".", "/") + ".class");
@@ -90,12 +82,12 @@ public class BCELClassCollection extends HashMap<String, JavaClass> {
   public JavaClass getClassForString(String classStr) {
     if ((classStr.contains("java.") || classStr.contains("jdk.") || classStr.contains("sun.")) && !containsKey(classStr))
       loadJavaLibraryClass(classStr);
-    if (!classToCare(classStr)) return null;
+    if (!JavaClassCollection.classToCare(classStr)) return null;
     return get(classStr);
   }
 
   public Method getMethod(String methodStr) {
-    if (!methodToCare(methodStr)) {      
+    if (!JavaClassCollection.methodToCare(methodStr)) {      
       return null;
     }
     if (methodStr == "NULL") {return null;}

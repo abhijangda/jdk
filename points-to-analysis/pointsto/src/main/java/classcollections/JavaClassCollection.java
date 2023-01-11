@@ -42,7 +42,7 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
     jarFile = extractPath + "dacapo-9.12-MR1-bach.jar";
     getJars(jarFile, extractPath, jars);
     
-    System.out.println(jars);
+    Utils.debugPrintln(jars);
     Options.v().set_allow_phantom_refs(true);
     Options.v().set_whole_program(true);
     Options.v().set_process_dir(jars);
@@ -54,7 +54,7 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
 
     for (SootClass c : this.scene.getClasses()) {
       this.put(c.getName(), c);
-      // System.out.println(c.getName());
+      // Utils.debugPrintln(c.getName());
     }
   }
 
@@ -75,7 +75,7 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
     } catch (Exception e) {
     }
     bos.close();
-    System.out.println("writing to file " + filePath + " " + Files.size(Paths.get(filePath)));
+    Utils.debugPrintln("writing to file " + filePath + " " + Files.size(Paths.get(filePath)));
   }
 
   private static void getJars(String jarFile, String extractPath, ArrayList<String> jars) {
@@ -100,12 +100,12 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
   }
 
   public static boolean methodToCare(String name) {
-    return !name.equals("NULL") && !name.contains("<clinit>") && !name.contains("0x") && !name.contains("_LL") &&
+    return !name.equals("NULL") && !name.contains("0x") && !name.contains("_LL") &&
       !name.contains("jdk.internal.util.Preconditions$4") && !name.contains("sun.launcher.LauncherHelper") && !name.contains("sun.security.provider");
   }
 
   public static boolean classToCare(String name) {
-    return !name.equals("NULL") && !name.contains("<clinit>") && !name.contains("0x") && !name.contains("_LL")
+    return !name.equals("NULL") && !name.contains("0x") && !name.contains("_LL")
     && !name.contains("sun.launcher.LauncherHelper") && !name.contains("sun.security.provider");
   }
 
@@ -138,12 +138,12 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
       basicType = DoubleType.v();
     } else {
       SootClass cl = getClassForString(sig);
-      if (cl == null) System.out.println(sig);
+      if (cl == null) Utils.debugPrintln(sig);
       basicType = cl.getType();
     }
     
     if (basicType == null)
-      System.out.println("128: Invalid signature " + origSig);
+      Utils.debugPrintln("128: Invalid signature " + origSig);
     
     if (arraydims > 0) 
       return ArrayType.v(basicType, arraydims);
@@ -180,10 +180,10 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
         String returnStr = signature.substring(returnStrIdx);
         //params between "(" and ")"
         String paramsStr = signature.substring(1, returnStrIdx - 1);
-        // System.out.println("\n158: " + classname + " " + methodname + " " + signature);
+        // Utils.debugPrintln("\n158: " + classname + " " + methodname + " " + signature);
         SootClass javaclass = getClassForString(classname);
         if (javaclass == null) {
-          System.out.println("null javaclass for " + classname);
+          Utils.debugPrintln("null javaclass for " + classname);
           return null;
         }
 
@@ -224,7 +224,7 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
               }
             }
           }
-          // System.out.println("173: " + javaclass.getName() + " " + javaclass.getMethodCount());
+          // Utils.debugPrintln("173: " + javaclass.getName() + " " + javaclass.getMethodCount());
           // if (!javaclass.getName().equals("java.lang.Object")) {
           if (javaclass.hasSuperclass())
             javaclass = javaclass.getSuperclass();
@@ -234,11 +234,11 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
           //   break;
           // }
         }
-        // System.out.println(classname + " " + methodname + " " + signature);
+        // Utils.debugPrintln(classname + " " + methodname + " " + signature);
       }
     }
 
-    System.out.println("Cannot find method " + methodStr);
+    Utils.debugPrintln("Cannot find method " + methodStr);
 
     return null;
   }

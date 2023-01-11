@@ -1,5 +1,6 @@
 package callstack;
 
+import soot.RefLikeType;
 import soot.RefType;
 import soot.SootClass;
 import soot.SootMethod;
@@ -23,9 +24,18 @@ import parsedmethod.ParsedMethodMap;
 
 import java.util.ArrayList;
 
+import soot.jimple.BinopExpr;
+import soot.jimple.CmpExpr;
+import soot.jimple.CmpgExpr;
+import soot.jimple.CmplExpr;
+import soot.jimple.Constant;
+import soot.jimple.EqExpr;
+import soot.jimple.IntConstant;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
+import soot.jimple.NeExpr;
 import soot.jimple.ParameterRef;
+import soot.jimple.StaticFieldRef;
 import soot.jimple.VirtualInvokeExpr;
 import soot.jimple.internal.AbstractInstanceInvokeExpr;
 import soot.jimple.internal.JGotoStmt;
@@ -37,12 +47,33 @@ import soot.jimple.internal.JReturnVoidStmt;
 import soot.jimple.internal.JSpecialInvokeExpr;
 import soot.jimple.internal.JStaticInvokeExpr;
 import soot.jimple.internal.JVirtualInvokeExpr;
+import soot.jimple.internal.JimpleLocal;
 import soot.jimple.toolkits.annotation.callgraph.MethInfo;
 
 import utils.ArrayListIterator;
 import utils.Pair;
 import utils.Utils;
 import parsedmethod.*;
+
+class FuncCall extends Pair<Value, Unit> {
+  public FuncCall(Value v, Unit stmt) {
+    super(v, stmt);
+  }
+
+  public ShimpleMethod getCallee() {
+    if (this.first instanceof InvokeExpr) {
+      return ParsedMethodMap.v().getOrParseToShimple(((InvokeExpr)this.first).getMethod());
+    }
+
+    if (this.first instanceof StaticFieldRef) {
+      return Utils.getClassInit((StaticFieldRef)this.first);
+    }
+
+    Utils.debugAssert(false, "");
+
+    return null;
+  }
+}
 
 class ProgramCounter {
   public int counter;
@@ -78,14 +109,14 @@ public class CallFrame {
   private final HashMap<ParameterRef, VariableValues> paramValues;
   public boolean canPrint = false;
   
-  public CallFrame(ShimpleMethod m, InvokeExpr invokeExpr, Unit stmt, CallFrame parent) {
+  public CallFrame(ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
     method = m;
     allVariableValues = method.initVarValues(invokeExpr, (parent == null) ? null : parent.allVariableValues);
     this.parent = parent;
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("DirectoryIndexReader.open");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
 
     if (canPrint) {
       Utils.debugPrintln(method.shimpleBody);
@@ -120,9 +151,59 @@ public class CallFrame {
     
   }
 
-  private Pair<InvokeExpr, Unit> nextInvokeExpr(ArrayListIterator<HeapEvent> eventsIterator) {
+  private JavaHeapElem evaluate(Value val) {
+    Utils.debugPrintln(val.getClass());
+    if (val instanceof CmpExpr) {
+      Utils.debugAssert(false, "to handle");
+    } else if (val instanceof CmpgExpr) {
+
+    } else if (val instanceof CmplExpr) {
+
+    } else if (val instanceof EqExpr) {
+
+    } else if (val instanceof NeExpr) {
+      NeExpr cmp = (NeExpr)val;
+      evaluate(cmp.getOp1());
+      evaluate(cmp.getOp2());
+    } else if (val instanceof JimpleLocal) {
+      Utils.debugPrintln(val);
+      Utils.debugPrintln(allVariableValues.get(val).size());
+      return allVariableValues.get(val).iterator().next();
+    } else if (val instanceof IntConstant) {
+      Utils.debugPrintln(((IntConstant)val).value);
+
+    }
+    return null;
+  }
+
+  private Block evaluateIfStmt(JIfStmt ifstmt) {
+    //An Ifstmt can be evaluated if the values are in allVariables.
+    Value cond = ifstmt.getCondition();
+    //Can only evaluate a condition if all uses are of RefType or NULL
+    boolean canEvalCond = true;
+    for (ValueBox valBox : cond.getUseBoxes()) {
+      Value val = valBox.getValue();
+      if ((val instanceof IntConstant && ((IntConstant)val).value == 0) || 
+          (val.getType() instanceof RefLikeType)) {
+      } else {
+        canEvalCond = false;
+        break;
+      }
+    }
+
+    Utils.debugAssert(cond instanceof BinopExpr, "sanity " + cond.getClass());
+
+    if (canPrint) {
+      if (canEvalCond)
+        evaluate(cond);
+    }
+
+    return null;
+  }
+
+  private FuncCall nextFuncCall(ArrayListIterator<HeapEvent> eventsIterator) {
     if (!hasNextInvokeStmt()) return null;
-    Pair<InvokeExpr, Unit> invokeExpr = null;
+    FuncCall funcToCall = null;
     Unit currStmt = method.statements.get(pc.counter);
     HeapEvent currEvent = eventsIterator.get();
     boolean methodMatches = currEvent.method == method.sootMethod;
@@ -140,12 +221,12 @@ public class CallFrame {
           eventsIterator.moveNext();
         }
 
-        invokeExpr = null;
+        funcToCall = null;
 
         for (ValueBox use : currStmt.getUseBoxes()) {
           if (use.getValue() instanceof InvokeExpr) {
-            invokeExpr = Pair.v((InvokeExpr)use.getValue(), currStmt);
-            if (Utils.methodFullName(invokeExpr.first.getMethod()).contains("org.apache.lucene.store.FSDirectory.init")) {
+            funcToCall = new FuncCall((InvokeExpr)use.getValue(), currStmt);
+            if (funcToCall.getCallee().fullname().contains("org.apache.lucene.store.FSDirectory.init")) {
               break;
             }
           }
@@ -153,12 +234,12 @@ public class CallFrame {
 
         pc.counter++;
         
-        if (invokeExpr != null) {
+        if (funcToCall != null) {
           break;
         } 
       }
 
-      return invokeExpr;
+      return funcToCall;
     } else {
     while (hasNextInvokeStmt()) {
       currEvent = eventsIterator.get();
@@ -171,6 +252,7 @@ public class CallFrame {
         // System.exit(0);
       }
       if (currStmt instanceof JIfStmt) {
+        evaluateIfStmt((JIfStmt)currStmt);
         Unit target = ((JIfStmt)currStmt).getTarget();
         Utils.debugAssert(method.stmtToIndex.containsKey(target), "sanity");
 
@@ -230,11 +312,11 @@ public class CallFrame {
           
           boolean inPath1 = method.isEventInPathFromBlock(succ1, currEvent);
           boolean inPath2 = method.isEventInPathFromBlock(succ2, currEvent);
-          if (canPrint) {
-            Utils.debugPrintln(currStmt);
-            Utils.debugPrintln(succ1);
-            Utils.debugPrintln(succ2);
-          }
+          // if (canPrint) {
+          //   Utils.debugPrintln(currStmt);
+          //   Utils.debugPrintln(succ1);
+          //   Utils.debugPrintln(succ2);
+          // }
           if (inPath1 && inPath2) {
             Utils.debugPrintln("Found in both");
             //TODO: Currently goes through one of the successors, but should go through both
@@ -261,15 +343,36 @@ public class CallFrame {
             //Then continue with next statement
             pc.counter++;
           } else {
-            boolean mayCall1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-            boolean mayCall2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
-            if (canPrint) Utils.debugPrintln(currStmt + " " + mayCall1 + " " + mayCall2);
-            if (mayCall1 && mayCall2) {
+            boolean succCanCall1 = method.hasInvokeOrStaticRefExpr(succ1);
+            boolean succCanCall2 = method.hasInvokeOrStaticRefExpr(succ2);
+
+            boolean mayCallMeth1 = false;
+            boolean mayCallMeth2 = false;
+
+            if (succCanCall1 && succCanCall2) {
+              mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+              mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
+
+            } else if (succCanCall1) {
+              mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+            } else if (succCanCall2) {
+              mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+            } else {
+              mayCallMeth1 = false;
+              mayCallMeth2 = false;
+              //No point in going to next instructions because none of the blocks have
+              //any more invoke statements
+              pc.counter = method.statements.size();
+              continue;
+            }
+
+            if (canPrint) Utils.debugPrintln(currStmt + " " + mayCallMeth1 + " " + mayCallMeth2);
+            if (mayCallMeth1 && mayCallMeth2) {
               pc.counter++;
-            } else if (mayCall1) {
+            } else if (mayCallMeth1) {
               currStmt = succ1.getHead();
               pc.counter = method.stmtToIndex.get(currStmt);
-            } else if (mayCall2) {
+            } else if (mayCallMeth2) {
               currStmt = succ2.getHead();
               pc.counter = method.stmtToIndex.get(currStmt);
             } else {
@@ -297,25 +400,33 @@ public class CallFrame {
           Utils.debugPrintln("next event " + eventsIterator.get());
         }
 
-        invokeExpr = null;
+        funcToCall = null;
 
         for (ValueBox use : currStmt.getUseBoxes()) {
           if (use.getValue() instanceof InvokeExpr) {
-            invokeExpr = Pair.v((InvokeExpr)use.getValue(), currStmt);
+            funcToCall = new FuncCall((InvokeExpr)use.getValue(), currStmt);
+            break;
+          } else if (use.getValue() instanceof StaticFieldRef) {
+            funcToCall = new FuncCall(use.getValue(), currStmt);
+            if (funcToCall.getCallee() == null) {
+              funcToCall = null;
+              continue;
+            }
             break;
           }
+          
         }
         
         pc.counter += 1;
         if (pc.counter < method.statements.size())
           currStmt = method.statements.get(pc.counter);
-        if (invokeExpr != null) {
+        if (funcToCall != null) {
           break;
         }
       }
     }
 
-    return invokeExpr;
+    return funcToCall;
     }
     // Utils.debugPrintln(currStmt.toString());
     // Utils.debugPrintln(pc.getCurrBlock().toString());
@@ -348,12 +459,12 @@ public class CallFrame {
   }
 
   public CallFrame nextInvokeMethod(ArrayListIterator<HeapEvent> eventIterator) {
-    Pair<InvokeExpr, Unit> invokeExprAndStmt = nextInvokeExpr(eventIterator);
-    if (invokeExprAndStmt != null) Utils.debugPrintln(invokeExprAndStmt.first.toString());
-    if (invokeExprAndStmt == null) return null;
+    FuncCall calleeExprAndStmt = nextFuncCall(eventIterator);
+    if (calleeExprAndStmt != null) Utils.debugPrintln(calleeExprAndStmt.first.toString());
+    if (calleeExprAndStmt == null) return null;
     
-    InvokeExpr invokeExpr = invokeExprAndStmt.first;
-    SootMethod invokeMethod = null;
+    Value invokeExpr = calleeExprAndStmt.first;
+    ShimpleMethod invokeMethod = null;
     if (method.fullname().contains("org.apache.lucene.store.FSDirectory.getDirectory(Ljava/io/File;Lorg/apache/lucene/store/LockFactory;)")) {
       //Go through FSDirectory.<init> events 
       while(eventIterator.get().methodStr.contains("org.apache.lucene.store.FSDirectory.<init>")) {
@@ -364,7 +475,7 @@ public class CallFrame {
     
     Utils.debugPrintln(eventIterator.get());
 
-    while (!Utils.methodToCare(invokeExpr.getMethod())) {
+    while (!Utils.methodToCare(calleeExprAndStmt.getCallee())) {
       // HeapEvent currEvent = eventIterator.current();
       // boolean executed = false;
       // while (!Utils.methodToCare(currEvent.method)) {
@@ -373,15 +484,15 @@ public class CallFrame {
       //   executed = true;
       // }
 
-      invokeExprAndStmt = nextInvokeExpr(eventIterator);
-      if (invokeExprAndStmt == null) return null;
-      invokeExpr = invokeExprAndStmt.first;
+      calleeExprAndStmt = nextFuncCall(eventIterator);
+      if (calleeExprAndStmt == null) return null;
+      invokeExpr = calleeExprAndStmt.first;
     }
     
     Utils.debugPrintln(invokeExpr.toString() + " in " + this.method.fullname() + " for " + eventIterator.get());
 
     if (invokeExpr instanceof JSpecialInvokeExpr) {
-      invokeMethod = invokeExpr.getMethod();
+      invokeMethod = calleeExprAndStmt.getCallee();
     } else if (invokeExpr instanceof AbstractInstanceInvokeExpr) {
       AbstractInstanceInvokeExpr virtInvoke = (AbstractInstanceInvokeExpr)invokeExpr;
       VariableValues vals = allVariableValues.get(virtInvoke.getBase());
@@ -391,7 +502,7 @@ public class CallFrame {
       // }
       if (vals.size() == 0) {
         Utils.debugPrintln("0 values for " + virtInvoke.getBase());
-        invokeMethod = virtInvoke.getMethod();
+        invokeMethod = ParsedMethodMap.v().getOrParseToShimple(virtInvoke.getMethod());
       } else {
         // JavaHeapElem[] valuesArray = new JavaHeapElem[vals.size()];
         // valuesArray = vals.toArray(valuesArray);
@@ -404,17 +515,20 @@ public class CallFrame {
           klass = klass.getSuperclass();
         }
 
-        invokeMethod = klass.getMethod(virtInvoke.getMethod().getSubSignature());
+        invokeMethod = ParsedMethodMap.v().getOrParseToShimple(klass.getMethod(virtInvoke.getMethod().getSubSignature()));
         Utils.debugPrintln("new method " + invokeMethod.toString());
       }
     } else if (invokeExpr instanceof JStaticInvokeExpr) {
-      invokeMethod = invokeExpr.getMethod();
+      invokeMethod = calleeExprAndStmt.getCallee();
+    } else if (invokeExpr instanceof StaticFieldRef) {
+      invokeMethod = calleeExprAndStmt.getCallee();
+      StaticInitializers.v().setExecuted(invokeMethod);
     } else {
       Utils.debugAssert(false, "Unknown invoke expr type " + invokeExpr.toString());
     }
 
-    Utils.debugAssert(ParsedMethodMap.v().getOrParseToShimple(invokeMethod) != null, "%s not found\n", Utils.methodFullName(invokeMethod));
-    return new CallFrame(ParsedMethodMap.v().getOrParseToShimple(invokeMethod), invokeExpr, invokeExprAndStmt.second, this);
+    Utils.debugAssert(invokeMethod != null, "%s not found\n", invokeMethod.fullname());
+    return new CallFrame(invokeMethod, invokeExpr, calleeExprAndStmt.second, this);
   }
 
   /*

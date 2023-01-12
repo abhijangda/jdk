@@ -732,7 +732,9 @@ public class ShimpleMethod {
       // vals.add(new VariableValue(val.getType()));
       // return vals;
     } else if (val instanceof StaticFieldRef) {
-      Utils.debugPrintln("to support");
+      VariableValues vals = new VariableValues(val, stmt);
+      vals.add(StaticFieldValues.v().get(((StaticFieldRef)val).getField()));
+      return vals;
     } else {
       Utils.debugAssert(false, "Unsupported Jimple expr " + val.getClass() + "'" + stmt.toString() + "'");
     }
@@ -836,12 +838,14 @@ public class ShimpleMethod {
     utils.Utils.debugPrintln(stmt.toString() + "  for " + heapEvent.toString());
     //Add value of the heap event
     Value left = stmt.getLeftOp();
+    Value right = stmt.getRightOp();
     VariableValues leftVals = allVariableValues.get(left);
     switch (opcode) {
-      case Const.PUTFIELD:
+      //TODO: Combine all of three cases below
+      case Const.PUTFIELD: {
         leftVals.add(JavaHeap.v().get(heapEvent.srcPtr));
-        if (!(stmt.getRightOp() instanceof Constant)) {
-          VariableValues rightVals = allVariableValues.get(stmt.getRightOp());
+        if (!(right instanceof Constant)) {
+          VariableValues rightVals = allVariableValues.get(right);
           rightVals.add(JavaHeap.v().get(heapEvent.srcPtr));
         }
         Utils.debugAssert(left instanceof JInstanceFieldRef, "sanity");
@@ -849,15 +853,32 @@ public class ShimpleMethod {
         allVariableValues.get(base).add(JavaHeap.v().get(heapEvent.dstPtr));
         Utils.debugAssert(stmt.getUseBoxes().size() <= 2, "Only one use in " + stmt.toString());
         break;
-      case Const.AASTORE:
-        // lvalSet.add(new ActualValue(currEvent.dstClass_, currEvent.dstPtr_));
-        // rvalSet.add(new ActualValue(currEvent.srcClass, currEvent.srcPtr));
-        Utils.debugAssert(stmt.getUseBoxes().size() <= 2, "Only one use in " + stmt.toString());
+      }
+      case Const.AASTORE: {
+        JArrayRef arrayRef = (JArrayRef)left;
+        leftVals.add(JavaHeap.v().get(heapEvent.srcPtr));
+        allVariableValues.get(arrayRef.getBase()).add(JavaHeap.v().get(heapEvent.dstPtr));
+        if (!(right instanceof Constant)) {
+          VariableValues rightVals = allVariableValues.get(right);
+          rightVals.add(JavaHeap.v().get(heapEvent.srcPtr));
+          //TODO: Can populate string value to src object
+        }
+        Utils.debugAssert(stmt.getUseBoxes().size() <= 3, "Only one use in " + stmt.toString());
         break;
-      case Const.PUTSTATIC:
+      }
+      case Const.PUTSTATIC: {
+        StaticFieldRef staticFieldRef = (StaticFieldRef)left;
+        StaticFieldValues.v().set(staticFieldRef.getFieldRef(), heapEvent.srcPtr);
+        
+        leftVals.add(JavaHeap.v().get(heapEvent.srcPtr));
+        if (!(right instanceof Constant)) {
+          VariableValues rightVals = allVariableValues.get(right);
+          rightVals.add(JavaHeap.v().get(heapEvent.srcPtr));
+        }
         break;
+      }
       case Const.NEW: {
-        Utils.debugAssert(stmt.getRightOp() instanceof JNewExpr, "sanity");
+        Utils.debugAssert(right instanceof JNewExpr, "sanity");
         
         leftVals.add(JavaHeap.v().get(heapEvent.dstPtr));
         Utils.debugAssert(stmt.getUseBoxes().size() <= 1, "Only one use in " + stmt.toString());
@@ -907,5 +928,9 @@ public class ShimpleMethod {
     }
 
     return nonCatchBlocks;
+  }
+
+  public String toString() {
+    return fullname();
   }
 }

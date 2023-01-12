@@ -145,7 +145,7 @@ public class CallFrame {
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.<init>()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.<init>()V");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
 
     if (canPrint) {
       Utils.debugPrintln(method.shimpleBody);
@@ -433,7 +433,9 @@ public class CallFrame {
         boolean incrementPC = true;
         for (ValueBox use : currStmt.getUseBoxes()) {
           if (use.getValue() instanceof StaticFieldRef) {
+            Utils.debugPrintln(use.getValue().getClass());
             ShimpleMethod clinit = Utils.getStaticInitializer((StaticFieldRef)use.getValue());
+            Utils.debugPrintln("clinit " + clinit.toString() + " " + StaticInitializers.v().wasExecuted(clinit));
             if (!StaticInitializers.v().wasExecuted(clinit)) {
               funcToCall = new FuncCall(use.getValue(), currStmt);
               if (funcToCall.getCallee() != null) {
@@ -471,6 +473,14 @@ public class CallFrame {
       }
     }
 
+    Utils.debugPrintln(funcToCall);
+    if (funcToCall != null) {
+      Utils.debugPrintln(funcToCall.getCallee() + " " + Utils.methodToCare(funcToCall.getCallee()) + " " + 
+                         StaticInitializers.v().wasExecuted(funcToCall.getCallee()));
+      Utils.debugPrintln(funcToCall.getCallee() + " " + Utils.methodToCare(funcToCall.getCallee()) + " " + 
+                         StaticInitializers.v().wasExecuted(funcToCall.getCallee()));
+    }
+
     return funcToCall;
     }
     // Utils.debugPrintln(currStmt.toString());
@@ -505,6 +515,7 @@ public class CallFrame {
 
   public CallFrame nextInvokeMethod(ArrayListIterator<HeapEvent> eventIterator) {
     FuncCall calleeExprAndStmt = nextFuncCall(eventIterator);
+    Utils.debugPrintln(calleeExprAndStmt);
     if (calleeExprAndStmt != null) Utils.debugPrintln(calleeExprAndStmt.first.toString());
     if (calleeExprAndStmt == null) return null;
     
@@ -519,6 +530,7 @@ public class CallFrame {
     }
     
     Utils.debugPrintln(eventIterator.get());
+    Utils.debugPrintln(calleeExprAndStmt.getCallee() + " " + Utils.methodToCare(calleeExprAndStmt.getCallee()) + " " + StaticInitializers.v().wasExecuted(calleeExprAndStmt.getCallee()));
 
     while (!Utils.methodToCare(calleeExprAndStmt.getCallee()) ||
            (calleeExprAndStmt.first instanceof StaticFieldRef && 
@@ -530,13 +542,14 @@ public class CallFrame {
       //   currEvent = eventIterator.next();
       //   executed = true;
       // }
+      if (calleeExprAndStmt.callsStaticInit()) {
+        StaticInitializers.v().setExecuted(calleeExprAndStmt.getCallee());
+      }
+      Utils.debugPrintln(calleeExprAndStmt.getCallee() + " " + Utils.methodToCare(calleeExprAndStmt.getCallee()) + " " + StaticInitializers.v().wasExecuted(calleeExprAndStmt.getCallee()));
 
       calleeExprAndStmt = nextFuncCall(eventIterator);
       if (calleeExprAndStmt == null) return null;
       invokeExpr = calleeExprAndStmt.first;
-      if (calleeExprAndStmt.callsStaticInit()) {
-        StaticInitializers.v().setExecuted(calleeExprAndStmt.getCallee());
-      }
     }
     
     Utils.debugPrintln(invokeExpr.toString() + " in " + this.method.fullname() + " for " + eventIterator.get());

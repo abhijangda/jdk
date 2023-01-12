@@ -3,7 +3,7 @@ import java.util.*;
 
 import org.slf4j.helpers.Util;
 
-import callstack.StaticValue;
+import callstack.StaticFieldValues;
 import classcollections.*;
 import javaheap.HeapEvent;
 import javaheap.JavaHeap;
@@ -57,7 +57,6 @@ public class CallGraphAnalysis {
     startEvent, Utils.methodFullName(startEvent.method));
 
     Stack<CallFrame> callStack = new Stack<>();
-    StaticValue staticValues = new StaticValue();
     HeapEvent currEvent = startEvent;
     Stack<Pair<CallFrame, Integer>> remainingFrames = new Stack<>();
     CallFrame rootFrame = new CallFrame(startEvent, null, null, null);
@@ -75,10 +74,10 @@ public class CallGraphAnalysis {
       Utils.debugPrintln("current frame " + frame);
       currEvent = eventIterator.get();
       Utils.debugPrintln("currevent " + currEvent.toString());
-      if (frame.canPrint) {
-        Utils.debugPrintln(frame.method.basicBlockStr());
-        return;
-      }
+      // if (frame.canPrint) {
+      //   Utils.debugPrintln(frame.method.shimpleBody);
+      //   return;
+      // }
       if (!frame.hasNextInvokeStmt()) {
         if (frame.canPrint) return;
         callStack.pop();
@@ -87,9 +86,7 @@ public class CallGraphAnalysis {
       
       while (!Utils.methodToCare(currEvent.method) ||
             //  currEvent.methodStr.contains("org.apache.lucene.store.FSDirectory") ||
-             currEvent.methodStr.contains("org.apache.lucene.analysis.CharArraySet.add") || 
-            //  currEvent.methodStr.contains("IndexFileNameFilter.<init>()") || 
-             currEvent.methodStr.contains("IndexFileNames.<clinit>")) {
+             currEvent.methodStr.contains("org.apache.lucene.analysis.CharArraySet.add")) {
         javaHeap.update(currEvent);
         eventIterator.moveNext();
         currEvent = eventIterator.get();

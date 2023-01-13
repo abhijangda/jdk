@@ -16,6 +16,7 @@ import soot.SootMethod;
 import soot.Value;
 import soot.jimple.*;
 import soot.jimple.internal.JInterfaceInvokeExpr;
+import soot.jimple.internal.JNewExpr;
 import soot.jimple.internal.JSpecialInvokeExpr;
 import soot.jimple.internal.JStaticInvokeExpr;
 import soot.jimple.internal.JVirtualInvokeExpr;
@@ -60,7 +61,14 @@ public class CHACaller {
           ShimpleMethod callee = ParsedMethodMap.v().getOrParseToShimple(sootCallee);
           addCallee(callees, callee);
           if (invokeExpr instanceof JStaticInvokeExpr) {
-            addCallee(callees, Utils.getStaticInitializer((JStaticInvokeExpr)invokeExpr));
+            SootClass klass = invokeExpr.getMethod().getDeclaringClass();
+            while (klass != null && Utils.methodToCare(klass.getName())) {
+              addCallee(callees, Utils.getStaticInitializer(klass));
+              if (klass.hasSuperclass())
+                klass = klass.getSuperclass();
+              else
+                break;
+            }
           }
         } else if (invokeExpr instanceof JVirtualInvokeExpr || invokeExpr instanceof JInterfaceInvokeExpr) {
           SootClass sootCalleeClass = sootCallee.getDeclaringClass();
@@ -86,9 +94,11 @@ public class CHACaller {
         // for (SootMethod m : staticField.getFieldRef().declaringClass().getMethods()) {
         //   Utils.debugPrintln(m.getName());
         // }
-        SootMethod clinit = staticField.getFieldRef().declaringClass().getMethodByName("<clinit>");
-        addCallee(getCalleesAtExpr(val), clinit);
-        Utils.debugAssert(clinit != null, "clinit cannot be null");
+        // SootMethod clinit = staticField.getFieldRef().declaringClass().getMethodByName("<clinit>");
+        addCallee(getCalleesAtExpr(val), Utils.getStaticInitializer(staticField));
+        // Utils.debugAssert(clinit != null, "clinit cannot be null");
+      } else if (val instanceof JNewExpr) {
+        getCalleesAtExpr(val).addAll(Utils.getAllStaticInitsForNew((JNewExpr)val));
       }
     }
   }

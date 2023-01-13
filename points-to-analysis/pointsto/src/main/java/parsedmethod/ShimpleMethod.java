@@ -756,7 +756,8 @@ public class ShimpleMethod {
     for (Unit stmt : stmtToBlock.keySet()) {
       for (ValueBox valBox : stmt.getUseBoxes()) {
         if (valBox.getValue() instanceof InvokeExpr ||
-            valBox.getValue() instanceof StaticFieldRef) {
+            valBox.getValue() instanceof StaticFieldRef ||
+            valBox.getValue() instanceof JNewExpr) {
           //Before a reference to static fields and invoking a static method
           //<clinit>()V for the class may be called
           invokes.add(valBox.getValue());

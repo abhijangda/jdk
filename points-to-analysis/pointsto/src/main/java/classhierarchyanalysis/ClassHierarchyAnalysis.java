@@ -43,17 +43,22 @@ public class ClassHierarchyAnalysis extends HashMap<ShimpleMethod, CHACaller> {
 
   public boolean mayCall(ClassHierarchyGraph chaGraph, ShimpleMethod caller, ShimpleMethod callee) {
     // if (caller.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()") && !callee.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.<clinit>()V")) { //!callee.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.getFilter()Lorg/apache/lucene/index/IndexFileNameFilter;")
-    //   Utils.debugPrintln("Does run reaches?");
-    //   ShimpleMethod sm = ParsedMethodMap.v().getOrParseToShimple("org.apache.lucene.index.IndexFileNameFilter.getFilter()Lorg/apache/lucene/index/IndexFileNameFilter;");
-    //   for (Value expr : sm.getCallExprs()) {
-    //     Utils.debugPrintln(expr);
-    //   }
-    //   for (HashSet<ShimpleMethod> c : getCallees(chaGraph, sm).getAllCallees()) {
-    //     Utils.debugPrintln(c);
-    //   }
-    //   boolean f = mayCall(chaGraph, caller, "org.apache.lucene.index.IndexFileNameFilter.<clinit>()V");
-    //   Utils.debugPrintln(f);
-    // }
+    {
+      String calleeStr = "org.apache.lucene.store.BufferedIndexInput.<clinit>()V";
+      if (caller.fullname().contains("org.apache.lucene.store.FSDirectory.openInput") && !callee.fullname().contains(calleeStr)) {
+        Utils.debugPrintln("Does run reaches?");
+        ShimpleMethod sm = ParsedMethodMap.v().getOrParseToShimple(calleeStr);
+        for (Value expr : sm.getCallExprs()) {
+          Utils.debugPrintln(expr);
+        }
+        for (HashSet<ShimpleMethod> c : getCallees(chaGraph, sm).getAllCallees()) {
+          Utils.debugPrintln(c);
+        }
+        boolean f = mayCall(chaGraph, caller, calleeStr);
+        Utils.debugPrintln(f);
+        System.exit(0);
+      }
+    }
     Stack<ShimpleMethod> stack = new Stack<ShimpleMethod>();
     stack.push(caller);
     Set<ShimpleMethod> visited = new HashSet<>();

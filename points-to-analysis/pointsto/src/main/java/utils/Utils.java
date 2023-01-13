@@ -13,8 +13,10 @@ import soot.jimple.internal.JNewExpr;
 import soot.jimple.internal.JNewMultiArrayExpr;
 import soot.jimple.internal.JStaticInvokeExpr;
 import soot.jimple.internal.JThrowStmt;
+import soot.shimple.Shimple;
 import soot.toolkits.graph.Block;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import parsedmethod.ParsedMethodMap;
@@ -113,21 +115,6 @@ public abstract class Utils {
     }
   }
 
-  public static ShimpleMethod getStaticInitializer(JStaticInvokeExpr invokeExpr) {
-    return getStaticInitializer(invokeExpr.getMethod().getDeclaringClass());
-  }
-
-  public static ShimpleMethod getStaticInitializer(StaticFieldRef fieldRef) {
-    return getStaticInitializer(fieldRef.getFieldRef().declaringClass());
-  }
-
-  public static ShimpleMethod getStaticInitializer(SootClass klass) {
-    SootMethod clinit = klass.getMethodByNameUnsafe("<clinit>");
-    if (clinit != null)
-      return ParsedMethodMap.v().getOrParseToShimple(clinit);
-    return null;
-  }
-
   public static boolean canStmtUpdateHeap(Unit stmt) {
     if (stmt instanceof JAssignStmt) {
       Value left = ((JAssignStmt)stmt).getLeftOp();
@@ -158,5 +145,37 @@ public abstract class Utils {
     }
 
     return false;
+  }
+
+  public static ShimpleMethod getStaticInitializer(JStaticInvokeExpr invokeExpr) {
+    return getStaticInitializer(invokeExpr.getMethod().getDeclaringClass());
+  }
+
+  public static ShimpleMethod getStaticInitializer(StaticFieldRef fieldRef) {
+    return getStaticInitializer(fieldRef.getFieldRef().declaringClass());
+  }
+
+  public static ShimpleMethod getStaticInitializer(SootClass klass) {
+    SootMethod clinit = klass.getMethodByNameUnsafe("<clinit>");
+    if (clinit != null)
+      return ParsedMethodMap.v().getOrParseToShimple(clinit);
+    return null;
+  }
+
+  public static ArrayList<ShimpleMethod> getAllStaticInitsForNew(JNewExpr expr) {
+    ArrayList<ShimpleMethod> clinits = new ArrayList<>();
+    SootClass klass = expr.getBaseType().getSootClass();
+    while (klass != null && Utils.methodToCare(klass.getName())) {
+      ShimpleMethod clinit = Utils.getStaticInitializer(klass);
+      if (clinit != null) {
+        clinits.add(clinit);
+        if (klass.hasSuperclass())
+          klass = klass.getSuperclass();
+        else
+          break;
+      }
+    }
+
+    return clinits;
   }
 }

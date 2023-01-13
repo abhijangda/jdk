@@ -59,7 +59,7 @@ import parsedmethod.*;
 class FuncCall extends Pair<Value, Unit> {
   public boolean isStaticInit;
 
-  public boolean isStaticInit() {
+  private boolean isStaticInit() {
     return this.isStaticInit;
   }
 
@@ -145,7 +145,7 @@ public class CallFrame {
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.<init>()V");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
 
     if (canPrint) {
       Utils.debugPrintln(method.shimpleBody);
@@ -340,11 +340,11 @@ public class CallFrame {
           
           boolean inPath1 = method.isEventInPathFromBlock(succ1, currEvent);
           boolean inPath2 = method.isEventInPathFromBlock(succ2, currEvent);
-          // if (canPrint) {
-          //   Utils.debugPrintln(currStmt);
-          //   Utils.debugPrintln(succ1);
-          //   Utils.debugPrintln(succ2);
-          // }
+          if (canPrint) {
+            Utils.debugPrintln(currStmt);
+            Utils.debugPrintln(succ1);
+            Utils.debugPrintln(succ2);
+          }
           if (inPath1 && inPath2) {
             Utils.debugPrintln("Found in both");
             //TODO: Currently goes through one of the successors, but should go through both
@@ -368,13 +368,13 @@ public class CallFrame {
           }
         } else {
           if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
-            //Then continue with next statement
-            pc.counter++;
+            //End current function
+            pc.counter = method.statements.size();
           } else {
             boolean succCanCall1 = ShimpleMethod.mayCallInPath(succ1, true);
             boolean succCanCall2 = ShimpleMethod.mayCallInPath(succ2, true);
 
-            Utils.debugPrintln(succCanCall1 + " " + succCanCall2);
+            Utils.debugPrintln(succ1.getIndexInMethod() + " -> " + succCanCall1 + " " + succ2.getIndexInMethod() + " -> " + succCanCall2);
             boolean mayCallMeth1 = false;
             boolean mayCallMeth2 = false;
 
@@ -395,7 +395,7 @@ public class CallFrame {
               continue;
             }
 
-            if (canPrint) Utils.debugPrintln(currStmt + " " + mayCallMeth1 + " " + mayCallMeth2);
+            Utils.debugPrintln(currStmt + " " + mayCallMeth1 + " " + mayCallMeth2);
             if (mayCallMeth1 && mayCallMeth2) {
               pc.counter++;
             } else if (mayCallMeth1) {
@@ -406,6 +406,7 @@ public class CallFrame {
               pc.counter = method.stmtToIndex.get(currStmt);
             } else {
               Block lca = method.findLCAInPostDom(succ1, succ2);
+              Utils.debugPrintln(lca.getIndexInMethod());
               pc.counter = method.stmtToIndex.get(lca.getHead());
             }
             // //Otherwise?
@@ -585,12 +586,15 @@ public class CallFrame {
       invokeMethod = calleeExprAndStmt.getCallee();
     } else if (invokeExpr instanceof StaticFieldRef) {
       invokeMethod = calleeExprAndStmt.getCallee();
-      Utils.debugPrintln("set executed " + invokeMethod);
-      StaticInitializers.v().setExecuted(invokeMethod);
+
     } else {
       Utils.debugAssert(false, "Unknown invoke expr type " + invokeExpr.toString());
     }
 
+    if (calleeExprAndStmt.callsStaticInit()) {
+      Utils.debugPrintln("set executed " + invokeMethod);
+      StaticInitializers.v().setExecuted(invokeMethod);
+    }
     Utils.debugAssert(invokeMethod != null, "%s not found\n", invokeMethod.fullname());
     return new CallFrame(invokeMethod, invokeExpr, calleeExprAndStmt.second, this);
   }

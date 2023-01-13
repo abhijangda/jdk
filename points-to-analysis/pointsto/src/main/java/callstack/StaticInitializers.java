@@ -6,6 +6,8 @@ import parsedmethod.ParsedMethodMap;
 import parsedmethod.ShimpleMethod;
 import soot.SootClass;
 import soot.SootMethod;
+import soot.jimple.StaticFieldRef;
+import utils.Utils;
 
 public class StaticInitializers {
   private HashSet<ShimpleMethod> executedClInit;
@@ -40,6 +42,10 @@ public class StaticInitializers {
     if (clinit != null) {
       setExecuted(clinit);
     }
+  }
+
+  public boolean wasExecutedFor(StaticFieldRef fieldRef) {
+    return wasExecuted(Utils.getStaticInitializer(fieldRef));
   }
 
   public boolean wasExecuted(String method) {

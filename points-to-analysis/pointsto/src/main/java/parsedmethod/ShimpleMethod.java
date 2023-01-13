@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.Stack;
 import java.util.TreeSet;
 import java.util.concurrent.BlockingDeque;
 
@@ -35,6 +36,7 @@ import soot.Local;
 import soot.LongType;
 import soot.RefLikeType;
 import soot.RefType;
+import soot.SootClass;
 import soot.SootField;
 import soot.SootFieldRef;
 import soot.SootMethod;
@@ -451,30 +453,154 @@ public class ShimpleMethod {
     return pathToRoot;
   }
 
-  public Block findLCAInPostDom(Block block1, Block block2) {
-    DominatorNode<Block> node1 = this.postDominatorTree.getDode(block1);
-    DominatorNode<Block> node2 = this.postDominatorTree.getDode(block2);
+  private String printTree(DominatorTree<Block> tree) {
+    StringBuilder builder = new StringBuilder();
 
-    ArrayList<DominatorNode<Block>> pathToRoot1 = pathToRoot(node1);
-    ArrayList<DominatorNode<Block>> pathToRoot2 = pathToRoot(node2);
+    Queue<DominatorNode<Block>> queue = new LinkedList<>();
+    queue.addAll(tree.getHeads());
 
-    Collections.reverse(pathToRoot1);
-    Collections.reverse(pathToRoot2);
-    // Utils.debugPrintln(pathToRoot1.toString());
-    // Utils.debugPrintln("LLLL:");
-    // Utils.debugPrintln(pathToRoot2.toString());
-    int minLength = Math.min(pathToRoot1.size(), pathToRoot2.size());
-  
-    Utils.debugPrintln(basicBlockGraph);
-    for (int i = 0; i < minLength; i++) {
-      if (pathToRoot1.get(i).getGode() != pathToRoot2.get(i).getGode()) {
-        return pathToRoot1.get(i-1).getGode();
+    while (!queue.isEmpty()) {
+      DominatorNode<Block> b = queue.remove();
+      builder.append(b.getGode().getIndexInMethod() + " --> " + "{");
+      for(DominatorNode<Block> child : b.getChildren()) {
+        builder.append(child.getGode().getIndexInMethod() + ", ");
+        queue.add(child);
+      }
+      builder.append("}\n");
+    }
+
+    return builder.toString();
+  }
+
+  private void allPathBetweenNodes(Block start, Block dest, ArrayList<Block> path,
+                                   HashSet<Block> visited,
+                                   HashMap<Block, ArrayList<Block>> allPaths) {
+    // Mark the current node and store it in path[]
+    visited.add(start);
+    path.add(start);
+    // If current vertex is same as destination, then print
+    // current path[]
+    if (start == dest) {
+      ArrayList<Block> _path = new ArrayList<Block>();
+      for (Block n : path) {
+        _path.add(n);
+      }
+      allPaths.put(dest, _path);
+    } else { 
+      // If current vertex is not destination
+      // Recur for all the vertices adjacent to current
+      // vertex
+      for (Block succ : start.getSuccs()) {
+        if (!visited.contains(succ) && !isDominator(succ, start)) {
+          allPathBetweenNodes(succ, dest, path, visited, allPaths);
+        }
       }
     }
     
-    if (pathToRoot1.get(minLength - 1).getGode() == pathToRoot2.get(minLength - 1).getGode())
-      return pathToRoot1.get(minLength - 1).getGode();
-  
+    // Remove current vertex from path[] and mark it as
+    // unvisited
+    path.remove(path.size() - 1);
+    visited.remove(start);
+  }
+
+  private HashMap<Block, ArrayList<Block>> pathToExits(Block start) {
+    HashSet<Block> exits = new HashSet<>();
+
+    HashSet<Block> visited = new HashSet<>();
+    Stack<Block> stack = new Stack<>();
+
+    stack.add(start);
+
+    while (!stack.isEmpty()) {
+      Block b = stack.pop();
+      if (visited.contains(b)) continue;
+      visited.add(b);
+      
+      if (b.getSuccs().size() == 0) {
+        if (!Utils.blockHasThrowStmt(b))
+          exits.add(b);
+      }
+      
+      stack.addAll(b.getSuccs());
+    }
+    
+    HashMap<Block, ArrayList<Block>> allPaths = new HashMap<>();
+    ArrayList<Block> path = new ArrayList<>();
+    for (Block exit : exits) {
+      visited.clear();
+      allPathBetweenNodes(start, exit, path, visited, allPaths);
+    }
+
+    for (Map.Entry<Block, ArrayList<Block>> entry : allPaths.entrySet()) {
+      String o = entry.getKey().getIndexInMethod() + "-> " + start.getIndexInMethod() + ": [";
+      for (Block node : entry.getValue()) {
+        o += node.getIndexInMethod() + ", ";
+      }
+      Utils.debugPrintln(o+"]");
+    }
+    return allPaths;
+  }
+
+  public Block findLCAInPostDom(Block block1, Block block2) {
+    HashMap<Block, ArrayList<Block>> paths1 = pathToExits(block1);
+    HashMap<Block, ArrayList<Block>> paths2 = pathToExits(block2);
+    
+    //Reverse all the paths
+    for (Map.Entry<Block, ArrayList<Block>> entry : paths1.entrySet()) {
+      Collections.reverse(entry.getValue());
+    }
+
+    for (Map.Entry<Block, ArrayList<Block>> entry : paths2.entrySet()) {
+      Collections.reverse(entry.getValue());
+    }
+
+    for (Map.Entry<Block, ArrayList<Block>> entry : paths1.entrySet()) {
+      String o = entry.getKey().getIndexInMethod() + "-> " + block1.getIndexInMethod() + ": [";
+      for (Block node : entry.getValue()) {
+        o += node.getIndexInMethod() + ", ";
+      }
+      Utils.debugPrintln(o+"]");
+    }
+
+    for (Map.Entry<Block, ArrayList<Block>> entry : paths2.entrySet()) {
+      String o = entry.getKey().getIndexInMethod() + "-> " + block2.getIndexInMethod() + ": [";
+      for (Block node : entry.getValue()) {
+        o += node.getIndexInMethod() + ", ";
+      }
+      Utils.debugPrintln(o+"]");
+    }
+    Utils.debugPrintln("find lca for " + block1.getIndexInMethod() + " " + block2.getIndexInMethod());
+    boolean hasCommonExit = false;
+    //For the same exits get the common node
+    for (Block exit1 : paths1.keySet()) {
+      if (paths2.containsKey(exit1)) {
+        Utils.debugPrintln("both contains " + exit1.getIndexInMethod());
+        hasCommonExit = true;
+        ArrayList<Block> path1 = paths1.get(exit1);
+        ArrayList<Block> path2 = paths2.get(exit1);
+
+        int minLength = Math.min(path1.size(), path2.size());
+        for (int i = 0; i < minLength; i++) {
+          Utils.debugPrintln(path1.get(i).getIndexInMethod() + " == " + path2.get(i).getIndexInMethod());
+          if (path1.get(i) != path2.get(i)) {
+            Utils.debugPrintln(path1.get(i));
+            Utils.debugPrintln(path2.get(i));
+            return path2.get(i-1);
+          }
+        }
+
+        if (path1.get(minLength - 1) == path2.get(minLength - 1))
+          return path1.get(minLength - 1);
+      }
+    }
+
+    if (paths1.size() == 0) {
+      return block2;
+    } else if (paths2.size() == 0) {
+      return block1;
+    }
+
+    Utils.debugPrintln(this.basicBlockGraph);
     Utils.debugAssert(false, "sanity");
     return null;
   }
@@ -502,10 +628,18 @@ public class ShimpleMethod {
 
       while (stmtIter.hasNext()) {
         Unit stmt = stmtIter.next();
-        for (ValueBox val : stmt.getUseBoxes()) {
-          if (val.getValue() instanceof InvokeExpr) {
+        for (ValueBox valBox : stmt.getUseBoxes()) {
+          Value val = valBox.getValue();
+          if (val instanceof InvokeExpr && 
+              Utils.methodToCare(((InvokeExpr)val).getMethodRef().resolve())) {
             return true;
-          } else if (val.getValue() instanceof StaticFieldRef) {
+          } else if (val instanceof StaticFieldRef) {
+            SootClass klass = ((StaticFieldRef)val).getFieldRef().declaringClass();
+            ShimpleMethod clinit = Utils.getStaticInitializer(klass);
+            if (Utils.methodToCare(clinit) && 
+                !StaticInitializers.v().wasExecuted(clinit)) {
+              return true;
+            }
             return true;
           } else if (falseOnHeapEventBci && Utils.canStmtUpdateHeap(stmt)) {
             return false;

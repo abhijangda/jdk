@@ -67,11 +67,11 @@ public class CallGraphAnalysis {
     callStack.push(rootFrame);
     frameToGraphNode.put(rootFrame, rootNode);
     int iterations = 0;
-    while (!callStack.isEmpty() && iterations++ < 10000) {
+    while (!callStack.isEmpty() && iterations++ < 1000) {
       CallFrame frame = callStack.peek();
       if (frame.parent != null)
         Utils.debugPrintln("parent frame " + frame.parent.toString());
-      Utils.debugPrintln("current frame " + frame);
+      Utils.debugPrintln("current frame " + frame + " iterations " + iterations);
       currEvent = eventIterator.get();
       Utils.debugPrintln("currevent " + currEvent.toString());
       // if (frame.canPrint) {

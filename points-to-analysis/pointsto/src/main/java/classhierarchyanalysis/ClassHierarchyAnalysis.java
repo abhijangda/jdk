@@ -42,24 +42,25 @@ public class ClassHierarchyAnalysis extends HashMap<ShimpleMethod, CHACaller> {
   }
 
   public boolean mayCall(ClassHierarchyGraph chaGraph, ShimpleMethod caller, ShimpleMethod callee) {
-    if (caller.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()") && !callee.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.<clinit>()V")) { //!callee.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.getFilter()Lorg/apache/lucene/index/IndexFileNameFilter;")
-      Utils.debugPrintln("Does run reaches?");
-      ShimpleMethod sm = ParsedMethodMap.v().getOrParseToShimple("org.apache.lucene.index.IndexFileNameFilter.getFilter()Lorg/apache/lucene/index/IndexFileNameFilter;");
-      for (Value expr : sm.getCallExprs()) {
-        Utils.debugPrintln(expr);
-      }
-      for (HashSet<ShimpleMethod> c : getCallees(chaGraph, sm).getAllCallees()) {
-        Utils.debugPrintln(c);
-      }
-      boolean f = mayCall(chaGraph, caller, "org.apache.lucene.index.IndexFileNameFilter.<clinit>()V");
-      Utils.debugPrintln(f);
-    }
+    // if (caller.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()") && !callee.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.<clinit>()V")) { //!callee.fullname().contains("org.apache.lucene.index.IndexFileNameFilter.getFilter()Lorg/apache/lucene/index/IndexFileNameFilter;")
+    //   Utils.debugPrintln("Does run reaches?");
+    //   ShimpleMethod sm = ParsedMethodMap.v().getOrParseToShimple("org.apache.lucene.index.IndexFileNameFilter.getFilter()Lorg/apache/lucene/index/IndexFileNameFilter;");
+    //   for (Value expr : sm.getCallExprs()) {
+    //     Utils.debugPrintln(expr);
+    //   }
+    //   for (HashSet<ShimpleMethod> c : getCallees(chaGraph, sm).getAllCallees()) {
+    //     Utils.debugPrintln(c);
+    //   }
+    //   boolean f = mayCall(chaGraph, caller, "org.apache.lucene.index.IndexFileNameFilter.<clinit>()V");
+    //   Utils.debugPrintln(f);
+    // }
     Stack<ShimpleMethod> stack = new Stack<ShimpleMethod>();
     stack.push(caller);
     Set<ShimpleMethod> visited = new HashSet<>();
 
     while (!stack.isEmpty()) {
       ShimpleMethod m = stack.pop();
+      if (m == null) continue;
       if (m == callee) return true;
 
       if (visited.contains(m)) continue;

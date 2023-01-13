@@ -12,6 +12,11 @@ import soot.jimple.internal.JNewArrayExpr;
 import soot.jimple.internal.JNewExpr;
 import soot.jimple.internal.JNewMultiArrayExpr;
 import soot.jimple.internal.JStaticInvokeExpr;
+import soot.jimple.internal.JThrowStmt;
+import soot.toolkits.graph.Block;
+
+import java.util.Iterator;
+
 import parsedmethod.ParsedMethodMap;
 import parsedmethod.ShimpleMethod;
 import soot.AbstractJasminClass;
@@ -136,6 +141,18 @@ public abstract class Utils {
       
       if (left instanceof FieldRef || 
           left instanceof ArrayRef) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  public static boolean blockHasThrowStmt(Block block) {
+    Iterator<Unit> iter = block.iterator();
+    while (iter.hasNext()) {
+      Unit stmt = iter.next();
+      if (stmt instanceof JThrowStmt) {
         return true;
       }
     }

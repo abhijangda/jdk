@@ -839,8 +839,9 @@ public class ShimpleMethod {
       }
       return vals;
     } else if (val instanceof JInterfaceInvokeExpr) {
-      Utils.debugAssert(false, stmt.toString());
+      return null;
     } else if (val instanceof SPhiExpr) {
+      //TODO: do this based on the previous block
       SPhiExpr phi = (SPhiExpr)val;
       VariableValues vals = new VariableValues(val, stmt);
       for (ValueUnitPair pair : phi.getArgs()) {
@@ -879,7 +880,7 @@ public class ShimpleMethod {
     return null;
   }
 
-  private void propogateValues(HashMap<Value, VariableValues> allVariableValues,
+  public void propogateValues(HashMap<Value, VariableValues> allVariableValues,
                                Unit stmt) {
     if (stmt instanceof JIdentityStmt) {
       if (((JIdentityStmt)stmt).getRightOp() instanceof CaughtExceptionRef) {
@@ -944,29 +945,29 @@ public class ShimpleMethod {
     }
   }
 
-  private void propogateValues(HashMap<Value, VariableValues> allVariableValues,
-                               Block block, boolean fwdOrBckwd) {
-    ArrayList<Unit> stmts = blockStmts.get(block);
-    for (Unit unit : stmts) {
-      propogateValues(allVariableValues, unit);
-      // obtainVariableValues(val, useToVals);
-    }
-  }
+  // private void propogateValues(HashMap<Value, VariableValues> allVariableValues,
+  //                              Block block, boolean fwdOrBckwd) {
+  //   ArrayList<Unit> stmts = blockStmts.get(block);
+  //   for (Unit unit : stmts) {
+  //     propogateValues(allVariableValues, unit);
+  //     // obtainVariableValues(val, useToVals);
+  //   }
+  // }
 
-  public void propogateValuesToSucc(HashMap<Value, VariableValues> allVariableValues, Block block) {
-    Queue<Block> q = new LinkedList<Block>();
-    q.add(block);
-    HashSet<Block> visited = new HashSet<>();
-    while (!q.isEmpty()) {
-      Block b = q.remove();
-      if (visited.contains(b)) continue;
-      for (var succ : b.getSuccs()) {
-        propogateValues(allVariableValues, succ, false);
-        q.add(succ);
-        visited.add(succ);
-      }
-    }
-  }
+  // public void propogateValuesToSucc(HashMap<Value, VariableValues> allVariableValues, Block block) {
+  //   Queue<Block> q = new LinkedList<Block>();
+  //   q.add(block);
+  //   HashSet<Block> visited = new HashSet<>();
+  //   while (!q.isEmpty()) {
+  //     Block b = q.remove();
+  //     if (visited.contains(b)) continue;
+  //     for (var succ : b.getSuccs()) {
+  //       propogateValues(allVariableValues, succ, false);
+  //       q.add(succ);
+  //       visited.add(succ);
+  //     }
+  //   }
+  // }
 
   public void updateValuesWithHeapEvent(HashMap<Value, VariableValues> allVariableValues,
                                         HeapEvent heapEvent) {
@@ -1037,12 +1038,12 @@ public class ShimpleMethod {
         Utils.debugAssert(false, "not handling " + Const.getOpcodeName(opcode));
     }
 
-    //Propagate values inside the block
-    propogateValues(allVariableValues, block, true);
+    // //Propagate values inside the block
+    // propogateValues(allVariableValues, block, true);
 
-    //Propagate values to the successors
-    propogateValuesToSucc(allVariableValues, block);
-    //Propagate values to the predecessors
+    // //Propagate values to the successors
+    // propogateValuesToSucc(allVariableValues, block);
+    // //Propagate values to the predecessors
   }
 
   public String basicBlockStr() {

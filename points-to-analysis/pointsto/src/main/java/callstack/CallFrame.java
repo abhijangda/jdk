@@ -246,7 +246,7 @@ public class CallFrame {
       }
       this.parent.allVariableValues.get(leftVal).addAll(retValues);
 
-      this.parent.method.propogateValuesToSucc(this.parent.allVariableValues, this.parent.method.getBlockForStmt(this.parentStmt));
+      // this.parent.method.propogateValuesToSucc(this.parent.allVariableValues, this.parent.method.getBlockForStmt(this.parentStmt));
     }
     
   }
@@ -264,6 +264,8 @@ public class CallFrame {
         currEvent = eventsIterator.get();
         methodMatches = currEvent.method == method.sootMethod;
         currStmt = method.statements.get(pc.counter);
+        this.method.propogateValues(this.allVariableValues, currStmt);
+
         if (currStmt instanceof JIfStmt) {
         } else if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
           JavaHeap.v().update(currEvent);
@@ -296,6 +298,7 @@ public class CallFrame {
       currEvent = eventsIterator.get();
       methodMatches = currEvent.method == method.sootMethod;
       currStmt = method.statements.get(pc.counter);
+      this.method.propogateValues(this.allVariableValues, currStmt);
       Utils.debugPrintln(currStmt + " at " + pc.counter);
       if (this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>")) {
         // Utils.debugPrintln(pc.counter + " " + this.method.statements.size());

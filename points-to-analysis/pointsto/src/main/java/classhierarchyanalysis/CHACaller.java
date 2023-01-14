@@ -5,6 +5,7 @@ import utils.Utils;
 
 import java.io.InvalidObjectException;
 import java.util.HashSet;
+import java.util.List;
 
 import callstack.StaticInitializers;
 
@@ -40,6 +41,10 @@ public class CHACaller {
     callees.add(callee);
   }
 
+  private void addCallees(HashSet<ShimpleMethod> callees, List<ShimpleMethod> callee) {
+    callees.addAll(callee);
+  }
+
   private void addCallee(HashSet<ShimpleMethod> callees, SootMethod callee) {
     addCallee(callees, ParsedMethodMap.v().getOrParseToShimple(callee));
   }
@@ -62,13 +67,7 @@ public class CHACaller {
           addCallee(callees, callee);
           if (invokeExpr instanceof JStaticInvokeExpr) {
             SootClass klass = invokeExpr.getMethod().getDeclaringClass();
-            while (klass != null && Utils.methodToCare(klass.getName())) {
-              addCallee(callees, Utils.getStaticInitializer(klass));
-              if (klass.hasSuperclass())
-                klass = klass.getSuperclass();
-              else
-                break;
-            }
+            addCallees(callees, Utils.getAllStaticInitializers(klass));
           }
         } else if (invokeExpr instanceof JVirtualInvokeExpr || invokeExpr instanceof JInterfaceInvokeExpr) {
           SootClass sootCalleeClass = sootCallee.getDeclaringClass();
@@ -95,10 +94,10 @@ public class CHACaller {
         //   Utils.debugPrintln(m.getName());
         // }
         // SootMethod clinit = staticField.getFieldRef().declaringClass().getMethodByName("<clinit>");
-        addCallee(getCalleesAtExpr(val), Utils.getStaticInitializer(staticField));
+        addCallees(getCalleesAtExpr(val), Utils.getAllStaticInitializers(staticField));
         // Utils.debugAssert(clinit != null, "clinit cannot be null");
       } else if (val instanceof JNewExpr) {
-        getCalleesAtExpr(val).addAll(Utils.getAllStaticInitsForNew((JNewExpr)val));
+        getCalleesAtExpr(val).addAll(Utils.getAllStaticInitializers((JNewExpr)val));
       }
     }
   }

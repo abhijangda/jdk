@@ -23,6 +23,7 @@ import javaheap.JavaHeapElem;
 import parsedmethod.ParsedMethodMap;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import soot.jimple.BinopExpr;
 import soot.jimple.CmpExpr;
@@ -42,6 +43,7 @@ import soot.jimple.internal.AbstractInstanceInvokeExpr;
 import soot.jimple.internal.JGotoStmt;
 import soot.jimple.internal.JIfStmt;
 import soot.jimple.internal.JInterfaceInvokeExpr;
+import soot.jimple.internal.JNewExpr;
 import soot.jimple.internal.JRetStmt;
 import soot.jimple.internal.JReturnStmt;
 import soot.jimple.internal.JReturnVoidStmt;
@@ -58,32 +60,29 @@ import parsedmethod.*;
 
 class FuncCall extends Pair<Value, Unit> {
   public boolean isStaticInit;
+  private final ShimpleMethod callee;
 
   private boolean isStaticInit() {
     return this.isStaticInit;
   }
 
-  public FuncCall(Value v, Unit stmt) {
+  public FuncCall(Value v, Unit stmt, ShimpleMethod callee) {
     super(v, stmt);
     this.isStaticInit = false;
+    this.callee = callee;
   }
 
-  public FuncCall(JStaticInvokeExpr v, Unit stmt, boolean isStaticInit) {
-    this((Value)v, stmt);
+  public FuncCall(JStaticInvokeExpr v, Unit stmt, ShimpleMethod callee, boolean isStaticInit) {
+    this((Value)v, stmt, callee);
     this.isStaticInit = isStaticInit;
   }
 
   public ShimpleMethod getCallee() {
-    if (this.first instanceof JStaticInvokeExpr && isStaticInit()) {
-      return Utils.getStaticInitializer((JStaticInvokeExpr)this.first);
-    }
-
-    if (this.first instanceof InvokeExpr) {
-      return ParsedMethodMap.v().getOrParseToShimple(((InvokeExpr)this.first).getMethod());
-    }
-
-    if (this.first instanceof StaticFieldRef) {
-      return Utils.getStaticInitializer((StaticFieldRef)this.first);
+    if (this.first instanceof JStaticInvokeExpr && isStaticInit() || 
+        this.first instanceof InvokeExpr ||
+        this.first instanceof StaticFieldRef ||
+        this.first instanceof JNewExpr) {
+        return callee;
     }
 
     Utils.debugAssert(false, "");
@@ -252,8 +251,9 @@ public class CallFrame {
         funcToCall = null;
 
         for (ValueBox use : currStmt.getUseBoxes()) {
-          if (use.getValue() instanceof InvokeExpr) {
-            funcToCall = new FuncCall((InvokeExpr)use.getValue(), currStmt);
+          Value val = use.getValue();
+          if (val instanceof InvokeExpr) {
+            funcToCall = new FuncCall(val, currStmt, Utils.getMethodForInvokeExpr((InvokeExpr)val));
             if (funcToCall.getCallee().fullname().contains("org.apache.lucene.store.FSDirectory.init")) {
               break;
             }
@@ -433,22 +433,26 @@ public class CallFrame {
         funcToCall = null;
         boolean incrementPC = true;
         for (ValueBox use : currStmt.getUseBoxes()) {
-          if (use.getValue() instanceof StaticFieldRef) {
-            Utils.debugPrintln(use.getValue().getClass());
-            ShimpleMethod clinit = Utils.getStaticInitializer((StaticFieldRef)use.getValue());
-            Utils.debugPrintln("clinit " + clinit.toString() + " " + StaticInitializers.v().wasExecuted(clinit));
+          Value val = use.getValue();
+          if (val instanceof StaticFieldRef) {
+            Utils.debugPrintln(val.getClass());
+            ShimpleMethodList clinits = Utils.getAllStaticInitializers((StaticFieldRef)val);
+            ShimpleMethod clinit = clinits.nextUnexecutedStaticInit();
             if (!StaticInitializers.v().wasExecuted(clinit)) {
-              funcToCall = new FuncCall(use.getValue(), currStmt);
+              funcToCall = new FuncCall(val, currStmt, clinit);
               if (funcToCall.getCallee() != null) {
                 break;
               }
             }
             funcToCall = null;
-          } else if (use.getValue() instanceof JStaticInvokeExpr) {
-            ShimpleMethod clinit = Utils.getStaticInitializer((JStaticInvokeExpr)use.getValue());
-            Utils.debugPrintln("clinit " + clinit + " " + StaticInitializers.v().wasExecuted(clinit));
-            if (!StaticInitializers.v().wasExecuted(clinit)) {
-              funcToCall = new FuncCall((JStaticInvokeExpr)use.getValue(), currStmt, true);
+          } else if (val instanceof JStaticInvokeExpr) {
+            Utils.debugPrintln("");
+            ShimpleMethodList clinits = Utils.getAllStaticInitializers((JStaticInvokeExpr)val);
+            ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit();
+            Utils.debugPrintln("clinit " + unexecClinit);
+            if (unexecClinit != null) {
+              Utils.debugPrintln("clinit " + unexecClinit + " " + StaticInitializers.v().wasExecuted(unexecClinit));
+              funcToCall = new FuncCall((JStaticInvokeExpr)val, currStmt, unexecClinit, true);
               if (funcToCall.getCallee() != null) {
                 incrementPC = false;
                 break;
@@ -456,8 +460,10 @@ public class CallFrame {
             }
             funcToCall = null;
           } 
-          if (use.getValue() instanceof InvokeExpr) {
-            funcToCall = new FuncCall((InvokeExpr)use.getValue(), currStmt);
+          if (val instanceof InvokeExpr) {
+            InvokeExpr invoke = (InvokeExpr)val;
+            funcToCall = new FuncCall(invoke, currStmt, 
+                                       Utils.getMethodForInvokeExpr(invoke));
             break;
           }
         }

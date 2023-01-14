@@ -44,10 +44,6 @@ public class StaticInitializers {
     }
   }
 
-  public boolean wasExecutedFor(StaticFieldRef fieldRef) {
-    return wasExecuted(Utils.getStaticInitializer(fieldRef));
-  }
-
   public boolean wasExecuted(String method) {
     return wasExecuted(ParsedMethodMap.v().getOrParseToShimple(method));
   }

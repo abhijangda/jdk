@@ -6,6 +6,7 @@ import soot.Unit;
 import soot.Value;
 import soot.jimple.ArrayRef;
 import soot.jimple.FieldRef;
+import soot.jimple.InvokeExpr;
 import soot.jimple.StaticFieldRef;
 import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JNewArrayExpr;
@@ -21,6 +22,7 @@ import java.util.Iterator;
 
 import parsedmethod.ParsedMethodMap;
 import parsedmethod.ShimpleMethod;
+import parsedmethod.ShimpleMethodList;
 import soot.AbstractJasminClass;
 import soot.SootClass;
 
@@ -147,35 +149,44 @@ public abstract class Utils {
     return false;
   }
 
-  public static ShimpleMethod getStaticInitializer(JStaticInvokeExpr invokeExpr) {
-    return getStaticInitializer(invokeExpr.getMethod().getDeclaringClass());
+  public static ShimpleMethodList getAllStaticInitializers(JStaticInvokeExpr invokeExpr) {
+    return getAllStaticInitializers(invokeExpr.getMethod().getDeclaringClass());
   }
 
-  public static ShimpleMethod getStaticInitializer(StaticFieldRef fieldRef) {
-    return getStaticInitializer(fieldRef.getFieldRef().declaringClass());
+  public static ShimpleMethodList getAllStaticInitializers(StaticFieldRef fieldRef) {
+    return getAllStaticInitializers(fieldRef.getFieldRef().declaringClass());
   }
 
-  public static ShimpleMethod getStaticInitializer(SootClass klass) {
+  private static ShimpleMethod getStaticInitializer(SootClass klass) {
     SootMethod clinit = klass.getMethodByNameUnsafe("<clinit>");
     if (clinit != null)
       return ParsedMethodMap.v().getOrParseToShimple(clinit);
     return null;
   }
 
-  public static ArrayList<ShimpleMethod> getAllStaticInitsForNew(JNewExpr expr) {
-    ArrayList<ShimpleMethod> clinits = new ArrayList<>();
+  public static ShimpleMethodList getAllStaticInitializers(JNewExpr expr) {
     SootClass klass = expr.getBaseType().getSootClass();
+    return getAllStaticInitializers(klass);
+  }
+
+  public static ShimpleMethodList getAllStaticInitializers(SootClass klass) {
+    ShimpleMethodList clinits = new ShimpleMethodList();
+    
     while (klass != null && Utils.methodToCare(klass.getName())) {
       ShimpleMethod clinit = Utils.getStaticInitializer(klass);
       if (clinit != null) {
         clinits.add(clinit);
-        if (klass.hasSuperclass())
-          klass = klass.getSuperclass();
-        else
-          break;
       }
+      if (klass.hasSuperclass())
+        klass = klass.getSuperclass();
+      else
+        break;
     }
 
     return clinits;
+  }
+
+  public static ShimpleMethod getMethodForInvokeExpr(InvokeExpr invoke) {
+    return ParsedMethodMap.v().getOrParseToShimple(invoke.getMethod());
   }
 }

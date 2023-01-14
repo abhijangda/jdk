@@ -634,13 +634,13 @@ public class ShimpleMethod {
               Utils.methodToCare(((InvokeExpr)val).getMethodRef().resolve())) {
             return true;
           } else if (val instanceof StaticFieldRef) {
-            SootClass klass = ((StaticFieldRef)val).getFieldRef().declaringClass();
-            ShimpleMethod clinit = Utils.getStaticInitializer(klass);
-            if (Utils.methodToCare(clinit) && 
-                !StaticInitializers.v().wasExecuted(clinit)) {
+            SootClass klass = ((StaticFieldRef)val).getFieldRef().declaringClass();            
+            ShimpleMethodList clinits = Utils.getAllStaticInitializers(klass);
+            ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit();
+            if (unexecClinit != null) {
               return true;
             }
-            return true;
+            return false;
           } else if (falseOnHeapEventBci && Utils.canStmtUpdateHeap(stmt)) {
             return false;
           }
@@ -1048,6 +1048,10 @@ public class ShimpleMethod {
 
   public String fullname() {
     return Utils.methodFullName(sootMethod);
+  }
+
+  public boolean isStaticInitializer() {
+    return sootMethod.isStaticInitializer();
   }
 
   public ArrayList<Block> filterNonCatchBlocks(List<Block> blocks) {

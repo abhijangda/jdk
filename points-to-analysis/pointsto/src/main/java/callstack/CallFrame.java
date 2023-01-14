@@ -40,6 +40,7 @@ import soot.jimple.StaticFieldRef;
 import soot.jimple.StaticInvokeExpr;
 import soot.jimple.VirtualInvokeExpr;
 import soot.jimple.internal.AbstractInstanceInvokeExpr;
+import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JGotoStmt;
 import soot.jimple.internal.JIfStmt;
 import soot.jimple.internal.JInterfaceInvokeExpr;
@@ -135,6 +136,7 @@ public class CallFrame {
   public final CallFrame parent;
   private final ProgramCounter pc;
   private final HashMap<ParameterRef, VariableValues> paramValues;
+  private final Unit parentStmt;
   public boolean canPrint = false;
   
   public CallFrame(ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
@@ -143,6 +145,7 @@ public class CallFrame {
     this.parent = parent;
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
+    this.parentStmt = stmt;
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
     canPrint = this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
 
@@ -167,8 +170,7 @@ public class CallFrame {
     //TODO: fix
     if (method.statements != null && method.statements.size() > pc.counter) {
       Unit stmt = method.statements.get(pc.counter);
-      if (stmt instanceof JRetStmt || 
-          stmt instanceof JReturnStmt || 
+      if (stmt instanceof JRetStmt ||
           stmt instanceof JReturnVoidStmt)
         return false;
 
@@ -226,6 +228,27 @@ public class CallFrame {
     }
 
     return null;
+  }
+
+  private void updateParentFromRet(JReturnStmt retStmt) {
+    Value retVal = retStmt.getOp();
+    // Utils.debugPrintln(this.parent.method.shimpleBody);
+    Utils.debugPrintln(this.method.shimpleBody);
+    Utils.debugAssert(this.parentStmt instanceof JAssignStmt, "%s", this.parentStmt.toString());
+    Value leftVal = ((JAssignStmt)this.parentStmt).getLeftOp();
+
+    if (retVal.getType() instanceof RefLikeType) {
+      Utils.debugPrintln(retStmt);
+      Utils.debugPrintln(retVal);
+      VariableValues retValues = this.allVariableValues.get(retVal);
+      if (retValues.size() == 0) {
+        Utils.debugPrintln("0 values for " + retVal);
+      }
+      this.parent.allVariableValues.get(leftVal).addAll(retValues);
+
+      this.parent.method.propogateValuesToSucc(this.parent.allVariableValues, this.parent.method.getBlockForStmt(this.parentStmt));
+    }
+    
   }
 
   private FuncCall nextFuncCall(ArrayListIterator<HeapEvent> eventsIterator) {
@@ -376,7 +399,6 @@ public class CallFrame {
             Block commonExit = method.findLCAInPostDom(succ1, succ2, succ1ToExit, succ2ToExit);
             boolean mayCallMeth1 = false;
             boolean mayCallMeth2 = false;
-
             if (commonExit == null) {
               //Its a loop
               Utils.debugPrintln("loop");
@@ -406,6 +428,7 @@ public class CallFrame {
                 continue;
               }
             } else {
+              Utils.debugPrintln(commonExit.getIndexInMethod());
               String b = "";
               for(Block n : succ1ToExit) {
                 b += n.getIndexInMethod() + ", ";
@@ -415,7 +438,7 @@ public class CallFrame {
               for(Block n : succ2ToExit) {
                 b += n.getIndexInMethod() + ", ";
               }
-              Utils.debugPrintln(succ2.getIndexInMethod() +" -> " + b);
+              Utils.debugPrintln(succ1.getIndexInMethod() +" -> " + b);
               boolean succCanCall1 = method.mayCallInPath(succ1, succ1ToExit, false);
               Utils.debugPrintln(succ2.getIndexInMethod());
               boolean succCanCall2 = method.mayCallInPath(succ2, succ2ToExit, false);
@@ -431,7 +454,7 @@ public class CallFrame {
               } else if (succCanCall1) {
                 mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
               } else if (succCanCall2) {
-                mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+                mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
               } else {
                 mayCallMeth1 = false;
                 mayCallMeth2 = false;
@@ -468,6 +491,10 @@ public class CallFrame {
         Utils.debugAssert(method.stmtToIndex.containsKey(target), "sanity");
         pc.counter = method.stmtToIndex.get(target);
         currStmt = method.statements.get(pc.counter);
+      } else if (currStmt instanceof JReturnStmt) { 
+        updateParentFromRet((JReturnStmt)currStmt);
+        pc.counter = method.statements.size();
+        return null;
       } else {
         if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
           JavaHeap.v().update(currEvent);

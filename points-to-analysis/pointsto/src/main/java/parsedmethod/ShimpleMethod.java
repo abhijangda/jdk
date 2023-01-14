@@ -26,75 +26,14 @@ import javaheap.HeapEvent;
 import javaheap.JavaHeap;
 import javaheap.JavaHeapElem;
 import javaheap.JavaObject;
-import soot.BooleanType;
-import soot.ByteType;
-import soot.CharType;
-import soot.DoubleType;
-import soot.FloatType;
-import soot.IntegerType;
-import soot.Local;
-import soot.LongType;
-import soot.RefLikeType;
-import soot.RefType;
-import soot.SootClass;
-import soot.SootField;
-import soot.SootFieldRef;
-import soot.SootMethod;
-import soot.Unit;
-import soot.Value;
-import soot.ValueBox;
-import soot.dava.toolkits.base.AST.traversals.AllVariableUses;
-import soot.jimple.BinopExpr;
-import soot.jimple.CaughtExceptionRef;
-import soot.jimple.Constant;
-import soot.jimple.InvokeExpr;
-import soot.jimple.InvokeStmt;
-import soot.jimple.NullConstant;
-import soot.jimple.ParameterRef;
-import soot.jimple.StaticFieldRef;
-import soot.jimple.Stmt;
-import soot.jimple.StringConstant;
-import soot.jimple.UnopExpr;
-import soot.jimple.internal.AbstractInstanceInvokeExpr;
-import soot.jimple.internal.JArrayRef;
-import soot.jimple.internal.JAssignStmt;
-import soot.jimple.internal.JCastExpr;
-import soot.jimple.internal.JEnterMonitorStmt;
-import soot.jimple.internal.JExitMonitorStmt;
-import soot.jimple.internal.JGotoStmt;
-import soot.jimple.internal.JIdentityStmt;
-import soot.jimple.internal.JIfStmt;
-import soot.jimple.internal.JInstanceFieldRef;
-import soot.jimple.internal.JInstanceOfExpr;
-import soot.jimple.internal.JInterfaceInvokeExpr;
-import soot.jimple.internal.JInvokeStmt;
-import soot.jimple.internal.JLookupSwitchStmt;
-import soot.jimple.internal.JNewArrayExpr;
-import soot.jimple.internal.JNewExpr;
-import soot.jimple.internal.JNewMultiArrayExpr;
-import soot.jimple.internal.JNopStmt;
-import soot.jimple.internal.JRetStmt;
-import soot.jimple.internal.JReturnStmt;
-import soot.jimple.internal.JReturnVoidStmt;
-import soot.jimple.internal.JSpecialInvokeExpr;
-import soot.jimple.internal.JStaticInvokeExpr;
-import soot.jimple.internal.JTableSwitchStmt;
-import soot.jimple.internal.JThrowStmt;
-import soot.jimple.internal.JVirtualInvokeExpr;
-import soot.jimple.internal.JimpleLocal;
+import soot.*;
+import soot.jimple.*;
+import soot.jimple.internal.*;
 import soot.shimple.ShimpleBody;
 import soot.shimple.ShimpleMethodSource;
 import soot.shimple.internal.SPhiExpr;
 import soot.shimple.internal.SPiExpr;
-import soot.toolkits.graph.Block;
-import soot.toolkits.graph.DirectedGraph;
-import soot.toolkits.graph.DominatorAnalysis;
-import soot.toolkits.graph.DominatorNode;
-import soot.toolkits.graph.DominatorTree;
-import soot.toolkits.graph.ExceptionalBlockGraph;
-import soot.toolkits.graph.MHGDominatorsFinder;
-import soot.toolkits.graph.MHGPostDominatorsFinder;
-import soot.toolkits.graph.PostDominatorAnalysis;
+import soot.toolkits.graph.*;
 import soot.toolkits.scalar.ValueUnitPair;
 
 import utils.Utils;
@@ -437,7 +376,12 @@ public class ShimpleMethod {
         //TODO: If a heap event bytecode is in this block then this path is not taken
       }
       visited.add(b);
-      q.addAll(b.getSuccs());
+      for (Block succ : b.getSuccs()) {
+        if (!isDominator(succ, b)) {
+          //Should not consider loop
+          q.add(succ);
+        }
+      }
     }
     
     return false;
@@ -701,7 +645,12 @@ public class ShimpleMethod {
         }
 
         visited.add(b);
-        q.addAll(b.getSuccs());
+        for (Block succ : b.getSuccs()) {
+          if (!isDominator(succ, b)) {
+            //Should not consider loop
+            q.add(succ);
+          }
+        }
       }
     }
     
@@ -723,7 +672,9 @@ public class ShimpleMethod {
         Iterator<Unit> unitIter = block.iterator();
         while (unitIter.hasNext()) {
           Unit unit = unitIter.next();
+          Utils.debugPrintln(unit);
           for (ValueBox def : unit.getDefBoxes()) {
+            Utils.debugPrintln(def.getValue());
             allVariableValues.put(def.getValue(), new VariableValues(def.getValue(), unit));
           }
         }
@@ -1002,7 +953,7 @@ public class ShimpleMethod {
     }
   }
 
-  private void propogateValuesToSucc(HashMap<Value, VariableValues> allVariableValues, Block block) {
+  public void propogateValuesToSucc(HashMap<Value, VariableValues> allVariableValues, Block block) {
     Queue<Block> q = new LinkedList<Block>();
     q.add(block);
     HashSet<Block> visited = new HashSet<>();

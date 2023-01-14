@@ -371,28 +371,75 @@ public class CallFrame {
             //End current function
             pc.counter = method.statements.size();
           } else {
-            boolean succCanCall1 = ShimpleMethod.mayCallInPath(succ1, true);
-            boolean succCanCall2 = ShimpleMethod.mayCallInPath(succ2, true);
-
-            Utils.debugPrintln(succ1.getIndexInMethod() + " -> " + succCanCall1 + " " + succ2.getIndexInMethod() + " -> " + succCanCall2);
+            ArrayList<Block> succ1ToExit = new ArrayList<Block>();
+            ArrayList<Block> succ2ToExit = new ArrayList<Block>();
+            Block commonExit = method.findLCAInPostDom(succ1, succ2, succ1ToExit, succ2ToExit);
             boolean mayCallMeth1 = false;
             boolean mayCallMeth2 = false;
 
-            if (succCanCall1 && succCanCall2) {
-              mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-              mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
+            if (commonExit == null) {
+              //Its a loop
+              Utils.debugPrintln("loop");
+              Utils.debugPrintln(succ1.getIndexInMethod());
+              boolean succCanCall1 = method.mayCallInPath(succ1, succ1ToExit, false);
+              Utils.debugPrintln(succ2.getIndexInMethod());
+              boolean succCanCall2 = method.mayCallInPath(succ2, succ2ToExit, false);
 
-            } else if (succCanCall1) {
-              mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-            } else if (succCanCall2) {
-              mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+              Utils.debugPrintln(succ1.getIndexInMethod() + " -> " + succCanCall1 + " " + succ2.getIndexInMethod() + " -> " + succCanCall2);
+
+              if (succCanCall1 && succCanCall2) {
+                Utils.debugPrintln(succ1.getIndexInMethod());
+                mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+                Utils.debugPrintln(succ2.getIndexInMethod());
+                mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
+                
+              } else if (succCanCall1) {
+                mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+              } else if (succCanCall2) {
+                mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+              } else {
+                mayCallMeth1 = false;
+                mayCallMeth2 = false;
+                //No point in going to next instructions because none of the blocks have
+                //any more invoke statements
+                pc.counter = method.statements.size();
+                continue;
+              }
             } else {
-              mayCallMeth1 = false;
-              mayCallMeth2 = false;
-              //No point in going to next instructions because none of the blocks have
-              //any more invoke statements
-              pc.counter = method.statements.size();
-              continue;
+              String b = "";
+              for(Block n : succ1ToExit) {
+                b += n.getIndexInMethod() + ", ";
+              }
+              Utils.debugPrintln(succ1.getIndexInMethod() +" -> " + b);
+              b = "";
+              for(Block n : succ2ToExit) {
+                b += n.getIndexInMethod() + ", ";
+              }
+              Utils.debugPrintln(succ2.getIndexInMethod() +" -> " + b);
+              boolean succCanCall1 = method.mayCallInPath(succ1, succ1ToExit, false);
+              Utils.debugPrintln(succ2.getIndexInMethod());
+              boolean succCanCall2 = method.mayCallInPath(succ2, succ2ToExit, false);
+
+              Utils.debugPrintln(succ1.getIndexInMethod() + " -> " + succCanCall1 + " " + succ2.getIndexInMethod() + " -> " + succCanCall2);
+
+              if (succCanCall1 && succCanCall2) {
+                Utils.debugPrintln(succ1.getIndexInMethod());
+                mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+                Utils.debugPrintln(succ2.getIndexInMethod());
+                mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
+                
+              } else if (succCanCall1) {
+                mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+              } else if (succCanCall2) {
+                mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+              } else {
+                mayCallMeth1 = false;
+                mayCallMeth2 = false;
+                //No point in going to next instructions because none of the blocks have
+                //any more invoke statements
+                pc.counter = method.statements.size();
+                continue;
+              }
             }
 
             Utils.debugPrintln(currStmt + " " + mayCallMeth1 + " " + mayCallMeth2);
@@ -405,7 +452,7 @@ public class CallFrame {
               currStmt = succ2.getHead();
               pc.counter = method.stmtToIndex.get(currStmt);
             } else {
-              Block lca = method.findLCAInPostDom(succ1, succ2);
+              Block lca = method.findLCAInPostDom(succ1, succ2, null, null);
               Utils.debugPrintln(lca.getIndexInMethod());
               pc.counter = method.stmtToIndex.get(lca.getHead());
             }
@@ -434,7 +481,20 @@ public class CallFrame {
         boolean incrementPC = true;
         for (ValueBox use : currStmt.getUseBoxes()) {
           Value val = use.getValue();
-          if (val instanceof StaticFieldRef) {
+          if (val instanceof JNewExpr) {
+            Utils.debugPrintln(val.getClass());
+            ShimpleMethodList clinits = Utils.getAllStaticInitializers((JNewExpr)val);
+            ShimpleMethod clinit = clinits.nextUnexecutedStaticInit();
+            if (!StaticInitializers.v().wasExecuted(clinit)) {
+              funcToCall = new FuncCall(val, currStmt, clinit);
+              if (funcToCall.getCallee() != null) {
+                incrementPC = false;
+                break;
+              }
+            }
+            funcToCall = null;
+          } else if (val instanceof StaticFieldRef) {
+            //TODO: Should only happen when for GETSTATIC?
             Utils.debugPrintln(val.getClass());
             ShimpleMethodList clinits = Utils.getAllStaticInitializers((StaticFieldRef)val);
             ShimpleMethod clinit = clinits.nextUnexecutedStaticInit();
@@ -592,7 +652,8 @@ public class CallFrame {
       invokeMethod = calleeExprAndStmt.getCallee();
     } else if (invokeExpr instanceof StaticFieldRef) {
       invokeMethod = calleeExprAndStmt.getCallee();
-
+    } else if (invokeExpr instanceof JNewExpr) {
+      invokeMethod = calleeExprAndStmt.getCallee();
     } else {
       Utils.debugAssert(false, "Unknown invoke expr type " + invokeExpr.toString());
     }

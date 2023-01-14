@@ -75,7 +75,7 @@ public class CallGraphAnalysis {
       currEvent = eventIterator.get();
       Utils.debugPrintln("currevent " + currEvent.toString());
       // if (frame.canPrint) {
-      //   Utils.debugPrintln(frame.method.shimpleBody);
+      //   Utils.debugPrintln(frame.method.basicBlockStr());
       //   return;
       // }
       if (!frame.hasNextInvokeStmt()) {

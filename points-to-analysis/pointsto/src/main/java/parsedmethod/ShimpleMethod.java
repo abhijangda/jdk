@@ -424,7 +424,7 @@ public class ShimpleMethod {
       if (visited.contains(b)) continue;
       
       Iterator<Unit> stmtIter = b.iterator();
-
+      Utils.debugPrintln(b.getIndexInMethod());
       while (stmtIter.hasNext()) {
         Unit stmt = stmtIter.next();
         for (ValueBox val : stmt.getUseBoxes()) {
@@ -541,7 +541,7 @@ public class ShimpleMethod {
     return allPaths;
   }
 
-  public Block findLCAInPostDom(Block block1, Block block2) {
+  public Block findLCAInPostDom(Block block1, Block block2, ArrayList<Block> blockToExit1, ArrayList<Block> blockToExit2) {
     HashMap<Block, ArrayList<Block>> paths1 = pathToExits(block1);
     HashMap<Block, ArrayList<Block>> paths2 = pathToExits(block2);
     
@@ -585,12 +585,34 @@ public class ShimpleMethod {
           if (path1.get(i) != path2.get(i)) {
             Utils.debugPrintln(path1.get(i));
             Utils.debugPrintln(path2.get(i));
+
+            if (blockToExit1 != null)
+              for (int j = path1.size() - 1; j >= i; j--) {
+                blockToExit1.add(path1.get(j));
+              }
+            
+            if (blockToExit2 != null)
+              for (int j = path2.size() - 1; j >= i; j--) {
+                blockToExit2.add(path2.get(j));
+              }
+
             return path2.get(i-1);
           }
         }
 
-        if (path1.get(minLength - 1) == path2.get(minLength - 1))
+        if (path1.get(minLength - 1) == path2.get(minLength - 1)) {
+          if (blockToExit1 != null)
+            for (int j = path1.size() - 1; j >= minLength - 1; j--) {
+              blockToExit1.add(path1.get(j));
+            }
+
+          if (blockToExit2 != null)
+            for (int j = path2.size() - 1; j >= minLength - 1; j--) {
+              blockToExit2.add(path2.get(j));
+            }
+
           return path1.get(minLength - 1);
+        }
       }
     }
 
@@ -614,41 +636,73 @@ public class ShimpleMethod {
     return heads.get(0);
   }
 
-  public static boolean mayCallInPath(Block block, boolean falseOnHeapEventBci) {
-    Queue<Block> q = new LinkedList<>();
-    Set<Block> visited = new HashSet<>();
-
-    q.add(block);
-
-    while (!q.isEmpty()) {
-      Block b = q.remove();
-      if (visited.contains(b)) continue;
+  public boolean mayCallInPath(Block start, ArrayList<Block> path, boolean falseOnHeapEventBci) {
+    if (path.size() > 0) {
       
-      Iterator<Unit> stmtIter = b.iterator();
-
-      while (stmtIter.hasNext()) {
-        Unit stmt = stmtIter.next();
-        for (ValueBox valBox : stmt.getUseBoxes()) {
-          Value val = valBox.getValue();
-          if (val instanceof InvokeExpr && 
-              Utils.methodToCare(((InvokeExpr)val).getMethodRef().resolve())) {
-            return true;
-          } else if (val instanceof StaticFieldRef) {
-            SootClass klass = ((StaticFieldRef)val).getFieldRef().declaringClass();            
-            ShimpleMethodList clinits = Utils.getAllStaticInitializers(klass);
-            ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit();
-            if (unexecClinit != null) {
+      for (Block b : path) {
+        Iterator<Unit> stmtIter = b.iterator();
+  
+        while (stmtIter.hasNext()) {
+          Unit stmt = stmtIter.next();
+          Utils.debugPrintln(stmt);
+          for (ValueBox valBox : stmt.getUseBoxes()) {
+            Value val = valBox.getValue();
+            if (val instanceof InvokeExpr && 
+                Utils.methodToCare(((InvokeExpr)val).getMethodRef().resolve())) {
               return true;
+            } else if (val instanceof StaticFieldRef) {
+              SootClass klass = ((StaticFieldRef)val).getFieldRef().declaringClass();            
+              ShimpleMethodList clinits = Utils.getAllStaticInitializers(klass);
+              ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit();
+              if (unexecClinit != null) {
+                return true;
+              }
+              return false;
+            } else if (falseOnHeapEventBci && Utils.canStmtUpdateHeap(stmt)) {
+              return false;
             }
-            return false;
-          } else if (falseOnHeapEventBci && Utils.canStmtUpdateHeap(stmt)) {
-            return false;
           }
         }
       }
+      
+      return false;
+    } else {
+      Queue<Block> q = new LinkedList<>();
+      Set<Block> visited = new HashSet<>();
 
-      visited.add(b);
-      q.addAll(b.getSuccs());
+      q.add(start);
+
+      while (!q.isEmpty()) {
+        Block b = q.remove();
+        if (visited.contains(b)) continue;
+        
+        Iterator<Unit> stmtIter = b.iterator();
+
+        while (stmtIter.hasNext()) {
+          Unit stmt = stmtIter.next();
+          Utils.debugPrintln(stmt);
+          for (ValueBox valBox : stmt.getUseBoxes()) {
+            Value val = valBox.getValue();
+            if (val instanceof InvokeExpr && 
+                Utils.methodToCare(((InvokeExpr)val).getMethodRef().resolve())) {
+              return true;
+            } else if (val instanceof StaticFieldRef) {
+              SootClass klass = ((StaticFieldRef)val).getFieldRef().declaringClass();            
+              ShimpleMethodList clinits = Utils.getAllStaticInitializers(klass);
+              ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit();
+              if (unexecClinit != null) {
+                return true;
+              }
+              return false;
+            } else if (falseOnHeapEventBci && Utils.canStmtUpdateHeap(stmt)) {
+              return false;
+            }
+          }
+        }
+
+        visited.add(b);
+        q.addAll(b.getSuccs());
+      }
     }
     
     return false;
@@ -821,8 +875,6 @@ public class ShimpleMethod {
     } else if (val instanceof JVirtualInvokeExpr) {
       return null;
     } else if (val instanceof JSpecialInvokeExpr) {
-      boolean isspecial = ((JSpecialInvokeExpr)val).getMethod().isConstructor();
-      Utils.debugAssert(isspecial, "not special? " + val.toString());
       return null;
     } else if (val instanceof JInstanceFieldRef) {
       VariableValues vals = new VariableValues(val, stmt);

@@ -6,6 +6,7 @@ import soot.SootClass;
 import soot.SootMethod;
 import soot.Type;
 import soot.Unit;
+import soot.UnitPatchingChain;
 import soot.Value;
 import soot.ValueBox;
 import soot.shimple.Shimple;
@@ -138,7 +139,8 @@ public class CallFrame {
   private final HashMap<ParameterRef, VariableValues> paramValues;
   private final Unit parentStmt;
   public boolean canPrint = false;
-  
+  public boolean isSegmentReaderGet = false;
+
   public CallFrame(ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
     method = m;
     allVariableValues = method.initVarValues(invokeExpr, (parent == null) ? null : parent.allVariableValues);
@@ -147,8 +149,8 @@ public class CallFrame {
     this.paramValues = new HashMap<>();
     this.parentStmt = stmt;
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
-
+    canPrint = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     if (canPrint) {
       Utils.debugPrintln(method.shimpleBody);
     }
@@ -461,9 +463,9 @@ public class CallFrame {
               } else {
                 mayCallMeth1 = false;
                 mayCallMeth2 = false;
-                //No point in going to next instructions because none of the blocks have
-                //any more invoke statements
-                pc.counter = method.statements.size();
+                //Since none of the blocks have any more invoke statements,
+                //go to the common exit
+                pc.counter = method.stmtToIndex.get(commonExit.getHead());
                 continue;
               }
             }
@@ -479,8 +481,12 @@ public class CallFrame {
               pc.counter = method.stmtToIndex.get(currStmt);
             } else {
               Block lca = method.findLCAInPostDom(succ1, succ2, null, null);
-              Utils.debugPrintln(lca.getIndexInMethod());
-              pc.counter = method.stmtToIndex.get(lca.getHead());
+              if (lca != null) {
+                Utils.debugPrintln(lca.getIndexInMethod());
+                pc.counter = method.stmtToIndex.get(lca.getHead());
+              } else {
+                pc.counter = method.statements.size();
+              }
             }
             // //Otherwise?
             // Utils.debugPrintln(method.fullname() + "\n" +  method.shimpleBody.toString());
@@ -611,6 +617,32 @@ public class CallFrame {
   }
 
   public CallFrame nextInvokeMethod(ArrayListIterator<HeapEvent> eventIterator) {
+    if (isSegmentReaderGet) {
+      HeapEvent currEvent = eventIterator.get();
+      if (currEvent.methodStr.contains("org.apache.lucene.index.DirectoryIndexReader.<init>()V")) {
+        JavaHeapElem segmentInfoObj = null;
+        while (!eventIterator.get().methodStr.contains("org.apache.lucene.index.DirectoryIndexReader.init")) {  
+          currEvent = eventIterator.get();
+          JavaHeap.v().update(eventIterator.get());
+          if (currEvent.methodStr.contains("org.apache.lucene.index.SegmentReader.<init>()V") && 
+              currEvent.eventType == HeapEvent.EventType.ObjectFieldSet) {
+            segmentInfoObj = JavaHeap.v().get(currEvent.dstPtr);
+          }
+          eventIterator.moveNext();
+        }
+
+        Utils.debugAssert(segmentInfoObj != null, "sanity");
+
+        //Find the instance variable and set it to segmentInfoObj
+        for (Value val : allVariableValues.keySet()) {
+          if (val.getType() instanceof RefType &&
+              ((RefType)val.getType()).getClassName().contains("org.apache.lucene.index.SegmentReader")) {
+              Utils.debugPrintln("setting value of " + val + " to SegmentReader");
+              allVariableValues.get(val).add(segmentInfoObj);    
+            }
+        }
+      }
+    }
     FuncCall calleeExprAndStmt = nextFuncCall(eventIterator);
     Utils.debugPrintln(calleeExprAndStmt);
     if (calleeExprAndStmt != null) Utils.debugPrintln(calleeExprAndStmt.first.toString());

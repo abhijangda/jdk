@@ -567,7 +567,7 @@ public class ShimpleMethod {
     }
 
     Utils.debugPrintln(this.basicBlockGraph);
-    Utils.debugAssert(false, "sanity");
+    // Utils.debugAssert(false, "sanity");
     return null;
   }
 
@@ -811,12 +811,15 @@ public class ShimpleMethod {
       // vals.add(new VariableValue(val.getType()));
       // return vals;
     } else if (val instanceof JCastExpr) {
-      VariableValues vals = new VariableValues(val, stmt);
-      Value op = ((JCastExpr)val).getOp();
-      for (var v : allVariableValues.get(op)) {
-        vals.add(v);
+      if (val.getType() instanceof RefLikeType) {
+        VariableValues vals = new VariableValues(val, stmt);
+        Value op = ((JCastExpr)val).getOp();
+        for (var v : allVariableValues.get(op)) {
+          vals.add(v);
+        }
+        return vals;
       }
-      return vals;
+      return null;
     } else if (val instanceof JInstanceOfExpr) {
       Utils.debugAssert(false, stmt.toString());
     } else if (val instanceof JStaticInvokeExpr) {

@@ -73,7 +73,7 @@ public class CallGraphAnalysis {
         Utils.debugPrintln("parent frame " + frame.parent.toString());
       Utils.debugPrintln("current frame " + frame + " iterations " + iterations);
       currEvent = eventIterator.get();
-      Utils.debugPrintln("currevent " + currEvent.toString());
+      Utils.debugPrintln("currevent " + currEvent.toString() + " at " + eventIterator.nextIndex());
       // if (frame.canPrint) {
       //   Utils.debugPrintln(frame.method.basicBlockStr());
       //   return;

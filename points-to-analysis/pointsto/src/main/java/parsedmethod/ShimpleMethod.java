@@ -672,9 +672,7 @@ public class ShimpleMethod {
         Iterator<Unit> unitIter = block.iterator();
         while (unitIter.hasNext()) {
           Unit unit = unitIter.next();
-          Utils.debugPrintln(unit);
           for (ValueBox def : unit.getDefBoxes()) {
-            Utils.debugPrintln(def.getValue());
             allVariableValues.put(def.getValue(), new VariableValues(def.getValue(), unit));
           }
         }
@@ -874,6 +872,14 @@ public class ShimpleMethod {
       VariableValues vals = new VariableValues(val, stmt);
       vals.add(StaticFieldValues.v().get(((StaticFieldRef)val).getField()));
       return vals;
+    } else if (val instanceof JArrayRef) {
+      JArrayRef arrayRef = (JArrayRef)val;
+      Utils.debugPrintln(arrayRef.getType());
+      if (arrayRef.getType() instanceof RefLikeType) {
+        Utils.debugAssert(false, "");
+      } else {
+        return null;
+      }
     } else {
       Utils.debugAssert(false, "Unsupported Jimple expr " + val.getClass() + "'" + stmt.toString() + "'");
     }

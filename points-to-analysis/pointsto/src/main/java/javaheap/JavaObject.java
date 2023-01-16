@@ -2,6 +2,7 @@ package javaheap;
 
 import java.util.HashMap;
 import soot.RefType;
+import soot.SootClass;
 
 public class JavaObject extends JavaHeapElem {
   protected final HashMap<String, JavaHeapElem> fieldValues;
@@ -20,8 +21,20 @@ public class JavaObject extends JavaHeapElem {
   }
 
   public JavaHeapElem getField(String field) {
-    utils.Utils.debugAssert(getClassType().getSootClass().getFieldByNameUnsafe(field) != null || 
-                            (getClassType().getSootClass().getSuperclassUnsafe() != null && getClassType().getSootClass().getSuperclassUnsafe().getFieldByNameUnsafe(field) != null), 
+    boolean hasField = false;
+    SootClass klass = getClassType().getSootClass();
+    while (klass != null) {
+      if (klass.getFieldByNameUnsafe(field) != null) {
+        hasField = true;
+        break;
+      }
+      if (klass.hasSuperclass()) {
+        klass = klass.getSuperclass();
+      } else {
+        break;
+      }
+    }
+    utils.Utils.debugAssert(hasField,
                             "field '%s' not present in '%s'", field, getClassType().getClassName());
     return fieldValues.get(field);
   }

@@ -418,7 +418,7 @@ public class ShimpleMethod {
 
   private void allPathBetweenNodes(Block start, Block dest, ArrayList<Block> path,
                                    HashSet<Block> visited,
-                                   HashMap<Block, ArrayList<Block>> allPaths) {
+                                   HashMap<Block, ArrayList<ArrayList<Block>>> allPaths) {
     // Mark the current node and store it in path[]
     visited.add(start);
     path.add(start);
@@ -429,7 +429,10 @@ public class ShimpleMethod {
       for (Block n : path) {
         _path.add(n);
       }
-      allPaths.put(dest, _path);
+      if (!allPaths.containsKey(dest)) {
+        allPaths.put(dest, new ArrayList<>());
+      }
+      allPaths.get(dest).add(_path);
     } else { 
       // If current vertex is not destination
       // Recur for all the vertices adjacent to current
@@ -447,7 +450,7 @@ public class ShimpleMethod {
     visited.remove(start);
   }
 
-  private HashMap<Block, ArrayList<Block>> pathToExits(Block start) {
+  private HashMap<Block, ArrayList<ArrayList<Block>>> pathToExits(Block start) {
     HashSet<Block> exits = new HashSet<>();
 
     HashSet<Block> visited = new HashSet<>();
@@ -468,60 +471,69 @@ public class ShimpleMethod {
       stack.addAll(b.getSuccs());
     }
     
-    HashMap<Block, ArrayList<Block>> allPaths = new HashMap<>();
+    HashMap<Block, ArrayList<ArrayList<Block>>> allPaths = new HashMap<>();
     ArrayList<Block> path = new ArrayList<>();
     for (Block exit : exits) {
       visited.clear();
       allPathBetweenNodes(start, exit, path, visited, allPaths);
     }
 
-    for (Map.Entry<Block, ArrayList<Block>> entry : allPaths.entrySet()) {
-      String o = entry.getKey().getIndexInMethod() + "-> " + start.getIndexInMethod() + ": [";
-      for (Block node : entry.getValue()) {
-        o += node.getIndexInMethod() + ", ";
+    for (Map.Entry<Block, ArrayList<ArrayList<Block>>> entry : allPaths.entrySet()) {
+      for (ArrayList<Block> _path : entry.getValue()) {
+        String o = entry.getKey().getIndexInMethod() + "-> " + start.getIndexInMethod() + ": [";
+        for (Block node : _path) {
+          o += node.getIndexInMethod() + ", ";
+        }
+        Utils.debugPrintln(o+"]");
       }
-      Utils.debugPrintln(o+"]");
     }
     return allPaths;
   }
 
   public Block findLCAInPostDom(Block block1, Block block2, ArrayList<Block> blockToExit1, ArrayList<Block> blockToExit2) {
-    HashMap<Block, ArrayList<Block>> paths1 = pathToExits(block1);
-    HashMap<Block, ArrayList<Block>> paths2 = pathToExits(block2);
+    HashMap<Block, ArrayList<ArrayList<Block>>> allPaths1 = pathToExits(block1);
+    HashMap<Block, ArrayList<ArrayList<Block>>> allPaths2 = pathToExits(block2);
     
     //Reverse all the paths
-    for (Map.Entry<Block, ArrayList<Block>> entry : paths1.entrySet()) {
-      Collections.reverse(entry.getValue());
+    for (Map.Entry<Block, ArrayList<ArrayList<Block>>> entry : allPaths1.entrySet()) {
+      for (ArrayList<Block> path : entry.getValue())
+        Collections.reverse(path);
     }
 
-    for (Map.Entry<Block, ArrayList<Block>> entry : paths2.entrySet()) {
-      Collections.reverse(entry.getValue());
+    for (Map.Entry<Block, ArrayList<ArrayList<Block>>> entry : allPaths2.entrySet()) {
+      for (ArrayList<Block> path : entry.getValue())
+        Collections.reverse(path);
     }
 
-    for (Map.Entry<Block, ArrayList<Block>> entry : paths1.entrySet()) {
-      String o = entry.getKey().getIndexInMethod() + "-> " + block1.getIndexInMethod() + ": [";
-      for (Block node : entry.getValue()) {
-        o += node.getIndexInMethod() + ", ";
+    for (Map.Entry<Block, ArrayList<ArrayList<Block>>> entry : allPaths1.entrySet()) {
+      for (ArrayList<Block> _path : entry.getValue()) {
+        String o = entry.getKey().getIndexInMethod() + "-> " + block1.getIndexInMethod() + ": [";
+        for (Block node : _path) {
+          o += node.getIndexInMethod() + ", ";
+        }
+        Utils.debugPrintln(o+"]");
       }
-      Utils.debugPrintln(o+"]");
     }
 
-    for (Map.Entry<Block, ArrayList<Block>> entry : paths2.entrySet()) {
-      String o = entry.getKey().getIndexInMethod() + "-> " + block2.getIndexInMethod() + ": [";
-      for (Block node : entry.getValue()) {
-        o += node.getIndexInMethod() + ", ";
+    for (Map.Entry<Block, ArrayList<ArrayList<Block>>> entry : allPaths2.entrySet()) {
+      for (ArrayList<Block> _path : entry.getValue()) {
+        String o = entry.getKey().getIndexInMethod() + "-> " + block2.getIndexInMethod() + ": [";
+        for (Block node : _path) {
+          o += node.getIndexInMethod() + ", ";
+        }
+        Utils.debugPrintln(o+"]");
       }
-      Utils.debugPrintln(o+"]");
     }
+
     Utils.debugPrintln("find lca for " + block1.getIndexInMethod() + " " + block2.getIndexInMethod());
     boolean hasCommonExit = false;
     //For the same exits get the common node
-    for (Block exit1 : paths1.keySet()) {
-      if (paths2.containsKey(exit1)) {
+    for (Block exit1 : allPaths1.keySet()) {
+      if (allPaths2.containsKey(exit1)) {
         Utils.debugPrintln("both contains " + exit1.getIndexInMethod());
         hasCommonExit = true;
-        ArrayList<Block> path1 = paths1.get(exit1);
-        ArrayList<Block> path2 = paths2.get(exit1);
+        ArrayList<Block> path1 = allPaths1.get(exit1).get(0);
+        ArrayList<Block> path2 = allPaths2.get(exit1).get(0);
 
         int minLength = Math.min(path1.size(), path2.size());
         for (int i = 0; i < minLength; i++) {
@@ -560,9 +572,9 @@ public class ShimpleMethod {
       }
     }
 
-    if (paths1.size() == 0) {
+    if (allPaths1.size() == 0) {
       return block2;
-    } else if (paths2.size() == 0) {
+    } else if (allPaths2.size() == 0) {
       return block1;
     }
 

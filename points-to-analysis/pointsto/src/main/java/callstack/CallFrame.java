@@ -14,17 +14,22 @@ import soot.shimple.ShimpleBody;
 import soot.toolkits.graph.Block;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
 
 import javaheap.HeapEvent;
 import javaheap.JavaHeap;
 import javaheap.JavaHeapElem;
+import javaheap.JavaNull;
 import parsedmethod.ParsedMethodMap;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 
 import soot.jimple.BinopExpr;
 import soot.jimple.CmpExpr;
@@ -144,15 +149,21 @@ public class CallFrame {
   public CallFrame(ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
     method = m;
     allVariableValues = method.initVarValues(invokeExpr, (parent == null) ? null : parent.allVariableValues);
+    Utils.debugPrintln(toString());
     this.parent = parent;
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     this.parentStmt = stmt;
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.init");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("QQQQQQQ<<>><<>><<");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
+    // if (canPrint) {
+    //   Utils.debugPrintln(method.basicBlockStr());
+    // }
     if (canPrint) {
-      Utils.debugPrintln(method.shimpleBody);
+      Utils.debugPrintln(method.fullname());
+      Utils.debugPrintln(method.basicBlockStr());
+      System.exit(0);
     }
   }
 
@@ -224,10 +235,10 @@ public class CallFrame {
 
     Utils.debugAssert(cond instanceof BinopExpr, "sanity " + cond.getClass());
 
-    if (canPrint) {
-      if (canEvalCond)
-        evaluate(cond);
-    }
+    // if (canPrint) {
+    //   if (canEvalCond)
+    //     evaluate(cond);
+    // }
 
     return null;
   }
@@ -300,8 +311,9 @@ public class CallFrame {
       currEvent = eventsIterator.get();
       methodMatches = currEvent.method == method.sootMethod;
       currStmt = method.statements.get(pc.counter);
+      Utils.debugPrintln(currStmt + " at " + pc.counter + " " + currStmt.getClass());
       this.method.propogateValues(this.allVariableValues, currStmt);
-      Utils.debugPrintln(currStmt + " at " + pc.counter);
+      Utils.debugPrintln(this);
       if (this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>")) {
         // Utils.debugPrintln(pc.counter + " " + this.method.statements.size());
         // Utils.debugPrintln(this.method.fullname() + "   " + this.method.shimpleBody.toString());
@@ -399,6 +411,65 @@ public class CallFrame {
             //End current function
             pc.counter = method.statements.size();
           } else {
+            Utils.debugPrintln(succ1);
+            HashMap<Block, ArrayList<CFGPath>> allPaths1 = method.allPathsToCallee(succ1, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
+            for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths1.entrySet()) {
+              for (ArrayList<Block> _path : entry.getValue()) {
+                String o = entry.getKey().getIndexInMethod() + "-> " + succ1.getIndexInMethod() + ": [";
+                for (Block node : _path) {
+                  o += node.getIndexInMethod() + ", ";
+                }
+                Utils.debugPrintln(o+"]");
+              }
+            }
+            Utils.debugPrintln(succ2);
+            HashMap<Block, ArrayList<CFGPath>> allPaths2 = method.allPathsToCallee(succ2, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
+            for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths2.entrySet()) {
+              for (ArrayList<Block> _path : entry.getValue()) {
+                String o = entry.getKey().getIndexInMethod() + "-> " + succ2.getIndexInMethod() + ": [";
+                for (Block node : _path) {
+                  o += node.getIndexInMethod() + ", ";
+                }
+                Utils.debugPrintln(o+"]");
+              }
+            }
+            Utils.debugPrintln(allPaths1.size());
+            Utils.debugPrintln(allPaths2.size());
+
+            if (allPaths1.size() > 0 && allPaths2.size() > 0) {
+              Set<Block> commonCalleeBlocks = new HashSet<>(allPaths1.keySet());
+              commonCalleeBlocks.retainAll(allPaths2.keySet());
+              Utils.debugPrintln("commonCalleeBlocks " + commonCalleeBlocks.size());
+              Block calleeBlock = commonCalleeBlocks.iterator().next();
+              CFGPath path1 = allPaths1.get(calleeBlock).get(0);
+              CFGPath path2 = allPaths2.get(calleeBlock).get(0);
+              Collections.reverse(path1);
+              Collections.reverse(path2);
+
+              Block nextBlock = null;
+              int minLength = Math.min(path1.size(), path2.size());
+              for (int i = 0; i < minLength; i++) {
+                Utils.debugPrintln(path1.get(i).getIndexInMethod() + " == " + path2.get(i).getIndexInMethod());
+                if (path1.get(i) != path2.get(i)) {
+                  Utils.debugPrintln(path1.get(i));
+                  Utils.debugPrintln(path2.get(i));
+                  nextBlock = path2.get(i-1);
+                  break;
+                }
+              }
+              
+              pc.counter = method.stmtToIndex.get(nextBlock.getHead());
+            } else if (allPaths1.size() > 0) {
+              currStmt = succ1.getHead();
+              pc.counter = method.stmtToIndex.get(currStmt);
+            } else if (allPaths2.size() > 0) {
+              currStmt = succ2.getHead();
+              pc.counter = method.stmtToIndex.get(currStmt);
+            } else {
+              pc.counter = method.statements.size();
+            }
+
+            /*
             ArrayList<Block> succ1ToExit = new ArrayList<Block>();
             ArrayList<Block> succ2ToExit = new ArrayList<Block>();
             Block commonExit = method.findLCAInPostDom(succ1, succ2, succ1ToExit, succ2ToExit);
@@ -492,6 +563,7 @@ public class CallFrame {
             // Utils.debugPrintln(method.fullname() + "\n" +  method.shimpleBody.toString());
             // Utils.debugPrintln("method not matches currevent " + currEvent + " at " + currStmt);
             // System.exit(0);
+            */
           }
         }
       } else if (currStmt instanceof JGotoStmt) {
@@ -512,7 +584,7 @@ public class CallFrame {
 
           Utils.debugPrintln("next event " + eventsIterator.get());
         }
-
+        
         funcToCall = null;
         boolean incrementPC = true;
         for (ValueBox use : currStmt.getUseBoxes()) {
@@ -698,7 +770,13 @@ public class CallFrame {
       } else {
         // JavaHeapElem[] valuesArray = new JavaHeapElem[vals.size()];
         // valuesArray = vals.toArray(valuesArray);
-        JavaHeapElem val = vals.iterator().next();
+        Iterator<JavaHeapElem> iter =  vals.iterator();
+        JavaHeapElem val = null;
+        while(iter.hasNext()) {
+          val = iter.next();
+          if (val.getType() instanceof RefType)
+            break;  
+        }
         Type type = val.getType();
         Utils.debugAssert(type instanceof RefType, "");
         SootClass klass = ((RefType)type).getSootClass();
@@ -761,14 +839,14 @@ public class CallFrame {
     builder.append("[\n");
     for (var vals : allVariableValues.entrySet()) {
       if (vals.getValue().size() == 0)
-        continue;
-      builder.append(vals.getKey());
+        continue;;
+      builder.append(vals.getKey() + " : " + vals.getKey().getType());
       builder.append(" = {");
       for (var val : vals.getValue()) {
-        if (val != null) {
-          builder.append(val.getType());
-        } else {
+        if (val instanceof JavaNull) {
           builder.append("null");
+        } else {
+          builder.append(val.getType());
         }
         builder.append(", ");
       }

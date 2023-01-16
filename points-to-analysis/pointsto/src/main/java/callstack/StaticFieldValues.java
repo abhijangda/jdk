@@ -3,6 +3,7 @@ import java.util.*;
 
 import javaheap.JavaHeap;
 import javaheap.JavaHeapElem;
+import javaheap.JavaNull;
 import soot.SootField;
 import soot.SootFieldRef;
 
@@ -28,7 +29,11 @@ public class StaticFieldValues {
   }
 
   public JavaHeapElem get(SootField field) {
-    return values.get(field);
+    JavaHeapElem value = values.get(field);
+    if (value == null) {
+      return JavaNull.v();
+    }
+    return value;
   }
 
   public void set(SootField field, JavaHeapElem obj) {

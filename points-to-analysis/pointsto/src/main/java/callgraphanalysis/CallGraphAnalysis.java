@@ -69,17 +69,19 @@ public class CallGraphAnalysis {
     int iterations = 0;
     while (!callStack.isEmpty() && iterations++ < 1000) {
       CallFrame frame = callStack.peek();
-      if (frame.parent != null)
+      
+      if (frame.parent != null) {
         Utils.debugPrintln("parent frame " + frame.parent.toString());
+      }
       Utils.debugPrintln("current frame " + frame + " iterations " + iterations);
       currEvent = eventIterator.get();
       Utils.debugPrintln("currevent " + currEvent.toString() + " at " + eventIterator.nextIndex());
-      if (frame.canPrint) {
-        Utils.debugPrintln(frame.method.basicBlockStr());
-        return;
-      }
+      // if (frame.canPrint) {
+      //   Utils.debugPrintln(frame.method.basicBlockStr());
+      //   return;
+      // }
       if (!frame.hasNextInvokeStmt()) {
-        if (frame.canPrint) return;
+        // if (frame.canPrint) return;
         callStack.pop();
         continue;
       }
@@ -92,7 +94,6 @@ public class CallGraphAnalysis {
         currEvent = eventIterator.get();
       }
       
-      Utils.debugPrintln("new curr event" + currEvent.toString());
       // while(mainThreadEvents.get(heapEventIdx).method == frame.method.sootMethod) {
       //   javaHeap.updateWithHeapEvent(mainThreadEvents.get(heapEventIdx));
       //   Utils.debugPrintln(mainThreadEvents.get(heapEventIdx).toString());

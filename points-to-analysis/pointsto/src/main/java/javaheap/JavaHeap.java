@@ -85,4 +85,12 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
 
     return obj;
   }
+
+  public JavaHeapElem get(long ptr) {
+    if (ptr == 0) {
+      return JavaNull.v();
+    }
+
+    return super.get(ptr);
+  }
 }

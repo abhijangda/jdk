@@ -81,19 +81,17 @@ public class ClassHierarchyAnalysis extends HashMap<ShimpleMethod, CHACaller> {
   }
 
   public boolean mayCallInExpr(ClassHierarchyGraph chaGraph, ShimpleMethod caller, Value expr, ShimpleMethod callee) {
-    SootMethod exprCallee = null;
     if (expr instanceof InvokeExpr) {
-      exprCallee = ((InvokeExpr)expr).getMethod();
-    } else {
-      Utils.debugAssert(false, "");
-    }
-
-    if (!Utils.methodToCare(exprCallee)) {
-      return false;
-    }
+      SootMethod exprCallee = ((InvokeExpr)expr).getMethod();
+      if (!Utils.methodToCare(exprCallee)) {
+        return false;
+      }
+    } 
 
     HashSet<ShimpleMethod> callees = getCallees(chaGraph, caller).getCalleesAtExpr(expr);
-
+    if (callees == null)
+      return false;
+      
     if (callees.contains(callee))
       return true;
 

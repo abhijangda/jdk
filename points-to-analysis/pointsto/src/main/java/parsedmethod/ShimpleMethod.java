@@ -25,6 +25,7 @@ import classhierarchyanalysis.ClassHierarchyGraph;
 import javaheap.HeapEvent;
 import javaheap.JavaHeap;
 import javaheap.JavaHeapElem;
+import javaheap.JavaNull;
 import javaheap.JavaObject;
 import soot.*;
 import soot.jimple.*;
@@ -387,6 +388,24 @@ public class ShimpleMethod {
     return false;
   }
 
+  public boolean mayCallMethodInBlock(Block block, ShimpleMethod method) {  
+    Iterator<Unit> stmtIter = block.iterator();
+    Utils.debugPrintln(block.getIndexInMethod());
+    while (stmtIter.hasNext()) {
+      Unit stmt = stmtIter.next();
+      for (ValueBox valBox : stmt.getUseBoxes()) {
+        Value val = valBox.getValue();
+        if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val, method))
+          return true;
+        //TODO: Static 
+      }
+
+      //TODO: If a heap event bytecode is in this block then this path is not taken
+    }
+    
+    return false;
+  }
+
   private ArrayList<DominatorNode<Block>> pathToRoot(DominatorNode<Block> node) {
     ArrayList<DominatorNode<Block>> pathToRoot = new ArrayList<>();
     while(node != null) {
@@ -414,6 +433,50 @@ public class ShimpleMethod {
     }
 
     return builder.toString();
+  }
+
+  private void allPathsToCalleeBlock(Block start, ShimpleMethod callee, CFGPath currPath, 
+                                        HashSet<Block> visited,
+                                        HashMap<Block, ArrayList<CFGPath>> allPaths) {
+    // Mark the current node and store it in path[]
+    visited.add(start);
+    currPath.add(start);
+    // If current vertex is same as destination, then print
+    // current path[]
+    
+    if (mayCallMethodInBlock(start, callee)) {
+      CFGPath _path = new CFGPath();
+      for (Block n : currPath) {
+        _path.add(n);
+      }
+      if (!allPaths.containsKey(start)) {
+        allPaths.put(start, new ArrayList<>());
+      }
+      allPaths.get(start).add(_path);
+    } else { 
+      // If current vertex is not destination
+      // Recur for all the vertices adjacent to current
+      // vertex
+      for (Block succ : start.getSuccs()) {
+        if (!visited.contains(succ) && !isDominator(succ, start)) {
+          allPathsToCalleeBlock(succ, callee, currPath, visited, allPaths);
+        }
+      }
+    }
+    
+    // Remove current vertex from path[] and mark it as
+    // unvisited
+    currPath.remove(currPath.size() - 1);
+    visited.remove(start);
+  }
+
+  public HashMap<Block, ArrayList<CFGPath>> allPathsToCallee(Block start, ShimpleMethod callee) {
+    HashSet<Block> visited = new HashSet<>();
+    HashMap<Block, ArrayList<CFGPath>> allPaths = new HashMap<>();
+    CFGPath currPath = new CFGPath();
+    allPathsToCalleeBlock(start, callee, currPath, visited, allPaths);
+
+    return allPaths;
   }
 
   private void allPathBetweenNodes(Block start, Block dest, ArrayList<Block> path,
@@ -703,8 +766,18 @@ public class ShimpleMethod {
               ParameterRef param = parameterRefs.get(i);
               Value arg = invokeExpr.getArg(i);
               // utils.Utils.debugPrintln(arg.toString() + " has values " + callerVariableValues.get(arg));
-              if (callerVariableValues.containsKey(arg))
-                allVariableValues.put(param, callerVariableValues.get(arg));
+              if (param.getType() instanceof RefLikeType) {
+                Utils.debugPrintln(param + " " + arg + " " + arg.getType() + " " + callerVariableValues.containsKey(arg));
+                if (arg.getType() instanceof NullType) {
+                  allVariableValues.put(param, new VariableValues(param, null));
+                  allVariableValues.get(param).add(JavaNull.v());
+                } else if (callerVariableValues.containsKey(arg)) {
+                  Utils.debugPrintln(callerVariableValues.get(arg));
+                  allVariableValues.put(param, callerVariableValues.get(arg));
+                } else {
+                  allVariableValues.put(param, new VariableValues(param, null));
+                }
+              }
             }
 
             if (!sootMethod.isStatic()) {
@@ -727,40 +800,38 @@ public class ShimpleMethod {
       }
 
       //For all statements using these parameters set their values too
-      Queue<Value> q = new LinkedList<>();
-      for (Value variable : allVariableValues.keySet()) {
-        // if (canPrint)
-        //   Utils.debugPrintln("381: " + variable.toString());
-        if (allVariableValues.get(variable).size() > 0)
-          q.add(variable);
-      }
+      // Queue<Value> q = new LinkedList<>();
+      // for (Value variable : allVariableValues.keySet()) {
+        
+      //   Utils.debugPrintln("381: " + variable.toString() + " " + variable.getType());
+      //   if (allVariableValues.get(variable).size() > 0)
+      //     q.add(variable);
+      // }
 
 
-      //TODO: do it until there is no change?
-      Set<Value> visited = new HashSet<>();
+      // //TODO: do it until there is no change?
+      // Set<Value> visited = new HashSet<>();
 
-      while(!q.isEmpty()) {
-        Value variable = q.remove();
-        if (visited.contains(variable)) continue;
-        visited.add(variable);
-        if (allVariableValues.get(variable).size() == 0) continue;
-        // if (canPrint)
-        //   Utils.debugPrintln("388: " + variable.toString() + " " + variable.getClass());
-        for (Unit use : valueToUseStmts.get(variable)) {
-          Utils.debugAssert(use instanceof Unit, "not of Unit " + use.toString() + " " + variable.toString());
-          // if (canPrint)
-          //   Utils.debugPrintln("400: " + use.toString());    
-          propogateValues(allVariableValues, use);
+      // while(!q.isEmpty()) {
+      //   Value variable = q.remove();
+      //   if (visited.contains(variable)) continue;
+      //   visited.add(variable);
+      //   if (allVariableValues.get(variable).size() == 0) continue;
+      //   // if (canPrint)
+      //   //   Utils.debugPrintln("388: " + variable.toString() + " " + variable.getClass());
+      //   for (Unit use : valueToUseStmts.get(variable)) {
+      //     Utils.debugAssert(use instanceof Unit, "not of Unit " + use.toString() + " " + variable.toString());
+      //     // if (canPrint)
+      //     //   Utils.debugPrintln("400: " + use.toString());    
+      //     propogateValues(allVariableValues, use);
       
-          for (ValueBox def : use.getDefBoxes()) {
-            // if (canPrint)
-            //   Utils.debugPrintln("394: " + def.getValue().toString() + " " + allVariableValues.get(def.getValue()).size());
-            q.add(def.getValue());
-          }
-        }
-      }
-
-
+      //     for (ValueBox def : use.getDefBoxes()) {
+      //       // if (canPrint)
+      //       //   Utils.debugPrintln("394: " + def.getValue().toString() + " " + allVariableValues.get(def.getValue()).size());
+      //       q.add(def.getValue());
+      //     }
+      //   }
+      // }
     }
 
     return allVariableValues;
@@ -868,13 +939,13 @@ public class ShimpleMethod {
       vals.addAll(allVariableValues.get(val));
       return vals;
     } else if (val instanceof Constant) {
-      if (val.getType() instanceof RefType && 
+      if (!(val instanceof NullConstant) && val.getType() instanceof RefType && 
           ((RefType)val.getType()).getSootClass().getName().equals("java.lang.String")) {
         VariableValues vals = new VariableValues(val, stmt);
         vals.add(JavaHeap.v().createNewObject(((RefType)val.getType())));  
       } else if (val instanceof NullConstant) {
         VariableValues vals = new VariableValues(val, stmt);
-        vals.add(null);  
+        vals.add(JavaNull.v());  
       } else {
         utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString() + " " + val.getClass());
       }
@@ -902,7 +973,7 @@ public class ShimpleMethod {
   }
 
   public void propogateValues(HashMap<Value, VariableValues> allVariableValues,
-                               Unit stmt) {
+                              Unit stmt) {
     if (stmt instanceof JIdentityStmt) {
       if (((JIdentityStmt)stmt).getRightOp() instanceof CaughtExceptionRef) {
         return;
@@ -912,17 +983,18 @@ public class ShimpleMethod {
         Value leftVal = ((JIdentityStmt)stmt).getLeftOp();
         Value rightVal =((JIdentityStmt)stmt).getRightOp();
         VariableValues valsForLeft = allVariableValues.get(rightVal);
+        Utils.debugPrintln(stmt + " " + valsForLeft);
         if (valsForLeft != null) {
           allVariableValues.put(leftVal, valsForLeft);
+
           // blockVarVals.put(stmt, valsForLeft);
         }
       } else {
         Utils.debugAssert(false, "%s %s %s\n", stmt.toString(), stmt.getClass(), ((JIdentityStmt)stmt).getRightOp().getClass());
       }
     } else if (stmt instanceof JAssignStmt) {
-
-      Value leftVal = ((JAssignStmt)stmt).getLeftOp();
-      Value rightVal =((JAssignStmt)stmt).getRightOp();
+      Value leftVal  = ((JAssignStmt)stmt).getLeftOp();
+      Value rightVal = ((JAssignStmt)stmt).getRightOp();
       VariableValues valsForLeft = obtainVariableValues(allVariableValues, stmt, rightVal);
       if (valsForLeft != null) {
         allVariableValues.put(leftVal, valsForLeft);

@@ -3,6 +3,7 @@ package javaheap;
 import java.util.HashMap;
 import soot.RefType;
 import soot.SootClass;
+import soot.SootField;
 
 public class JavaObject extends JavaHeapElem {
   protected final HashMap<String, JavaHeapElem> fieldValues;
@@ -21,11 +22,11 @@ public class JavaObject extends JavaHeapElem {
   }
 
   public JavaHeapElem getField(String field) {
-    boolean hasField = false;
     SootClass klass = getClassType().getSootClass();
+    SootField sootField = null;
     while (klass != null) {
-      if (klass.getFieldByNameUnsafe(field) != null) {
-        hasField = true;
+      sootField = klass.getFieldByNameUnsafe(field);
+      if (sootField != null) {
         break;
       }
       if (klass.hasSuperclass()) {
@@ -34,8 +35,13 @@ public class JavaObject extends JavaHeapElem {
         break;
       }
     }
-    utils.Utils.debugAssert(hasField,
+    utils.Utils.debugAssert(sootField != null,
                             "field '%s' not present in '%s'", field, getClassType().getClassName());
-    return fieldValues.get(field);
+    JavaHeapElem value = fieldValues.get(field);
+    if (value == null) {
+      return JavaNull.v();
+    }
+
+    return value;
   }
 }

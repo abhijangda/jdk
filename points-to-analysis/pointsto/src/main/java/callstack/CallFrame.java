@@ -231,7 +231,7 @@ public class CallFrame {
     return false;
   }
 
-  private Block evaluateIfStmt(JIfStmt ifstmt) {
+  private Boolean evaluateIfStmt(JIfStmt ifstmt) {
     //An Ifstmt can be evaluated if the values are in allVariables.
     Value cond = ifstmt.getCondition();
     //Can only evaluate a condition if all uses are of RefType or NULL
@@ -249,8 +249,12 @@ public class CallFrame {
 
     Utils.debugAssert(cond instanceof BinopExpr, "sanity " + cond.getClass());
 
-    if (canEvalCond)
-      evaluateCond((AbstractJimpleIntBinopExpr)cond);
+    if (canEvalCond) {
+      boolean value = evaluateCond((AbstractJimpleIntBinopExpr)cond);
+      Utils.debugPrintln(value);
+      return value;
+      
+    }
 
     return null;
   }
@@ -331,250 +335,274 @@ public class CallFrame {
         // System.exit(0);
       }
       if (currStmt instanceof JIfStmt) {
-        evaluateIfStmt((JIfStmt)currStmt);
+        JIfStmt ifstmt = (JIfStmt)currStmt;
+        //An Ifstmt can be evaluated if the values are in allVariables.
+        Value cond = ifstmt.getCondition();
+        //Can only evaluate a condition if all uses are of RefType or NULL
+        boolean canEvalCond = true;
+        for (ValueBox valBox : cond.getUseBoxes()) {
+          Value val = valBox.getValue();
+          if (val instanceof NullConstant) {
+          } else if (val.getType() instanceof RefLikeType &&
+                    !allVariableValues.get(val).isEmpty()) { 
+          } else {
+            canEvalCond = false;
+            break;
+          }
+        }
+
         Unit target = ((JIfStmt)currStmt).getTarget();
         Utils.debugAssert(method.stmtToIndex.containsKey(target), "sanity");
+        if (canEvalCond) {
+          boolean condValue = evaluateCond((AbstractJimpleIntBinopExpr)cond);
 
-        // There are two conditions if the IfStmt has a corresponding else block or not.
-        // If there is no else block then the code will be:
-        // (1) ```
-        // if <cond> <label> 
-        // goto <label2>
-        // label:
-        // <<<if-then block>>>
-        // label2:
-        // <<<common exit>>>
-        // ```
-        // Or the code can be like:
-        // (2) ```
-        // if <not of original cond> label2
-        // <<<if-then block>>>
-        // label2:
-        // <<<common exit>>>
-        // ```
-
-        //If there is an else block then the code will be:
-        // (3) ```
-        // if <not original cond> <label-else> 
-        // <<<if-then block>>>
-        // goto <label2>
-        // label-else:
-        // <<<label-else block>>>
-        // label2:
-        // <<<common exit>>>
-        // ```
-        // (4) ```
-        // if <cond> <label-then> 
-        // goto <label-else>
-        // label-then:
-        // <<<if-then block>>>
-        // goto <label2>
-        // label-else:
-        // <<else block>>>
-        // label2:
-        // <<<common exit>>>
-        // ```
-
-        //Get the blocks that are part of the then branch
-        Block ifBlock = method.getBlockForStmt(currStmt);
-        List<Block> ifBlockSuccs = method.filterNonCatchBlocks(ifBlock.getSuccs());
-        Utils.debugAssert(ifBlockSuccs.size() == 2, "ifBlockSuccs.size() == %d", ifBlockSuccs.size());
-        //Get blocks that are part of the else branch
-        Block succ1 = ifBlockSuccs.get(0);
-        Block succ2 = ifBlockSuccs.get(1);
-
-        if (methodMatches) {
-          //See if the event is in the paths starting from succ1 and succ2.
-          //if the event is in both paths then the event is in the path starting 
-          //from exit of if-else
-          //otherwise set the pc to either of the successor
-          
-          boolean inPath1 = method.isEventInPathFromBlock(succ1, currEvent);
-          boolean inPath2 = method.isEventInPathFromBlock(succ2, currEvent);
-          if (canPrint) {
-            Utils.debugPrintln(currStmt);
-            Utils.debugPrintln(succ1);
-            Utils.debugPrintln(succ2);
-          }
-          if (inPath1 && inPath2) {
-            Utils.debugPrintln("Found in both");
-            //TODO: Currently goes through one of the successors, but should go through both
-            //and search through the call graph to find which succ should be taken.
-            // Utils.debugPrintln(succ1);
-            // Utils.debugPrintln(succ2);
-            pc.counter++;
-            // currStmt = method.statements.get(++pc.counter);
-            // Utils.debugPrintln(currStmt);
-          } else if (inPath1) {
-            currStmt = succ1.getHead();
-            pc.counter = method.stmtToIndex.get(currStmt);
-          } else if (inPath2) {
-            currStmt = succ2.getHead();
-            pc.counter = method.stmtToIndex.get(currStmt);
+          if (condValue) {
+            pc.counter = method.stmtToIndex.get(ifstmt.getTarget());
           } else {
-            Utils.debugPrintln("NOT found in any " + currEvent + " " + currStmt);
-            // Utils.debugPrintln(method.fullname() + "   " + method.shimpleBody.toString());
-            // Utils.debugPrintln(method.basicBlockStr());
-            System.exit(0);
+            pc.counter += 1;
           }
         } else {
-          if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
-            //End current function
-            pc.counter = method.statements.size();
-          } else {
-            Utils.debugPrintln(succ1);
-            HashMap<Block, ArrayList<CFGPath>> allPaths1 = method.allPathsToCallee(succ1, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
-            for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths1.entrySet()) {
-              for (ArrayList<Block> _path : entry.getValue()) {
-                String o = entry.getKey().getIndexInMethod() + "-> " + succ1.getIndexInMethod() + ": [";
-                for (Block node : _path) {
-                  o += node.getIndexInMethod() + ", ";
-                }
-                Utils.debugPrintln(o+"]");
-              }
+          // There are two conditions if the IfStmt has a corresponding else block or not.
+          // If there is no else block then the code will be:
+          // (1) ```
+          // if <cond> <label> 
+          // goto <label2>
+          // label:
+          // <<<if-then block>>>
+          // label2:
+          // <<<common exit>>>
+          // ```
+          // Or the code can be like:
+          // (2) ```
+          // if <not of original cond> label2
+          // <<<if-then block>>>
+          // label2:
+          // <<<common exit>>>
+          // ```
+
+          //If there is an else block then the code will be:
+          // (3) ```
+          // if <not original cond> <label-else> 
+          // <<<if-then block>>>
+          // goto <label2>
+          // label-else:
+          // <<<label-else block>>>
+          // label2:
+          // <<<common exit>>>
+          // ```
+          // (4) ```
+          // if <cond> <label-then> 
+          // goto <label-else>
+          // label-then:
+          // <<<if-then block>>>
+          // goto <label2>
+          // label-else:
+          // <<else block>>>
+          // label2:
+          // <<<common exit>>>
+          // ```
+
+          //Get the blocks that are part of the then branch
+          Block ifBlock = method.getBlockForStmt(currStmt);
+          List<Block> ifBlockSuccs = method.filterNonCatchBlocks(ifBlock.getSuccs());
+          Utils.debugAssert(ifBlockSuccs.size() == 2, "ifBlockSuccs.size() == %d", ifBlockSuccs.size());
+          //Get blocks that are part of the else branch
+          Block succ1 = ifBlockSuccs.get(0);
+          Block succ2 = ifBlockSuccs.get(1);
+
+          if (methodMatches) {
+            //See if the event is in the paths starting from succ1 and succ2.
+            //if the event is in both paths then the event is in the path starting 
+            //from exit of if-else
+            //otherwise set the pc to either of the successor
+            
+            boolean inPath1 = method.isEventInPathFromBlock(succ1, currEvent);
+            boolean inPath2 = method.isEventInPathFromBlock(succ2, currEvent);
+            if (canPrint) {
+              Utils.debugPrintln(currStmt);
+              Utils.debugPrintln(succ1);
+              Utils.debugPrintln(succ2);
             }
-            Utils.debugPrintln(succ2);
-            HashMap<Block, ArrayList<CFGPath>> allPaths2 = method.allPathsToCallee(succ2, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
-            for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths2.entrySet()) {
-              for (ArrayList<Block> _path : entry.getValue()) {
-                String o = entry.getKey().getIndexInMethod() + "-> " + succ2.getIndexInMethod() + ": [";
-                for (Block node : _path) {
-                  o += node.getIndexInMethod() + ", ";
-                }
-                Utils.debugPrintln(o+"]");
-              }
-            }
-            Utils.debugPrintln(allPaths1.size());
-            Utils.debugPrintln(allPaths2.size());
-
-            if (allPaths1.size() > 0 && allPaths2.size() > 0) {
-              Set<Block> commonCalleeBlocks = new HashSet<>(allPaths1.keySet());
-              commonCalleeBlocks.retainAll(allPaths2.keySet());
-              Utils.debugPrintln("commonCalleeBlocks " + commonCalleeBlocks.size());
-              Block calleeBlock = commonCalleeBlocks.iterator().next();
-              CFGPath path1 = allPaths1.get(calleeBlock).get(0);
-              CFGPath path2 = allPaths2.get(calleeBlock).get(0);
-              Collections.reverse(path1);
-              Collections.reverse(path2);
-
-              Block nextBlock = null;
-              int minLength = Math.min(path1.size(), path2.size());
-              for (int i = 0; i < minLength; i++) {
-                Utils.debugPrintln(path1.get(i).getIndexInMethod() + " == " + path2.get(i).getIndexInMethod());
-                if (path1.get(i) != path2.get(i)) {
-                  Utils.debugPrintln(path1.get(i));
-                  Utils.debugPrintln(path2.get(i));
-                  nextBlock = path2.get(i-1);
-                  break;
-                }
-              }
-              
-              pc.counter = method.stmtToIndex.get(nextBlock.getHead());
-            } else if (allPaths1.size() > 0) {
-              currStmt = succ1.getHead();
-              pc.counter = method.stmtToIndex.get(currStmt);
-            } else if (allPaths2.size() > 0) {
-              currStmt = succ2.getHead();
-              pc.counter = method.stmtToIndex.get(currStmt);
-            } else {
-              pc.counter = method.statements.size();
-            }
-
-            /*
-            ArrayList<Block> succ1ToExit = new ArrayList<Block>();
-            ArrayList<Block> succ2ToExit = new ArrayList<Block>();
-            Block commonExit = method.findLCAInPostDom(succ1, succ2, succ1ToExit, succ2ToExit);
-            boolean mayCallMeth1 = false;
-            boolean mayCallMeth2 = false;
-            if (commonExit == null) {
-              //Its a loop
-              Utils.debugPrintln("loop");
-              Utils.debugPrintln(succ1.getIndexInMethod());
-              boolean succCanCall1 = method.mayCallInPath(succ1, succ1ToExit, false);
-              Utils.debugPrintln(succ2.getIndexInMethod());
-              boolean succCanCall2 = method.mayCallInPath(succ2, succ2ToExit, false);
-
-              Utils.debugPrintln(succ1.getIndexInMethod() + " -> " + succCanCall1 + " " + succ2.getIndexInMethod() + " -> " + succCanCall2);
-
-              if (succCanCall1 && succCanCall2) {
-                Utils.debugPrintln(succ1.getIndexInMethod());
-                mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-                Utils.debugPrintln(succ2.getIndexInMethod());
-                mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
-                
-              } else if (succCanCall1) {
-                mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-              } else if (succCanCall2) {
-                mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-              } else {
-                mayCallMeth1 = false;
-                mayCallMeth2 = false;
-                //No point in going to next instructions because none of the blocks have
-                //any more invoke statements
-                pc.counter = method.statements.size();
-                continue;
-              }
-            } else {
-              Utils.debugPrintln(commonExit.getIndexInMethod());
-              String b = "";
-              for(Block n : succ1ToExit) {
-                b += n.getIndexInMethod() + ", ";
-              }
-              Utils.debugPrintln(succ1.getIndexInMethod() +" -> " + b);
-              b = "";
-              for(Block n : succ2ToExit) {
-                b += n.getIndexInMethod() + ", ";
-              }
-              Utils.debugPrintln(succ1.getIndexInMethod() +" -> " + b);
-              boolean succCanCall1 = method.mayCallInPath(succ1, succ1ToExit, false);
-              Utils.debugPrintln(succ2.getIndexInMethod());
-              boolean succCanCall2 = method.mayCallInPath(succ2, succ2ToExit, false);
-
-              Utils.debugPrintln(succ1.getIndexInMethod() + " -> " + succCanCall1 + " " + succ2.getIndexInMethod() + " -> " + succCanCall2);
-
-              if (succCanCall1 && succCanCall2) {
-                Utils.debugPrintln(succ1.getIndexInMethod());
-                mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-                Utils.debugPrintln(succ2.getIndexInMethod());
-                mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
-                
-              } else if (succCanCall1) {
-                mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-              } else if (succCanCall2) {
-                mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
-              } else {
-                mayCallMeth1 = false;
-                mayCallMeth2 = false;
-                //Since none of the blocks have any more invoke statements,
-                //go to the common exit
-                pc.counter = method.stmtToIndex.get(commonExit.getHead());
-                continue;
-              }
-            }
-
-            Utils.debugPrintln(currStmt + " " + mayCallMeth1 + " " + mayCallMeth2);
-            if (mayCallMeth1 && mayCallMeth2) {
+            if (inPath1 && inPath2) {
+              Utils.debugPrintln("Found in both");
+              //TODO: Currently goes through one of the successors, but should go through both
+              //and search through the call graph to find which succ should be taken.
+              // Utils.debugPrintln(succ1);
+              // Utils.debugPrintln(succ2);
               pc.counter++;
-            } else if (mayCallMeth1) {
+              // currStmt = method.statements.get(++pc.counter);
+              // Utils.debugPrintln(currStmt);
+            } else if (inPath1) {
               currStmt = succ1.getHead();
               pc.counter = method.stmtToIndex.get(currStmt);
-            } else if (mayCallMeth2) {
+            } else if (inPath2) {
               currStmt = succ2.getHead();
               pc.counter = method.stmtToIndex.get(currStmt);
             } else {
-              Block lca = method.findLCAInPostDom(succ1, succ2, null, null);
-              if (lca != null) {
-                Utils.debugPrintln(lca.getIndexInMethod());
-                pc.counter = method.stmtToIndex.get(lca.getHead());
+              Utils.debugPrintln("NOT found in any " + currEvent + " " + currStmt);
+              // Utils.debugPrintln(method.fullname() + "   " + method.shimpleBody.toString());
+              // Utils.debugPrintln(method.basicBlockStr());
+              System.exit(0);
+            }
+          } else {
+            if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
+              //End current function
+              pc.counter = method.statements.size();
+            } else {
+              Utils.debugPrintln(succ1);
+              HashMap<Block, ArrayList<CFGPath>> allPaths1 = method.allPathsToCallee(succ1, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
+              for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths1.entrySet()) {
+                for (ArrayList<Block> _path : entry.getValue()) {
+                  String o = entry.getKey().getIndexInMethod() + "-> " + succ1.getIndexInMethod() + ": [";
+                  for (Block node : _path) {
+                    o += node.getIndexInMethod() + ", ";
+                  }
+                  Utils.debugPrintln(o+"]");
+                }
+              }
+              Utils.debugPrintln(succ2);
+              HashMap<Block, ArrayList<CFGPath>> allPaths2 = method.allPathsToCallee(succ2, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
+              for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths2.entrySet()) {
+                for (ArrayList<Block> _path : entry.getValue()) {
+                  String o = entry.getKey().getIndexInMethod() + "-> " + succ2.getIndexInMethod() + ": [";
+                  for (Block node : _path) {
+                    o += node.getIndexInMethod() + ", ";
+                  }
+                  Utils.debugPrintln(o+"]");
+                }
+              }
+              Utils.debugPrintln(allPaths1.size());
+              Utils.debugPrintln(allPaths2.size());
+
+              if (allPaths1.size() > 0 && allPaths2.size() > 0) {
+                Set<Block> commonCalleeBlocks = new HashSet<>(allPaths1.keySet());
+                commonCalleeBlocks.retainAll(allPaths2.keySet());
+                Utils.debugPrintln("commonCalleeBlocks " + commonCalleeBlocks.size());
+                Block calleeBlock = commonCalleeBlocks.iterator().next();
+                CFGPath path1 = allPaths1.get(calleeBlock).get(0);
+                CFGPath path2 = allPaths2.get(calleeBlock).get(0);
+                Collections.reverse(path1);
+                Collections.reverse(path2);
+
+                Block nextBlock = null;
+                int minLength = Math.min(path1.size(), path2.size());
+                for (int i = 0; i < minLength; i++) {
+                  Utils.debugPrintln(path1.get(i).getIndexInMethod() + " == " + path2.get(i).getIndexInMethod());
+                  if (path1.get(i) != path2.get(i)) {
+                    Utils.debugPrintln(path1.get(i));
+                    Utils.debugPrintln(path2.get(i));
+                    nextBlock = path2.get(i-1);
+                    break;
+                  }
+                }
+                
+                pc.counter = method.stmtToIndex.get(nextBlock.getHead());
+              } else if (allPaths1.size() > 0) {
+                currStmt = succ1.getHead();
+                pc.counter = method.stmtToIndex.get(currStmt);
+              } else if (allPaths2.size() > 0) {
+                currStmt = succ2.getHead();
+                pc.counter = method.stmtToIndex.get(currStmt);
               } else {
                 pc.counter = method.statements.size();
               }
+
+              /*
+              ArrayList<Block> succ1ToExit = new ArrayList<Block>();
+              ArrayList<Block> succ2ToExit = new ArrayList<Block>();
+              Block commonExit = method.findLCAInPostDom(succ1, succ2, succ1ToExit, succ2ToExit);
+              boolean mayCallMeth1 = false;
+              boolean mayCallMeth2 = false;
+              if (commonExit == null) {
+                //Its a loop
+                Utils.debugPrintln("loop");
+                Utils.debugPrintln(succ1.getIndexInMethod());
+                boolean succCanCall1 = method.mayCallInPath(succ1, succ1ToExit, false);
+                Utils.debugPrintln(succ2.getIndexInMethod());
+                boolean succCanCall2 = method.mayCallInPath(succ2, succ2ToExit, false);
+
+                Utils.debugPrintln(succ1.getIndexInMethod() + " -> " + succCanCall1 + " " + succ2.getIndexInMethod() + " -> " + succCanCall2);
+
+                if (succCanCall1 && succCanCall2) {
+                  Utils.debugPrintln(succ1.getIndexInMethod());
+                  mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+                  Utils.debugPrintln(succ2.getIndexInMethod());
+                  mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
+                  
+                } else if (succCanCall1) {
+                  mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+                } else if (succCanCall2) {
+                  mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+                } else {
+                  mayCallMeth1 = false;
+                  mayCallMeth2 = false;
+                  //No point in going to next instructions because none of the blocks have
+                  //any more invoke statements
+                  pc.counter = method.statements.size();
+                  continue;
+                }
+              } else {
+                Utils.debugPrintln(commonExit.getIndexInMethod());
+                String b = "";
+                for(Block n : succ1ToExit) {
+                  b += n.getIndexInMethod() + ", ";
+                }
+                Utils.debugPrintln(succ1.getIndexInMethod() +" -> " + b);
+                b = "";
+                for(Block n : succ2ToExit) {
+                  b += n.getIndexInMethod() + ", ";
+                }
+                Utils.debugPrintln(succ1.getIndexInMethod() +" -> " + b);
+                boolean succCanCall1 = method.mayCallInPath(succ1, succ1ToExit, false);
+                Utils.debugPrintln(succ2.getIndexInMethod());
+                boolean succCanCall2 = method.mayCallInPath(succ2, succ2ToExit, false);
+
+                Utils.debugPrintln(succ1.getIndexInMethod() + " -> " + succCanCall1 + " " + succ2.getIndexInMethod() + " -> " + succCanCall2);
+
+                if (succCanCall1 && succCanCall2) {
+                  Utils.debugPrintln(succ1.getIndexInMethod());
+                  mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+                  Utils.debugPrintln(succ2.getIndexInMethod());
+                  mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
+                  
+                } else if (succCanCall1) {
+                  mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
+                } else if (succCanCall2) {
+                  mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
+                } else {
+                  mayCallMeth1 = false;
+                  mayCallMeth2 = false;
+                  //Since none of the blocks have any more invoke statements,
+                  //go to the common exit
+                  pc.counter = method.stmtToIndex.get(commonExit.getHead());
+                  continue;
+                }
+              }
+
+              Utils.debugPrintln(currStmt + " " + mayCallMeth1 + " " + mayCallMeth2);
+              if (mayCallMeth1 && mayCallMeth2) {
+                pc.counter++;
+              } else if (mayCallMeth1) {
+                currStmt = succ1.getHead();
+                pc.counter = method.stmtToIndex.get(currStmt);
+              } else if (mayCallMeth2) {
+                currStmt = succ2.getHead();
+                pc.counter = method.stmtToIndex.get(currStmt);
+              } else {
+                Block lca = method.findLCAInPostDom(succ1, succ2, null, null);
+                if (lca != null) {
+                  Utils.debugPrintln(lca.getIndexInMethod());
+                  pc.counter = method.stmtToIndex.get(lca.getHead());
+                } else {
+                  pc.counter = method.statements.size();
+                }
+              }
+              // //Otherwise?
+              // Utils.debugPrintln(method.fullname() + "\n" +  method.shimpleBody.toString());
+              // Utils.debugPrintln("method not matches currevent " + currEvent + " at " + currStmt);
+              // System.exit(0);
+              */
             }
-            // //Otherwise?
-            // Utils.debugPrintln(method.fullname() + "\n" +  method.shimpleBody.toString());
-            // Utils.debugPrintln("method not matches currevent " + currEvent + " at " + currStmt);
-            // System.exit(0);
-            */
           }
         }
       } else if (currStmt instanceof JGotoStmt) {

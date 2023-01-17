@@ -390,7 +390,6 @@ public class ShimpleMethod {
 
   public boolean mayCallMethodInBlock(Block block, ShimpleMethod method) {  
     Iterator<Unit> stmtIter = block.iterator();
-    Utils.debugPrintln(block.getIndexInMethod());
     while (stmtIter.hasNext()) {
       Unit stmt = stmtIter.next();
       for (ValueBox valBox : stmt.getUseBoxes()) {

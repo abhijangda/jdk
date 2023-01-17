@@ -1,5 +1,6 @@
 package callstack;
 
+import soot.NullType;
 import soot.RefLikeType;
 import soot.RefType;
 import soot.SootClass;
@@ -41,11 +42,13 @@ import soot.jimple.IntConstant;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
 import soot.jimple.NeExpr;
+import soot.jimple.NullConstant;
 import soot.jimple.ParameterRef;
 import soot.jimple.StaticFieldRef;
 import soot.jimple.StaticInvokeExpr;
 import soot.jimple.VirtualInvokeExpr;
 import soot.jimple.internal.AbstractInstanceInvokeExpr;
+import soot.jimple.internal.AbstractJimpleIntBinopExpr;
 import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JGotoStmt;
 import soot.jimple.internal.JIfStmt;
@@ -155,16 +158,16 @@ public class CallFrame {
     this.paramValues = new HashMap<>();
     this.parentStmt = stmt;
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("QQQQQQQ<<>><<>><<");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/DirectoryIndexReader;");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     // if (canPrint) {
     //   Utils.debugPrintln(method.basicBlockStr());
     // }
-    if (canPrint) {
-      Utils.debugPrintln(method.fullname());
-      Utils.debugPrintln(method.basicBlockStr());
-      System.exit(0);
-    }
+    // if (canPrint) {
+    //   Utils.debugPrintln(method.fullname());
+    //   Utils.debugPrintln(method.basicBlockStr());
+    //   System.exit(0);
+    // }
   }
 
   public CallFrame(HeapEvent event, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
@@ -195,27 +198,37 @@ public class CallFrame {
 
   private JavaHeapElem evaluate(Value val) {
     Utils.debugPrintln(val.getClass());
-    if (val instanceof CmpExpr) {
-      Utils.debugAssert(false, "to handle");
-    } else if (val instanceof CmpgExpr) {
-
-    } else if (val instanceof CmplExpr) {
-
-    } else if (val instanceof EqExpr) {
-
-    } else if (val instanceof NeExpr) {
-      NeExpr cmp = (NeExpr)val;
-      evaluate(cmp.getOp1());
-      evaluate(cmp.getOp2());
-    } else if (val instanceof JimpleLocal) {
+    if (val instanceof JimpleLocal) {
       Utils.debugPrintln(val);
       Utils.debugPrintln(allVariableValues.get(val).size());
       return allVariableValues.get(val).iterator().next();
-    } else if (val instanceof IntConstant) {
-      Utils.debugPrintln(((IntConstant)val).value);
-
+    } else if (val instanceof NullConstant) {
+      Utils.debugPrintln(val);
+      return JavaNull.v();
     }
+    Utils.debugAssert(false, val + " " + val.getClass());;
     return null;
+  }
+
+  private boolean evaluateCond(AbstractJimpleIntBinopExpr cond) {
+    JavaHeapElem obj1 = evaluate(cond.getOp1());
+    JavaHeapElem obj2 = evaluate(cond.getOp2());
+
+    if (cond instanceof CmpExpr) {
+      Utils.debugAssert(false, "to handle");
+    } else if (cond instanceof CmpgExpr) {
+
+    } else if (cond instanceof CmplExpr) {
+
+    } else if (cond instanceof EqExpr) {
+      return obj1 == obj2;
+    } else if (cond instanceof NeExpr) {
+      return obj1 != obj2;
+    }
+
+    Utils.debugAssert(false, cond + " " + cond.getClass());
+
+    return false;
   }
 
   private Block evaluateIfStmt(JIfStmt ifstmt) {
@@ -225,8 +238,9 @@ public class CallFrame {
     boolean canEvalCond = true;
     for (ValueBox valBox : cond.getUseBoxes()) {
       Value val = valBox.getValue();
-      if ((val instanceof IntConstant && ((IntConstant)val).value == 0) || 
-          (val.getType() instanceof RefLikeType)) {
+      if (val instanceof NullConstant) {
+      } else if (val.getType() instanceof RefLikeType &&
+                 !allVariableValues.get(val).isEmpty()) { 
       } else {
         canEvalCond = false;
         break;
@@ -235,10 +249,8 @@ public class CallFrame {
 
     Utils.debugAssert(cond instanceof BinopExpr, "sanity " + cond.getClass());
 
-    // if (canPrint) {
-    //   if (canEvalCond)
-    //     evaluate(cond);
-    // }
+    if (canEvalCond)
+      evaluateCond((AbstractJimpleIntBinopExpr)cond);
 
     return null;
   }
@@ -313,7 +325,6 @@ public class CallFrame {
       currStmt = method.statements.get(pc.counter);
       Utils.debugPrintln(currStmt + " at " + pc.counter + " " + currStmt.getClass());
       this.method.propogateValues(this.allVariableValues, currStmt);
-      Utils.debugPrintln(this);
       if (this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>")) {
         // Utils.debugPrintln(pc.counter + " " + this.method.statements.size());
         // Utils.debugPrintln(this.method.fullname() + "   " + this.method.shimpleBody.toString());

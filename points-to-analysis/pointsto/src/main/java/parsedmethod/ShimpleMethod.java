@@ -1140,7 +1140,7 @@ public class ShimpleMethod {
   }
 
   public String basicBlockStr() {
-    return this.basicBlockGraph.toString();
+    return this.fullname() + "\n" + this.basicBlockGraph.toString();
   }
 
   public String fullname() {

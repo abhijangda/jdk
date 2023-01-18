@@ -141,13 +141,14 @@ class ProgramCounter {
 
 public class CallFrame {
   public final ShimpleMethod method;
-  private HashMap<Value, VariableValues> allVariableValues;
+  private HashMap<Value, VariableValue> allVariableValues;
   public final CallFrame parent;
   private final ProgramCounter pc;
   private final HashMap<ParameterRef, VariableValues> paramValues;
   private final Unit parentStmt;
   public boolean canPrint = false;
   public boolean isSegmentReaderGet = false;
+  private CFGPath cfgPathExecuted;
 
   public CallFrame(ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
     method = m;
@@ -157,12 +158,13 @@ public class CallFrame {
     pc = new ProgramCounter();
     this.paramValues = new HashMap<>();
     this.parentStmt = stmt;
+    cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/DirectoryIndexReader;");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init(Ljava/io/File;Lorg/apache/lucene/store/LockFactory;)V");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
-    // if (canPrint) {
-    //   Utils.debugPrintln(method.basicBlockStr());
-    // }
+    if (canPrint) {
+      Utils.debugPrintln(method.basicBlockStr());
+    }
     // if (canPrint) {
     //   Utils.debugPrintln(method.fullname());
     //   Utils.debugPrintln(method.basicBlockStr());
@@ -200,8 +202,8 @@ public class CallFrame {
     Utils.debugPrintln(val.getClass());
     if (val instanceof JimpleLocal) {
       Utils.debugPrintln(val);
-      Utils.debugPrintln(allVariableValues.get(val).size());
-      return allVariableValues.get(val).iterator().next();
+      Utils.debugPrintln(allVariableValues.get(val));
+      return allVariableValues.get(val).ref;
     } else if (val instanceof NullConstant) {
       Utils.debugPrintln(val);
       return JavaNull.v();
@@ -240,7 +242,7 @@ public class CallFrame {
       Value val = valBox.getValue();
       if (val instanceof NullConstant) {
       } else if (val.getType() instanceof RefLikeType &&
-                 !allVariableValues.get(val).isEmpty()) { 
+                 allVariableValues.get(val) != null) { 
       } else {
         canEvalCond = false;
         break;
@@ -269,11 +271,11 @@ public class CallFrame {
     if (retVal.getType() instanceof RefLikeType) {
       Utils.debugPrintln(retStmt);
       Utils.debugPrintln(retVal);
-      VariableValues retValues = this.allVariableValues.get(retVal);
-      if (retValues.size() == 0) {
+      if (this.allVariableValues.get(retVal) == null) {
         Utils.debugPrintln("0 values for " + retVal);
       }
-      this.parent.allVariableValues.get(leftVal).addAll(retValues);
+      VariableValue retValue = this.allVariableValues.get(retVal);
+      this.parent.allVariableValues.put(leftVal, retValue);
 
       // this.parent.method.propogateValuesToSucc(this.parent.allVariableValues, this.parent.method.getBlockForStmt(this.parentStmt));
     }
@@ -293,7 +295,13 @@ public class CallFrame {
         currEvent = eventsIterator.get();
         methodMatches = currEvent.method == method.sootMethod;
         currStmt = method.statements.get(pc.counter);
-        this.method.propogateValues(this.allVariableValues, currStmt);
+        this.method.propogateValues(this.allVariableValues, cfgPathExecuted, currStmt);
+        Block block = method.getBlockForStmt(currStmt);
+        if (cfgPathExecuted.isEmpty()) {
+          cfgPathExecuted.add(block);
+        } else if (cfgPathExecuted.get(cfgPathExecuted.size() - 1) != block) {
+          cfgPathExecuted.add(block);
+        }
 
         if (currStmt instanceof JIfStmt) {
         } else if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
@@ -328,12 +336,19 @@ public class CallFrame {
       methodMatches = currEvent.method == method.sootMethod;
       currStmt = method.statements.get(pc.counter);
       Utils.debugPrintln(currStmt + " at " + pc.counter + " " + currStmt.getClass());
-      this.method.propogateValues(this.allVariableValues, currStmt);
+      this.method.propogateValues(this.allVariableValues, cfgPathExecuted, currStmt);
       if (this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>")) {
         // Utils.debugPrintln(pc.counter + " " + this.method.statements.size());
         // Utils.debugPrintln(this.method.fullname() + "   " + this.method.shimpleBody.toString());
         // System.exit(0);
       }
+      Block block = method.getBlockForStmt(currStmt);
+      if (cfgPathExecuted.isEmpty()) {
+        cfgPathExecuted.add(block);
+      } else if (cfgPathExecuted.get(cfgPathExecuted.size() - 1) != block) {
+        cfgPathExecuted.add(block);
+      }
+
       if (currStmt instanceof JIfStmt) {
         JIfStmt ifstmt = (JIfStmt)currStmt;
         //An Ifstmt can be evaluated if the values are in allVariables.
@@ -344,7 +359,7 @@ public class CallFrame {
           Value val = valBox.getValue();
           if (val instanceof NullConstant) {
           } else if (val.getType() instanceof RefLikeType &&
-                    !allVariableValues.get(val).isEmpty()) { 
+                    allVariableValues.get(val) != null) { 
           } else {
             canEvalCond = false;
             break;
@@ -749,7 +764,7 @@ public class CallFrame {
           if (val.getType() instanceof RefType &&
               ((RefType)val.getType()).getClassName().contains("org.apache.lucene.index.SegmentReader")) {
               Utils.debugPrintln("setting value of " + val + " to SegmentReader");
-              allVariableValues.get(val).add(segmentInfoObj);    
+              allVariableValues.put(val, new VariableValue(segmentInfoObj));    
             }
         }
       }
@@ -798,26 +813,20 @@ public class CallFrame {
       invokeMethod = calleeExprAndStmt.getCallee();
     } else if (invokeExpr instanceof AbstractInstanceInvokeExpr) {
       AbstractInstanceInvokeExpr virtInvoke = (AbstractInstanceInvokeExpr)invokeExpr;
-      VariableValues vals = allVariableValues.get(virtInvoke.getBase());
       // if (this.method.sootMethod.getDeclaringClass().getName().contains("QueryProcessor") &&
       //     this.method.sootMethod.getName().contains("run")) {
       //   Utils.debugPrintln("454: " + stmt.toString() + " " + virtInvoke.getBase() + " " + vals.size());
       // }
-      if (vals.size() == 0) {
+      if (allVariableValues.get(virtInvoke.getBase()) == null) {
         Utils.debugPrintln("0 values for " + virtInvoke.getBase());
         invokeMethod = ParsedMethodMap.v().getOrParseToShimple(virtInvoke.getMethod());
       } else {
+        VariableValue val = allVariableValues.get(virtInvoke.getBase());
+
         // JavaHeapElem[] valuesArray = new JavaHeapElem[vals.size()];
         // valuesArray = vals.toArray(valuesArray);
-        Iterator<JavaHeapElem> iter =  vals.iterator();
-        JavaHeapElem val = null;
-        while(iter.hasNext()) {
-          val = iter.next();
-          if (val.getType() instanceof RefType)
-            break;  
-        }
-        Type type = val.getType();
-        Utils.debugAssert(type instanceof RefType, "");
+        Type type = val.sootType;
+        Utils.debugAssert(type instanceof RefType, "type instanceof " + type.getClass() + " " + val.ref);
         SootClass klass = ((RefType)type).getSootClass();
         Utils.debugPrintln(klass.getName());
         while(klass != null && !klass.declaresMethod(virtInvoke.getMethod().getSubSignature())) {
@@ -876,19 +885,19 @@ public class CallFrame {
     StringBuilder builder = new StringBuilder();
 
     builder.append("[\n");
-    for (var vals : allVariableValues.entrySet()) {
-      if (vals.getValue().size() == 0)
-        continue;;
-      builder.append(vals.getKey() + " : " + vals.getKey().getType());
+    for (var val : allVariableValues.entrySet()) {
+      if (val.getValue() == null)
+        continue;
+      builder.append(val.getKey() + " : " + val.getKey().getType());
       builder.append(" = {");
-      for (var val : vals.getValue()) {
-        if (val instanceof JavaNull) {
-          builder.append("null");
-        } else {
-          builder.append(val.getType());
-        }
-        builder.append(", ");
+      
+      if (val instanceof JavaNull) {
+        builder.append("null");
+      } else {
+        builder.append(val.getValue().sootType);
       }
+      builder.append(", ");
+      
       builder.append("};\n");
     }
     builder.append("]\n");

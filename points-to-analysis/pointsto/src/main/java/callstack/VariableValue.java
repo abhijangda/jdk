@@ -11,8 +11,8 @@ public class VariableValue {
     this.ref = refValue;
   }
 
-  public VariableValue(Type sootType) {
-    this.sootType = sootType;
-    this.ref = null;
+  public VariableValue(JavaHeapElem refValue) {
+    this.sootType = refValue.getType();
+    this.ref = refValue;
   }
 }

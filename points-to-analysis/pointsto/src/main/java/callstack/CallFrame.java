@@ -27,6 +27,7 @@ import javaheap.JavaHeap;
 import javaheap.JavaHeapElem;
 import javaheap.JavaNull;
 import javaheap.JavaValue;
+import javaheap.JavaValueFactory;
 import parsedmethod.ParsedMethodMap;
 
 import java.util.ArrayList;
@@ -142,7 +143,7 @@ class ProgramCounter {
 
 public class CallFrame {
   public final ShimpleMethod method;
-  private HashMap<Value, VariableValue> allVariableValues;
+  private HashMap<Value, JavaValue> allVariableValues;
   public final CallFrame parent;
   private final ProgramCounter pc;
   private final Unit parentStmt;
@@ -202,7 +203,7 @@ public class CallFrame {
     if (val instanceof JimpleLocal) {
       Utils.debugPrintln(val);
       Utils.debugPrintln(allVariableValues.get(val));
-      return allVariableValues.get(val).value;
+      return allVariableValues.get(val);
     } else if (val instanceof NullConstant) {
       Utils.debugPrintln(val);
       return JavaNull.v();
@@ -222,9 +223,9 @@ public class CallFrame {
     } else if (cond instanceof CmplExpr) {
 
     } else if (cond instanceof EqExpr) {
-      return obj1 == obj2;
+      return obj1.equals(obj2);
     } else if (cond instanceof NeExpr) {
-      return obj1 != obj2;
+      return !obj1.equals(obj2);
     }
 
     Utils.debugAssert(false, cond + " " + cond.getClass());
@@ -273,7 +274,7 @@ public class CallFrame {
       if (this.allVariableValues.get(retVal) == null) {
         Utils.debugPrintln("0 values for " + retVal);
       }
-      VariableValue retValue = this.allVariableValues.get(retVal);
+      JavaValue retValue = this.allVariableValues.get(retVal);
       this.parent.allVariableValues.put(leftVal, retValue);
 
       // this.parent.method.propogateValuesToSucc(this.parent.allVariableValues, this.parent.method.getBlockForStmt(this.parentStmt));
@@ -763,7 +764,7 @@ public class CallFrame {
           if (val.getType() instanceof RefType &&
               ((RefType)val.getType()).getClassName().contains("org.apache.lucene.index.SegmentReader")) {
               Utils.debugPrintln("setting value of " + val + " to SegmentReader");
-              allVariableValues.put(val, new VariableValue(segmentInfoObj));    
+              allVariableValues.put(val, JavaValueFactory.v(segmentInfoObj));    
             }
         }
       }
@@ -820,12 +821,12 @@ public class CallFrame {
         Utils.debugPrintln("0 values for " + virtInvoke.getBase());
         invokeMethod = ParsedMethodMap.v().getOrParseToShimple(virtInvoke.getMethod());
       } else {
-        VariableValue val = allVariableValues.get(virtInvoke.getBase());
+        JavaValue val = allVariableValues.get(virtInvoke.getBase());
 
         // JavaHeapElem[] valuesArray = new JavaHeapElem[vals.size()];
         // valuesArray = vals.toArray(valuesArray);
-        Type type = val.sootType;
-        Utils.debugAssert(type instanceof RefType, "type instanceof " + type.getClass() + " " + val.value);
+        Type type = val.getType();
+        Utils.debugAssert(type instanceof RefType, "type instanceof " + type.getClass() + " " + val.toString());
         SootClass klass = ((RefType)type).getSootClass();
         Utils.debugPrintln(klass.getName());
         while(klass != null && !klass.declaresMethod(virtInvoke.getMethod().getSubSignature())) {
@@ -893,7 +894,7 @@ public class CallFrame {
       if (val instanceof JavaNull) {
         builder.append("null");
       } else {
-        builder.append(val.getValue().sootType);
+        builder.append(val.getValue().getType());
       }
       builder.append(", ");
       

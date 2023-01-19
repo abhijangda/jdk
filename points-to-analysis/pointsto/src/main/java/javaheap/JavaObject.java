@@ -4,6 +4,7 @@ import java.util.HashMap;
 import soot.RefType;
 import soot.SootClass;
 import soot.SootField;
+import soot.sootify.ValueTemplatePrinter;
 
 public class JavaObject extends JavaHeapElem {
   protected final HashMap<String, JavaHeapElem> fieldValues;
@@ -35,13 +36,11 @@ public class JavaObject extends JavaHeapElem {
         break;
       }
     }
+  
     utils.Utils.debugAssert(sootField != null,
                             "field '%s' not present in '%s'", field, getClassType().getClassName());
     JavaHeapElem value = fieldValues.get(field);
-    if (value == null) {
-      return JavaNull.v();
-    }
-
+    
     return value;
   }
 }

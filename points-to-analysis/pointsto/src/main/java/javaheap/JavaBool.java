@@ -47,4 +47,14 @@ public class JavaBool extends JavaPrimValue implements JavaPrimOps {
     Utils.shouldNotReachHere();
     return false;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof JavaBool && eq((JavaBool)o);
+  }
+
+  @Override
+  public String toString() {
+    return Boolean.toString(value);
+  }
 }

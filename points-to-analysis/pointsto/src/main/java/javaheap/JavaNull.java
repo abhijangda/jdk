@@ -3,7 +3,7 @@ package javaheap;
 import soot.NullType;
 import soot.Type;
 
-public class JavaNull extends JavaHeapElem {
+public class JavaNull extends JavaValue {
   private JavaNull() {
     super(NullType.v());
   }
@@ -16,5 +16,15 @@ public class JavaNull extends JavaHeapElem {
     }
 
     return instance;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof JavaNull;
+  }
+
+  @Override
+  public String toString() {
+    return "null";
   }
 }

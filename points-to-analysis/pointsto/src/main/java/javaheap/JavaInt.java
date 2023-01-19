@@ -45,4 +45,14 @@ public class JavaInt extends JavaPrimValue implements JavaPrimOps {
   public boolean le(JavaPrimValue o) {
     return value <= ((JavaInt)o).value;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof JavaInt && eq((JavaInt)o);
+  }
+
+  @Override
+  public String toString() {
+    return Integer.toString(value);
+  }
 }

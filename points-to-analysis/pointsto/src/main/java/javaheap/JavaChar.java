@@ -45,4 +45,14 @@ public class JavaChar extends JavaPrimValue implements JavaPrimOps {
   public boolean le(JavaPrimValue o) {
     return value <= ((JavaChar)o).value;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof JavaChar && eq((JavaChar)o);
+  }
+
+  @Override
+  public String toString() {
+    return Character.toString(value);
+  }
 }

@@ -45,4 +45,14 @@ public class JavaLong extends JavaPrimValue implements JavaPrimOps {
   public boolean le(JavaPrimValue o) {
     return value <= ((JavaLong)o).value;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof JavaLong && eq((JavaLong)o);
+  }
+
+  @Override
+  public String toString() {
+    return Long.toString(value);
+  }
 }

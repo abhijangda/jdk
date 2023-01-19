@@ -45,4 +45,14 @@ public class JavaByte extends JavaPrimValue implements JavaPrimOps {
   public boolean le(JavaPrimValue o) {
     return value <= ((JavaByte)o).value;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof JavaByte && eq((JavaByte)o);
+  }
+
+  @Override
+  public String toString() {
+    return Byte.toString(value);
+  }
 }

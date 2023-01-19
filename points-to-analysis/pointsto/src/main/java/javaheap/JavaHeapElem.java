@@ -5,10 +5,11 @@ import soot.RefLikeType;
 import soot.Type;
 import utils.Utils;
 
-public class JavaHeapElem extends JavaValue {
+public class JavaHeapElem {
+  protected final Type type;
   public JavaHeapElem(Type type) {
-    super(type);
     Utils.debugAssert(type instanceof RefLikeType || type instanceof NullType, "invalid type " + type.getClass());
+    this.type = type;
   }
 
   public Type getType() {

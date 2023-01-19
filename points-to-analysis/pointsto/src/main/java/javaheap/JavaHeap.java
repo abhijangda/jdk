@@ -4,6 +4,7 @@ import java.util.HashMap;
 
 import soot.ArrayType;
 import soot.RefType;
+import utils.Utils;
 
 public class JavaHeap extends HashMap<Long, JavaHeapElem> {
   private JavaHeap() {
@@ -88,7 +89,8 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
 
   public JavaHeapElem get(long ptr) {
     if (ptr == 0) {
-      return JavaNull.v();
+      Utils.debugAssert(false, "");
+      return null;
     }
 
     return super.get(ptr);

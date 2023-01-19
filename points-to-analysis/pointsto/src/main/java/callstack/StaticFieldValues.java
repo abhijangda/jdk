@@ -31,7 +31,7 @@ public class StaticFieldValues {
   public JavaHeapElem get(SootField field) {
     JavaHeapElem value = values.get(field);
     if (value == null) {
-      return JavaNull.v();
+      return null;
     }
     return value;
   }

@@ -11,5 +11,11 @@ public abstract class JavaValue {
 
   public Type getType() {
     return type;
-  }  
+  }
+
+  @Override
+  public abstract boolean equals(Object o);
+
+  @Override
+  public abstract String toString();
 }

@@ -1,4 +1,4 @@
-package javaheap;
+package javavalues;
 
 import soot.NullType;
 import soot.Type;
@@ -25,6 +25,6 @@ public class JavaNull extends JavaValue {
 
   @Override
   public String toString() {
-    return "null";
+    return wrapClassName("null");
   }
 }

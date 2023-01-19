@@ -22,14 +22,8 @@ import org.apache.bcel.util.ByteSequence;
 import classcollections.BCELClassCollection;
 import classhierarchyanalysis.ClassHierarchyAnalysis;
 import classhierarchyanalysis.ClassHierarchyGraph;
-import javaheap.HeapEvent;
-import javaheap.JavaHeap;
-import javaheap.JavaHeapElem;
-import javaheap.JavaNull;
-import javaheap.JavaObject;
-import javaheap.JavaObjectRef;
-import javaheap.JavaValue;
-import javaheap.JavaValueFactory;
+import javaheap.*;
+import javavalues.*;
 import soot.*;
 import soot.javaToJimple.NestedClassListBuilder;
 import soot.jimple.*;
@@ -885,11 +879,17 @@ public class ShimpleMethod {
     } else if (val instanceof JNewMultiArrayExpr) {
       Utils.debugAssert(false, stmt.toString());
     } else if (val instanceof BinopExpr) {
-      utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString());
-      // VariableValues vals = new VariableValues(val, stmt);
-      // Value v1 = ((BinopExpr)val).getOp1();
-      // Value v2 = ((BinopExpr)val).getOp2();
-      // return vals;
+      // utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString());
+      AbstractBinopExpr binop = (AbstractBinopExpr)val;
+      JavaValue op1 = allVariableValues.get(binop.getOp1());
+      JavaValue op2 = allVariableValues.get(binop.getOp2());
+      if (op1 == null || op2 == null)
+        return null;
+      Utils.debugAssert(op1 instanceof JavaPrimValue, op1.getClass().toString());
+      Utils.debugAssert(op2 instanceof JavaPrimValue, op2.getClass().toString());
+      return JavaPrimValue.processJBinOp(binop,
+                                         (JavaPrimValue)op1, 
+                                         (JavaPrimValue)op2);
     } else if (val instanceof UnopExpr) {
       utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString());
       // VariableValues vals = new VariableValues(val, stmt);
@@ -937,14 +937,24 @@ public class ShimpleMethod {
     } else if (val instanceof JimpleLocal) {
       return allVariableValues.get(val);
     } else if (val instanceof Constant) {
+      Utils.debugPrintln(val);
       if (!(val instanceof NullConstant) && val.getType() instanceof RefType && 
           ((RefType)val.getType()).getSootClass().getName().equals("java.lang.String")) {
         JavaObject s = JavaHeap.v().createNewObject(((RefType)val.getType()));
         return JavaValueFactory.v(s);
       } else if (val instanceof NullConstant) {
         return JavaValueFactory.nullV();  
+      } else if (val instanceof LongConstant) {
+        return JavaValueFactory.v(((LongConstant)val).value);
+      } else if (val instanceof IntConstant) {
+        return JavaValueFactory.v(((IntConstant)val).value);
+      } else if (val instanceof FloatConstant) {
+        return JavaValueFactory.v(((FloatConstant)val).value);
+      } else if (val instanceof DoubleConstant) {
+        return JavaValueFactory.v(((DoubleConstant)val).value);
       } else {
-        utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString() + " " + val.getClass());
+        // utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString() + " " + val.getClass());
+        Utils.shouldNotReachHere(val.getClass().toString());
       }
 
       // VariableValues vals = new VariableValues(val, stmt);
@@ -991,6 +1001,7 @@ public class ShimpleMethod {
       }
     } else if (stmt instanceof JAssignStmt) { 
       JavaValue rightVal = obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, ((JAssignStmt)stmt).getRightOp());
+      Utils.debugPrintln(stmt + " " + rightVal + "  " + ((JAssignStmt)stmt).getRightOp().getClass());
       if (rightVal != null) {
         allVariableValues.put(((JAssignStmt)stmt).getLeftOp(), rightVal);
         // blockVarVals.put(stmt, valsForLeft);

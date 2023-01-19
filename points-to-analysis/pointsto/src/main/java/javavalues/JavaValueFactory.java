@@ -1,5 +1,8 @@
-package javaheap;
+package javavalues;
 
+import javaheap.JavaArray;
+import javaheap.JavaHeapElem;
+import javaheap.JavaObject;
 import utils.Utils;
 
 public abstract class JavaValueFactory {
@@ -29,6 +32,14 @@ public abstract class JavaValueFactory {
 
   public static JavaLong v(long value) {
     return new JavaLong(value);
+  }
+
+  public static JavaFloat v(float value) {
+    return new JavaFloat(value);
+  }
+
+  public static JavaDouble v(double value) {
+    return new JavaDouble(value);
   }
 
   public static JavaByte v(byte value) {

@@ -1,6 +1,6 @@
 package callstack;
 import javaheap.JavaHeapElem;
-import javaheap.JavaValue;
+import javavalues.*;
 import soot.Type;
 
 public class VariableValue {

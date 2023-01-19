@@ -1,5 +1,8 @@
-package javaheap;
+package javavalues;
 
+import javaheap.JavaArray;
+import javaheap.JavaHeapElem;
+import javaheap.JavaObject;
 import soot.ArrayType;
 import soot.RefType;
 import utils.Utils;

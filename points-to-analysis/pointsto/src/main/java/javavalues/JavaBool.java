@@ -1,4 +1,4 @@
-package javaheap;
+package javavalues;
 
 import soot.BooleanType;
 import utils.Utils;
@@ -21,40 +21,44 @@ public class JavaBool extends JavaPrimValue implements JavaPrimOps {
     return null;
   }
 
-  public boolean eq(JavaPrimValue o) {
-    return value == ((JavaBool)o).value;
+  public JavaBool not() {
+    return JavaValueFactory.v(!value);
+  }
+
+  public JavaBool eq(JavaPrimValue o) {
+    return JavaValueFactory.v(value == ((JavaBool)o).value);
   }
   
-  public boolean neq(JavaPrimValue o) {
-    return !eq(o);
+  public JavaBool neq(JavaPrimValue o) {
+    return eq(o).not();
   }
 
-  public boolean gt(JavaPrimValue o) {
+  public JavaBool gt(JavaPrimValue o) {
     Utils.shouldNotReachHere();
-    return false;
+    return null;
   }
 
-  public boolean lt(JavaPrimValue o) {
+  public JavaBool lt(JavaPrimValue o) {
     Utils.shouldNotReachHere();
-    return false;
+    return null;
   }
-  public boolean ge(JavaPrimValue o) {
+  public JavaBool ge(JavaPrimValue o) {
     Utils.shouldNotReachHere();
-    return false;
+    return null;
   }
 
-  public boolean le(JavaPrimValue o) {
+  public JavaBool le(JavaPrimValue o) {
     Utils.shouldNotReachHere();
-    return false;
+    return null;
   }
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof JavaBool && eq((JavaBool)o);
+    return o instanceof JavaBool && eq((JavaBool)o).value;
   }
 
   @Override
   public String toString() {
-    return Boolean.toString(value);
+    return wrapClassName(Boolean.toString(value));
   }
 }

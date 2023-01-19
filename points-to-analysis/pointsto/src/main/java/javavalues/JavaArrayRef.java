@@ -1,5 +1,8 @@
-package javaheap;
+package javavalues;
 
+import javaheap.JavaArray;
+import javaheap.JavaHeapElem;
+import javaheap.JavaObject;
 import soot.ArrayType;
 import soot.RefType;
 import utils.Utils;
@@ -8,7 +11,7 @@ public class JavaArrayRef extends JavaValue {
   private JavaArray array;
 
   public JavaArrayRef(JavaArray array) {
-    super(array.type);
+    super(array.getType());
     this.array = array;
   }
 

@@ -3,7 +3,7 @@ import java.util.*;
 
 import javaheap.JavaHeap;
 import javaheap.JavaHeapElem;
-import javaheap.JavaNull;
+import javavalues.JavaNull;
 import soot.SootField;
 import soot.SootFieldRef;
 

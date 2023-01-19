@@ -22,12 +22,8 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
-import javaheap.HeapEvent;
-import javaheap.JavaHeap;
-import javaheap.JavaHeapElem;
-import javaheap.JavaNull;
-import javaheap.JavaValue;
-import javaheap.JavaValueFactory;
+import javaheap.*;
+import javavalues.*;
 import parsedmethod.ParsedMethodMap;
 
 import java.util.ArrayList;
@@ -43,6 +39,7 @@ import soot.jimple.EqExpr;
 import soot.jimple.IntConstant;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
+import soot.jimple.LongConstant;
 import soot.jimple.NeExpr;
 import soot.jimple.NullConstant;
 import soot.jimple.ParameterRef;
@@ -160,7 +157,7 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init(Ljava/io/File;Lorg/apache/lucene/store/LockFactory;)V");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()Ljava/lang/Object");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     // if (canPrint) {
     //   Utils.debugPrintln(method.basicBlockStr());
@@ -207,8 +204,12 @@ public class CallFrame {
     } else if (val instanceof NullConstant) {
       Utils.debugPrintln(val);
       return JavaNull.v();
+    } else if (val instanceof IntConstant) {
+      return JavaValueFactory.v(((IntConstant)val).value);
+    } else if (val instanceof LongConstant) {
+      return JavaValueFactory.v(((LongConstant)val).value);
     }
-    Utils.debugAssert(false, val + " " + val.getClass());;
+    Utils.debugAssert(false, val + " " + val.getClass());
     return null;
   }
 
@@ -240,9 +241,7 @@ public class CallFrame {
     boolean canEvalCond = true;
     for (ValueBox valBox : cond.getUseBoxes()) {
       Value val = valBox.getValue();
-      if (val instanceof NullConstant) {
-      } else if (val.getType() instanceof RefLikeType &&
-                 allVariableValues.get(val) != null) { 
+      if (val instanceof Constant || allVariableValues.get(val) != null) {
       } else {
         canEvalCond = false;
         break;
@@ -250,7 +249,7 @@ public class CallFrame {
     }
 
     Utils.debugAssert(cond instanceof BinopExpr, "sanity " + cond.getClass());
-
+    
     if (canEvalCond) {
       boolean value = evaluateCond((AbstractJimpleIntBinopExpr)cond);
       Utils.debugPrintln(value);
@@ -357,15 +356,14 @@ public class CallFrame {
         boolean canEvalCond = true;
         for (ValueBox valBox : cond.getUseBoxes()) {
           Value val = valBox.getValue();
-          if (val instanceof NullConstant) {
-          } else if (val.getType() instanceof RefLikeType &&
-                    allVariableValues.get(val) != null) { 
+          if (val instanceof Constant || allVariableValues.get(val) != null) {
+            Utils.debugPrintln(val + " " + allVariableValues.get(val));
           } else {
             canEvalCond = false;
             break;
           }
         }
-
+        Utils.debugPrintln("can evaluate " + cond + " " + canEvalCond);
         Unit target = ((JIfStmt)currStmt).getTarget();
         Utils.debugAssert(method.stmtToIndex.containsKey(target), "sanity");
         if (canEvalCond) {

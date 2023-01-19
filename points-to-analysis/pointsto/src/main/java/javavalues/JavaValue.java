@@ -1,4 +1,4 @@
-package javaheap;
+package javavalues;
 
 import soot.Type;
 
@@ -13,6 +13,10 @@ public abstract class JavaValue {
     return type;
   }
 
+  protected String wrapClassName(String s) {
+    return this.getClass().getSimpleName() + "(" + s + ")";
+  }
+  
   @Override
   public abstract boolean equals(Object o);
 

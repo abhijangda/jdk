@@ -1,18 +1,19 @@
 package callstack;
 import javaheap.JavaHeapElem;
+import javaheap.JavaValue;
 import soot.Type;
 
 public class VariableValue {
   public final Type sootType;
-  public final JavaHeapElem ref;
+  public final JavaValue value;
 
-  public VariableValue(Type sootType, JavaHeapElem refValue) {
+  public VariableValue(Type sootType, JavaValue value) {
     this.sootType = sootType;
-    this.ref = refValue;
+    this.value = value;
   }
 
-  public VariableValue(JavaHeapElem refValue) {
-    this.sootType = refValue.getType();
-    this.ref = refValue;
+  public VariableValue(JavaValue value) {
+    this.sootType = value.getType();
+    this.value = value;
   }
 }

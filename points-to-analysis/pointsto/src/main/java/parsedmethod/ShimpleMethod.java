@@ -911,8 +911,8 @@ public class ShimpleMethod {
       SootFieldRef field = ((JInstanceFieldRef)val).getFieldRef();
       VariableValue baseVal = allVariableValues.get(base);
       if (baseVal == null) return null;
-      utils.Utils.debugAssert(baseVal.ref instanceof JavaObject, "");
-      return new VariableValue(((JavaObject)baseVal.ref).getField(field.name()));
+      utils.Utils.debugAssert(baseVal.value instanceof JavaObject, "");
+      return new VariableValue(((JavaObject)baseVal.value).getField(field.name()));
     } else if (val instanceof JInterfaceInvokeExpr) {
       return null;
     } else if (val instanceof SPhiExpr) {

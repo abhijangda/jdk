@@ -1,10 +1,11 @@
 package javaheap;
 
+import soot.NullType;
 import soot.Type;
 
 public class JavaNull extends JavaHeapElem {
   private JavaNull() {
-    super(null);
+    super(NullType.v());
   }
 
   private static JavaNull instance = null;

@@ -1,12 +1,14 @@
 package javaheap;
 
+import soot.NullType;
+import soot.RefLikeType;
 import soot.Type;
+import utils.Utils;
 
-public class JavaHeapElem {
-  protected final Type type;
-
+public class JavaHeapElem extends JavaValue {
   public JavaHeapElem(Type type) {
-    this.type = type;
+    super(type);
+    Utils.debugAssert(type instanceof RefLikeType || type instanceof NullType, "invalid type " + type.getClass());
   }
 
   public Type getType() {

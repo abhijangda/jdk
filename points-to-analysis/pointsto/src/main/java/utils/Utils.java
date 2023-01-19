@@ -61,6 +61,10 @@ public abstract class Utils {
     debugAssert(false, "Should not reach here\n");
   }
 
+  public static void shouldNotReachHere(String message) {
+    debugAssert(false, message);
+  }
+
   public static void debugAssert(boolean b, String fmt, Object... args) {
     if (DEBUG_PRINT) {
       if (!b) {

@@ -8,6 +8,8 @@ public abstract class JavaValueFactory {
       return new JavaObjectRef((JavaObject)obj);
     else if (obj instanceof JavaArray) {
       return new JavaArrayRef((JavaArray)obj);
+    } else if (obj == null) {
+      return nullV();
     }
     Utils.shouldNotReachHere();
     return null;

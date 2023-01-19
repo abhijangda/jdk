@@ -89,7 +89,6 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
 
   public JavaHeapElem get(long ptr) {
     if (ptr == 0) {
-      Utils.debugAssert(false, "");
       return null;
     }
 

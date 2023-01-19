@@ -914,7 +914,7 @@ public class ShimpleMethod {
       SootFieldRef field = ((JInstanceFieldRef)val).getFieldRef();
       JavaValue baseVal = allVariableValues.get(base);
       if (baseVal == null) return null;
-      return (((JavaObjectRef)baseVal).getField(field.name()));
+      return (((JavaObjectRef)baseVal).getField(field.resolve()));
     } else if (val instanceof JInterfaceInvokeExpr) {
       return null;
     } else if (val instanceof SPhiExpr) {
@@ -922,8 +922,10 @@ public class ShimpleMethod {
       SPhiExpr phi = (SPhiExpr)val;
 
       for (ValueUnitPair pair : phi.getArgs()) {
-        // Utils.debugPrintln(pair.getUnit() + " " + pair.getValue());
-        if (getBlockForStmt(pair.getUnit()) == cfgPathExecuted.get(cfgPathExecuted.size() - 1)) {
+        Utils.debugPrintln(pair.getUnit() + " " + pair.getValue() + " " + allVariableValues.get(pair.getValue()));
+        Utils.debugPrintln(getBlockForStmt(pair.getUnit()).getIndexInMethod() + " " + cfgPathExecuted.get(cfgPathExecuted.size() - 1).getIndexInMethod());
+        if (getBlockForStmt(pair.getUnit()) == cfgPathExecuted.get(cfgPathExecuted.size() - 2)) {
+          Utils.debugPrintln(pair.getUnit() + " " + pair.getValue() + " " + allVariableValues.get(pair.getValue()));
           JavaValue varVal = allVariableValues.get(pair.getValue());
           if (varVal != null)
             return varVal;
@@ -962,7 +964,9 @@ public class ShimpleMethod {
       // vals.add(new JavaValue(val.getType()));
       // return vals;
     } else if (val instanceof StaticFieldRef) {
-      return JavaValueFactory.v(StaticFieldValues.v().get(((StaticFieldRef)val).getField()));
+      SootField staticField = ((StaticFieldRef)val).getField();
+      if (staticField.getType() instanceof RefLikeType)
+        return JavaValueFactory.v(StaticFieldValues.v().get(staticField));
     } else if (val instanceof JArrayRef) {
       JArrayRef arrayRef = (JArrayRef)val;
       Utils.debugPrintln(arrayRef.getType());

@@ -335,17 +335,17 @@ public class CallFrame {
       methodMatches = currEvent.method == method.sootMethod;
       currStmt = method.statements.get(pc.counter);
       Utils.debugPrintln(currStmt + " at " + pc.counter + " " + currStmt.getClass());
-      this.method.propogateValues(this.allVariableValues, cfgPathExecuted, currStmt);
-      if (this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>")) {
-        // Utils.debugPrintln(pc.counter + " " + this.method.statements.size());
-        // Utils.debugPrintln(this.method.fullname() + "   " + this.method.shimpleBody.toString());
-        // System.exit(0);
-      }
       Block block = method.getBlockForStmt(currStmt);
       if (cfgPathExecuted.isEmpty()) {
         cfgPathExecuted.add(block);
       } else if (cfgPathExecuted.get(cfgPathExecuted.size() - 1) != block) {
         cfgPathExecuted.add(block);
+      }
+      this.method.propogateValues(this.allVariableValues, cfgPathExecuted, currStmt);
+      if (this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>")) {
+        // Utils.debugPrintln(pc.counter + " " + this.method.statements.size());
+        // Utils.debugPrintln(this.method.fullname() + "   " + this.method.shimpleBody.toString());
+        // System.exit(0);
       }
 
       if (currStmt instanceof JIfStmt) {

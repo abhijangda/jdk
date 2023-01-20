@@ -386,21 +386,61 @@ public class ShimpleMethod {
     return false;
   }
 
-  public boolean mayCallMethodInBlock(Block block, ShimpleMethod method) {  
+  public Unit mayCallMethodInBlock(Block block, ShimpleMethod method) {  
     Iterator<Unit> stmtIter = block.iterator();
     while (stmtIter.hasNext()) {
       Unit stmt = stmtIter.next();
       for (ValueBox valBox : stmt.getUseBoxes()) {
         Value val = valBox.getValue();
         if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val, method))
-          return true;
+          return stmt;
         //TODO: Static 
       }
-
+    
       //TODO: If a heap event bytecode is in this block then this path is not taken
     }
     
-    return false;
+    return null;
+  }
+
+  public Unit heapUpdateStmtBeforeCall(Block block, ShimpleMethod method) {
+    Iterator<Unit> stmtIter = block.iterator();
+    while (stmtIter.hasNext()) {
+      Unit stmt = stmtIter.next();
+      if (stmt instanceof JAssignStmt) {
+        JAssignStmt assign = (JAssignStmt)stmt;
+        if (method.sootMethod.isStaticInitializer()) {
+          SootClass initklass = method.sootMethod.getDeclaringClass();
+          SootClass klass = null;
+          if (assign.getRightOp() instanceof JNewExpr) {
+            klass = ((JNewExpr)assign.getRightOp()).getBaseType().getSootClass();
+          } else if (assign.getLeftOp() instanceof StaticFieldRef) {
+            klass = ((StaticFieldRef)assign.getLeftOp()).getField().getDeclaringClass();
+          } else if (assign.getLeftOp() instanceof JInstanceFieldRef) {
+            klass = ((JInstanceFieldRef)assign.getLeftOp()).getField().getDeclaringClass();
+          }
+          Utils.debugPrintln(stmt);
+          if (klass != null && klass != initklass) return stmt;
+        } else {
+          Utils.debugPrintln(stmt);
+          if (assign.getRightOp() instanceof JNewExpr)
+            return stmt;
+
+          if (assign.getLeftOp() instanceof StaticFieldRef ||
+              assign.getLeftOp() instanceof JInstanceFieldRef)
+            return stmt;
+        }
+        Utils.debugPrintln(stmt);
+        if (assign.getRightOp() instanceof JNewArrayExpr || 
+            assign.getRightOp() instanceof JNewMultiArrayExpr)
+          return stmt;
+        if (assign.getLeftOp() instanceof JArrayRef) {
+          return stmt;
+        }
+      }
+    }
+
+    return null;
   }
 
   private ArrayList<DominatorNode<Block>> pathToRoot(DominatorNode<Block> node) {
@@ -433,15 +473,15 @@ public class ShimpleMethod {
   }
 
   private void allPathsToCalleeBlock(Block start, ShimpleMethod callee, CFGPath currPath, 
-                                        HashSet<Block> visited,
-                                        HashMap<Block, ArrayList<CFGPath>> allPaths) {
+                                      HashSet<Block> visited,
+                                      HashMap<Block, ArrayList<CFGPath>> allPaths) {
     // Mark the current node and store it in path[]
     visited.add(start);
     currPath.add(start);
     // If current vertex is same as destination, then print
     // current path[]
     
-    if (mayCallMethodInBlock(start, callee)) {
+    if (mayCallMethodInBlock(start, callee) != null) {
       CFGPath _path = new CFGPath();
       for (Block n : currPath) {
         _path.add(n);
@@ -450,13 +490,20 @@ public class ShimpleMethod {
         allPaths.put(start, new ArrayList<>());
       }
       allPaths.get(start).add(_path);
-    } else { 
-      // If current vertex is not destination
-      // Recur for all the vertices adjacent to current
-      // vertex
-      for (Block succ : start.getSuccs()) {
-        if (!visited.contains(succ) && !isDominator(succ, start)) {
-          allPathsToCalleeBlock(succ, callee, currPath, visited, allPaths);
+      Utils.debugPrintln(start.getIndexInMethod());
+    } else {
+      //If the block instead does a heap event then do not go 
+      //to the successors
+      if (heapUpdateStmtBeforeCall(start, callee) != null) {
+        Utils.debugPrintln(start.getIndexInMethod());
+      } else {
+        // If current vertex is not destination
+        // Recur for all the vertices adjacent to current
+        // vertex
+        for (Block succ : start.getSuccs()) {
+          if (!visited.contains(succ) && !isDominator(succ, start)) {
+            allPathsToCalleeBlock(succ, callee, currPath, visited, allPaths);
+          }
         }
       }
     }

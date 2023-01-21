@@ -414,10 +414,10 @@ public class ShimpleMethod {
           SootClass klass = null;
           if (assign.getRightOp() instanceof JNewExpr) {
             klass = ((JNewExpr)assign.getRightOp()).getBaseType().getSootClass();
-          } else if (assign.getLeftOp() instanceof StaticFieldRef) {
-            klass = ((StaticFieldRef)assign.getLeftOp()).getField().getDeclaringClass();
-          } else if (assign.getLeftOp() instanceof JInstanceFieldRef) {
-            klass = ((JInstanceFieldRef)assign.getLeftOp()).getField().getDeclaringClass();
+          } else if (assign.getLeftOp() instanceof FieldRef) {
+            SootField field = ((FieldRef)assign.getLeftOp()).getField();
+            if (field.getType() instanceof RefLikeType)
+              klass = field.getDeclaringClass();
           }
           Utils.debugPrintln(stmt);
           if (klass != null && klass != initklass) return stmt;
@@ -426,16 +426,20 @@ public class ShimpleMethod {
           if (assign.getRightOp() instanceof JNewExpr)
             return stmt;
 
-          if (assign.getLeftOp() instanceof StaticFieldRef ||
-              assign.getLeftOp() instanceof JInstanceFieldRef)
-            return stmt;
+          if (assign.getLeftOp() instanceof FieldRef) {
+            SootField field = ((FieldRef)assign.getLeftOp()).getField();
+            if (field.getType() instanceof RefLikeType)
+              return stmt;
+          }
         }
         Utils.debugPrintln(stmt);
         if (assign.getRightOp() instanceof JNewArrayExpr || 
             assign.getRightOp() instanceof JNewMultiArrayExpr)
           return stmt;
         if (assign.getLeftOp() instanceof JArrayRef) {
-          return stmt;
+          Type elemType = ((JArrayRef)assign.getLeftOp()).getType();
+          if (elemType instanceof RefLikeType)
+            return stmt;
         }
       }
     }
@@ -480,17 +484,32 @@ public class ShimpleMethod {
     currPath.add(start);
     // If current vertex is same as destination, then print
     // current path[]
-    
-    if (mayCallMethodInBlock(start, callee) != null) {
-      CFGPath _path = new CFGPath();
-      for (Block n : currPath) {
-        _path.add(n);
+    Unit calleeStmt = mayCallMethodInBlock(start, callee);
+    if (calleeStmt != null) {
+      Unit heapUpdStmt = heapUpdateStmtBeforeCall(start, callee);
+      boolean heapUpdBeforeCallee = true;
+      Iterator<Unit> iter = start.iterator();
+      while(iter.hasNext()) {
+        Unit stmt = iter.next();
+        if (stmt == heapUpdStmt) {
+          heapUpdBeforeCallee = true;
+          break;
+        } else if (stmt == calleeStmt) {
+          heapUpdBeforeCallee = false;
+          break;
+        }
       }
-      if (!allPaths.containsKey(start)) {
-        allPaths.put(start, new ArrayList<>());
+      if (!heapUpdBeforeCallee) {
+        CFGPath _path = new CFGPath();
+        for (Block n : currPath) {
+          _path.add(n);
+        }
+        if (!allPaths.containsKey(start)) {
+          allPaths.put(start, new ArrayList<>());
+        }
+        allPaths.get(start).add(_path);
+        Utils.debugPrintln(start.getIndexInMethod());
       }
-      allPaths.get(start).add(_path);
-      Utils.debugPrintln(start.getIndexInMethod());
     } else {
       //If the block instead does a heap event then do not go 
       //to the successors

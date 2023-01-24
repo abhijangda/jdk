@@ -983,8 +983,9 @@ public class ShimpleMethod {
     } else if (val instanceof BinopExpr) {
       // utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString());
       AbstractBinopExpr binop = (AbstractBinopExpr)val;
-      JavaValue op1 = allVariableValues.get(binop.getOp1());
-      JavaValue op2 = allVariableValues.get(binop.getOp2());
+      JavaValue op1 = obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, binop.getOp1());
+      JavaValue op2 = obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, binop.getOp2());
+      Utils.debugPrintln(binop + " " + binop.getOp2().getClass() + " " + (binop.getOp2() instanceof Constant) + " " + op1 + " " + op2);
       if (op1 == null || op2 == null)
         return null;
       Utils.debugAssert(op1 instanceof JavaPrimValue, op1.getClass().toString());
@@ -1025,7 +1026,7 @@ public class ShimpleMethod {
 
       for (ValueUnitPair pair : phi.getArgs()) {
         Utils.debugPrintln(pair.getUnit() + " " + pair.getValue() + " " + allVariableValues.get(pair.getValue()));
-        Utils.debugPrintln(getBlockForStmt(pair.getUnit()).getIndexInMethod() + " " + cfgPathExecuted.get(cfgPathExecuted.size() - 1).getIndexInMethod());
+        Utils.debugPrintln(getBlockForStmt(pair.getUnit()).getIndexInMethod() + " " + cfgPathExecuted.get(cfgPathExecuted.size() - 1).getIndexInMethod() + " " + cfgPathExecuted.get(cfgPathExecuted.size() - 2).getIndexInMethod());
         if (getBlockForStmt(pair.getUnit()) == cfgPathExecuted.get(cfgPathExecuted.size() - 2)) {
           Utils.debugPrintln(pair.getUnit() + " " + pair.getValue() + " " + allVariableValues.get(pair.getValue()));
           JavaValue varVal = allVariableValues.get(pair.getValue());

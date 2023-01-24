@@ -10,6 +10,7 @@ import soot.Unit;
 import soot.UnitPatchingChain;
 import soot.Value;
 import soot.ValueBox;
+import soot.shimple.PhiExpr;
 import soot.shimple.Shimple;
 import soot.shimple.ShimpleBody;
 import soot.toolkits.graph.Block;
@@ -53,6 +54,7 @@ import soot.jimple.internal.JGeExpr;
 import soot.jimple.internal.JGotoStmt;
 import soot.jimple.internal.JIfStmt;
 import soot.jimple.internal.JInterfaceInvokeExpr;
+import soot.jimple.internal.JLeExpr;
 import soot.jimple.internal.JNewExpr;
 import soot.jimple.internal.JRetStmt;
 import soot.jimple.internal.JReturnStmt;
@@ -241,6 +243,8 @@ public class CallFrame {
       return !obj1.equals(obj2);
     } else if (cond instanceof JGeExpr) {
       return ((JavaPrimValue)obj1).ge((JavaPrimValue)obj2).value;
+    } else if (cond instanceof JLeExpr) {
+      return ((JavaPrimValue)obj1).le((JavaPrimValue)obj2).value;
     }
 
     Utils.debugAssert(false, cond + " " + cond.getClass());
@@ -351,6 +355,9 @@ public class CallFrame {
       currEvent = eventsIterator.get();
       methodMatches = currEvent.method == method.sootMethod;
       currStmt = method.statements.get(pc.counter);
+      if (currStmt instanceof JAssignStmt && ((JAssignStmt)currStmt).getRightOp() instanceof PhiExpr) {
+        Utils.debugPrintln(cfgPathExecuted.get(cfgPathExecuted.size() - 1).getIndexInMethod());
+      }
       Utils.debugPrintln(currStmt + " at " + pc.counter + " " + currStmt.getClass());
       Block block = method.getBlockForStmt(currStmt);
       if (cfgPathExecuted.isEmpty()) {

@@ -34,7 +34,7 @@ import soot.shimple.internal.SPhiExpr;
 import soot.shimple.internal.SPiExpr;
 import soot.toolkits.graph.*;
 import soot.toolkits.scalar.ValueUnitPair;
-
+import utils.ArrayListIterator;
 import utils.Utils;
 import callstack.*;
 
@@ -402,6 +402,42 @@ public class ShimpleMethod {
     
     return null;
   }
+
+  // public boolean heapUpdStmtAfterInvoke(Block block, ArrayListIterator<HeapEvent> eventsIterator) {
+  //   eventsIterator = eventsIterator.clone();
+  //   while(eventsIterator.hasNext()) {
+  //     eventsIterator.get();
+  //     eventsIterator.moveNext();
+  //   }
+  //   Iterator<Unit> stmtIter = block.iterator();
+  //   while(stmtIter.hasNext()) {
+  //     Unit stmt = stmtIter.next();
+  //     boolean isHeapUpd = false;
+  //     if (stmt instanceof JAssignStmt) {
+  //       JAssignStmt assign = (JAssignStmt)stmt;
+  //       if (assign.getRightOp() instanceof JNewExpr) {
+  //         isHeapUpd = true;
+  //       } else if (assign.getLeftOp() instanceof FieldRef) {
+  //         SootField field = ((FieldRef)assign.getLeftOp()).getField();
+  //         if (field.getType() instanceof RefLikeType)
+  //           isHeapUpd = true;
+  //       } else if (assign.getRightOp() instanceof JNewArrayExpr || 
+  //             assign.getRightOp() instanceof JNewMultiArrayExpr) {
+  //         isHeapUpd = true;
+  //       } else if (assign.getLeftOp() instanceof JArrayRef) {
+  //         Type elemType = ((JArrayRef)assign.getLeftOp()).getType();
+  //         if (elemType instanceof RefLikeType)
+  //           isHeapUpd = true;
+  //       }
+
+  //       if (isHeapUpd) {
+  //         stmts.add(assign);
+  //       }
+  //     }
+  //   }
+
+  //   return stmts;
+  // }
 
   public Unit heapUpdateStmtBeforeCall(Block block, ShimpleMethod method) {
     Iterator<Unit> stmtIter = block.iterator();

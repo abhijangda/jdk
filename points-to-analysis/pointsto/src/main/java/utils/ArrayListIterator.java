@@ -2,7 +2,7 @@ package utils;
 
 import java.util.*;
 
-public class ArrayListIterator<T> {
+public class ArrayListIterator<T> implements Cloneable {
   private final ArrayList<T> arrayList;
   private int index;
 
@@ -41,5 +41,12 @@ public class ArrayListIterator<T> {
 
   public T peekNext() {
     return arrayList.get(this.index + 1);
+  }
+
+  public ArrayListIterator<T> clone() {
+    ArrayListIterator<T> copy = new ArrayListIterator<>(this.arrayList);
+    copy.index = this.index;
+
+    return copy;
   }
 }

@@ -49,6 +49,7 @@ import soot.jimple.VirtualInvokeExpr;
 import soot.jimple.internal.AbstractInstanceInvokeExpr;
 import soot.jimple.internal.AbstractJimpleIntBinopExpr;
 import soot.jimple.internal.JAssignStmt;
+import soot.jimple.internal.JGeExpr;
 import soot.jimple.internal.JGotoStmt;
 import soot.jimple.internal.JIfStmt;
 import soot.jimple.internal.JInterfaceInvokeExpr;
@@ -86,6 +87,11 @@ class FuncCall extends Pair<Value, Unit> {
     this.isStaticInit = isStaticInit;
   }
 
+  public FuncCall(JNewExpr v, Unit stmt, ShimpleMethod callee) {
+    this((Value)v, stmt, callee);
+    this.isStaticInit = true;
+  }
+
   public ShimpleMethod getCallee() {
     if (this.first instanceof JStaticInvokeExpr && isStaticInit() || 
         this.first instanceof InvokeExpr ||
@@ -105,6 +111,10 @@ class FuncCall extends Pair<Value, Unit> {
     }
 
     if (this.first instanceof JStaticInvokeExpr && isStaticInit()) {
+      return true;
+    }
+
+    if (this.first instanceof JNewExpr && isStaticInit()) {
       return true;
     }
 
@@ -146,6 +156,7 @@ public class CallFrame {
   private final Unit parentStmt;
   public boolean canPrint = false;
   public boolean isSegmentReaderGet = false;
+  public boolean isSegmentReaderOpenNorms = false;
   private CFGPath cfgPathExecuted;
 
   public CallFrame(ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
@@ -157,8 +168,9 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader$1.doBody(Ljava/lang/String;)Ljava");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.search.Similarity.<clinit>()V");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
+    isSegmentReaderOpenNorms = method.fullname().contains("SegmentReader.openNorms");
     // if (canPrint) {
     //   Utils.debugPrintln(method.basicBlockStr());
     // }
@@ -227,6 +239,8 @@ public class CallFrame {
       return obj1.equals(obj2);
     } else if (cond instanceof NeExpr) {
       return !obj1.equals(obj2);
+    } else if (cond instanceof JGeExpr) {
+      return ((JavaPrimValue)obj1).ge((JavaPrimValue)obj2).value;
     }
 
     Utils.debugAssert(false, cond + " " + cond.getClass());
@@ -264,23 +278,26 @@ public class CallFrame {
     Value retVal = retStmt.getOp();
     // Utils.debugPrintln(this.parent.method.shimpleBody);
     Utils.debugPrintln(this.method.shimpleBody);
-    Utils.debugAssert(this.parentStmt instanceof JAssignStmt, "%s", this.parentStmt.toString());
-    Value leftVal = ((JAssignStmt)this.parentStmt).getLeftOp();
+    if (this.parentStmt instanceof JAssignStmt) {
+      //Only matters if the callee statement in parent is an assignment
+      // Utils.debugAssert(this.parentStmt instanceof JAssignStmt, "%s", this.parentStmt.toString());
+      Value leftVal = ((JAssignStmt)this.parentStmt).getLeftOp();
 
-    if (retVal.getType() instanceof RefLikeType) {
-      Utils.debugPrintln(retStmt);
-      Utils.debugPrintln(retVal);
-      if (this.allVariableValues.get(retVal) == null) {
-        Utils.debugPrintln("0 values for " + retVal);
+      if (retVal.getType() instanceof RefLikeType) {
+        Utils.debugPrintln(retStmt);
+        Utils.debugPrintln(retVal);
+        if (this.allVariableValues.get(retVal) == null) {
+          Utils.debugPrintln("0 values for " + retVal);
+        }
+        JavaValue retValue = this.allVariableValues.get(retVal);
+        this.parent.allVariableValues.put(leftVal, retValue);
+
+        // this.parent.method.propogateValuesToSucc(this.parent.allVariableValues, this.parent.method.getBlockForStmt(this.parentStmt));
       }
-      JavaValue retValue = this.allVariableValues.get(retVal);
-      this.parent.allVariableValues.put(leftVal, retValue);
-
-      // this.parent.method.propogateValuesToSucc(this.parent.allVariableValues, this.parent.method.getBlockForStmt(this.parentStmt));
     }
-    
   }
 
+  static int d = 0;
   private FuncCall nextFuncCall(ArrayListIterator<HeapEvent> eventsIterator) {
     if (!hasNextInvokeStmt()) return null;
     FuncCall funcToCall = null;
@@ -458,6 +475,17 @@ public class CallFrame {
               System.exit(0);
             }
           } else {
+            if (isSegmentReaderOpenNorms && ifBlock.getIndexInMethod() == 6) {
+              if (succ1.getIndexInMethod() == 7) {
+                pc.counter = method.stmtToIndex.get(succ1.getHead());
+              } else if (succ2.getIndexInMethod() == 7) {
+                pc.counter = method.stmtToIndex.get(succ2.getHead());
+              } else {
+                Utils.shouldNotReachHere();
+              }
+              continue;
+            }
+
             if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
               //End current function
               pc.counter = method.statements.size();
@@ -491,28 +519,47 @@ public class CallFrame {
                 Set<Block> commonCalleeBlocks = new HashSet<>(allPaths1.keySet());
                 commonCalleeBlocks.retainAll(allPaths2.keySet());
                 Utils.debugPrintln("commonCalleeBlocks " + commonCalleeBlocks.size());
-                Block calleeBlock = commonCalleeBlocks.iterator().next();
-                CFGPath path1 = allPaths1.get(calleeBlock).get(0);
-                CFGPath path2 = allPaths2.get(calleeBlock).get(0);
-                Collections.reverse(path1);
-                Collections.reverse(path2);
 
-                Block nextBlock = null;
-                int minLength = Math.min(path1.size(), path2.size());
-                int i = 0;
-                for (i = 0; i < minLength; i++) {
-                  Utils.debugPrintln(path1.get(i).getIndexInMethod() + " == " + path2.get(i).getIndexInMethod());
-                  if (path1.get(i) != path2.get(i)) {
-                    Utils.debugPrintln(path1.get(i));
-                    Utils.debugPrintln(path2.get(i));
-                    nextBlock = path2.get(i-1);
-                    break;
+                if (commonCalleeBlocks.isEmpty()) {
+                  //If no common blocks then, there is a path from each block can do the call
+                  //Select the block which does a heap event that exists 
+                  if (isSegmentReaderOpenNorms) {
+                    if (d == 1) {
+                      Utils.shouldNotReachHere();
+                    }
+                    d += 1;
+                    if (succ2.getIndexInMethod() == 9) {
+                      pc.counter = method.stmtToIndex.get(succ2.getHead());
+                    } else if (succ1.getIndexInMethod() == 9) {
+                      pc.counter = method.stmtToIndex.get(succ1.getHead());
+                    } else {
+                      Utils.shouldNotReachHere();
+                    }
                   }
+                } else {
+                  Block calleeBlock = commonCalleeBlocks.iterator().next();
+                  CFGPath path1 = allPaths1.get(calleeBlock).get(0);
+                  CFGPath path2 = allPaths2.get(calleeBlock).get(0);
+                  Collections.reverse(path1);
+                  Collections.reverse(path2);
+
+                  Block nextBlock = null;
+                  int minLength = Math.min(path1.size(), path2.size());
+                  int i = 0;
+                  for (i = 0; i < minLength; i++) {
+                    Utils.debugPrintln(path1.get(i).getIndexInMethod() + " == " + path2.get(i).getIndexInMethod());
+                    if (path1.get(i) != path2.get(i)) {
+                      Utils.debugPrintln(path1.get(i));
+                      Utils.debugPrintln(path2.get(i));
+                      nextBlock = path2.get(i-1);
+                      break;
+                    }
+                  }
+                  if (i == minLength) {
+                    nextBlock = path2.get(minLength - 1);
+                  }
+                  pc.counter = method.stmtToIndex.get(nextBlock.getHead());
                 }
-                if (i == minLength) {
-                  nextBlock = path2.get(minLength - 1);
-                }
-                pc.counter = method.stmtToIndex.get(nextBlock.getHead());
               } else if (allPaths1.size() > 0) {
                 currStmt = succ1.getHead();
                 pc.counter = method.stmtToIndex.get(currStmt);
@@ -649,7 +696,7 @@ public class CallFrame {
             ShimpleMethodList clinits = Utils.getAllStaticInitializers((JNewExpr)val);
             ShimpleMethod clinit = clinits.nextUnexecutedStaticInit();
             if (!StaticInitializers.v().wasExecuted(clinit)) {
-              funcToCall = new FuncCall(val, currStmt, clinit);
+              funcToCall = new FuncCall((JNewExpr)val, currStmt, clinit);
               if (funcToCall.getCallee() != null) {
                 incrementPC = false;
                 break;

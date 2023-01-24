@@ -159,6 +159,7 @@ public class CallFrame {
   public boolean canPrint = false;
   public boolean isSegmentReaderGet = false;
   public boolean isSegmentReaderOpenNorms = false;
+  public boolean isQueryParseModifiers = false;
   private CFGPath cfgPathExecuted;
 
   public CallFrame(ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
@@ -170,9 +171,10 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.search.Similarity.<clinit>()V");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     isSegmentReaderOpenNorms = method.fullname().contains("SegmentReader.openNorms");
+    isQueryParseModifiers = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");
     // if (canPrint) {
     //   Utils.debugPrintln(method.basicBlockStr());
     // }
@@ -538,6 +540,14 @@ public class CallFrame {
                     if (succ2.getIndexInMethod() == 9) {
                       pc.counter = method.stmtToIndex.get(succ2.getHead());
                     } else if (succ1.getIndexInMethod() == 9) {
+                      pc.counter = method.stmtToIndex.get(succ1.getHead());
+                    } else {
+                      Utils.shouldNotReachHere();
+                    }
+                  } else if (isQueryParseModifiers) {
+                    if (succ2.getIndexInMethod() == 1) {
+                      pc.counter = method.stmtToIndex.get(succ2.getHead());
+                    } else if (succ1.getIndexInMethod() == 1) {
                       pc.counter = method.stmtToIndex.get(succ1.getHead());
                     } else {
                       Utils.shouldNotReachHere();

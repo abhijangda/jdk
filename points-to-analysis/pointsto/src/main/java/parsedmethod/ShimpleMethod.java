@@ -1002,8 +1002,9 @@ public class ShimpleMethod {
       if (val.getType() instanceof RefLikeType) {
         Value op = ((JCastExpr)val).getOp();
         return allVariableValues.get(op);
+      } else {
+        return obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, ((JCastExpr)val).getOp());
       }
-      return null;
     } else if (val instanceof JInstanceOfExpr) {
       Utils.debugAssert(false, stmt.toString());
     } else if (val instanceof JStaticInvokeExpr) {

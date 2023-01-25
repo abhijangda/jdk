@@ -1073,8 +1073,14 @@ public class ShimpleMethod {
         return JavaValueFactory.v(StaticFieldValues.v().get(staticField));
     } else if (val instanceof JArrayRef) {
       JArrayRef arrayRef = (JArrayRef)val;
-      Utils.debugPrintln(arrayRef.getType());
-      if (arrayRef.getType() instanceof RefLikeType) {
+      // Utils.debugPrintln(arrayRef.getType());
+      if (arrayRef.getType() instanceof RefType && 
+          ((RefType)arrayRef.getType()).getSootClass().getName().contains("java.lang.String")) {
+        JavaArrayRef array = (JavaArrayRef)obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, arrayRef.getBase());
+        //For String does not matter what it returns
+        return JavaValueFactory.nullV();
+      }
+      else if (arrayRef.getType() instanceof RefLikeType) {
         Utils.debugAssert(false, "");
       } else {
         return null;
@@ -1094,7 +1100,9 @@ public class ShimpleMethod {
     if (stmt instanceof JIdentityStmt) {
       Value right = ((JIdentityStmt)stmt).getRightOp();
       if (right instanceof CaughtExceptionRef) {
-        return;
+        Utils.debugAssert(GlobalException.exception != null, "");
+        allVariableValues.put(right, JavaValueFactory.v(GlobalException.exception));
+        GlobalException.exception = null;
       } else if (!sootMethod.isStatic() && stmt == shimpleBody.getThisUnit()) {
         //Ignore because this is already assigned
         // Utils.debugPrintln(stmt + " " + right + " " + allVariableValues.get(right));
@@ -1126,7 +1134,7 @@ public class ShimpleMethod {
     } else if (stmt instanceof JReturnStmt) {
       Utils.debugLog("613: To handle return");
     } else if (stmt instanceof JThrowStmt) {
-      Utils.debugLog("613: To handle throw");
+      // Utils.debugLog("613: To handle throw");
     } else if (stmt instanceof JLookupSwitchStmt) {
       Utils.debugAssert(false, stmt.toString());
     } else if (stmt instanceof JTableSwitchStmt) {

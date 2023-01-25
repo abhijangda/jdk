@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import soot.jimple.BinopExpr;
+import soot.jimple.CaughtExceptionRef;
 import soot.jimple.CmpExpr;
 import soot.jimple.CmpgExpr;
 import soot.jimple.CmplExpr;
@@ -52,6 +53,7 @@ import soot.jimple.internal.AbstractJimpleIntBinopExpr;
 import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JGeExpr;
 import soot.jimple.internal.JGotoStmt;
+import soot.jimple.internal.JIdentityStmt;
 import soot.jimple.internal.JIfStmt;
 import soot.jimple.internal.JInterfaceInvokeExpr;
 import soot.jimple.internal.JLeExpr;
@@ -173,7 +175,7 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.queryParser.FastCharStream.refill()V");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParserTokenManager.jjFillToken()Lorg/apache/lucene/queryParser/Token;");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     isSegmentReaderOpenNorms = method.fullname().contains("SegmentReader.openNorms");
     isQueryParseModifiers = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");
@@ -319,7 +321,8 @@ public class CallFrame {
         currEvent = eventsIterator.get();
         methodMatches = currEvent.method == method.sootMethod;
         currStmt = method.statements.get(pc.counter);
-        this.method.propogateValues(this.allVariableValues, cfgPathExecuted, currStmt);
+        if (!(currStmt instanceof JIdentityStmt) || !(currStmt instanceof JIdentityStmt && ((JIdentityStmt)currStmt).getRightOp() instanceof CaughtExceptionRef))
+          this.method.propogateValues(this.allVariableValues, cfgPathExecuted, currStmt);
         Block block = method.getBlockForStmt(currStmt);
         if (cfgPathExecuted.isEmpty()) {
           cfgPathExecuted.add(block);
@@ -359,11 +362,34 @@ public class CallFrame {
       currEvent = eventsIterator.get();
       methodMatches = currEvent.method == method.sootMethod;
       currStmt = method.statements.get(pc.counter);
+      Block block = method.getBlockForStmt(currStmt);
+
       if (currStmt instanceof JAssignStmt && ((JAssignStmt)currStmt).getRightOp() instanceof PhiExpr) {
         Utils.debugPrintln(cfgPathExecuted.get(cfgPathExecuted.size() - 1).getIndexInMethod());
       }
+      
+      if (GlobalException.exception != null) {
+        //Find succ with caughtexception
+        Unit prevStmt = method.statements.get(pc.counter-1);
+        Block prevBlock = method.getBlockForStmt(prevStmt);
+        Block catchBlock = null;
+        for (Block succ : prevBlock.getSuccs()) {
+          Utils.debugPrintln(succ.getHead() + " " + succ.getIndexInMethod() + " " + succ.getHead().getClass());
+          if (succ.getHead() instanceof JIdentityStmt && 
+              ((JIdentityStmt)succ.getHead()).getRightOp() instanceof CaughtExceptionRef) {
+            catchBlock = succ;
+            //Assuming there is only one of these
+            break;
+          }
+        }
+        Utils.debugPrintln(catchBlock);
+        if (catchBlock != null) {
+          pc.counter = method.stmtToIndex.get(catchBlock.getHead());
+          currStmt = catchBlock.getHead();
+        }
+      }
+
       Utils.debugPrintln(currStmt + " at " + pc.counter + " " + currStmt.getClass());
-      Block block = method.getBlockForStmt(currStmt);
       if (cfgPathExecuted.isEmpty()) {
         cfgPathExecuted.add(block);
       } else if (cfgPathExecuted.get(cfgPathExecuted.size() - 1) != block) {

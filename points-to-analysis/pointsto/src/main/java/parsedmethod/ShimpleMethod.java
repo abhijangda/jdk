@@ -1085,7 +1085,7 @@ public class ShimpleMethod {
       } else {
         return null;
       }
-    } else if (val instanceof JTableSwitchStmt) {
+    } else if (val instanceof JTableSwitchStmt || val instanceof JLookupSwitchStmt) {
       // JTableSwitchStmt tableSwitch = (JTableSwitchStmt)val;
       //Nothing to do here
       return null;
@@ -1136,9 +1136,9 @@ public class ShimpleMethod {
     } else if (stmt instanceof JThrowStmt) {
       // Utils.debugLog("613: To handle throw");
     } else if (stmt instanceof JLookupSwitchStmt) {
-      Utils.debugAssert(false, stmt.toString());
+      return;
     } else if (stmt instanceof JTableSwitchStmt) {
-      Utils.debugAssert(false, stmt.toString());
+      return;
     } else if (stmt instanceof JGotoStmt) {
       return;
     } else if (stmt instanceof JIfStmt) {

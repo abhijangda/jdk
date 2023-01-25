@@ -22,6 +22,9 @@ public class ClassHierarchyGraph extends HashMap<SootClass, ArrayList<SootClass>
       if (klass.hasSuperclass()) {
         getSubClasses(klass.getSuperclass()).add(klass);
       }
+      for (SootClass interfaceImpl : klass.getInterfaces()) {
+        getSubClasses(interfaceImpl).add(klass);
+      }
     }
   }
 

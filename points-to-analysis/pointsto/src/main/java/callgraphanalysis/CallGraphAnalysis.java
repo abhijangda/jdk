@@ -5,6 +5,8 @@ import org.slf4j.helpers.Util;
 
 import callstack.StaticFieldValues;
 import classcollections.*;
+import classhierarchyanalysis.ClassHierarchyAnalysis;
+import classhierarchyanalysis.ClassHierarchyGraph;
 import javaheap.HeapEvent;
 import javaheap.JavaHeap;
 import soot.SootMethod;

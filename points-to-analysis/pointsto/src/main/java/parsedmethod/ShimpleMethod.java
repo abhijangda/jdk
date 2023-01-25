@@ -1017,7 +1017,7 @@ public class ShimpleMethod {
       Value base = ((JInstanceFieldRef)val).getBase();
       SootFieldRef field = ((JInstanceFieldRef)val).getFieldRef();
       JavaValue baseVal = allVariableValues.get(base);
-      if (baseVal == null) return null;
+      if (baseVal == null || baseVal instanceof JavaNull) return null;
       return (((JavaObjectRef)baseVal).getField(field.resolve()));
     } else if (val instanceof JInterfaceInvokeExpr) {
       return null;
@@ -1079,8 +1079,9 @@ public class ShimpleMethod {
         JavaArrayRef array = (JavaArrayRef)obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, arrayRef.getBase());
         //For String does not matter what it returns
         return JavaValueFactory.nullV();
-      }
-      else if (arrayRef.getType() instanceof RefLikeType) {
+      } else if (this.fullname().equals("org.apache.lucene.queryParser.QueryParser.jj_save(II)V")) {
+        return JavaValueFactory.nullV();
+      } else if (arrayRef.getType() instanceof RefLikeType) {
         Utils.debugAssert(false, "");
       } else {
         return null;

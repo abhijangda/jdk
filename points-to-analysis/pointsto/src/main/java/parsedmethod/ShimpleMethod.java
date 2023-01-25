@@ -1079,6 +1079,10 @@ public class ShimpleMethod {
       } else {
         return null;
       }
+    } else if (val instanceof JTableSwitchStmt) {
+      // JTableSwitchStmt tableSwitch = (JTableSwitchStmt)val;
+      //Nothing to do here
+      return null;
     } else {
       Utils.debugAssert(false, "Unsupported Jimple expr " + val.getClass() + "'" + stmt.toString() + "'");
     }

@@ -7,6 +7,7 @@ import callstack.StaticFieldValues;
 import classcollections.*;
 import javaheap.HeapEvent;
 import javaheap.JavaHeap;
+import javaheap.JavaObject;
 import soot.SootMethod;
 import utils.ArrayListIterator;
 import utils.Pair;
@@ -67,7 +68,7 @@ public class CallGraphAnalysis {
     callStack.push(rootFrame);
     frameToGraphNode.put(rootFrame, rootNode);
     int iterations = 0;
-    while (!callStack.isEmpty() && iterations++ < 3000) {
+    while (!callStack.isEmpty() && iterations++ < 5000) {
       CallFrame frame = callStack.peek();
       
       if (frame.parent != null) {
@@ -86,9 +87,7 @@ public class CallGraphAnalysis {
         continue;
       }
       
-      while (!Utils.methodToCare(currEvent.method) ||
-            //  currEvent.methodStr.contains("org.apache.lucene.store.FSDirectory") ||
-             currEvent.methodStr.contains("org.apache.lucene.analysis.CharArraySet.add")) {
+      while (!Utils.methodToCare(currEvent.method)) {
         javaHeap.update(currEvent);
         eventIterator.moveNext();
         currEvent = eventIterator.get();

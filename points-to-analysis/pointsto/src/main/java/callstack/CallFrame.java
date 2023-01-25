@@ -61,6 +61,8 @@ import soot.jimple.internal.JReturnStmt;
 import soot.jimple.internal.JReturnVoidStmt;
 import soot.jimple.internal.JSpecialInvokeExpr;
 import soot.jimple.internal.JStaticInvokeExpr;
+import soot.jimple.internal.JTableSwitchStmt;
+import soot.jimple.internal.JThrowStmt;
 import soot.jimple.internal.JVirtualInvokeExpr;
 import soot.jimple.internal.JimpleLocal;
 import soot.jimple.toolkits.annotation.callgraph.MethInfo;
@@ -171,7 +173,7 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.queryParser.FastCharStream.refill()V");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     isSegmentReaderOpenNorms = method.fullname().contains("SegmentReader.openNorms");
     isQueryParseModifiers = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");
@@ -457,11 +459,7 @@ public class CallFrame {
             
             boolean inPath1 = method.isEventInPathFromBlock(succ1, currEvent);
             boolean inPath2 = method.isEventInPathFromBlock(succ2, currEvent);
-            if (canPrint) {
-              Utils.debugPrintln(currStmt);
-              Utils.debugPrintln(succ1);
-              Utils.debugPrintln(succ2);
-            }
+
             if (inPath1 && inPath2) {
               Utils.debugPrintln("Found in both");
               //TODO: Currently goes through one of the successors, but should go through both
@@ -586,105 +584,12 @@ public class CallFrame {
               } else {
                 pc.counter = method.statements.size();
               }
-
-              /*
-              ArrayList<Block> succ1ToExit = new ArrayList<Block>();
-              ArrayList<Block> succ2ToExit = new ArrayList<Block>();
-              Block commonExit = method.findLCAInPostDom(succ1, succ2, succ1ToExit, succ2ToExit);
-              boolean mayCallMeth1 = false;
-              boolean mayCallMeth2 = false;
-              if (commonExit == null) {
-                //Its a loop
-                Utils.debugPrintln("loop");
-                Utils.debugPrintln(succ1.getIndexInMethod());
-                boolean succCanCall1 = method.mayCallInPath(succ1, succ1ToExit, false);
-                Utils.debugPrintln(succ2.getIndexInMethod());
-                boolean succCanCall2 = method.mayCallInPath(succ2, succ2ToExit, false);
-
-                Utils.debugPrintln(succ1.getIndexInMethod() + " -> " + succCanCall1 + " " + succ2.getIndexInMethod() + " -> " + succCanCall2);
-
-                if (succCanCall1 && succCanCall2) {
-                  Utils.debugPrintln(succ1.getIndexInMethod());
-                  mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-                  Utils.debugPrintln(succ2.getIndexInMethod());
-                  mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
-                  
-                } else if (succCanCall1) {
-                  mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-                } else if (succCanCall2) {
-                  mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-                } else {
-                  mayCallMeth1 = false;
-                  mayCallMeth2 = false;
-                  //No point in going to next instructions because none of the blocks have
-                  //any more invoke statements
-                  pc.counter = method.statements.size();
-                  continue;
-                }
-              } else {
-                Utils.debugPrintln(commonExit.getIndexInMethod());
-                String b = "";
-                for(Block n : succ1ToExit) {
-                  b += n.getIndexInMethod() + ", ";
-                }
-                Utils.debugPrintln(succ1.getIndexInMethod() +" -> " + b);
-                b = "";
-                for(Block n : succ2ToExit) {
-                  b += n.getIndexInMethod() + ", ";
-                }
-                Utils.debugPrintln(succ1.getIndexInMethod() +" -> " + b);
-                boolean succCanCall1 = method.mayCallInPath(succ1, succ1ToExit, false);
-                Utils.debugPrintln(succ2.getIndexInMethod());
-                boolean succCanCall2 = method.mayCallInPath(succ2, succ2ToExit, false);
-
-                Utils.debugPrintln(succ1.getIndexInMethod() + " -> " + succCanCall1 + " " + succ2.getIndexInMethod() + " -> " + succCanCall2);
-
-                if (succCanCall1 && succCanCall2) {
-                  Utils.debugPrintln(succ1.getIndexInMethod());
-                  mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-                  Utils.debugPrintln(succ2.getIndexInMethod());
-                  mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
-                  
-                } else if (succCanCall1) {
-                  mayCallMeth1 = method.mayCallMethodInPathFromBlock(succ1, currEvent.method);
-                } else if (succCanCall2) {
-                  mayCallMeth2 = method.mayCallMethodInPathFromBlock(succ2, currEvent.method);
-                } else {
-                  mayCallMeth1 = false;
-                  mayCallMeth2 = false;
-                  //Since none of the blocks have any more invoke statements,
-                  //go to the common exit
-                  pc.counter = method.stmtToIndex.get(commonExit.getHead());
-                  continue;
-                }
-              }
-
-              Utils.debugPrintln(currStmt + " " + mayCallMeth1 + " " + mayCallMeth2);
-              if (mayCallMeth1 && mayCallMeth2) {
-                pc.counter++;
-              } else if (mayCallMeth1) {
-                currStmt = succ1.getHead();
-                pc.counter = method.stmtToIndex.get(currStmt);
-              } else if (mayCallMeth2) {
-                currStmt = succ2.getHead();
-                pc.counter = method.stmtToIndex.get(currStmt);
-              } else {
-                Block lca = method.findLCAInPostDom(succ1, succ2, null, null);
-                if (lca != null) {
-                  Utils.debugPrintln(lca.getIndexInMethod());
-                  pc.counter = method.stmtToIndex.get(lca.getHead());
-                } else {
-                  pc.counter = method.statements.size();
-                }
-              }
-              // //Otherwise?
-              // Utils.debugPrintln(method.fullname() + "\n" +  method.shimpleBody.toString());
-              // Utils.debugPrintln("method not matches currevent " + currEvent + " at " + currStmt);
-              // System.exit(0);
-              */
             }
           }
         }
+      } else if (currStmt instanceof JTableSwitchStmt) {
+        JTableSwitchStmt tableSwitch = (JTableSwitchStmt)currStmt;
+        Utils.shouldNotReachHere();
       } else if (currStmt instanceof JGotoStmt) {
         //Has to go to target
         Unit target = ((JGotoStmt)currStmt).getTarget();
@@ -693,6 +598,11 @@ public class CallFrame {
         currStmt = method.statements.get(pc.counter);
       } else if (currStmt instanceof JReturnStmt) { 
         updateParentFromRet((JReturnStmt)currStmt);
+        pc.counter = method.statements.size();
+        return null;
+      } else if (currStmt instanceof JThrowStmt) {
+        GlobalException.exception = ((JavaObjectRef)allVariableValues.get(((JThrowStmt)currStmt).getOp())).obj;
+        Utils.debugPrintln(currStmt);
         pc.counter = method.statements.size();
         return null;
       } else {

@@ -13,8 +13,7 @@ def slurp(file):
 def parseCallEdges(s):
   edges = set()
   for d in re.findall(r'.+', s):
-    if 'clinit' not in d:
-      edges.add(d)
+    edges.add(d)
   return edges
 
 s1 = slurp(file1)

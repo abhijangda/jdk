@@ -972,8 +972,8 @@ public class ShimpleMethod {
     return null;
   }
 
-  private JavaValue obtainVariableValues(HashMap<Value, JavaValue> allVariableValues,
-                                            CFGPath cfgPathExecuted, Unit stmt, Value val) {
+  private JavaValue obtainVariableValues(CallFrame frame, CFGPath cfgPathExecuted, Unit stmt, Value val) {
+    var allVariableValues = frame.getAllVariableValues();
     if (val instanceof JNewExpr) {
       return null;
     } else if (val instanceof JNewArrayExpr) {
@@ -983,8 +983,8 @@ public class ShimpleMethod {
     } else if (val instanceof BinopExpr) {
       // utils.Utils.debugAssert(!(val.getType() instanceof RefLikeType), stmt.toString());
       AbstractBinopExpr binop = (AbstractBinopExpr)val;
-      JavaValue op1 = obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, binop.getOp1());
-      JavaValue op2 = obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, binop.getOp2());
+      JavaValue op1 = obtainVariableValues(frame, cfgPathExecuted, stmt, binop.getOp1());
+      JavaValue op2 = obtainVariableValues(frame, cfgPathExecuted, stmt, binop.getOp2());
       Utils.debugPrintln(binop + " " + binop.getOp2().getClass() + " " + (binop.getOp2() instanceof Constant) + " " + op1 + " " + op2);
       if (op1 == null || op2 == null)
         return null;
@@ -1003,7 +1003,7 @@ public class ShimpleMethod {
         Value op = ((JCastExpr)val).getOp();
         return allVariableValues.get(op);
       } else {
-        return obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, ((JCastExpr)val).getOp());
+        return obtainVariableValues(frame, cfgPathExecuted, stmt, ((JCastExpr)val).getOp());
       }
     } else if (val instanceof JInstanceOfExpr) {
       Utils.debugAssert(false, stmt.toString());
@@ -1046,7 +1046,7 @@ public class ShimpleMethod {
       Utils.debugPrintln(val);
       if (!(val instanceof NullConstant) && val.getType() instanceof RefType && 
           ((RefType)val.getType()).getSootClass().getName().equals("java.lang.String")) {
-        JavaObject s = JavaHeap.v().createNewObject(((RefType)val.getType()));
+        JavaObject s = frame.heap.createNewObject(((RefType)val.getType()));
         return JavaValueFactory.v(s);
       } else if (val instanceof NullConstant) {
         return JavaValueFactory.nullV();  
@@ -1070,13 +1070,13 @@ public class ShimpleMethod {
     } else if (val instanceof StaticFieldRef) {
       SootField staticField = ((StaticFieldRef)val).getField();
       if (staticField.getType() instanceof RefLikeType)
-        return JavaValueFactory.v(StaticFieldValues.v().get(staticField));
+        return JavaValueFactory.v(frame.heap.getStaticFieldValues().get(staticField));
     } else if (val instanceof JArrayRef) {
       JArrayRef arrayRef = (JArrayRef)val;
       // Utils.debugPrintln(arrayRef.getType());
       if (arrayRef.getType() instanceof RefType && 
           ((RefType)arrayRef.getType()).getSootClass().getName().contains("java.lang.String")) {
-        JavaArrayRef array = (JavaArrayRef)obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, arrayRef.getBase());
+        JavaArrayRef array = (JavaArrayRef)obtainVariableValues(frame, cfgPathExecuted, stmt, arrayRef.getBase());
         //For String does not matter what it returns
         return JavaValueFactory.nullV();
       } else if (this.fullname().equals("org.apache.lucene.queryParser.QueryParser.jj_save(II)V")) {
@@ -1096,8 +1096,9 @@ public class ShimpleMethod {
     return null;
   }
 
-  public void propogateValues(HashMap<Value, JavaValue> allVariableValues,
+  public void propogateValues(CallFrame frame,
                               CFGPath cfgPathExecuted, Unit stmt) {
+    HashMap<Value, JavaValue> allVariableValues = frame.getAllVariableValues();
     if (stmt instanceof JIdentityStmt) {
       Value right = ((JIdentityStmt)stmt).getRightOp();
       if (right instanceof CaughtExceptionRef) {
@@ -1121,7 +1122,7 @@ public class ShimpleMethod {
         Utils.debugAssert(false, "%s %s %s\n", stmt.toString(), stmt.getClass(), ((JIdentityStmt)stmt).getRightOp().getClass());
       }
     } else if (stmt instanceof JAssignStmt) { 
-      JavaValue rightVal = obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, ((JAssignStmt)stmt).getRightOp());
+      JavaValue rightVal = obtainVariableValues(frame, cfgPathExecuted, stmt, ((JAssignStmt)stmt).getRightOp());
       Utils.debugPrintln(stmt + " " + rightVal + "  " + ((JAssignStmt)stmt).getRightOp().getClass());
       if (rightVal != null) {
         allVariableValues.put(((JAssignStmt)stmt).getLeftOp(), rightVal);
@@ -1153,7 +1154,7 @@ public class ShimpleMethod {
       //   System.out.print(uu.toString() + " "); //stmtToBlock.get(uu).getIndexInMethod()
       // }
     } else if (stmt instanceof JInvokeStmt) {
-      obtainVariableValues(allVariableValues, cfgPathExecuted, stmt, ((JInvokeStmt)stmt).getInvokeExpr());
+      obtainVariableValues(frame, cfgPathExecuted, stmt, ((JInvokeStmt)stmt).getInvokeExpr());
     } else if (stmt instanceof JNopStmt) {
       Utils.debugAssert(false, stmt.toString());
     } else if (stmt instanceof JReturnVoidStmt) {
@@ -1189,8 +1190,9 @@ public class ShimpleMethod {
   //   }
   // }
 
-  public void updateValuesWithHeapEvent(HashMap<Value, JavaValue> allVariableValues,
-                                        HeapEvent heapEvent) {
+  public void updateValuesWithHeapEvent(CallFrame frame, HeapEvent heapEvent) {
+    HashMap<Value, JavaValue> allVariableValues = frame.getAllVariableValues();
+    JavaHeap javaHeap = frame.heap;
     JAssignStmt stmt = getAssignStmtForBci(heapEvent.bci);
     Block block = blockForUnit(stmt);
     short opcode = ShimpleMethod.opcodeForJAssign(stmt);
@@ -1202,22 +1204,22 @@ public class ShimpleMethod {
     switch (opcode) {
       //TODO: Combine all of three cases below
       case Const.PUTFIELD: {
-        allVariableValues.put(left, JavaValueFactory.v(JavaHeap.v().get(heapEvent.srcPtr)));
+        allVariableValues.put(left, JavaValueFactory.v(javaHeap.get(heapEvent.srcPtr)));
         if (!(right instanceof Constant)) {
-          allVariableValues.put(right, JavaValueFactory.v(JavaHeap.v().get(heapEvent.srcPtr)));
+          allVariableValues.put(right, JavaValueFactory.v(javaHeap.get(heapEvent.srcPtr)));
         }
         Utils.debugAssert(left instanceof JInstanceFieldRef, "sanity");
         Value base = ((JInstanceFieldRef)left).getBase();
-        allVariableValues.put(base, JavaValueFactory.v(JavaHeap.v().get(heapEvent.dstPtr)));
+        allVariableValues.put(base, JavaValueFactory.v(javaHeap.get(heapEvent.dstPtr)));
         Utils.debugAssert(stmt.getUseBoxes().size() <= 2, "Only one use in " + stmt.toString());
         break;
       }
       case Const.AASTORE: {
         JArrayRef arrayRef = (JArrayRef)left;
-        allVariableValues.put(left, JavaValueFactory.v(JavaHeap.v().get(heapEvent.srcPtr)));
-        allVariableValues.put(arrayRef.getBase(), JavaValueFactory.v(JavaHeap.v().get(heapEvent.dstPtr)));
+        allVariableValues.put(left, JavaValueFactory.v(javaHeap.get(heapEvent.srcPtr)));
+        allVariableValues.put(arrayRef.getBase(), JavaValueFactory.v(javaHeap.get(heapEvent.dstPtr)));
         if (!(right instanceof Constant)) {
-          allVariableValues.put(right, JavaValueFactory.v(JavaHeap.v().get(heapEvent.srcPtr)));
+          allVariableValues.put(right, JavaValueFactory.v(javaHeap.get(heapEvent.srcPtr)));
           //TODO: Can populate string value to src object
         }
         Utils.debugAssert(stmt.getUseBoxes().size() <= 3, "Only one use in " + stmt.toString());
@@ -1225,18 +1227,18 @@ public class ShimpleMethod {
       }
       case Const.PUTSTATIC: {
         StaticFieldRef staticFieldRef = (StaticFieldRef)left;
-        StaticFieldValues.v().set(staticFieldRef.getFieldRef(), heapEvent.srcPtr);
+        frame.heap.getStaticFieldValues().set(staticFieldRef.getFieldRef(), heapEvent.srcPtr);
         
-        allVariableValues.put(left, JavaValueFactory.v(JavaHeap.v().get(heapEvent.srcPtr)));
+        allVariableValues.put(left, JavaValueFactory.v(javaHeap.get(heapEvent.srcPtr)));
         if (!(right instanceof Constant)) {
-          allVariableValues.put(right, JavaValueFactory.v(JavaHeap.v().get(heapEvent.srcPtr)));
+          allVariableValues.put(right, JavaValueFactory.v(javaHeap.get(heapEvent.srcPtr)));
         }
         break;
       }
       case Const.NEW: {
         Utils.debugAssert(right instanceof JNewExpr, "sanity");
         
-        allVariableValues.put(left, JavaValueFactory.v(JavaHeap.v().get(heapEvent.dstPtr)));
+        allVariableValues.put(left, JavaValueFactory.v(javaHeap.get(heapEvent.dstPtr)));
         Utils.debugAssert(stmt.getUseBoxes().size() <= 1, "Only one use in " + stmt.toString());
         break;
       }

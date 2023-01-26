@@ -62,7 +62,7 @@ public class CallGraphAnalysis {
     Stack<CallFrame> callStack = new Stack<>();
     HeapEvent currEvent = startEvent;
     Stack<Pair<CallFrame, Integer>> remainingFrames = new Stack<>();
-    CallFrame rootFrame = new CallFrame(startEvent, null, null, null);
+    CallFrame rootFrame = new CallFrame(javaHeap, startEvent, null, null, null);
     CallGraphNode rootNode = new CallGraphNode(rootFrame, null);
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
 

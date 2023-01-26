@@ -158,6 +158,10 @@ class ProgramCounter {
 public class CallFrame {
   public final ShimpleMethod method;
   private HashMap<Value, JavaValue> allVariableValues;
+  public HashMap<Value, JavaValue> getAllVariableValues() {
+    return allVariableValues;
+  }
+
   public final CallFrame parent;
   private final ProgramCounter pc;
   private final Unit parentStmt;
@@ -166,8 +170,10 @@ public class CallFrame {
   public boolean isSegmentReaderOpenNorms = false;
   public boolean isQueryParseModifiers = false;
   private CFGPath cfgPathExecuted;
-
-  public CallFrame(ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
+  public final JavaHeap heap;
+  
+  public CallFrame(JavaHeap heap, ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
+    this.heap = heap;
     method = m;
     allVariableValues = method.initVarValues(invokeExpr, (parent == null) ? null : parent.allVariableValues);
     Utils.debugPrintln(toString());
@@ -190,12 +196,12 @@ public class CallFrame {
     // }
   }
 
-  public CallFrame(HeapEvent event, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
-    this(ParsedMethodMap.v().getOrParseToShimple(event.method), invokeExpr, stmt, root);
+  public CallFrame(JavaHeap heap, HeapEvent event, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
+    this(heap, ParsedMethodMap.v().getOrParseToShimple(event.method), invokeExpr, stmt, root);
   }
 
   public void updateValuesWithHeapEvent(HeapEvent event) {
-    method.updateValuesWithHeapEvent(allVariableValues, event);
+    method.updateValuesWithHeapEvent(this, event);
     if (canPrint) {
       Utils.debugPrintln("After updating event " + event + " for stmt " + method.getAssignStmtForBci(event.bci));
       Utils.debugPrintln(getAllVarValsToString());
@@ -323,7 +329,7 @@ public class CallFrame {
         methodMatches = currEvent.method == method.sootMethod;
         currStmt = method.statements.get(pc.counter);
         if (!(currStmt instanceof JIdentityStmt) || !(currStmt instanceof JIdentityStmt && ((JIdentityStmt)currStmt).getRightOp() instanceof CaughtExceptionRef))
-          this.method.propogateValues(this.allVariableValues, cfgPathExecuted, currStmt);
+          this.method.propogateValues(this, cfgPathExecuted, currStmt);
         Block block = method.getBlockForStmt(currStmt);
         if (cfgPathExecuted.isEmpty()) {
           cfgPathExecuted.add(block);
@@ -333,7 +339,7 @@ public class CallFrame {
 
         if (currStmt instanceof JIfStmt) {
         } else if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
-          JavaHeap.v().update(currEvent);
+          heap.update(currEvent);
           updateValuesWithHeapEvent(currEvent);
           eventsIterator.moveNext();
         }
@@ -396,7 +402,7 @@ public class CallFrame {
       } else if (cfgPathExecuted.get(cfgPathExecuted.size() - 1) != block) {
         cfgPathExecuted.add(block);
       }
-      this.method.propogateValues(this.allVariableValues, cfgPathExecuted, currStmt);
+      this.method.propogateValues(this, cfgPathExecuted, currStmt);
       if (this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>")) {
         // Utils.debugPrintln(pc.counter + " " + this.method.statements.size());
         // Utils.debugPrintln(this.method.fullname() + "   " + this.method.shimpleBody.toString());
@@ -645,7 +651,7 @@ public class CallFrame {
         return null;
       } else {
         if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
-          JavaHeap.v().update(currEvent);
+          heap.update(currEvent);
           updateValuesWithHeapEvent(currEvent);
           eventsIterator.moveNext();
 
@@ -762,10 +768,10 @@ public class CallFrame {
         JavaHeapElem segmentInfoObj = null;
         while (!eventIterator.get().methodStr.contains("org.apache.lucene.index.DirectoryIndexReader.init")) {  
           currEvent = eventIterator.get();
-          JavaHeap.v().update(eventIterator.get());
+          heap.update(eventIterator.get());
           if (currEvent.methodStr.contains("org.apache.lucene.index.SegmentReader.<init>()V") && 
               currEvent.eventType == HeapEvent.EventType.ObjectFieldSet) {
-            segmentInfoObj = JavaHeap.v().get(currEvent.dstPtr);
+            segmentInfoObj = heap.get(currEvent.dstPtr);
           }
           eventIterator.moveNext();
         }
@@ -792,7 +798,7 @@ public class CallFrame {
     if (method.fullname().contains("org.apache.lucene.store.FSDirectory.getDirectory(Ljava/io/File;Lorg/apache/lucene/store/LockFactory;)")) {
       //Go through FSDirectory.<init> events 
       while(eventIterator.get().methodStr.contains("org.apache.lucene.store.FSDirectory.<init>")) {
-        JavaHeap.v().update(eventIterator.get());
+        heap.update(eventIterator.get());
         eventIterator.moveNext();
       }
     }
@@ -864,7 +870,7 @@ public class CallFrame {
       StaticInitializers.v().setExecuted(invokeMethod);
     }
     Utils.debugAssert(invokeMethod != null, "%s not found\n", invokeMethod.fullname());
-    return new CallFrame(invokeMethod, invokeExpr, calleeExprAndStmt.second, this);
+    return new CallFrame(heap, invokeMethod, invokeExpr, calleeExprAndStmt.second, this);
   }
 
   /*

@@ -9,19 +9,12 @@ import soot.SootFieldRef;
 
 public class StaticFieldValues {
   private HashMap<SootField, JavaHeapElem> values;
-  
-  private static StaticFieldValues instance = null;
+  private JavaHeap heap;
 
-  private StaticFieldValues() {
-    values = new HashMap<>();
-  }
-
-  public static StaticFieldValues v() {
-    if (instance == null) {
-      instance = new StaticFieldValues();
-    }
-
-    return instance;
+  public StaticFieldValues(JavaHeap heap) {
+    this.values = new HashMap<>();
+    this.heap = heap;
+    heap.setStaticFieldValues(this);
   }
 
   public JavaHeapElem get(SootFieldRef fieldRef) {
@@ -41,10 +34,19 @@ public class StaticFieldValues {
   }
 
   public void set(SootField field, long ptr) {
-    set(field, JavaHeap.v().get(ptr));
+    set(field, this.heap.get(ptr));
   }
 
   public void set(SootFieldRef fieldRef, long ptr) {
-    set(fieldRef.resolve(), JavaHeap.v().get(ptr));
+    set(fieldRef.resolve(), this.heap.get(ptr));
+  }
+
+  public StaticFieldValues clone(JavaHeap heap) {
+    StaticFieldValues newStatics = new StaticFieldValues(heap);
+    for (Map.Entry<SootField, JavaHeapElem> entry : values.entrySet()) {
+      newStatics.set(entry.getKey(), heap.get(entry.getValue().getAddress()));
+    }
+
+    return newStatics;
   }
 }

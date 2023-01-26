@@ -28,7 +28,8 @@ public class CallGraphAnalysis {
   public static void callGraph(HashMap<String, ArrayList<HeapEvent>> heapEvents, JavaClassCollection classCollection, BCELClassCollection bcelClassCollection) {
     String mainThread = "";
     String threadWithMaxEvents = "";
-    JavaHeap javaHeap = JavaHeap.v();
+    JavaHeap javaHeap = new JavaHeap();
+    StaticFieldValues staticFieldValues = new StaticFieldValues(javaHeap);
 
     for (String thread : heapEvents.keySet()) {
       if (threadWithMaxEvents == "") {

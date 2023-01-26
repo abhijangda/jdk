@@ -1,30 +1,33 @@
 package javaheap;
 
 import java.util.HashMap;
+import java.util.Map;
 
+import callstack.StaticFieldValues;
 import soot.ArrayType;
 import soot.RefType;
+import soot.JastAddJ.StaticInitializer;
 import utils.Utils;
 
 public class JavaHeap extends HashMap<Long, JavaHeapElem> {
-  private JavaHeap() {
+  public JavaHeap() {
     super();
-  }
-
-  private static JavaHeap javaHeap = null;
-
-  public static JavaHeap v() {
-    if (javaHeap == null) 
-      javaHeap = new JavaHeap();
-    return javaHeap;
+    this.staticFieldValues = null;
   }
   
+  private StaticFieldValues staticFieldValues;
+  public void setStaticFieldValues(StaticFieldValues staticFieldValues) {
+    this.staticFieldValues = staticFieldValues;
+  }
+  public StaticFieldValues getStaticFieldValues() {
+    return this.staticFieldValues;
+  }
   public void update(HeapEvent event) {
     if (event.eventType == HeapEvent.EventType.NewObject) {
-      put(event.dstPtr, new JavaObject((RefType)event.dstClass));
+      put(event.dstPtr, new JavaObject((RefType)event.dstClass, event.dstPtr));
     } else if (event.eventType == HeapEvent.EventType.NewArray || 
                event.eventType == HeapEvent.EventType.NewPrimitiveArray) {
-      put(event.dstPtr, new JavaArray((ArrayType)event.dstClass, (int)event.srcPtr));
+      put(event.dstPtr, new JavaArray((ArrayType)event.dstClass, (int)event.srcPtr, event.dstPtr));
     } else if (event.eventType == HeapEvent.EventType.ObjectFieldSet) {
       JavaHeapElem val = null;
       if (event.srcClass == null && event.srcPtr != 0) utils.Utils.debugPrintln("srcClass is null in " + event.toString());
@@ -33,9 +36,9 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
         if (!containsKey(event.srcPtr)) {
           utils.Utils.debugLog("Creating the object %d not found in heap\n", event.srcPtr);
           if (event.srcClass instanceof RefType) {
-            val = new JavaObject((RefType)event.srcClass);
+            val = new JavaObject((RefType)event.srcClass, event.srcPtr);
           } else if (event.srcClass instanceof ArrayType) {
-            val = new JavaArray((ArrayType)event.srcClass,1000);
+            val = new JavaArray((ArrayType)event.srcClass,1000, event.srcPtr);
           }
           put(event.srcPtr, val);
         }
@@ -47,7 +50,7 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
       }
       if (!containsKey(event.dstPtr)) {
         utils.Utils.debugLog("Creating the object %d not found in heap\n", event.dstPtr);
-        put(event.dstPtr, new JavaObject((RefType)event.dstClass));
+        put(event.dstPtr, new JavaObject((RefType)event.dstClass, event.dstPtr));
       }
       ((JavaObject)get(event.dstPtr)).addField(event.fieldName, val);
     } else if (event.eventType == HeapEvent.EventType.ArrayElementSet) {
@@ -57,9 +60,9 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
         if (!containsKey(event.srcPtr)) {
           utils.Utils.debugLog("Creating the object %d not found in heap\n", event.srcPtr);
           if (event.srcClass instanceof RefType) {
-            val = new JavaObject((RefType)event.srcClass);
+            val = new JavaObject((RefType)event.srcClass, event.srcPtr);
           } else if (event.srcClass instanceof ArrayType) {
-            val = new JavaArray((ArrayType)event.srcClass,1000);
+            val = new JavaArray((ArrayType)event.srcClass,1000, event.srcPtr);
           }
           put(event.srcPtr, val);
         }
@@ -68,7 +71,7 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
 
       if (!containsKey(event.dstPtr)) {
         utils.Utils.debugLog("Creating the object %d not found in heap\n", event.dstPtr);
-        put(event.dstPtr, new JavaArray(event.dstClass, 1000));
+        put(event.dstPtr, new JavaArray(event.dstClass, 1000, event.dstPtr));
       }
 
       ((JavaArray)get(event.dstPtr)).setElem(event.elemIndex, val);
@@ -81,7 +84,7 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
     long address = size();
     while(containsKey(address)) address++;
 
-    JavaObject obj = new JavaObject(type);
+    JavaObject obj = new JavaObject(type, address);
     put(address, obj);
 
     return obj;
@@ -93,5 +96,14 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
     }
 
     return super.get(ptr);
+  }
+
+  public Object clone() {
+    JavaHeap newHeap = new JavaHeap();
+
+    for (Map.Entry<Long, JavaHeapElem> entry : newHeap.entrySet()) {
+      newHeap.put(entry.getKey(), entry.getValue().clone());
+    }
+    return newHeap;
   }
 }

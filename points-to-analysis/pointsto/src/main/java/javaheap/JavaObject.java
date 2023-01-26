@@ -1,6 +1,7 @@
 package javaheap;
 
 import java.util.HashMap;
+import java.util.Map;
 import soot.RefType;
 import soot.SootClass;
 import soot.SootField;
@@ -9,8 +10,8 @@ import soot.sootify.ValueTemplatePrinter;
 public class JavaObject extends JavaHeapElem {
   protected final HashMap<String, JavaHeapElem> fieldValues;
 
-  public JavaObject(RefType type) {
-    super(type);
+  public JavaObject(RefType type, long address) {
+    super(type, address);
     this.fieldValues = new HashMap<>();
   }
 
@@ -42,5 +43,14 @@ public class JavaObject extends JavaHeapElem {
     JavaHeapElem value = fieldValues.get(field);
     
     return value;
+  }
+
+  public JavaHeapElem clone() {
+    JavaObject newObj = new JavaObject(getClassType(), address);
+    for (Map.Entry<String, JavaHeapElem> entry : fieldValues.entrySet()) {
+      newObj.addField(entry.getKey(), entry.getValue().clone());
+    }
+
+    return newObj;
   }
 }

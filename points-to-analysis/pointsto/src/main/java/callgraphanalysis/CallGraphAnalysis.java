@@ -104,7 +104,13 @@ public class CallGraphAnalysis {
       //   heapEventIdx++;
       // }
       CallGraphNode parentNode = frameToGraphNode.get(frame);
-      CallFrame nextFrame = frame.nextInvokeMethod(eventIterator);
+      CallFrame nextFrame = null;
+      try {
+        nextFrame = frame.nextInvokeMethod(eventIterator);
+      } catch (InvalidCallStackException e) {
+        e.printStackTrace();
+        System.exit(0);
+      }
       // if (frame.method.fullname().contains("QueryProcessor.<init>")) {
       //   while (!Utils.methodFullName(mainThreadEvents.get(heapEventIdx).method).contains("QueryProcessor.run")) {
       //     Utils.debugPrintln("currevent " + mainThreadEvents.get(heapEventIdx));

@@ -23,6 +23,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
+import callgraphanalysis.InvalidCallStackException;
 import javaheap.*;
 import javavalues.*;
 import parsedmethod.ParsedMethodMap;
@@ -315,7 +316,7 @@ public class CallFrame {
   }
 
   static int d = 0;
-  private FuncCall nextFuncCall(ArrayListIterator<HeapEvent> eventsIterator) {
+  private FuncCall nextFuncCall(ArrayListIterator<HeapEvent> eventsIterator) throws InvalidCallStackException {
     if (!hasNextInvokeStmt()) return null;
     FuncCall funcToCall = null;
     Unit currStmt = method.statements.get(pc.counter);
@@ -402,6 +403,7 @@ public class CallFrame {
       } else if (cfgPathExecuted.get(cfgPathExecuted.size() - 1) != block) {
         cfgPathExecuted.add(block);
       }
+
       this.method.propogateValues(this, cfgPathExecuted, currStmt);
       if (this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>")) {
         // Utils.debugPrintln(pc.counter + " " + this.method.statements.size());
@@ -649,15 +651,7 @@ public class CallFrame {
         Utils.debugPrintln(currStmt);
         pc.counter = method.statements.size();
         return null;
-      } else {
-        if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
-          heap.update(currEvent);
-          updateValuesWithHeapEvent(currEvent);
-          eventsIterator.moveNext();
-
-          Utils.debugPrintln("next event " + eventsIterator.get());
-        }
-        
+      } else {        
         funcToCall = null;
         boolean incrementPC = true;
         for (ValueBox use : currStmt.getUseBoxes()) {
@@ -682,6 +676,7 @@ public class CallFrame {
             if (!StaticInitializers.v().wasExecuted(clinit)) {
               funcToCall = new FuncCall(val, currStmt, clinit);
               if (funcToCall.getCallee() != null) {
+                incrementPC = false;
                 break;
               }
             }
@@ -710,11 +705,39 @@ public class CallFrame {
         }
         
         if (incrementPC) {
+          if (Utils.canStmtUpdateHeap(currStmt)) {
+            boolean throwException = false;
+            if (!(currEvent.method == method.sootMethod &&
+              method.getAssignStmtForBci(currEvent.bci) == currStmt)) {
+              if (!currEvent.method.getName().contains("<clinit>") &&
+                  !Utils.methodFullName(currEvent.method).contains("org.apache.lucene.store.BufferedIndexInput.newBuffer([B)V") &&
+                  !Utils.methodFullName(currEvent.method).contains("org.apache.lucene.store.IndexInput.readString()Ljava/lang/String;") && 
+                  !Utils.methodFullName(currEvent.method).contains("org.dacapo.lusearch.Search$QueryProcessor.<init>") && 
+                  !method.fullname().contains("<clinit>")) {
+                throwException = true;
+              }
+            }
+            
+            if (method.fullname().contains("org.apache.lucene.queryParser.QueryParser.<init>(Lorg/apache/lucene/queryParser/CharStream;)V"))
+              throwException = false;
+              
+            if (throwException) {
+              throw new InvalidCallStackException(this, eventsIterator, currStmt);
+            }
+          }
+          
+          if (methodMatches && this.method.getAssignStmtForBci(currEvent.bci) == currStmt) {
+            heap.update(currEvent);
+            updateValuesWithHeapEvent(currEvent);
+            eventsIterator.moveNext();
+  
+            Utils.debugPrintln("next event " + eventsIterator.get());
+          }
           pc.counter += 1;
           if (pc.counter < method.statements.size())
             currStmt = method.statements.get(pc.counter);
         }
-    
+
         if (funcToCall != null) {
           break;
         }
@@ -761,7 +784,7 @@ public class CallFrame {
     // return null;
   }
 
-  public CallFrame nextInvokeMethod(ArrayListIterator<HeapEvent> eventIterator) {
+  public CallFrame nextInvokeMethod(ArrayListIterator<HeapEvent> eventIterator) throws InvalidCallStackException {
     if (isSegmentReaderGet) {
       HeapEvent currEvent = eventIterator.get();
       if (currEvent.methodStr.contains("org.apache.lucene.index.DirectoryIndexReader.<init>()V")) {

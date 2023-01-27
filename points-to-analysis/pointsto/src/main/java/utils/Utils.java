@@ -8,6 +8,7 @@ import soot.jimple.ArrayRef;
 import soot.jimple.FieldRef;
 import soot.jimple.InvokeExpr;
 import soot.jimple.StaticFieldRef;
+import soot.jimple.internal.JArrayRef;
 import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JNewArrayExpr;
 import soot.jimple.internal.JNewExpr;
@@ -24,6 +25,10 @@ import parsedmethod.ParsedMethodMap;
 import parsedmethod.ShimpleMethod;
 import parsedmethod.ShimpleMethodList;
 import soot.AbstractJasminClass;
+import soot.ArrayType;
+import soot.CharType;
+import soot.PrimType;
+import soot.RefLikeType;
 import soot.SootClass;
 
 public abstract class Utils {
@@ -126,14 +131,25 @@ public abstract class Utils {
       Value left = ((JAssignStmt)stmt).getLeftOp();
       Value right = ((JAssignStmt)stmt).getRightOp();
 
+      if (right instanceof JNewArrayExpr) {
+        //TODO: For somereason new primitive arrays are not recorded in heap-events
+        //skip them for now
+        if (((ArrayType)left.getType()).baseType instanceof PrimType)
+          return false;
+      }
       if (right instanceof JNewExpr || 
           right instanceof JNewMultiArrayExpr ||
           right instanceof JNewArrayExpr) {
             return true;
       }
       
-      if (left instanceof FieldRef || 
-          left instanceof ArrayRef) {
+      if (left instanceof FieldRef &&
+          ((FieldRef)left).getField().getType() instanceof RefLikeType) {
+        return true;
+      }
+
+      if (left instanceof ArrayRef &&
+          ((ArrayRef)left).getType() instanceof RefLikeType) {
         return true;
       }
     }

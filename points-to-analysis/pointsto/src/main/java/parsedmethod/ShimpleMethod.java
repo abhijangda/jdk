@@ -15,6 +15,8 @@ import java.util.Stack;
 import java.util.TreeSet;
 import java.util.concurrent.BlockingDeque;
 
+import javax.xml.crypto.dsig.keyinfo.RetrievalMethod;
+
 import org.apache.bcel.Const;
 import org.apache.bcel.classfile.Method;
 import org.apache.bcel.util.ByteSequence;
@@ -348,97 +350,6 @@ public class ShimpleMethod {
     return false;
   }
 
-  public boolean mayCallMethodInPathFromBlock(Block block, SootMethod method) {
-    return mayCallMethodInPathFromBlock(block, ParsedMethodMap.v().getOrParseToShimple(method));
-  }
-
-  public boolean mayCallMethodInPathFromBlock(Block block, ShimpleMethod method) {
-    Queue<Block> q = new LinkedList<>();
-    Set<Block> visited = new HashSet<>();
-
-    q.add(block);
-    while (!q.isEmpty()) {
-      Block b = q.remove();
-      if (visited.contains(b)) continue;
-      
-      Iterator<Unit> stmtIter = b.iterator();
-      Utils.debugPrintln(b.getIndexInMethod());
-      while (stmtIter.hasNext()) {
-        Unit stmt = stmtIter.next();
-        for (ValueBox val : stmt.getUseBoxes()) {
-          if (val.getValue() instanceof InvokeExpr) {
-            if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val.getValue(), method))
-              return true;
-          }
-        }
-
-        //TODO: If a heap event bytecode is in this block then this path is not taken
-      }
-      visited.add(b);
-      for (Block succ : b.getSuccs()) {
-        if (!isDominator(succ, b)) {
-          //Should not consider loop
-          q.add(succ);
-        }
-      }
-    }
-    
-    return false;
-  }
-
-  public Unit mayCallMethodInBlock(Block block, ShimpleMethod method) {  
-    Iterator<Unit> stmtIter = block.iterator();
-    while (stmtIter.hasNext()) {
-      Unit stmt = stmtIter.next();
-      for (ValueBox valBox : stmt.getUseBoxes()) {
-        Value val = valBox.getValue();
-        if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val, method))
-          return stmt;
-        //TODO: Static 
-      }
-    
-      //TODO: If a heap event bytecode is in this block then this path is not taken
-    }
-    
-    return null;
-  }
-
-  // public boolean heapUpdStmtAfterInvoke(Block block, ArrayListIterator<HeapEvent> eventsIterator) {
-  //   eventsIterator = eventsIterator.clone();
-  //   while(eventsIterator.hasNext()) {
-  //     eventsIterator.get();
-  //     eventsIterator.moveNext();
-  //   }
-  //   Iterator<Unit> stmtIter = block.iterator();
-  //   while(stmtIter.hasNext()) {
-  //     Unit stmt = stmtIter.next();
-  //     boolean isHeapUpd = false;
-  //     if (stmt instanceof JAssignStmt) {
-  //       JAssignStmt assign = (JAssignStmt)stmt;
-  //       if (assign.getRightOp() instanceof JNewExpr) {
-  //         isHeapUpd = true;
-  //       } else if (assign.getLeftOp() instanceof FieldRef) {
-  //         SootField field = ((FieldRef)assign.getLeftOp()).getField();
-  //         if (field.getType() instanceof RefLikeType)
-  //           isHeapUpd = true;
-  //       } else if (assign.getRightOp() instanceof JNewArrayExpr || 
-  //             assign.getRightOp() instanceof JNewMultiArrayExpr) {
-  //         isHeapUpd = true;
-  //       } else if (assign.getLeftOp() instanceof JArrayRef) {
-  //         Type elemType = ((JArrayRef)assign.getLeftOp()).getType();
-  //         if (elemType instanceof RefLikeType)
-  //           isHeapUpd = true;
-  //       }
-
-  //       if (isHeapUpd) {
-  //         stmts.add(assign);
-  //       }
-  //     }
-  //   }
-
-  //   return stmts;
-  // }
-
   public Unit heapUpdateStmtBeforeCall(Block block, ShimpleMethod method) {
     Iterator<Unit> stmtIter = block.iterator();
     while (stmtIter.hasNext()) {
@@ -511,6 +422,96 @@ public class ShimpleMethod {
 
     return builder.toString();
   }
+
+  public Unit mayCallMethodInBlock(Block block, ShimpleMethod method) {  
+    Iterator<Unit> stmtIter = block.iterator();
+    while (stmtIter.hasNext()) {
+      Unit stmt = stmtIter.next();
+      for (ValueBox valBox : stmt.getUseBoxes()) {
+        Value val = valBox.getValue();
+        if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val, method))
+          return stmt;
+        //TODO: Static 
+      }
+    
+      //TODO: If a heap event bytecode is in this block then this path is not taken
+    }
+    
+    return null;
+  }
+
+  // public boolean mayCallMethodInPathFromBlock(Block block, SootMethod method) {
+  //   return mayCallMethodInPathFromBlock(block, ParsedMethodMap.v().getOrParseToShimple(method));
+  // }
+
+  // public boolean mayCallMethodInPathFromBlock(Block block, ShimpleMethod method) {
+  //   Queue<Block> q = new LinkedList<>();
+  //   Set<Block> visited = new HashSet<>();
+
+  //   q.add(block);
+  //   while (!q.isEmpty()) {
+  //     Block b = q.remove();
+  //     if (visited.contains(b)) continue;
+      
+  //     Iterator<Unit> stmtIter = b.iterator();
+  //     Utils.debugPrintln(b.getIndexInMethod());
+  //     while (stmtIter.hasNext()) {
+  //       Unit stmt = stmtIter.next();
+  //       for (ValueBox val : stmt.getUseBoxes()) {
+  //         if (val.getValue() instanceof InvokeExpr) {
+  //           if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val.getValue(), method))
+  //             return true;
+  //         }
+  //       }
+
+  //       //TODO: If a heap event bytecode is in this block then this path is not taken
+  //     }
+  //     visited.add(b);
+  //     for (Block succ : b.getSuccs()) {
+  //       if (!isDominator(succ, b)) {
+  //         //Should not consider loop
+  //         q.add(succ);
+  //       }
+  //     }
+  //   }
+    
+  //   return false;
+  // }
+  // public boolean heapUpdStmtAfterInvoke(Block block, ArrayListIterator<HeapEvent> eventsIterator) {
+  //   eventsIterator = eventsIterator.clone();
+  //   while(eventsIterator.hasNext()) {
+  //     eventsIterator.get();
+  //     eventsIterator.moveNext();
+  //   }
+  //   Iterator<Unit> stmtIter = block.iterator();
+  //   while(stmtIter.hasNext()) {
+  //     Unit stmt = stmtIter.next();
+  //     boolean isHeapUpd = false;
+  //     if (stmt instanceof JAssignStmt) {
+  //       JAssignStmt assign = (JAssignStmt)stmt;
+  //       if (assign.getRightOp() instanceof JNewExpr) {
+  //         isHeapUpd = true;
+  //       } else if (assign.getLeftOp() instanceof FieldRef) {
+  //         SootField field = ((FieldRef)assign.getLeftOp()).getField();
+  //         if (field.getType() instanceof RefLikeType)
+  //           isHeapUpd = true;
+  //       } else if (assign.getRightOp() instanceof JNewArrayExpr || 
+  //             assign.getRightOp() instanceof JNewMultiArrayExpr) {
+  //         isHeapUpd = true;
+  //       } else if (assign.getLeftOp() instanceof JArrayRef) {
+  //         Type elemType = ((JArrayRef)assign.getLeftOp()).getType();
+  //         if (elemType instanceof RefLikeType)
+  //           isHeapUpd = true;
+  //       }
+
+  //       if (isHeapUpd) {
+  //         stmts.add(assign);
+  //       }
+  //     }
+  //   }
+  //   return stmts;
+  // }
+
 
   private void allPathsToCalleeBlock(Block start, ShimpleMethod callee, CFGPath currPath, 
                                       HashSet<Block> visited,
@@ -610,6 +611,79 @@ public class ShimpleMethod {
     // unvisited
     path.remove(path.size() - 1);
     visited.remove(start);
+  }
+
+  private boolean hasheapUpdateStmt(Block block) {
+    Iterator<Unit> iter = block.iterator();
+    while(iter.hasNext()) {
+      Unit stmt = iter.next();
+      if (Utils.canStmtUpdateHeap(stmt)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+  
+  private void allPathsToEventStmt(Block start, HeapEvent event, Block eventBlock, CFGPath currPath, 
+                                   HashSet<Block> visited, ArrayList<CFGPath> allPaths) {
+    // Mark the current node and store it in path[]
+    visited.add(start);
+    currPath.add(start);
+    // If current vertex is same as destination, then print
+    // current path[]
+    if (start == eventBlock) {
+      Unit eventStmt = getAssignStmtForBci(event.bci);
+      boolean heapUpdBeforeEvent = true;
+      Iterator<Unit> iter = start.iterator();
+      while(iter.hasNext()) {
+        Unit stmt = iter.next();
+        if (stmt == eventStmt) {
+          heapUpdBeforeEvent = false;
+          break;
+        } else if (Utils.canStmtUpdateHeap(stmt)) {
+          heapUpdBeforeEvent = false;
+          break;
+        }
+      }
+      if (!heapUpdBeforeEvent) {
+        CFGPath _path = new CFGPath();
+        for (Block n : currPath) {
+          _path.add(n);
+        }
+        allPaths.add(_path);
+        Utils.debugPrintln(start.getIndexInMethod());
+      }
+    } else {
+      //If the block instead does a heap event then do not go 
+      //to the successors
+      if (hasheapUpdateStmt(start)) {
+        Utils.debugPrintln(start.getIndexInMethod());
+      } else {
+        // If current vertex is not destination
+        // Recur for all the vertices adjacent to current
+        // vertex
+        for (Block succ : start.getSuccs()) {
+          if (!visited.contains(succ) && !isDominator(succ, start)) {
+            allPathsToEventStmt(succ, event, eventBlock, currPath, visited, allPaths);
+          }
+        }
+      }
+    }
+    
+    // Remove current vertex from path[] and mark it as
+    // unvisited
+    currPath.remove(currPath.size() - 1);
+    visited.remove(start);
+  }
+
+  public ArrayList<CFGPath> allPathsToEvent(Block start, HeapEvent event) {
+    HashSet<Block> visited = new HashSet<>();
+    ArrayList<CFGPath> allPaths = new ArrayList<>();
+    CFGPath currPath = new CFGPath();
+    allPathsToEventStmt(start, event, getBlockForBci(event.bci), currPath, visited, allPaths);
+
+    return allPaths;
   }
 
   private HashMap<Block, ArrayList<ArrayList<Block>>> pathToExits(Block start) {
@@ -1078,7 +1152,7 @@ public class ShimpleMethod {
           ((RefType)arrayRef.getType()).getSootClass().getName().contains("java.lang.String")) {
         JavaArrayRef array = (JavaArrayRef)obtainVariableValues(frame, cfgPathExecuted, stmt, arrayRef.getBase());
         //For String does not matter what it returns
-        return JavaValueFactory.nullV();
+        return null;// return JavaValueFactory.nullV();
       } else if (this.fullname().equals("org.apache.lucene.queryParser.QueryParser.jj_save(II)V")) {
         return JavaValueFactory.nullV();
       } else if (arrayRef.getType() instanceof RefLikeType) {

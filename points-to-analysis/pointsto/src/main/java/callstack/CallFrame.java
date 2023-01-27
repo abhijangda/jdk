@@ -183,7 +183,7 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.jj_3R_2()Z");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Clause(Ljava/lang/String;)Lor");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     isSegmentReaderOpenNorms = method.fullname().contains("SegmentReader.openNorms");
     isQueryParseModifiers = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");
@@ -492,10 +492,10 @@ public class CallFrame {
             //from exit of if-else
             //otherwise set the pc to either of the successor
             
-            boolean inPath1 = method.isEventInPathFromBlock(succ1, currEvent);
-            boolean inPath2 = method.isEventInPathFromBlock(succ2, currEvent);
+            ArrayList<CFGPath> allPaths1 = method.allPathsToEvent(succ1, currEvent);
+            ArrayList<CFGPath> allPaths2 = method.allPathsToEvent(succ2, currEvent);
 
-            if (inPath1 && inPath2) {
+            if (allPaths1.size() > 0 && allPaths2.size() > 0) {
               Utils.debugPrintln("Found in both");
               //TODO: Currently goes through one of the successors, but should go through both
               //and search through the call graph to find which succ should be taken.
@@ -504,10 +504,10 @@ public class CallFrame {
               pc.counter++;
               // currStmt = method.statements.get(++pc.counter);
               // Utils.debugPrintln(currStmt);
-            } else if (inPath1) {
+            } else if (allPaths1.size() > 0) {
               currStmt = succ1.getHead();
               pc.counter = method.stmtToIndex.get(currStmt);
-            } else if (inPath2) {
+            } else if (allPaths2.size() > 0) {
               currStmt = succ2.getHead();
               pc.counter = method.stmtToIndex.get(currStmt);
             } else {

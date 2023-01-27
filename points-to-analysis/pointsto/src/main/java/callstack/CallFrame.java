@@ -23,7 +23,9 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
+import callgraphanalysis.CallGraphException;
 import callgraphanalysis.InvalidCallStackException;
+import callgraphanalysis.MultipleNextBlocksException;
 import javaheap.*;
 import javavalues.*;
 import parsedmethod.ParsedMethodMap;
@@ -32,43 +34,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
-import soot.jimple.BinopExpr;
-import soot.jimple.CaughtExceptionRef;
-import soot.jimple.CmpExpr;
-import soot.jimple.CmpgExpr;
-import soot.jimple.CmplExpr;
-import soot.jimple.Constant;
-import soot.jimple.EqExpr;
-import soot.jimple.IntConstant;
-import soot.jimple.InvokeExpr;
-import soot.jimple.InvokeStmt;
-import soot.jimple.LongConstant;
-import soot.jimple.NeExpr;
-import soot.jimple.NullConstant;
-import soot.jimple.ParameterRef;
-import soot.jimple.StaticFieldRef;
-import soot.jimple.StaticInvokeExpr;
-import soot.jimple.VirtualInvokeExpr;
-import soot.jimple.internal.AbstractInstanceInvokeExpr;
-import soot.jimple.internal.AbstractJimpleIntBinopExpr;
-import soot.jimple.internal.JAssignStmt;
-import soot.jimple.internal.JGeExpr;
-import soot.jimple.internal.JGotoStmt;
-import soot.jimple.internal.JIdentityStmt;
-import soot.jimple.internal.JIfStmt;
-import soot.jimple.internal.JInterfaceInvokeExpr;
-import soot.jimple.internal.JLeExpr;
-import soot.jimple.internal.JLookupSwitchStmt;
-import soot.jimple.internal.JNewExpr;
-import soot.jimple.internal.JRetStmt;
-import soot.jimple.internal.JReturnStmt;
-import soot.jimple.internal.JReturnVoidStmt;
-import soot.jimple.internal.JSpecialInvokeExpr;
-import soot.jimple.internal.JStaticInvokeExpr;
-import soot.jimple.internal.JTableSwitchStmt;
-import soot.jimple.internal.JThrowStmt;
-import soot.jimple.internal.JVirtualInvokeExpr;
-import soot.jimple.internal.JimpleLocal;
+import soot.jimple.*;
+import soot.jimple.internal.*;
 import soot.jimple.toolkits.annotation.callgraph.MethInfo;
 
 import utils.ArrayListIterator;
@@ -201,6 +168,34 @@ public class CallFrame {
     this(heap, ParsedMethodMap.v().getOrParseToShimple(event.method), invokeExpr, stmt, root);
   }
 
+  private CallFrame(JavaHeap newHeap, CallFrame source) {
+    this.heap = newHeap;
+    this.method = source.method;
+    this.parent = source.parent;
+    this.pc = source.pc;
+    this.cfgPathExecuted = (CFGPath)source.cfgPathExecuted.clone();
+    this.canPrint = source.canPrint;
+    this.isSegmentReaderGet = source.isSegmentReaderGet;
+    this.isSegmentReaderOpenNorms = source.isSegmentReaderOpenNorms;
+    this.isQueryParseModifiers = source.isQueryParseModifiers;
+    this.parentStmt = source.parentStmt;
+  
+    this.allVariableValues = new HashMap<>();
+    for (Map.Entry<Value, JavaValue> entry : source.allVariableValues.entrySet()) {
+      if (entry.getValue() instanceof JavaRefValue) {
+        this.allVariableValues.put(entry.getKey(), JavaValueFactory.v(this.heap.get(((JavaRefValue)entry.getValue()).ref.getAddress())));
+      } else {
+        this.allVariableValues.put(entry.getKey(), entry.getValue());
+      }
+    }
+  }
+
+  public CallFrame clone(JavaHeap newHeap) {
+    CallFrame newFrame = new CallFrame(newHeap, this);
+    
+    return newFrame;
+  }
+
   public void updateValuesWithHeapEvent(HeapEvent event) {
     method.updateValuesWithHeapEvent(this, event);
     if (canPrint) {
@@ -316,7 +311,7 @@ public class CallFrame {
   }
 
   static int d = 0;
-  private FuncCall nextFuncCall(ArrayListIterator<HeapEvent> eventsIterator) throws InvalidCallStackException {
+  private FuncCall nextFuncCall(ArrayListIterator<HeapEvent> eventsIterator) throws CallGraphException {
     if (!hasNextInvokeStmt()) return null;
     FuncCall funcToCall = null;
     Unit currStmt = method.statements.get(pc.counter);
@@ -585,6 +580,8 @@ public class CallFrame {
                     } else {
                       Utils.shouldNotReachHere();
                     }
+                  } else {
+                    throw new MultipleNextBlocksException(this, succ1, succ2);
                   }
                 } else {
                   Block calleeBlock = commonCalleeBlocks.iterator().next();
@@ -784,7 +781,7 @@ public class CallFrame {
     // return null;
   }
 
-  public CallFrame nextInvokeMethod(ArrayListIterator<HeapEvent> eventIterator) throws InvalidCallStackException {
+  public CallFrame nextInvokeMethod(ArrayListIterator<HeapEvent> eventIterator) throws CallGraphException {
     if (isSegmentReaderGet) {
       HeapEvent currEvent = eventIterator.get();
       if (currEvent.methodStr.contains("org.apache.lucene.index.DirectoryIndexReader.<init>()V")) {

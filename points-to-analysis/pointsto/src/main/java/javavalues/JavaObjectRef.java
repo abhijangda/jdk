@@ -9,20 +9,21 @@ import soot.RefType;
 import soot.SootField;
 import utils.Utils;
 
-public class JavaObjectRef extends JavaValue {
-  public final JavaObject obj;
-
+public class JavaObjectRef extends JavaRefValue {
   public JavaObjectRef(JavaObject obj) {
-    super(obj.getType());
-    this.obj = obj;
+    super((RefType)obj.getType(), obj);
   }
   
+  public JavaObject getObject() {
+    return (JavaObject)this.ref;
+  }
+
   public JavaValue getField(SootField field) {
     if (field.getType() instanceof PrimType) {
       return null;
     }
 
-    JavaHeapElem fieldElem = obj.getField(field.getName());
+    JavaHeapElem fieldElem = getObject().getField(field.getName());
     if (fieldElem == null) return JavaNull.v();
     if (fieldElem.getType() instanceof RefType) return JavaValueFactory.v((JavaObject)fieldElem);
     if (fieldElem.getType() instanceof ArrayType) return new JavaArrayRef((JavaArray)fieldElem);
@@ -32,11 +33,11 @@ public class JavaObjectRef extends JavaValue {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof JavaObjectRef && obj == ((JavaObjectRef)o).obj;
+    return o instanceof JavaObjectRef && getObject() == ((JavaObjectRef)o).getObject();
   }
 
   @Override
   public String toString() {
-    return obj.toString();
+    return getObject().toString();
   }
 }

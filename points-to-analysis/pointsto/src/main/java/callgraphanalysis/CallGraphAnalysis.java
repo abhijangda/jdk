@@ -110,6 +110,12 @@ public class CallGraphAnalysis {
       } catch (InvalidCallStackException e) {
         e.printStackTrace();
         System.exit(0);
+      } catch (MultipleNextBlocksException e) {
+        e.printStackTrace();
+        System.exit(0);
+      } catch (CallGraphException e) {
+        e.printStackTrace();
+        System.exit(0);
       }
       // if (frame.method.fullname().contains("QueryProcessor.<init>")) {
       //   while (!Utils.methodFullName(mainThreadEvents.get(heapEventIdx).method).contains("QueryProcessor.run")) {

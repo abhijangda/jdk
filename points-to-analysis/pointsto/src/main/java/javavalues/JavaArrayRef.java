@@ -7,16 +7,16 @@ import soot.ArrayType;
 import soot.RefType;
 import utils.Utils;
 
-public class JavaArrayRef extends JavaValue {
-  private JavaArray array;
-
+public class JavaArrayRef extends JavaRefValue {
   public JavaArrayRef(JavaArray array) {
-    super(array.getType());
-    this.array = array;
+    super(array.getType(), array);
   }
 
+  public JavaArray getArray() {
+    return (JavaArray)this.ref;
+  }
   public JavaValue getElem(int idx) {
-    JavaHeapElem elem = array.getElem(idx);
+    JavaHeapElem elem = getArray().getElem(idx);
     if (elem == null) return JavaNull.v();
     if (elem.getType() instanceof RefType) return new JavaObjectRef((JavaObject)elem);
     if (elem.getType() instanceof ArrayType) return new JavaArrayRef((JavaArray)elem);
@@ -26,11 +26,11 @@ public class JavaArrayRef extends JavaValue {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof JavaArrayRef && array == ((JavaArrayRef)o).array;
+    return o instanceof JavaArrayRef && getArray() == ((JavaArrayRef)o).getArray();
   }
 
   @Override
   public String toString() {
-    return array.toString();
+    return getArray().toString();
   }
 }

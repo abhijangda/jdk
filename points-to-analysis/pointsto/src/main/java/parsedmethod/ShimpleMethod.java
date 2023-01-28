@@ -1080,7 +1080,14 @@ public class ShimpleMethod {
         return obtainVariableValues(frame, cfgPathExecuted, stmt, ((JCastExpr)val).getOp());
       }
     } else if (val instanceof JInstanceOfExpr) {
-      Utils.debugAssert(false, stmt.toString());
+      JInstanceOfExpr instanceOfExpr = (JInstanceOfExpr)val;
+      JavaValue op = obtainVariableValues(frame, cfgPathExecuted, stmt, instanceOfExpr.getOp());
+      if (op == null) return null;
+      if (op.getType().equals(instanceOfExpr.getCheckType())) {
+        return JavaValueFactory.v(true);
+      } else {
+        return JavaValueFactory.v(false);
+      }
     } else if (val instanceof JStaticInvokeExpr) {
       return null;
     } else if (val instanceof JVirtualInvokeExpr) {

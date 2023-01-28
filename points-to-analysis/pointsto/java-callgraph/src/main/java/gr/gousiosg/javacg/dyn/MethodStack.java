@@ -34,15 +34,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
 
 public class MethodStack {
 
     private static Stack<String> stack = new Stack<>();
     private static Map<Pair<String, String>, Integer> callgraph = new HashMap<>();
+    private static Set<String> callSites = new HashSet<>();
     static FileWriter fw; 
+    static FileWriter callSitesWriter;
     static StringBuffer sb;
     static long threadid = -1L;
 
@@ -64,14 +68,21 @@ public class MethodStack {
                     }
                 
                     fw.close();
+
+                    for (String site : callSites) {
+                        callSitesWriter.write(site + "\n\n");
+                    }
+                    callSitesWriter.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         });
-        File log = new File("call-edges.txt");
+        File log = new File("call-edges-2.txt");
+        File call_sites = new File("call-sites.txt");
         try {
             fw = new FileWriter(log);
+            callSitesWriter = new FileWriter(call_sites);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -86,6 +97,13 @@ public class MethodStack {
         
         if (Thread.currentThread().getId() != threadid)
             return;
+
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        StringBuilder stackTraceStr = new StringBuilder();
+        for (StackTraceElement elem : stackTrace) {
+            stackTraceStr.append(elem.toString() + "\n");
+        }
+        callSites.add(stackTraceStr.toString());
         
         if (!stack.isEmpty()) {
             Pair<String, String> p = new Pair<>(stack.peek(), callname);

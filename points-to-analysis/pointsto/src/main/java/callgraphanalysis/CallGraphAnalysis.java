@@ -10,6 +10,7 @@ import classhierarchyanalysis.ClassHierarchyGraph;
 import javaheap.HeapEvent;
 import javaheap.JavaHeap;
 import soot.SootMethod;
+import soot.toolkits.graph.Block;
 import utils.ArrayListIterator;
 import utils.Pair;
 import utils.Utils;
@@ -61,16 +62,22 @@ public class CallGraphAnalysis {
 
     Stack<CallFrame> callStack = new Stack<>();
     HeapEvent currEvent = startEvent;
-    Stack<Pair<CallFrame, Integer>> remainingFrames = new Stack<>();
     CallFrame rootFrame = new CallFrame(javaHeap, startEvent, null, null, null);
     CallGraphNode rootNode = new CallGraphNode(rootFrame, null);
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
 
-    remainingFrames.push(Pair.v(rootFrame, 0));
     callStack.push(rootFrame);
     frameToGraphNode.put(rootFrame, rootNode);
-    int iterations = 0;
+    traverseCallStack(rootFrame, callStack, eventIterator, 0);
+    System.out.println("Edges:");
+    System.out.println(rootNode.edgesToString());
+  }
+  
+  private static void traverseCallStack(CallFrame startFrame, Stack<CallFrame> callStack, ArrayListIterator<HeapEvent> eventIterator, int iterations) {
+    HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
+    Utils.debugPrintln("new call frame " + startFrame.method.fullname() + " " + startFrame.getPC());
     while (!callStack.isEmpty() && iterations++ < 3000) {
+      HeapEvent currEvent;
       CallFrame frame = callStack.peek();
       
       if (frame.parent != null) {
@@ -92,7 +99,7 @@ public class CallGraphAnalysis {
       while (!Utils.methodToCare(currEvent.method) ||
             //  currEvent.methodStr.contains("org.apache.lucene.store.FSDirectory") ||
              currEvent.methodStr.contains("org.apache.lucene.analysis.CharArraySet.add")) {
-        javaHeap.update(currEvent);
+        startFrame.heap.update(currEvent);
         eventIterator.moveNext();
         currEvent = eventIterator.get();
       }
@@ -109,12 +116,21 @@ public class CallGraphAnalysis {
         nextFrame = frame.nextInvokeMethod(eventIterator);
       } catch (InvalidCallStackException e) {
         e.printStackTrace();
-        System.exit(0);
+        return;
       } catch (MultipleNextBlocksException e) {
-        e.printStackTrace();
-        System.exit(0);
+        Utils.debugPrintf("Create new frames %d at %s\n", e.nextBlocks.size(), frame.getPC());
+        for (Block block : e.nextBlocks) {
+          JavaHeap newHeap = (JavaHeap)frame.heap.clone();
+          CallFrame newFrame = frame.clone(newHeap);
+          newFrame.setPC(block);
+          traverseCallStack(newFrame, (Stack<CallFrame>)callStack.clone(), 
+                            eventIterator.clone(), iterations);
+        }
+        Utils.debugPrintln("");
+        // System.exit(0);
       } catch (CallGraphException e) {
         e.printStackTrace();
+        Utils.debugPrintln("");
         System.exit(0);
       }
       // if (frame.method.fullname().contains("QueryProcessor.<init>")) {
@@ -139,15 +155,15 @@ public class CallGraphAnalysis {
           // Utils.debugPrintln(nextFrame.method.shimpleBody.toString());
         }
         callStack.push(nextFrame);
-        CallGraphNode childNode = new CallGraphNode(nextFrame, parentNode);
-        parentNode.addChild(childNode);
-        frameToGraphNode.put(nextFrame, childNode);
+        // CallGraphNode childNode = new CallGraphNode(nextFrame, parentNode);
+        // parentNode.addChild(childNode);
+        // frameToGraphNode.put(nextFrame, childNode);
       } else {
       }
     }
     
-    System.out.println("Edges:");
-    System.out.println(rootNode.edgesToString()); 
+    Utils.debugPrintln("DONE");
+    System.exit(0);
     //String callGraphTxt = rootNode.toString();
 
     // System.out.println(callGraphTxt);

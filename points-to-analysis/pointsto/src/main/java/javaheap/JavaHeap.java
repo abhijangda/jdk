@@ -16,12 +16,14 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
   }
   
   private StaticFieldValues staticFieldValues;
+  
   public void setStaticFieldValues(StaticFieldValues staticFieldValues) {
     this.staticFieldValues = staticFieldValues;
   }
   public StaticFieldValues getStaticFieldValues() {
     return this.staticFieldValues;
   }
+
   public void update(HeapEvent event) {
     if (event.eventType == HeapEvent.EventType.NewObject) {
       put(event.dstPtr, new JavaObject((RefType)event.dstClass, event.dstPtr));

@@ -132,6 +132,7 @@ public class CallFrame {
 
   public final CallFrame parent;
   private final ProgramCounter pc;
+  public Unit getPC() {return method.statements.get(pc.counter);}
   private final Unit parentStmt;
   public boolean canPrint = false;
   public boolean isSegmentReaderGet = false;
@@ -194,6 +195,11 @@ public class CallFrame {
     CallFrame newFrame = new CallFrame(newHeap, this);
     
     return newFrame;
+  }
+
+  public void setPC(Block block) {
+    Utils.debugAssert(method.stmtToIndex.containsKey(block.getHead()), "");
+    pc.counter = method.stmtToIndex.get(block.getHead());
   }
 
   public void updateValuesWithHeapEvent(HeapEvent event) {
@@ -624,14 +630,30 @@ public class CallFrame {
         if (isQueryParseModifiers) {
           pc.counter = method.statements.size();
         } else {
-          Utils.shouldNotReachHere();
+          ArrayList<Block> targets = new ArrayList<>();
+          for (Unit targetstmt : tableSwitch.getTargets()) {
+            targets.add(method.getBlockForStmt(targetstmt));
+          }
+          if (tableSwitch.getDefaultTarget() != null) {
+            targets.add(method.getBlockForStmt(tableSwitch.getDefaultTarget()));
+          }
+
+          throw new MultipleNextBlocksException(this, targets);
         }
       } else if (currStmt instanceof JLookupSwitchStmt) {
         JLookupSwitchStmt lookup = (JLookupSwitchStmt)currStmt;
         if (method.fullname().contains("org.apache.lucene.queryParser.Token.newToken(ILjava/lang/String;)")) {
           pc.counter = method.stmtToIndex.get(lookup.getDefaultTarget());
         } else {
-          Utils.shouldNotReachHere();
+          ArrayList<Block> targets = new ArrayList<>();
+          for (Unit targetstmt : lookup.getTargets()) {
+            targets.add(method.getBlockForStmt(targetstmt));
+          }
+          if (lookup.getDefaultTarget() != null) {
+            targets.add(method.getBlockForStmt(lookup.getDefaultTarget()));
+          }
+
+          throw new MultipleNextBlocksException(this, targets);
         }
       } else if (currStmt instanceof JGotoStmt) {
         //Has to go to target
@@ -644,7 +666,7 @@ public class CallFrame {
         pc.counter = method.statements.size();
         return null;
       } else if (currStmt instanceof JThrowStmt) {
-        GlobalException.exception = ((JavaObjectRef)allVariableValues.get(((JThrowStmt)currStmt).getOp())).obj;
+        GlobalException.exception = ((JavaObjectRef)allVariableValues.get(((JThrowStmt)currStmt).getOp())).getObject();
         Utils.debugPrintln(currStmt);
         pc.counter = method.statements.size();
         return null;

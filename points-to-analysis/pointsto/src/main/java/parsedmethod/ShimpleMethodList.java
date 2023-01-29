@@ -29,13 +29,13 @@ public class ShimpleMethodList extends ArrayList<ShimpleMethod> {
     return super.contains(method);
   }
 
-  public ShimpleMethod nextUnexecutedStaticInit() {
+  public ShimpleMethod nextUnexecutedStaticInit(StaticInitializers staticInits) {
     Iterator<ShimpleMethod> iter = iterator();
     while (iter.hasNext()) {
       ShimpleMethod clinit = iter.next();
       if (clinit.isStaticInitializer() &&
           Utils.methodToCare(clinit) &&
-          !StaticInitializers.v().wasExecuted(clinit)) {
+          !staticInits.wasExecuted(clinit)) {
             return clinit;
       }
     }

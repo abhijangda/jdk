@@ -11,18 +11,16 @@ import utils.Utils;
 
 public class StaticInitializers {
   private HashSet<ShimpleMethod> executedClInit;
-  private static StaticInitializers instance = null;
 
-  private StaticInitializers() {
+  public StaticInitializers() {
     executedClInit = new HashSet<>();
   }
 
-  public static StaticInitializers v() {
-    if (instance == null) {
-      instance = new StaticInitializers();
-    }
-
-    return instance;
+  public StaticInitializers clone() {
+    StaticInitializers copy = new StaticInitializers();
+    for (ShimpleMethod m : this.executedClInit)
+      copy.executedClInit.add(m);
+    return copy;
   }
 
   public void setExecuted(String method) {
@@ -30,6 +28,7 @@ public class StaticInitializers {
   }
 
   public void setExecuted(ShimpleMethod method) {
+    Utils.debugPrintln("setexecuted " + method.fullname() + " in " + this.hashCode());
     executedClInit.add(method);
   }
 

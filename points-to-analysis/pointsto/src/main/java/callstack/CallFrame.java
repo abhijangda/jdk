@@ -140,8 +140,9 @@ public class CallFrame {
   public boolean isQueryParseModifiers = false;
   private CFGPath cfgPathExecuted;
   public final JavaHeap heap;
+  public final StaticInitializers staticInits;
   
-  public CallFrame(JavaHeap heap, ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
+  public CallFrame(JavaHeap heap, StaticInitializers staticInits, ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
     this.heap = heap;
     method = m;
     allVariableValues = method.initVarValues(invokeExpr, (parent == null) ? null : parent.allVariableValues);
@@ -155,6 +156,7 @@ public class CallFrame {
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     isSegmentReaderOpenNorms = method.fullname().contains("SegmentReader.openNorms");
     isQueryParseModifiers = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");
+    this.staticInits = staticInits;
     // if (canPrint) {
     //   Utils.debugPrintln(method.basicBlockStr());
     // }
@@ -165,11 +167,11 @@ public class CallFrame {
     // }
   }
 
-  public CallFrame(JavaHeap heap, HeapEvent event, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
-    this(heap, ParsedMethodMap.v().getOrParseToShimple(event.method), invokeExpr, stmt, root);
+  public CallFrame(JavaHeap heap, StaticInitializers staticInits, HeapEvent event, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
+    this(heap, staticInits, ParsedMethodMap.v().getOrParseToShimple(event.method), invokeExpr, stmt, root);
   }
 
-  private CallFrame(JavaHeap newHeap, CallFrame source) {
+  private CallFrame(JavaHeap newHeap, StaticInitializers staticInits, CallFrame source) {
     this.heap = newHeap;
     this.method = source.method;
     this.parent = source.parent;
@@ -180,7 +182,7 @@ public class CallFrame {
     this.isSegmentReaderOpenNorms = source.isSegmentReaderOpenNorms;
     this.isQueryParseModifiers = source.isQueryParseModifiers;
     this.parentStmt = source.parentStmt;
-  
+    this.staticInits = staticInits;
     this.allVariableValues = new HashMap<>();
     for (Map.Entry<Value, JavaValue> entry : source.allVariableValues.entrySet()) {
       if (entry.getValue() instanceof JavaRefValue) {
@@ -191,8 +193,8 @@ public class CallFrame {
     }
   }
 
-  public CallFrame clone(JavaHeap newHeap) {
-    CallFrame newFrame = new CallFrame(newHeap, this);
+  public CallFrame clone(JavaHeap newHeap, StaticInitializers staticInits) {
+    CallFrame newFrame = new CallFrame(newHeap, staticInits, this);
     
     return newFrame;
   }
@@ -296,7 +298,7 @@ public class CallFrame {
   private void updateParentFromRet(JReturnStmt retStmt) {
     Value retVal = retStmt.getOp();
     // Utils.debugPrintln(this.parent.method.shimpleBody);
-    Utils.debugPrintln(this.method.shimpleBody);
+    // Utils.debugPrintln(this.method.shimpleBody);
     if (this.parentStmt instanceof JAssignStmt) {
       //Only matters if the callee statement in parent is an assignment
       // Utils.debugAssert(this.parentStmt instanceof JAssignStmt, "%s", this.parentStmt.toString());
@@ -678,8 +680,14 @@ public class CallFrame {
           if (val instanceof JNewExpr) {
             Utils.debugPrintln(val.getClass());
             ShimpleMethodList clinits = Utils.getAllStaticInitializers((JNewExpr)val);
-            ShimpleMethod clinit = clinits.nextUnexecutedStaticInit();
-            if (!StaticInitializers.v().wasExecuted(clinit)) {
+            ShimpleMethod clinit = clinits.nextUnexecutedStaticInit(this.staticInits);
+            if (((JNewExpr)val).getType().toString().contains("StandardTokenizer")) {
+              for (ShimpleMethod m : clinits) {
+                Utils.debugPrintln(m.fullname() + "  " + this.staticInits.wasExecuted(m));
+              }
+            }
+            Utils.debugPrintln(clinits.size() + " " + clinit + " " + this.staticInits.wasExecuted(clinit) + " " + this.staticInits.hashCode());
+            if (!this.staticInits.wasExecuted(clinit)) {
               funcToCall = new FuncCall((JNewExpr)val, currStmt, clinit);
               if (funcToCall.getCallee() != null) {
                 incrementPC = false;
@@ -691,8 +699,8 @@ public class CallFrame {
             //TODO: Should only happen when for GETSTATIC?
             Utils.debugPrintln(val.getClass());
             ShimpleMethodList clinits = Utils.getAllStaticInitializers((StaticFieldRef)val);
-            ShimpleMethod clinit = clinits.nextUnexecutedStaticInit();
-            if (!StaticInitializers.v().wasExecuted(clinit)) {
+            ShimpleMethod clinit = clinits.nextUnexecutedStaticInit(this.staticInits);
+            if (!this.staticInits.wasExecuted(clinit)) {
               funcToCall = new FuncCall(val, currStmt, clinit);
               if (funcToCall.getCallee() != null) {
                 incrementPC = false;
@@ -703,10 +711,10 @@ public class CallFrame {
           } else if (val instanceof JStaticInvokeExpr) {
             Utils.debugPrintln("");
             ShimpleMethodList clinits = Utils.getAllStaticInitializers((JStaticInvokeExpr)val);
-            ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit();
+            ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit(this.staticInits);
             Utils.debugPrintln("clinit " + unexecClinit);
             if (unexecClinit != null) {
-              Utils.debugPrintln("clinit " + unexecClinit + " " + StaticInitializers.v().wasExecuted(unexecClinit));
+              Utils.debugPrintln("clinit " + unexecClinit + " " + this.staticInits.wasExecuted(unexecClinit));
               funcToCall = new FuncCall((JStaticInvokeExpr)val, currStmt, unexecClinit, true);
               if (funcToCall.getCallee() != null) {
                 incrementPC = false;
@@ -766,9 +774,9 @@ public class CallFrame {
     Utils.debugPrintln(funcToCall);
     if (funcToCall != null) {
       Utils.debugPrintln(funcToCall.getCallee() + " " + Utils.methodToCare(funcToCall.getCallee()) + " " + 
-                         StaticInitializers.v().wasExecuted(funcToCall.getCallee()));
+                         this.staticInits.wasExecuted(funcToCall.getCallee()));
       Utils.debugPrintln(funcToCall.getCallee() + " " + Utils.methodToCare(funcToCall.getCallee()) + " " + 
-                         StaticInitializers.v().wasExecuted(funcToCall.getCallee()));
+                         this.staticInits.wasExecuted(funcToCall.getCallee()));
     }
 
     return funcToCall;
@@ -846,11 +854,11 @@ public class CallFrame {
     }
     
     Utils.debugPrintln(eventIterator.get());
-    Utils.debugPrintln(calleeExprAndStmt.getCallee() + " " + Utils.methodToCare(calleeExprAndStmt.getCallee()) + " " + StaticInitializers.v().wasExecuted(calleeExprAndStmt.getCallee()));
+    Utils.debugPrintln(calleeExprAndStmt.getCallee() + " " + Utils.methodToCare(calleeExprAndStmt.getCallee()) + " " + this.staticInits.wasExecuted(calleeExprAndStmt.getCallee()));
 
     while (!Utils.methodToCare(calleeExprAndStmt.getCallee()) ||
            (calleeExprAndStmt.first instanceof StaticFieldRef && 
-            StaticInitializers.v().wasExecuted(calleeExprAndStmt.getCallee()))) {
+           this.staticInits.wasExecuted(calleeExprAndStmt.getCallee()))) {
       // HeapEvent currEvent = eventIterator.current();
       // boolean executed = false;
       // while (!Utils.methodToCare(currEvent.method)) {
@@ -859,16 +867,16 @@ public class CallFrame {
       //   executed = true;
       // }
       if (calleeExprAndStmt.callsStaticInit()) {
-        StaticInitializers.v().setExecuted(calleeExprAndStmt.getCallee());
+        this.staticInits.setExecuted(calleeExprAndStmt.getCallee());
       }
-      Utils.debugPrintln(calleeExprAndStmt.getCallee() + " " + Utils.methodToCare(calleeExprAndStmt.getCallee()) + " " + StaticInitializers.v().wasExecuted(calleeExprAndStmt.getCallee()));
+      Utils.debugPrintln(calleeExprAndStmt.getCallee() + " " + Utils.methodToCare(calleeExprAndStmt.getCallee()) + " " + this.staticInits.wasExecuted(calleeExprAndStmt.getCallee()));
 
       calleeExprAndStmt = nextFuncCall(eventIterator);
       if (calleeExprAndStmt == null) return null;
       invokeExpr = calleeExprAndStmt.first;
     }
     
-    Utils.debugPrintln(invokeExpr.toString() + " in " + this.method.fullname() + " for " + eventIterator.get());
+    Utils.debugPrintln(invokeExpr.toString() + " in " + this.method.fullname() + " at " + eventIterator.get());
 
     if (invokeExpr instanceof JSpecialInvokeExpr) {
       invokeMethod = calleeExprAndStmt.getCallee();
@@ -883,7 +891,9 @@ public class CallFrame {
         invokeMethod = ParsedMethodMap.v().getOrParseToShimple(virtInvoke.getMethod());
       } else {
         JavaValue val = allVariableValues.get(virtInvoke.getBase());
-
+        if (val instanceof JavaNull) {
+          return null;
+        }
         // JavaHeapElem[] valuesArray = new JavaHeapElem[vals.size()];
         // valuesArray = vals.toArray(valuesArray);
         Type type = val.getType();
@@ -909,10 +919,10 @@ public class CallFrame {
 
     if (calleeExprAndStmt.callsStaticInit()) {
       Utils.debugPrintln("set executed " + invokeMethod);
-      StaticInitializers.v().setExecuted(invokeMethod);
+      this.staticInits.setExecuted(invokeMethod);
     }
     Utils.debugAssert(invokeMethod != null, "%s not found\n", invokeMethod.fullname());
-    return new CallFrame(heap, invokeMethod, invokeExpr, calleeExprAndStmt.second, this);
+    return new CallFrame(heap, this.staticInits, invokeMethod, invokeExpr, calleeExprAndStmt.second, this);
   }
 
   /*
@@ -938,7 +948,7 @@ public class CallFrame {
 
     builder.append(method.fullname() + "\n");
     builder.append(getAllVarValsToString());
-
+    builder.append("staticInits = " + ((this.staticInits == null) ? "null" : this.staticInits.hashCode()));
     return builder.toString();
   }
 

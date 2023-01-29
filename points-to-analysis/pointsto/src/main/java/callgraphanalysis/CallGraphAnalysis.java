@@ -62,7 +62,8 @@ public class CallGraphAnalysis {
 
     Stack<CallFrame> callStack = new Stack<>();
     HeapEvent currEvent = startEvent;
-    CallFrame rootFrame = new CallFrame(javaHeap, startEvent, null, null, null);
+    StaticInitializers staticInits = new StaticInitializers();
+    CallFrame rootFrame = new CallFrame(javaHeap, staticInits, startEvent, null, null, null);
     CallGraphNode rootNode = new CallGraphNode(rootFrame, null);
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
 
@@ -121,9 +122,16 @@ public class CallGraphAnalysis {
         Utils.debugPrintf("Create new frames %d at %s\n", e.nextBlocks.size(), frame.getPC());
         for (Block block : e.nextBlocks) {
           JavaHeap newHeap = (JavaHeap)frame.heap.clone();
-          CallFrame newFrame = frame.clone(newHeap);
+          StaticInitializers newStaticInits = frame.staticInits.clone();
+          Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
+          CallFrame newFrame = frame.clone(newHeap, newStaticInits);
+          Utils.debugPrintln("NewFrame.staticInits " + newFrame.staticInits.hashCode());
           newFrame.setPC(block);
-          traverseCallStack(newFrame, (Stack<CallFrame>)callStack.clone(), 
+          Stack<CallFrame> newCallStack = new Stack<CallFrame>();
+          newCallStack.addAll(callStack);
+          newCallStack.pop();
+          newCallStack.push(newFrame);
+          traverseCallStack(newFrame, newCallStack, 
                             eventIterator.clone(), iterations);
         }
         Utils.debugPrintln("");
@@ -163,7 +171,7 @@ public class CallGraphAnalysis {
     }
     
     Utils.debugPrintln("DONE");
-    System.exit(0);
+    // System.exit(0);
     //String callGraphTxt = rootNode.toString();
 
     // System.out.println(callGraphTxt);

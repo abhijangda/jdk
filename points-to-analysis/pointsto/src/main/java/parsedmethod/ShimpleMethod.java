@@ -828,7 +828,7 @@ public class ShimpleMethod {
     return heads.get(0);
   }
 
-  public boolean mayCallInPath(Block start, ArrayList<Block> path, boolean falseOnHeapEventBci) {
+  public boolean mayCallInPath(CallFrame frame, Block start, ArrayList<Block> path, boolean falseOnHeapEventBci) {
     if (path.size() > 0) {
       
       for (Block b : path) {
@@ -845,7 +845,7 @@ public class ShimpleMethod {
             } else if (val instanceof StaticFieldRef) {
               SootClass klass = ((StaticFieldRef)val).getFieldRef().declaringClass();            
               ShimpleMethodList clinits = Utils.getAllStaticInitializers(klass);
-              ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit();
+              ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit(frame.staticInits);
               if (unexecClinit != null) {
                 return true;
               }
@@ -881,7 +881,7 @@ public class ShimpleMethod {
             } else if (val instanceof StaticFieldRef) {
               SootClass klass = ((StaticFieldRef)val).getFieldRef().declaringClass();            
               ShimpleMethodList clinits = Utils.getAllStaticInitializers(klass);
-              ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit();
+              ShimpleMethod unexecClinit = clinits.nextUnexecutedStaticInit(frame.staticInits);
               if (unexecClinit != null) {
                 return true;
               }

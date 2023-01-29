@@ -89,7 +89,7 @@ public class CallGraphAnalysis {
       Utils.debugPrintln("currevent " + currEvent.toString() + " at " + eventIterator.nextIndex());
       // if (frame.canPrint) {
       //   Utils.debugPrintln(frame.method.basicBlockStr());
-      //   return;
+      //   System.exit(0);;
       // }
       if (!frame.hasNextInvokeStmt()) {
         // if (frame.canPrint) return;
@@ -122,6 +122,8 @@ public class CallGraphAnalysis {
         Utils.debugPrintf("Create new frames %d at %s\n", e.nextBlocks.size(), frame.getPC());
         for (Block block : e.nextBlocks) {
           JavaHeap newHeap = (JavaHeap)frame.heap.clone();
+          StaticFieldValues newStaticVals = frame.heap.getStaticFieldValues().clone(newHeap);
+          newHeap.setStaticFieldValues(newStaticVals);
           StaticInitializers newStaticInits = frame.staticInits.clone();
           Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
           CallFrame newFrame = frame.clone(newHeap, newStaticInits);

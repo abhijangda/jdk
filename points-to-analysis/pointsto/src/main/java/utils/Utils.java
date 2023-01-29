@@ -19,8 +19,12 @@ import soot.shimple.Shimple;
 import soot.toolkits.graph.Block;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Stack;
 import java.util.Iterator;
 
+import parsedmethod.CFGPath;
 import parsedmethod.ParsedMethodMap;
 import parsedmethod.ShimpleMethod;
 import parsedmethod.ShimpleMethodList;
@@ -208,5 +212,42 @@ public abstract class Utils {
 
   public static ShimpleMethod getMethodForInvokeExpr(InvokeExpr invoke) {
     return ParsedMethodMap.v().getOrParseToShimple(invoke.getMethod());
+  }
+
+  public static boolean hasheapUpdateStmtInAllPaths(List<CFGPath> paths) {
+    boolean doUpdate = true;
+    for (CFGPath path : paths) {
+      boolean r = hasheapUpdateStmt(path);
+      if (!r) {
+        doUpdate = false;
+        break;
+      }
+    }
+
+    return doUpdate;
+  }
+
+  public static boolean hasheapUpdateStmt(CFGPath path) {
+    boolean doUpdate = false;
+    for (Block block : path) {
+      if (hasheapUpdateStmt(block)) {
+        doUpdate = true;
+        break;
+      }
+    }
+
+    return doUpdate;
+  }
+
+  public static boolean hasheapUpdateStmt(Block block) {
+    Iterator<Unit> iter = block.iterator();
+    while(iter.hasNext()) {
+      Unit stmt = iter.next();
+      if (Utils.canStmtUpdateHeap(stmt)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

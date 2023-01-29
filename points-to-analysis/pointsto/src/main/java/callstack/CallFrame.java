@@ -152,7 +152,7 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Clause(Ljava/lang/String;)Lor");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.index.IndexFileNames.fileNameFromGeneration(Ljava/lang/String;Ljava/lang/String;J)Ljava/lang/S");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     isSegmentReaderOpenNorms = method.fullname().contains("SegmentReader.openNorms");
     isQueryParseModifiers = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");
@@ -622,7 +622,33 @@ public class CallFrame {
                 currStmt = succ2.getHead();
                 pc.counter = method.stmtToIndex.get(currStmt);
               } else {
-                pc.counter = method.statements.size();
+                HashMap<Block, ArrayList<CFGPath>> allPathsToExit1 = method.pathToExits(succ1);
+                HashMap<Block, ArrayList<CFGPath>> allPathsToExit2 = method.pathToExits(succ2);
+
+                boolean allPathsHasHeapUpdStmt1 = true;
+                boolean allPathsHasHeapUpdStmt2 = true;
+                for (ArrayList<CFGPath> paths : allPathsToExit1.values()) {
+                  boolean r = Utils.hasheapUpdateStmtInAllPaths(paths);
+                  if (!r) {
+                    allPathsHasHeapUpdStmt1 = false;
+                    break;
+                  }
+                }
+                for (ArrayList<CFGPath> paths : allPathsToExit2.values()) {
+                  if (!Utils.hasheapUpdateStmtInAllPaths(paths)) {
+                    allPathsHasHeapUpdStmt2 = false;
+                    break;
+                  }
+                }
+
+                Utils.debugPrintln("allPathsHasHeapUpdStmt1 "+ allPathsHasHeapUpdStmt1 + " allPathsHasHeapUpdStmt2 " + allPathsHasHeapUpdStmt2);
+
+                if (allPathsToExit1.size() > 0 && allPathsToExit2.size() > 0 &&
+                    allPathsHasHeapUpdStmt1 && allPathsHasHeapUpdStmt2)
+                  throw new InvalidCallStackException(this, eventsIterator, currStmt);
+                else //TODO: Should go to all paths that do not have heap update statement
+                  pc.counter = method.statements.size();
+                // throw new MultipleNextBlocksException(this, succ1, succ2);
               }
             }
           }
@@ -632,30 +658,52 @@ public class CallFrame {
         if (isQueryParseModifiers) {
           pc.counter = method.statements.size();
         } else {
-          ArrayList<Block> targets = new ArrayList<>();
-          for (Unit targetstmt : tableSwitch.getTargets()) {
-            targets.add(method.getBlockForStmt(targetstmt));
-          }
-          if (tableSwitch.getDefaultTarget() != null) {
-            targets.add(method.getBlockForStmt(tableSwitch.getDefaultTarget()));
-          }
+          if (methodMatches) {
+            Utils.shouldNotReachHere();
+          } else {
+            ArrayList<Block> targets = new ArrayList<>();
+            ShimpleMethod eventMethod = ParsedMethodMap.v().getOrParseToShimple(currEvent.method);
+            for (Unit targetstmt : tableSwitch.getTargets()) {
+              Block targetBlock = method.getBlockForStmt(targetstmt);
+              if (method.allPathsToCallee(targetBlock, eventMethod).size() > 0) {
+                targets.add(targetBlock);
+              }
+            }
+            if (tableSwitch.getDefaultTarget() != null) {
+              Block targetBlock = method.getBlockForStmt(tableSwitch.getDefaultTarget());
+              if (method.allPathsToCallee(targetBlock, eventMethod).size() > 0) {
+                targets.add(targetBlock);
+              }
+            }
 
-          throw new MultipleNextBlocksException(this, targets);
+            throw new MultipleNextBlocksException(this, targets);
+          }
         }
       } else if (currStmt instanceof JLookupSwitchStmt) {
         JLookupSwitchStmt lookup = (JLookupSwitchStmt)currStmt;
         if (method.fullname().contains("org.apache.lucene.queryParser.Token.newToken(ILjava/lang/String;)")) {
           pc.counter = method.stmtToIndex.get(lookup.getDefaultTarget());
         } else {
-          ArrayList<Block> targets = new ArrayList<>();
-          for (Unit targetstmt : lookup.getTargets()) {
-            targets.add(method.getBlockForStmt(targetstmt));
-          }
-          if (lookup.getDefaultTarget() != null) {
-            targets.add(method.getBlockForStmt(lookup.getDefaultTarget()));
-          }
+          if (methodMatches) {
+            Utils.shouldNotReachHere();
+          } else {
+            ArrayList<Block> targets = new ArrayList<>();
+            ShimpleMethod eventMethod = ParsedMethodMap.v().getOrParseToShimple(currEvent.method);
+            for (Unit targetstmt : lookup.getTargets()) {
+              Block targetBlock = method.getBlockForStmt(targetstmt);
+              if (method.allPathsToCallee(targetBlock, eventMethod).size() > 0) {
+                targets.add(targetBlock);
+              }
+            }
+            if (lookup.getDefaultTarget() != null) {
+              Block targetBlock = method.getBlockForStmt(lookup.getDefaultTarget());
+              if (method.allPathsToCallee(targetBlock, eventMethod).size() > 0) {
+                targets.add(targetBlock);
+              }
+            }
 
-          throw new MultipleNextBlocksException(this, targets);
+            throw new MultipleNextBlocksException(this, targets);
+          }
         }
       } else if (currStmt instanceof JGotoStmt) {
         //Has to go to target

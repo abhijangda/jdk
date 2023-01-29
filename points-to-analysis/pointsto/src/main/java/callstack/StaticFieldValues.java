@@ -4,8 +4,10 @@ import java.util.*;
 import javaheap.JavaHeap;
 import javaheap.JavaHeapElem;
 import javavalues.JavaNull;
+import soot.RefLikeType;
 import soot.SootField;
 import soot.SootFieldRef;
+import utils.Utils;
 
 public class StaticFieldValues {
   private HashMap<SootField, JavaHeapElem> values;
@@ -30,6 +32,7 @@ public class StaticFieldValues {
   }
 
   public void set(SootField field, JavaHeapElem obj) {
+    Utils.debugAssert(obj != null, "%s", field.getDeclaration());
     values.put(field, obj);
   }
 
@@ -44,6 +47,8 @@ public class StaticFieldValues {
   public StaticFieldValues clone(JavaHeap heap) {
     StaticFieldValues newStatics = new StaticFieldValues(heap);
     for (Map.Entry<SootField, JavaHeapElem> entry : values.entrySet()) {
+      if (entry.getKey().getType() instanceof RefLikeType)
+        Utils.debugAssert(entry.getValue() != null, "");
       newStatics.set(entry.getKey(), heap.get(entry.getValue().getAddress()));
     }
 

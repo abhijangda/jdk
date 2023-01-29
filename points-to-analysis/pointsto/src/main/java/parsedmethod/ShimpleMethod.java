@@ -579,16 +579,16 @@ public class ShimpleMethod {
     return allPaths;
   }
 
-  private void allPathBetweenNodes(Block start, Block dest, ArrayList<Block> path,
+  private void allPathBetweenNodes(Block start, Block dest, CFGPath path,
                                    HashSet<Block> visited,
-                                   HashMap<Block, ArrayList<ArrayList<Block>>> allPaths) {
+                                   HashMap<Block, ArrayList<CFGPath>> allPaths) {
     // Mark the current node and store it in path[]
     visited.add(start);
     path.add(start);
     // If current vertex is same as destination, then print
     // current path[]
     if (start == dest) {
-      ArrayList<Block> _path = new ArrayList<Block>();
+      CFGPath _path = new CFGPath();
       for (Block n : path) {
         _path.add(n);
       }
@@ -611,18 +611,6 @@ public class ShimpleMethod {
     // unvisited
     path.remove(path.size() - 1);
     visited.remove(start);
-  }
-
-  private boolean hasheapUpdateStmt(Block block) {
-    Iterator<Unit> iter = block.iterator();
-    while(iter.hasNext()) {
-      Unit stmt = iter.next();
-      if (Utils.canStmtUpdateHeap(stmt)) {
-        return true;
-      }
-    }
-
-    return false;
   }
   
   private void allPathsToEventStmt(Block start, HeapEvent event, Block eventBlock, CFGPath currPath, 
@@ -657,7 +645,7 @@ public class ShimpleMethod {
     } else {
       //If the block instead does a heap event then do not go 
       //to the successors
-      if (hasheapUpdateStmt(start)) {
+      if (Utils.hasheapUpdateStmt(start)) {
         Utils.debugPrintln(start.getIndexInMethod());
       } else {
         // If current vertex is not destination
@@ -686,7 +674,7 @@ public class ShimpleMethod {
     return allPaths;
   }
 
-  private HashMap<Block, ArrayList<ArrayList<Block>>> pathToExits(Block start) {
+  public HashMap<Block, ArrayList<CFGPath>> pathToExits(Block start) {
     HashSet<Block> exits = new HashSet<>();
 
     HashSet<Block> visited = new HashSet<>();
@@ -707,14 +695,14 @@ public class ShimpleMethod {
       stack.addAll(b.getSuccs());
     }
     
-    HashMap<Block, ArrayList<ArrayList<Block>>> allPaths = new HashMap<>();
-    ArrayList<Block> path = new ArrayList<>();
+    HashMap<Block, ArrayList<CFGPath>> allPaths = new HashMap<>();
+    CFGPath path = new CFGPath();
     for (Block exit : exits) {
       visited.clear();
       allPathBetweenNodes(start, exit, path, visited, allPaths);
     }
 
-    for (Map.Entry<Block, ArrayList<ArrayList<Block>>> entry : allPaths.entrySet()) {
+    for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths.entrySet()) {
       for (ArrayList<Block> _path : entry.getValue()) {
         String o = entry.getKey().getIndexInMethod() + "-> " + start.getIndexInMethod() + ": [";
         for (Block node : _path) {
@@ -727,21 +715,21 @@ public class ShimpleMethod {
   }
 
   public Block findLCAInPostDom(Block block1, Block block2, ArrayList<Block> blockToExit1, ArrayList<Block> blockToExit2) {
-    HashMap<Block, ArrayList<ArrayList<Block>>> allPaths1 = pathToExits(block1);
-    HashMap<Block, ArrayList<ArrayList<Block>>> allPaths2 = pathToExits(block2);
+    HashMap<Block, ArrayList<CFGPath>> allPaths1 = pathToExits(block1);
+    HashMap<Block, ArrayList<CFGPath>> allPaths2 = pathToExits(block2);
     
     //Reverse all the paths
-    for (Map.Entry<Block, ArrayList<ArrayList<Block>>> entry : allPaths1.entrySet()) {
+    for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths1.entrySet()) {
       for (ArrayList<Block> path : entry.getValue())
         Collections.reverse(path);
     }
 
-    for (Map.Entry<Block, ArrayList<ArrayList<Block>>> entry : allPaths2.entrySet()) {
+    for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths2.entrySet()) {
       for (ArrayList<Block> path : entry.getValue())
         Collections.reverse(path);
     }
 
-    for (Map.Entry<Block, ArrayList<ArrayList<Block>>> entry : allPaths1.entrySet()) {
+    for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths1.entrySet()) {
       for (ArrayList<Block> _path : entry.getValue()) {
         String o = entry.getKey().getIndexInMethod() + "-> " + block1.getIndexInMethod() + ": [";
         for (Block node : _path) {
@@ -751,7 +739,7 @@ public class ShimpleMethod {
       }
     }
 
-    for (Map.Entry<Block, ArrayList<ArrayList<Block>>> entry : allPaths2.entrySet()) {
+    for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths2.entrySet()) {
       for (ArrayList<Block> _path : entry.getValue()) {
         String o = entry.getKey().getIndexInMethod() + "-> " + block2.getIndexInMethod() + ": [";
         for (Block node : _path) {
@@ -1150,7 +1138,7 @@ public class ShimpleMethod {
       // return vals;
     } else if (val instanceof StaticFieldRef) {
       SootField staticField = ((StaticFieldRef)val).getField();
-      if (staticField.getType() instanceof RefLikeType)
+      if (staticField.getType() instanceof RefLikeType && frame.heap.getStaticFieldValues().get(staticField) != null)
         return JavaValueFactory.v(frame.heap.getStaticFieldValues().get(staticField));
     } else if (val instanceof JArrayRef) {
       JArrayRef arrayRef = (JArrayRef)val;
@@ -1308,11 +1296,13 @@ public class ShimpleMethod {
       }
       case Const.PUTSTATIC: {
         StaticFieldRef staticFieldRef = (StaticFieldRef)left;
-        frame.heap.getStaticFieldValues().set(staticFieldRef.getFieldRef(), heapEvent.srcPtr);
-        
-        allVariableValues.put(left, JavaValueFactory.v(javaHeap.get(heapEvent.srcPtr)));
-        if (!(right instanceof Constant)) {
-          allVariableValues.put(right, JavaValueFactory.v(javaHeap.get(heapEvent.srcPtr)));
+        if (!staticFieldRef.getField().getName().contains("class$")) {
+          frame.heap.getStaticFieldValues().set(staticFieldRef.getFieldRef(), heapEvent.srcPtr);
+          
+          allVariableValues.put(left, JavaValueFactory.v(javaHeap.get(heapEvent.srcPtr)));
+          if (!(right instanceof Constant)) {
+            allVariableValues.put(right, JavaValueFactory.v(javaHeap.get(heapEvent.srcPtr)));
+          }
         }
         break;
       }

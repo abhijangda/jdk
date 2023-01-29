@@ -41,4 +41,10 @@ public class JavaArray extends JavaHeapElem {
 
     return newArray;
   }
+
+  public void deepClone(JavaHeap newHeap) {
+    for (int i = 0; i < getLength(); i++) {
+      setElem(i, newHeap.get(getElem(i).getAddress()));
+    }
+  }
 }

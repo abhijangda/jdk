@@ -103,9 +103,10 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
   public Object clone() {
     JavaHeap newHeap = new JavaHeap();
 
-    for (Map.Entry<Long, JavaHeapElem> entry : newHeap.entrySet()) {
+    for (Map.Entry<Long, JavaHeapElem> entry : this.entrySet()) {
       newHeap.put(entry.getKey(), entry.getValue().clone());
     }
+
     return newHeap;
   }
 }

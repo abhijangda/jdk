@@ -48,9 +48,16 @@ public class JavaObject extends JavaHeapElem {
   public JavaHeapElem clone() {
     JavaObject newObj = new JavaObject(getClassType(), address);
     for (Map.Entry<String, JavaHeapElem> entry : fieldValues.entrySet()) {
-      newObj.addField(entry.getKey(), entry.getValue().clone());
+      newObj.addField(entry.getKey(), entry.getValue());
     }
 
     return newObj;
+  }
+
+  public void deepClone(JavaHeap newHeap) {
+    HashMap<String, JavaHeapElem> updatedFieldValues = new HashMap<>();
+    for (Map.Entry<String, JavaHeapElem> entry : fieldValues.entrySet()) {
+      updatedFieldValues.put(entry.getKey(), newHeap.get(entry.getValue().getAddress()));
+    }
   }
 }

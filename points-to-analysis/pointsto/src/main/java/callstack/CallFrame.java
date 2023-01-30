@@ -135,9 +135,10 @@ public class CallFrame {
   public Unit getPC() {return method.statements.get(pc.counter);}
   private final Unit parentStmt;
   public boolean canPrint = false;
-  public boolean isSegmentReaderGet = false;
-  public boolean isSegmentReaderOpenNorms = false;
-  public boolean isQueryParseModifiers = false;
+  public boolean isSegmentReaderGet;
+  public boolean isSegmentReaderOpenNorms;
+  public boolean isQueryParseModifiers;
+  public boolean isQueryParseTerm;
   private CFGPath cfgPathExecuted;
   public final JavaHeap heap;
   public final StaticInitializers staticInits;
@@ -152,10 +153,11 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.index.IndexFileNames.fileNameFromGeneration(Ljava/lang/String;Ljava/lang/String;J)Ljava/lang/S");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.dacapo.lusearch.Search$QueryProcessor.run()V");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     isSegmentReaderOpenNorms = method.fullname().contains("SegmentReader.openNorms");
     isQueryParseModifiers = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");
+    isQueryParseTerm = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;");
     this.staticInits = staticInits;
     // if (canPrint) {
     //   Utils.debugPrintln(method.basicBlockStr());
@@ -588,6 +590,8 @@ public class CallFrame {
                     } else {
                       Utils.shouldNotReachHere();
                     }
+                  } else if (isQueryParseTerm) {
+
                   } else {
                     throw new MultipleNextBlocksException(this, succ1, succ2);
                   }

@@ -230,6 +230,7 @@ public class ShimpleMethod {
   public final HashMap<Unit, Integer> stmtToIndex;
   public final ArrayList<ParameterRef> parameterRefs;
   public boolean canPrint;
+  public final boolean allPathsHasHeapUpdStmt;
   public JAssignStmt getAssignStmtForBci(int bci) {return bciToJAssignStmt.get(bci);}
   
   private ShimpleMethod(BciToJAssignStmt bciToJAssignStmt, SootMethod sootMethod, ShimpleBody shimpleBody) {
@@ -303,6 +304,7 @@ public class ShimpleMethod {
         //   Utils.debugPrintln(this.statements.size() + "   " + stmt.toString());
         // }
       }
+      this.allPathsHasHeapUpdStmt = hasheapUpdateStmtInAllPathsToExit(getStartBlock());
     } else {
       this.basicBlockGraph   = null;
       this.dominatorTree     = null;
@@ -311,6 +313,7 @@ public class ShimpleMethod {
       this.valueToUseStmts   = null;
       this.statements        = null;
       this.stmtToIndex       = null;
+      this.allPathsHasHeapUpdStmt = false;
     }
 
     this.blockStmts      = blockStmts;
@@ -324,6 +327,25 @@ public class ShimpleMethod {
 
   public Block getBlockForBci(int bci) {
     return stmtToBlock.get(getAssignStmtForBci(bci));
+  }
+
+  private boolean hasheapUpdateStmtInAllPathsToExit(Block start) {
+    Utils.debugPrintln("for " + fullname());
+
+    if (fullname().contains("org.apache.lucene.search.RemoteSearchable_Stub.<clinit>()V")) {
+      return true;
+    }
+    HashMap<Block, ArrayList<CFGPath>> allPaths = pathToExits(start);
+    boolean allPathsHasHeapUpdStmt = true;
+    for (ArrayList<CFGPath> paths : allPaths.values()) {
+      boolean r = Utils.hasheapUpdateStmtInAllPaths(paths);
+      if (!r) {
+        allPathsHasHeapUpdStmt = false;
+        break;
+      }
+    }
+
+    return allPathsHasHeapUpdStmt;
   }
 
   public boolean isEventInPathFromBlock(Block block, HeapEvent event) {
@@ -379,8 +401,7 @@ public class ShimpleMethod {
               return stmt;
           }
         }
-        Utils.debugPrintln(stmt);
-        if (assign.getRightOp() instanceof JNewArrayExpr || 
+        if (assign.getRightOp() instanceof JNewArrayExpr ||
             assign.getRightOp() instanceof JNewMultiArrayExpr)
           return stmt;
         if (assign.getLeftOp() instanceof JArrayRef) {
@@ -553,12 +574,61 @@ public class ShimpleMethod {
       if (heapUpdateStmtBeforeCall(start, callee) != null) {
         Utils.debugPrintln(start.getIndexInMethod());
       } else {
-        // If current vertex is not destination
-        // Recur for all the vertices adjacent to current
-        // vertex
-        for (Block succ : start.getSuccs()) {
-          if (!visited.contains(succ) && !isDominator(succ, start)) {
-            allPathsToCalleeBlock(succ, callee, currPath, visited, allPaths);
+        boolean validPath = true;
+        Iterator<Unit> stmtIter = start.iterator();
+        while (stmtIter.hasNext()) {
+          InvokeExpr invokeExpr = null;
+          Unit stmt = stmtIter.next();
+          // Utils.debugPrintln(stmt);
+          if (stmt instanceof JAssignStmt) {
+            JAssignStmt assign = (JAssignStmt)stmt;
+            if (assign.containsInvokeExpr())
+              invokeExpr = assign.getInvokeExpr();
+          } else if (stmt instanceof JInvokeStmt) {
+            invokeExpr = ((JInvokeStmt)stmt).getInvokeExpr();
+          }
+
+          if (invokeExpr != null && Utils.methodToCare(invokeExpr.getMethod())) {
+            Utils.debugPrintln(invokeExpr);
+
+            if (invokeExpr instanceof JStaticInvokeExpr) {
+              ShimpleMethod m = ParsedMethodMap.v().getOrParseToShimple(invokeExpr.getMethod());
+              validPath = !m.allPathsHasHeapUpdStmt;
+            } else if (invokeExpr instanceof JSpecialInvokeExpr) {
+              
+            } else {
+              Utils.debugAssert(invokeExpr instanceof JInterfaceInvokeExpr || invokeExpr instanceof JVirtualInvokeExpr, "");
+              ShimpleMethod m = ParsedMethodMap.v().getOrParseToShimple(invokeExpr.getMethod());
+              if (m.shimpleBody != null) {
+                validPath = !m.allPathsHasHeapUpdStmt;
+              }
+              List<ShimpleMethod> overridenMethods = ClassHierarchyGraph.v().getAllOverridenMethods(m);
+              if (!overridenMethods.isEmpty()) {
+                boolean allMethodsHasHeapUpd = true;
+                for (ShimpleMethod m1 : overridenMethods) {
+                  if (!m1.allPathsHasHeapUpdStmt) {
+                    allMethodsHasHeapUpd = false;
+                    break;
+                  }
+                }
+                validPath = validPath && !allMethodsHasHeapUpd;
+              }
+            }
+
+            if (!validPath) break;
+          }
+
+          Utils.debugPrintln(validPath + " for " + stmt  + " in " + fullname());
+        }
+        
+        if (validPath) {
+          // If current vertex is not destination
+          // Recur for all the vertices adjacent to current
+          // vertex
+          for (Block succ : start.getSuccs()) {
+            if (!visited.contains(succ) && !isDominator(succ, start)) {
+              allPathsToCalleeBlock(succ, callee, currPath, visited, allPaths);
+            }
           }
         }
       }
@@ -585,6 +655,7 @@ public class ShimpleMethod {
     // Mark the current node and store it in path[]
     visited.add(start);
     path.add(start);
+
     // If current vertex is same as destination, then print
     // current path[]
     if (start == dest) {
@@ -694,14 +765,14 @@ public class ShimpleMethod {
       
       stack.addAll(b.getSuccs());
     }
-    
+    Utils.debugPrintln("");
     HashMap<Block, ArrayList<CFGPath>> allPaths = new HashMap<>();
     CFGPath path = new CFGPath();
     for (Block exit : exits) {
       visited.clear();
       allPathBetweenNodes(start, exit, path, visited, allPaths);
     }
-
+    Utils.debugPrintln("");
     for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths.entrySet()) {
       for (ArrayList<Block> _path : entry.getValue()) {
         String o = entry.getKey().getIndexInMethod() + "-> " + start.getIndexInMethod() + ": [";

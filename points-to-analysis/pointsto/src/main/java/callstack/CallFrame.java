@@ -665,7 +665,7 @@ public class CallFrame {
           if (methodMatches) {
             Utils.shouldNotReachHere();
           } else {
-            ArrayList<Block> targets = new ArrayList<>();
+            HashSet<Block> targets = new HashSet<>();
             ShimpleMethod eventMethod = ParsedMethodMap.v().getOrParseToShimple(currEvent.method);
             for (Unit targetstmt : tableSwitch.getTargets()) {
               Block targetBlock = method.getBlockForStmt(targetstmt);

@@ -6,9 +6,9 @@ import soot.toolkits.graph.Block;
 
 public class MultipleNextBlocksException extends CallGraphException {
   public final CallFrame frame;
-  public final ArrayList<Block> nextBlocks;
+  public final Collection<Block> nextBlocks;
 
-  public MultipleNextBlocksException(CallFrame frame, ArrayList<Block> nextBlocks) {
+  public MultipleNextBlocksException(CallFrame frame, Collection<Block> nextBlocks) {
     this.frame = frame;
     this.nextBlocks = nextBlocks;
   }

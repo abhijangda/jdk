@@ -765,23 +765,23 @@ public class ShimpleMethod {
       
       stack.addAll(b.getSuccs());
     }
-    Utils.debugPrintln("");
+
     HashMap<Block, ArrayList<CFGPath>> allPaths = new HashMap<>();
     CFGPath path = new CFGPath();
     for (Block exit : exits) {
       visited.clear();
       allPathBetweenNodes(start, exit, path, visited, allPaths);
     }
-    Utils.debugPrintln("");
-    for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths.entrySet()) {
-      for (ArrayList<Block> _path : entry.getValue()) {
-        String o = entry.getKey().getIndexInMethod() + "-> " + start.getIndexInMethod() + ": [";
-        for (Block node : _path) {
-          o += node.getIndexInMethod() + ", ";
-        }
-        Utils.debugPrintln(o+"]");
-      }
-    }
+
+    // for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths.entrySet()) {
+    //   for (ArrayList<Block> _path : entry.getValue()) {
+    //     String o = entry.getKey().getIndexInMethod() + "-> " + start.getIndexInMethod() + ": [";
+    //     for (Block node : _path) {
+    //       o += node.getIndexInMethod() + ", ";
+    //     }
+    //     Utils.debugPrintln(o+"]");
+    //   }
+    // }
     return allPaths;
   }
 

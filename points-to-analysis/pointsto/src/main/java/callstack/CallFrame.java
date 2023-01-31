@@ -139,6 +139,7 @@ public class CallFrame {
   public boolean isSegmentReaderOpenNorms;
   public boolean isQueryParseModifiers;
   public boolean isQueryParseTerm;
+  public boolean isQueryParserAddClause;
   private CFGPath cfgPathExecuted;
   public final JavaHeap heap;
   public final StaticInitializers staticInits;
@@ -158,6 +159,7 @@ public class CallFrame {
     isSegmentReaderOpenNorms = method.fullname().contains("SegmentReader.openNorms");
     isQueryParseModifiers = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");
     isQueryParseTerm = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;");
+    isQueryParserAddClause = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.addClause");
     this.staticInits = staticInits;
     // if (canPrint) {
     //   Utils.debugPrintln(method.basicBlockStr());
@@ -377,9 +379,9 @@ public class CallFrame {
       currStmt = method.statements.get(pc.counter);
       Block block = method.getBlockForStmt(currStmt);
 
-      if (currStmt instanceof JAssignStmt && ((JAssignStmt)currStmt).getRightOp() instanceof PhiExpr) {
-        Utils.debugPrintln(cfgPathExecuted.get(cfgPathExecuted.size() - 1).getIndexInMethod());
-      }
+      // if (currStmt instanceof JAssignStmt && ((JAssignStmt)currStmt).getRightOp() instanceof PhiExpr) {
+      //   // Utils.debugPrintln(cfgPathExecuted.get(cfgPathExecuted.size() - 1).getIndexInMethod());
+      // }
       
       if (GlobalException.exception != null) {
         //Find succ with caughtexception
@@ -402,7 +404,7 @@ public class CallFrame {
         }
       }
 
-      Utils.debugPrintln(currStmt + " at " + pc.counter + " " + currStmt.getClass());
+      // Utils.debugPrintln(currStmt + " at " + pc.counter + " " + currStmt.getClass());
       if (cfgPathExecuted.isEmpty()) {
         cfgPathExecuted.add(block);
       } else if (cfgPathExecuted.get(cfgPathExecuted.size() - 1) != block) {
@@ -425,13 +427,13 @@ public class CallFrame {
         for (ValueBox valBox : cond.getUseBoxes()) {
           Value val = valBox.getValue();
           if (val instanceof Constant || allVariableValues.get(val) != null) {
-            Utils.debugPrintln(val + " " + allVariableValues.get(val));
+            // Utils.debugPrintln(val + " " + allVariableValues.get(val));
           } else {
             canEvalCond = false;
             break;
           }
         }
-        Utils.debugPrintln("can evaluate " + cond + " " + canEvalCond);
+        // Utils.debugPrintln("can evaluate " + cond + " " + canEvalCond);
         Unit target = ((JIfStmt)currStmt).getTarget();
         Utils.debugAssert(method.stmtToIndex.containsKey(target), "sanity");
         if (canEvalCond) {
@@ -532,6 +534,10 @@ public class CallFrame {
               }
               continue;
             }
+            if (isQueryParserAddClause && eventsIterator.nextIndex() <= 600) {
+              pc.counter = method.statements.size();
+              continue;
+            }
 
             if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
               //End current function
@@ -539,33 +545,33 @@ public class CallFrame {
             } else {
               Utils.debugPrintln(succ1);
               HashMap<Block, ArrayList<CFGPath>> allPaths1 = method.allPathsToCallee(succ1, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
-              for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths1.entrySet()) {
-                for (ArrayList<Block> _path : entry.getValue()) {
-                  String o = entry.getKey().getIndexInMethod() + "-> " + succ1.getIndexInMethod() + ": [";
-                  for (Block node : _path) {
-                    o += node.getIndexInMethod() + ", ";
-                  }
-                  Utils.debugPrintln(o+"]");
-                }
-              }
-              Utils.debugPrintln(succ2);
+              // for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths1.entrySet()) {
+              //   for (ArrayList<Block> _path : entry.getValue()) {
+              //     String o = entry.getKey().getIndexInMethod() + "-> " + succ1.getIndexInMethod() + ": [";
+              //     for (Block node : _path) {
+              //       o += node.getIndexInMethod() + ", ";
+              //     }
+              //     Utils.debugPrintln(o+"]");
+              //   }
+              // }
+              // Utils.debugPrintln(succ2);
               HashMap<Block, ArrayList<CFGPath>> allPaths2 = method.allPathsToCallee(succ2, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
-              for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths2.entrySet()) {
-                for (ArrayList<Block> _path : entry.getValue()) {
-                  String o = entry.getKey().getIndexInMethod() + "-> " + succ2.getIndexInMethod() + ": [";
-                  for (Block node : _path) {
-                    o += node.getIndexInMethod() + ", ";
-                  }
-                  Utils.debugPrintln(o+"]");
-                }
-              }
-              Utils.debugPrintln(allPaths1.size());
-              Utils.debugPrintln(allPaths2.size());
+              // for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths2.entrySet()) {
+              //   for (ArrayList<Block> _path : entry.getValue()) {
+              //     String o = entry.getKey().getIndexInMethod() + "-> " + succ2.getIndexInMethod() + ": [";
+              //     for (Block node : _path) {
+              //       o += node.getIndexInMethod() + ", ";
+              //     }
+              //     Utils.debugPrintln(o+"]");
+              //   }
+              // }
+              // Utils.debugPrintln(allPaths1.size());
+              // Utils.debugPrintln(allPaths2.size());
 
               if (allPaths1.size() > 0 && allPaths2.size() > 0) {
                 Set<Block> commonCalleeBlocks = new HashSet<>(allPaths1.keySet());
                 commonCalleeBlocks.retainAll(allPaths2.keySet());
-                Utils.debugPrintln("commonCalleeBlocks " + commonCalleeBlocks.size());
+                // Utils.debugPrintln("commonCalleeBlocks " + commonCalleeBlocks.size());
 
                 if (commonCalleeBlocks.isEmpty()) {
                   //If no common blocks then, there is a path from each block can do the call
@@ -606,10 +612,10 @@ public class CallFrame {
                   int minLength = Math.min(path1.size(), path2.size());
                   int i = 0;
                   for (i = 0; i < minLength; i++) {
-                    Utils.debugPrintln(path1.get(i).getIndexInMethod() + " == " + path2.get(i).getIndexInMethod());
+                    // Utils.debugPrintln(path1.get(i).getIndexInMethod() + " == " + path2.get(i).getIndexInMethod());
                     if (path1.get(i) != path2.get(i)) {
-                      Utils.debugPrintln(path1.get(i));
-                      Utils.debugPrintln(path2.get(i));
+                      // Utils.debugPrintln(path1.get(i));
+                      // Utils.debugPrintln(path2.get(i));
                       nextBlock = path2.get(i-1);
                       break;
                     }
@@ -626,33 +632,37 @@ public class CallFrame {
                 currStmt = succ2.getHead();
                 pc.counter = method.stmtToIndex.get(currStmt);
               } else {
-                HashMap<Block, ArrayList<CFGPath>> allPathsToExit1 = method.pathToExits(succ1);
-                HashMap<Block, ArrayList<CFGPath>> allPathsToExit2 = method.pathToExits(succ2);
-
-                boolean allPathsHasHeapUpdStmt1 = true;
-                boolean allPathsHasHeapUpdStmt2 = true;
-                for (ArrayList<CFGPath> paths : allPathsToExit1.values()) {
-                  boolean r = Utils.hasheapUpdateStmtInAllPaths(paths);
-                  if (!r) {
-                    allPathsHasHeapUpdStmt1 = false;
-                    break;
-                  }
-                }
-                for (ArrayList<CFGPath> paths : allPathsToExit2.values()) {
-                  if (!Utils.hasheapUpdateStmtInAllPaths(paths)) {
-                    allPathsHasHeapUpdStmt2 = false;
-                    break;
-                  }
-                }
-
-                Utils.debugPrintln("allPathsHasHeapUpdStmt1 "+ allPathsHasHeapUpdStmt1 + " allPathsHasHeapUpdStmt2 " + allPathsHasHeapUpdStmt2);
-
-                if (allPathsToExit1.size() > 0 && allPathsToExit2.size() > 0 &&
-                    allPathsHasHeapUpdStmt1 && allPathsHasHeapUpdStmt2)
-                  throw new InvalidCallStackException(this, eventsIterator, currStmt);
-                else //TODO: Should go to all paths that do not have heap update statement
+                if (method.fullname().contains("QueryParser.addClause")) {
                   pc.counter = method.statements.size();
-                // throw new MultipleNextBlocksException(this, succ1, succ2);
+                } else {
+                  HashMap<Block, ArrayList<CFGPath>> allPathsToExit1 = method.pathToExits(succ1);
+                  HashMap<Block, ArrayList<CFGPath>> allPathsToExit2 = method.pathToExits(succ2);
+
+                  boolean allPathsHasHeapUpdStmt1 = true;
+                  boolean allPathsHasHeapUpdStmt2 = true;
+                  for (ArrayList<CFGPath> paths : allPathsToExit1.values()) {
+                    boolean r = Utils.hasheapUpdateStmtInAllPaths(paths);
+                    if (!r) {
+                      allPathsHasHeapUpdStmt1 = false;
+                      break;
+                    }
+                  }
+                  for (ArrayList<CFGPath> paths : allPathsToExit2.values()) {
+                    if (!Utils.hasheapUpdateStmtInAllPaths(paths)) {
+                      allPathsHasHeapUpdStmt2 = false;
+                      break;
+                    }
+                  }
+
+                  Utils.debugPrintln("allPathsHasHeapUpdStmt1 "+ allPathsHasHeapUpdStmt1 + " allPathsHasHeapUpdStmt2 " + allPathsHasHeapUpdStmt2);
+
+                  if (allPathsToExit1.size() > 0 && allPathsToExit2.size() > 0 &&
+                      allPathsHasHeapUpdStmt1 && allPathsHasHeapUpdStmt2)
+                    throw new InvalidCallStackException(this, eventsIterator, currStmt);
+                  else //TODO: Should go to all paths that do not have heap update statement
+                    pc.counter = method.statements.size();
+                  // throw new MultipleNextBlocksException(this, succ1, succ2);
+                }
               }
             }
           }
@@ -823,13 +833,13 @@ public class CallFrame {
       }
     }
 
-    Utils.debugPrintln(funcToCall);
-    if (funcToCall != null) {
-      Utils.debugPrintln(funcToCall.getCallee() + " " + Utils.methodToCare(funcToCall.getCallee()) + " " + 
-                         this.staticInits.wasExecuted(funcToCall.getCallee()));
-      Utils.debugPrintln(funcToCall.getCallee() + " " + Utils.methodToCare(funcToCall.getCallee()) + " " + 
-                         this.staticInits.wasExecuted(funcToCall.getCallee()));
-    }
+    // Utils.debugPrintln(funcToCall);
+    // if (funcToCall != null) {
+    //   Utils.debugPrintln(funcToCall.getCallee() + " " + Utils.methodToCare(funcToCall.getCallee()) + " " + 
+    //                      this.staticInits.wasExecuted(funcToCall.getCallee()));
+    //   Utils.debugPrintln(funcToCall.getCallee() + " " + Utils.methodToCare(funcToCall.getCallee()) + " " + 
+    //                      this.staticInits.wasExecuted(funcToCall.getCallee()));
+    // }
 
     return funcToCall;
     }
@@ -891,8 +901,8 @@ public class CallFrame {
       }
     }
     FuncCall calleeExprAndStmt = nextFuncCall(eventIterator);
-    Utils.debugPrintln(calleeExprAndStmt);
-    if (calleeExprAndStmt != null) Utils.debugPrintln(calleeExprAndStmt.first.toString());
+    // Utils.debugPrintln(calleeExprAndStmt);
+    // if (calleeExprAndStmt != null) Utils.debugPrintln(calleeExprAndStmt.first.toString());
     if (calleeExprAndStmt == null) return null;
     
     Value invokeExpr = calleeExprAndStmt.first;
@@ -905,8 +915,8 @@ public class CallFrame {
       }
     }
     
-    Utils.debugPrintln(eventIterator.get());
-    Utils.debugPrintln(calleeExprAndStmt.getCallee() + " " + Utils.methodToCare(calleeExprAndStmt.getCallee()) + " " + this.staticInits.wasExecuted(calleeExprAndStmt.getCallee()));
+    // Utils.debugPrintln(eventIterator.get());
+    // Utils.debugPrintln(calleeExprAndStmt.getCallee() + " " + Utils.methodToCare(calleeExprAndStmt.getCallee()) + " " + this.staticInits.wasExecuted(calleeExprAndStmt.getCallee()));
 
     while (!Utils.methodToCare(calleeExprAndStmt.getCallee()) ||
            (calleeExprAndStmt.first instanceof StaticFieldRef && 
@@ -921,7 +931,7 @@ public class CallFrame {
       if (calleeExprAndStmt.callsStaticInit()) {
         this.staticInits.setExecuted(calleeExprAndStmt.getCallee());
       }
-      Utils.debugPrintln(calleeExprAndStmt.getCallee() + " " + Utils.methodToCare(calleeExprAndStmt.getCallee()) + " " + this.staticInits.wasExecuted(calleeExprAndStmt.getCallee()));
+      // Utils.debugPrintln(calleeExprAndStmt.getCallee() + " " + Utils.methodToCare(calleeExprAndStmt.getCallee()) + " " + this.staticInits.wasExecuted(calleeExprAndStmt.getCallee()));
 
       calleeExprAndStmt = nextFuncCall(eventIterator);
       if (calleeExprAndStmt == null) return null;
@@ -951,7 +961,7 @@ public class CallFrame {
         Type type = val.getType();
         Utils.debugAssert(type instanceof RefType, "type instanceof " + type.getClass() + " " + val.toString());
         SootClass klass = ((RefType)type).getSootClass();
-        Utils.debugPrintln(klass.getName());
+        // Utils.debugPrintln(klass.getName());
         while(klass != null && !klass.declaresMethod(virtInvoke.getMethod().getSubSignature())) {
           klass = klass.getSuperclass();
         }
@@ -970,7 +980,7 @@ public class CallFrame {
     }
 
     if (calleeExprAndStmt.callsStaticInit()) {
-      Utils.debugPrintln("set executed " + invokeMethod);
+      // Utils.debugPrintln("set executed " + invokeMethod);
       this.staticInits.setExecuted(invokeMethod);
     }
     Utils.debugAssert(invokeMethod != null, "%s not found\n", invokeMethod.fullname());

@@ -388,10 +388,10 @@ public class ShimpleMethod {
             if (field.getType() instanceof RefLikeType)
               klass = field.getDeclaringClass();
           }
-          Utils.debugPrintln(stmt);
+          // Utils.debugPrintln(stmt);
           if (klass != null && klass != initklass) return stmt;
         } else {
-          Utils.debugPrintln(stmt);
+          // Utils.debugPrintln(stmt);
           if (assign.getRightOp() instanceof JNewExpr)
             return stmt;
 
@@ -566,7 +566,7 @@ public class ShimpleMethod {
           allPaths.put(start, new ArrayList<>());
         }
         allPaths.get(start).add(_path);
-        Utils.debugPrintln(start.getIndexInMethod());
+        // Utils.debugPrintln(start.getIndexInMethod());
       }
     } else {
       //If the block instead does a heap event then do not go 
@@ -589,7 +589,7 @@ public class ShimpleMethod {
           }
 
           if (invokeExpr != null && Utils.methodToCare(invokeExpr.getMethod())) {
-            Utils.debugPrintln(invokeExpr);
+            // Utils.debugPrintln(invokeExpr);
 
             if (invokeExpr instanceof JStaticInvokeExpr) {
               ShimpleMethod m = ParsedMethodMap.v().getOrParseToShimple(invokeExpr.getMethod());
@@ -618,7 +618,7 @@ public class ShimpleMethod {
             if (!validPath) break;
           }
 
-          Utils.debugPrintln(validPath + " for " + stmt  + " in " + fullname());
+          // Utils.debugPrintln(validPath + " for " + stmt  + " in " + fullname());
         }
         
         if (validPath) {
@@ -645,7 +645,9 @@ public class ShimpleMethod {
     HashMap<Block, ArrayList<CFGPath>> allPaths = new HashMap<>();
     CFGPath currPath = new CFGPath();
     allPathsToCalleeBlock(start, callee, currPath, visited, allPaths);
-
+    if (fullname().contains("QueryParser.addClause")) {
+      Utils.debugPrintln("found paths for " + start.getIndexInMethod());
+    }
     return allPaths;
   }
 
@@ -711,13 +713,13 @@ public class ShimpleMethod {
           _path.add(n);
         }
         allPaths.add(_path);
-        Utils.debugPrintln(start.getIndexInMethod());
+        // Utils.debugPrintln(start.getIndexInMethod());
       }
     } else {
       //If the block instead does a heap event then do not go 
       //to the successors
       if (Utils.hasheapUpdateStmt(start)) {
-        Utils.debugPrintln(start.getIndexInMethod());
+        // Utils.debugPrintln(start.getIndexInMethod());
       } else {
         // If current vertex is not destination
         // Recur for all the vertices adjacent to current
@@ -999,11 +1001,11 @@ public class ShimpleMethod {
               Value arg = invokeExpr.getArg(i);
               // utils.Utils.debugPrintln(arg.toString() + " has values " + callerVariableValues.get(arg));
               if (param.getType() instanceof RefLikeType) {
-                Utils.debugPrintln(param + " " + arg + " " + arg.getType() + " " + callerVariableValues.containsKey(arg));
+                // Utils.debugPrintln(param + " " + arg + " " + arg.getType() + " " + callerVariableValues.containsKey(arg));
                 if (arg.getType() instanceof NullType) {
                   allVariableValues.put(param, JavaValueFactory.nullV());
                 } else if (callerVariableValues.containsKey(arg)) {
-                  Utils.debugPrintln(callerVariableValues.get(arg));
+                  // Utils.debugPrintln(callerVariableValues.get(arg));
                   allVariableValues.put(param, callerVariableValues.get(arg));
                 } else {
                   allVariableValues.put(param, null);
@@ -1118,7 +1120,7 @@ public class ShimpleMethod {
       AbstractBinopExpr binop = (AbstractBinopExpr)val;
       JavaValue op1 = obtainVariableValues(frame, cfgPathExecuted, stmt, binop.getOp1());
       JavaValue op2 = obtainVariableValues(frame, cfgPathExecuted, stmt, binop.getOp2());
-      Utils.debugPrintln(binop + " " + binop.getOp2().getClass() + " " + (binop.getOp2() instanceof Constant) + " " + op1 + " " + op2);
+      // Utils.debugPrintln(binop + " " + binop.getOp2().getClass() + " " + (binop.getOp2() instanceof Constant) + " " + op1 + " " + op2);
       if (op1 == null || op2 == null)
         return null;
       Utils.debugAssert(op1 instanceof JavaPrimValue, op1.getClass().toString());
@@ -1166,10 +1168,10 @@ public class ShimpleMethod {
       SPhiExpr phi = (SPhiExpr)val;
 
       for (ValueUnitPair pair : phi.getArgs()) {
-        Utils.debugPrintln(pair.getUnit() + " " + pair.getValue() + " " + allVariableValues.get(pair.getValue()));
-        Utils.debugPrintln(getBlockForStmt(pair.getUnit()).getIndexInMethod() + " " + cfgPathExecuted.get(cfgPathExecuted.size() - 1).getIndexInMethod() + " " + cfgPathExecuted.get(cfgPathExecuted.size() - 2).getIndexInMethod());
+        // Utils.debugPrintln(pair.getUnit() + " " + pair.getValue() + " " + allVariableValues.get(pair.getValue()));
+        // Utils.debugPrintln(getBlockForStmt(pair.getUnit()).getIndexInMethod() + " " + cfgPathExecuted.get(cfgPathExecuted.size() - 1).getIndexInMethod() + " " + cfgPathExecuted.get(cfgPathExecuted.size() - 2).getIndexInMethod());
         if (getBlockForStmt(pair.getUnit()) == cfgPathExecuted.get(cfgPathExecuted.size() - 2)) {
-          Utils.debugPrintln(pair.getUnit() + " " + pair.getValue() + " " + allVariableValues.get(pair.getValue()));
+          // Utils.debugPrintln(pair.getUnit() + " " + pair.getValue() + " " + allVariableValues.get(pair.getValue()));
           JavaValue varVal = allVariableValues.get(pair.getValue());
           if (varVal != null)
             return varVal;
@@ -1183,7 +1185,7 @@ public class ShimpleMethod {
     } else if (val instanceof JimpleLocal) {
       return allVariableValues.get(val);
     } else if (val instanceof Constant) {
-      Utils.debugPrintln(val);
+      // Utils.debugPrintln(val);
       if (!(val instanceof NullConstant) && val.getType() instanceof RefType && 
           ((RefType)val.getType()).getSootClass().getName().equals("java.lang.String")) {
         JavaObject s = frame.heap.createNewObject(((RefType)val.getType()));
@@ -1252,7 +1254,7 @@ public class ShimpleMethod {
         Value leftVal = ((JIdentityStmt)stmt).getLeftOp();
         Value rightVal =((JIdentityStmt)stmt).getRightOp();
         JavaValue valsForLeft = allVariableValues.get(rightVal);
-        Utils.debugPrintln(stmt + " " + valsForLeft);
+        // Utils.debugPrintln(stmt + " " + valsForLeft);
         if (valsForLeft != null) {
           allVariableValues.put(leftVal, valsForLeft);
 
@@ -1263,7 +1265,7 @@ public class ShimpleMethod {
       }
     } else if (stmt instanceof JAssignStmt) { 
       JavaValue rightVal = obtainVariableValues(frame, cfgPathExecuted, stmt, ((JAssignStmt)stmt).getRightOp());
-      Utils.debugPrintln(stmt + " " + rightVal + "  " + ((JAssignStmt)stmt).getRightOp().getClass());
+      // Utils.debugPrintln(stmt + " " + rightVal + "  " + ((JAssignStmt)stmt).getRightOp().getClass());
       if (rightVal != null) {
         allVariableValues.put(((JAssignStmt)stmt).getLeftOp(), rightVal);
         // blockVarVals.put(stmt, valsForLeft);
@@ -1274,7 +1276,7 @@ public class ShimpleMethod {
     } else if (stmt instanceof JExitMonitorStmt) {
       // Utils.debugAssert(false, stmt.toString());
     } else if (stmt instanceof JReturnStmt) {
-      Utils.debugLog("613: To handle return");
+      // Utils.debugLog("613: To handle return");
     } else if (stmt instanceof JThrowStmt) {
       // Utils.debugLog("613: To handle throw");
     } else if (stmt instanceof JLookupSwitchStmt) {

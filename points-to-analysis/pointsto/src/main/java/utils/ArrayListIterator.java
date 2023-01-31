@@ -27,6 +27,10 @@ public class ArrayListIterator<T> implements Cloneable {
     return this.index - 1;
   }
 
+  public int index() {
+    return this.index;
+  }
+
   public void movePrevious() {
     this.index--;
   }

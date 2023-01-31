@@ -24,7 +24,7 @@ public class ClassHierarchyGraph extends HashMap<SootClass, ArrayList<SootClass>
 
   public ArrayList<ShimpleMethod> getAllOverridenMethods(ShimpleMethod baseMethod) {
     ArrayList<ShimpleMethod> overridenMethods = new ArrayList<ShimpleMethod>();
-    Utils.debugPrintln("searching for " + baseMethod.fullname());
+    // Utils.debugPrintln("searching for " + baseMethod.fullname());
     for (SootClass subclass : getSubClasses(baseMethod.sootMethod.getDeclaringClass())) {
       SootMethod m = subclass.getMethodUnsafe(baseMethod.sootMethod.getName(), baseMethod.sootMethod.getParameterTypes(), baseMethod.sootMethod.getReturnType());
       if (m != null) {

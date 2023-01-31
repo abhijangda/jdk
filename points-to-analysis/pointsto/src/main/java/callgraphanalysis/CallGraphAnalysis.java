@@ -117,6 +117,9 @@ public class CallGraphAnalysis {
         nextFrame = frame.nextInvokeMethod(eventIterator);
       } catch (InvalidCallStackException e) {
         e.printStackTrace();
+        if (eventIterator.index() >= 638) {
+          System.exit(0);
+        }
         return;
       } catch (MultipleNextBlocksException e) {
         Utils.debugPrintf("Create new frames %d at %s\n", e.nextBlocks.size(), frame.getPC());
@@ -136,7 +139,7 @@ public class CallGraphAnalysis {
           traverseCallStack(newFrame, newCallStack, 
                             eventIterator.clone(), iterations);
         }
-        Utils.debugPrintln("");
+        // Utils.debugPrintln("");
         // System.exit(0);
       } catch (CallGraphException e) {
         e.printStackTrace();

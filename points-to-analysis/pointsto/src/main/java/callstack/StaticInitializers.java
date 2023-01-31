@@ -28,7 +28,7 @@ public class StaticInitializers {
   }
 
   public void setExecuted(ShimpleMethod method) {
-    Utils.debugPrintln("setexecuted " + method.fullname() + " in " + this.hashCode());
+    Utils.infoPrintln("setexecuted " + method.fullname() + " in " + this.hashCode());
     executedClInit.add(method);
   }
 

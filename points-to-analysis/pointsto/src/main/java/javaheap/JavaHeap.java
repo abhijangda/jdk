@@ -32,11 +32,11 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
       put(event.dstPtr, new JavaArray((ArrayType)event.dstClass, (int)event.srcPtr, event.dstPtr));
     } else if (event.eventType == HeapEvent.EventType.ObjectFieldSet) {
       JavaHeapElem val = null;
-      if (event.srcClass == null && event.srcPtr != 0) utils.Utils.debugPrintln("srcClass is null in " + event.toString());
+      if (event.srcClass == null && event.srcPtr != 0) utils.Utils.infoPrintln("srcClass is null in " + event.toString());
       if (event.srcPtr == 0) val = null;
       else {
         if (!containsKey(event.srcPtr)) {
-          utils.Utils.debugLog("Creating the object %d not found in heap\n", event.srcPtr);
+          utils.Utils.infoLog("Creating the object %d not found in heap\n", event.srcPtr);
           if (event.srcClass instanceof RefType) {
             val = new JavaObject((RefType)event.srcClass, event.srcPtr);
           } else if (event.srcClass instanceof ArrayType) {
@@ -51,7 +51,7 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
         val = get(event.srcPtr);
       }
       if (!containsKey(event.dstPtr)) {
-        utils.Utils.debugLog("Creating the object %d not found in heap\n", event.dstPtr);
+        utils.Utils.infoLog("Creating the object %d not found in heap\n", event.dstPtr);
         put(event.dstPtr, new JavaObject((RefType)event.dstClass, event.dstPtr));
       }
       ((JavaObject)get(event.dstPtr)).addField(event.fieldName, val);
@@ -60,7 +60,7 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
       if (event.srcPtr == 0) val = null;
       else {
         if (!containsKey(event.srcPtr)) {
-          utils.Utils.debugLog("Creating the object %d not found in heap\n", event.srcPtr);
+          utils.Utils.infoLog("Creating the object %d not found in heap\n", event.srcPtr);
           if (event.srcClass instanceof RefType) {
             val = new JavaObject((RefType)event.srcClass, event.srcPtr);
           } else if (event.srcClass instanceof ArrayType) {
@@ -72,7 +72,7 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
       }
 
       if (!containsKey(event.dstPtr)) {
-        utils.Utils.debugLog("Creating the object %d not found in heap\n", event.dstPtr);
+        utils.Utils.infoLog("Creating the object %d not found in heap\n", event.dstPtr);
         put(event.dstPtr, new JavaArray(event.dstClass, 1000, event.dstPtr));
       }
 

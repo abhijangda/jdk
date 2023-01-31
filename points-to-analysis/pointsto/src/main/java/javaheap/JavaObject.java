@@ -60,4 +60,10 @@ public class JavaObject extends JavaHeapElem {
       updatedFieldValues.put(entry.getKey(), newHeap.get(entry.getValue().getAddress()));
     }
   }
+
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("JavaObject: " + getType().toString());
+    return builder.toString();
+  }
 }

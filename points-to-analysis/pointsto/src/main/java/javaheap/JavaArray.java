@@ -47,4 +47,10 @@ public class JavaArray extends JavaHeapElem {
       setElem(i, newHeap.get(getElem(i).getAddress()));
     }
   }
+
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("JavaArray: " + getType().toString() + "[" + getLength() + "]");
+    return builder.toString();
+  }
 }

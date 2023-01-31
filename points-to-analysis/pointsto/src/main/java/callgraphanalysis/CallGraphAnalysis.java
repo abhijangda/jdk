@@ -76,17 +76,18 @@ public class CallGraphAnalysis {
   
   private static void traverseCallStack(CallFrame startFrame, Stack<CallFrame> callStack, ArrayListIterator<HeapEvent> eventIterator, int iterations) {
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
-    Utils.debugPrintln("new call frame " + startFrame.method.fullname() + " " + startFrame.getPC());
+    Utils.infoPrintln("new call frame " + startFrame.method.fullname() + " " + startFrame.getPC());
     while (!callStack.isEmpty() && iterations++ < 3000) {
       HeapEvent currEvent;
       CallFrame frame = callStack.peek();
-      
+      // if (eventIterator.index() >= 600)
+      //   Utils.DEBUG_PRINT = true;
       if (frame.parent != null) {
-        Utils.debugPrintln("parent frame " + frame.parent.toString());
+        Utils.infoPrintln("parent frame " + frame.parent.toString());
       }
-      Utils.debugPrintln("current frame " + frame + " iterations " + iterations);
+      Utils.infoPrintln("current frame " + frame + " iterations " + iterations);
       currEvent = eventIterator.get();
-      Utils.debugPrintln("currevent " + currEvent.toString() + " at " + eventIterator.nextIndex());
+      Utils.infoPrintln("currevent " + currEvent.toString() + " at " + eventIterator.nextIndex());
       // if (frame.canPrint) {
       //   Utils.debugPrintln(frame.method.basicBlockStr());
       //   System.exit(0);;
@@ -117,20 +118,21 @@ public class CallGraphAnalysis {
         nextFrame = frame.nextInvokeMethod(eventIterator);
       } catch (InvalidCallStackException e) {
         e.printStackTrace();
-        if (eventIterator.index() >= 638) {
+        Utils.infoPrintln(eventIterator.index());
+        if (eventIterator.index() >= 635) {
           System.exit(0);
         }
         return;
       } catch (MultipleNextBlocksException e) {
-        Utils.debugPrintf("Create new frames %d at %s\n", e.nextBlocks.size(), frame.getPC());
+        Utils.infoPrintf("Create new frames %d at %s\n", e.nextBlocks.size(), frame.getPC());
         for (Block block : e.nextBlocks) {
           JavaHeap newHeap = (JavaHeap)frame.heap.clone();
           StaticFieldValues newStaticVals = frame.heap.getStaticFieldValues().clone(newHeap);
           newHeap.setStaticFieldValues(newStaticVals);
           StaticInitializers newStaticInits = frame.staticInits.clone();
-          Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
+          // Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
           CallFrame newFrame = frame.clone(newHeap, newStaticInits);
-          Utils.debugPrintln("NewFrame.staticInits " + newFrame.staticInits.hashCode());
+          Utils.infoPrintln("NewFrame.staticInits " + newFrame.staticInits.hashCode());
           newFrame.setPC(block);
           Stack<CallFrame> newCallStack = new Stack<CallFrame>();
           newCallStack.addAll(callStack);
@@ -143,7 +145,7 @@ public class CallGraphAnalysis {
         // System.exit(0);
       } catch (CallGraphException e) {
         e.printStackTrace();
-        Utils.debugPrintln("");
+        Utils.infoPrintln("");
         System.exit(0);
       }
       // if (frame.method.fullname().contains("QueryProcessor.<init>")) {
@@ -157,12 +159,12 @@ public class CallGraphAnalysis {
       //   callStack.pop();
       //   continue;
       // }
-      if (nextFrame != null && nextFrame.method != null && nextFrame.method != frame.method &&
-          ((frame.parent != null && nextFrame.method != frame.parent.method) || frame.parent == null) &&
+      if (nextFrame != null && nextFrame.method != null &&
+          ((frame.parent != null) || frame.parent == null) &&
           !Utils.methodFullName(nextFrame.method.sootMethod).contains("java.lang.SecurityManager.checkPermission") &&
           Utils.methodToCare(frame.method.sootMethod)) {
         //Skip recursion
-        Utils.debugPrintln("next frame: " + utils.Utils.methodFullName(nextFrame.method.sootMethod) + " parent " + ((frame == null) ?  "" : frame.method.fullname()));
+        Utils.infoPrintln("next frame: " + utils.Utils.methodFullName(nextFrame.method.sootMethod) + " parent " + ((frame == null) ?  "" : frame.method.fullname()));
         if (nextFrame.method.sootMethod.getDeclaringClass().getName().contains("QueryProcessor") &&
           nextFrame.method.sootMethod.getName().contains("run")) {
           // Utils.debugPrintln(nextFrame.method.shimpleBody.toString());
@@ -175,7 +177,10 @@ public class CallGraphAnalysis {
       }
     }
     
-    Utils.debugPrintln("DONE");
+    Utils.infoPrintln("DONE");
+    if (eventIterator.index() >= 635) {
+      System.exit(0);
+    }
     // System.exit(0);
     //String callGraphTxt = rootNode.toString();
 

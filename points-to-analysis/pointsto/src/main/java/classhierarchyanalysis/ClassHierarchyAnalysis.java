@@ -47,15 +47,15 @@ public class ClassHierarchyAnalysis extends HashMap<ShimpleMethod, CHACaller> {
       ShimpleMethod caller = ParsedMethodMap.v().getOrParseToShimple("org.apache.lucene.queryParser.QueryParserTokenManager.getNextToken()Lorg/apache/lucene/queryParser/Token;");// "org.apache.lucene.queryParser.QueryParser.jj_scan_token(I)Z");
       ShimpleMethod callee = ParsedMethodMap.v().getOrParseToShimple(calleeStr);
       if (true) {
-        Utils.debugPrintln("Does run reaches?");
+        Utils.infoPrintln("Does run reaches?");
         for (Value expr : caller.getCallExprs()) {
-          Utils.debugPrintln(expr);
+          Utils.infoPrintln(expr);
         }
         for (HashSet<ShimpleMethod> c : getCallees(chaGraph, caller).getAllCallees()) {
-          Utils.debugPrintln(c);
+          Utils.infoPrintln(c);
         }
         boolean f = mayCall(chaGraph, caller, calleeStr);
-        Utils.debugPrintln(f);
+        Utils.infoPrintln(f);
         System.exit(0);
       }
     }

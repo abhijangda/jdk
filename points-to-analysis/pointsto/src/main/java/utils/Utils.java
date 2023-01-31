@@ -36,7 +36,36 @@ import soot.RefLikeType;
 import soot.SootClass;
 
 public abstract class Utils {
-  public static boolean DEBUG_PRINT = true;
+  public static boolean DEBUG_PRINT = false;
+  public static boolean INFO_PRINT = true;
+
+  public static void infoPrintln(String x) {
+    if (INFO_PRINT) {
+      String fileline = getCurrFileAndLine(3);
+      System.out.println(fileline + ": " + x);
+    }
+  }
+
+  public static void infoPrintln(Object x) {
+    if (INFO_PRINT) {
+      String fileline = getCurrFileAndLine(3);
+      System.out.println(fileline + ": " + ((x == null) ? "null" : x.toString()));
+    }
+  }
+
+  public static void infoLog(String fmt, Object... args) {
+    if (INFO_PRINT) {
+      String fileline = getCurrFileAndLine(3);
+      System.err.printf(fileline + ": " +fmt, args);
+    }
+  }
+
+  public static void infoPrintf(String fmt, Object... args) {
+    if (INFO_PRINT) {
+      String fileline = getCurrFileAndLine(3);
+      System.err.printf(fileline + ": " +fmt, args);
+    }
+  }
 
   public static void debugPrintln(String x) {
     if (DEBUG_PRINT) {

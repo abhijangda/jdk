@@ -42,7 +42,7 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
     jarFile = extractPath + "dacapo-9.12-MR1-bach.jar";
     getJars(jarFile, extractPath, jars);
     
-    Utils.debugPrintln(jars);
+    Utils.infoPrintln(jars);
     Options.v().set_allow_phantom_refs(true);
     Options.v().set_whole_program(true);
     Options.v().set_process_dir(jars);
@@ -75,7 +75,7 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
     } catch (Exception e) {
     }
     bos.close();
-    Utils.debugPrintln("writing to file " + filePath + " " + Files.size(Paths.get(filePath)));
+    Utils.infoPrintln("writing to file " + filePath + " " + Files.size(Paths.get(filePath)));
   }
 
   private static void getJars(String jarFile, String extractPath, ArrayList<String> jars) {
@@ -138,12 +138,12 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
       basicType = DoubleType.v();
     } else {
       SootClass cl = getClassForString(sig);
-      if (cl == null) Utils.debugPrintln(sig);
+      if (cl == null) Utils.infoPrintln(sig);
       basicType = cl.getType();
     }
     
     if (basicType == null)
-      Utils.debugPrintln("128: Invalid signature " + origSig);
+      Utils.infoPrintln("128: Invalid signature " + origSig);
     
     if (arraydims > 0) 
       return ArrayType.v(basicType, arraydims);
@@ -183,7 +183,7 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
         // Utils.debugPrintln("\n158: " + classname + " " + methodname + " " + signature);
         SootClass javaclass = getClassForString(classname);
         if (javaclass == null) {
-          Utils.debugPrintln("null javaclass for " + classname);
+          Utils.infoPrintln("null javaclass for " + classname);
           return null;
         }
 
@@ -238,7 +238,7 @@ public class JavaClassCollection extends HashMap<String, SootClass> {
       }
     }
 
-    Utils.debugPrintln("Cannot find method " + methodStr);
+    Utils.infoPrintln("Cannot find method " + methodStr);
 
     return null;
   }

@@ -24,4 +24,5 @@ public abstract class JavaHeapElem implements Cloneable {
 
   public abstract JavaHeapElem clone();
   public abstract void deepClone(JavaHeap newHeap);
+  public abstract String toString();
 }

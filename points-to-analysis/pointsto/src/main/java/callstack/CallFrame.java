@@ -231,13 +231,9 @@ public class CallFrame {
   }
 
   private JavaValue evaluate(Value val) {
-    Utils.infoPrintln(val.getClass());
     if (val instanceof JimpleLocal) {
-      Utils.infoPrintln(val);
-      Utils.infoPrintln(allVariableValues.get(val));
       return allVariableValues.get(val);
     } else if (val instanceof NullConstant) {
-      Utils.infoPrintln(val);
       return JavaNull.v();
     } else if (val instanceof IntConstant) {
       return JavaValueFactory.v(((IntConstant)val).value);
@@ -980,8 +976,10 @@ public class CallFrame {
     StringBuilder builder = new StringBuilder();
 
     builder.append(method.fullname() + "\n");
-    builder.append(getAllVarValsToString());
-    builder.append("staticInits = " + ((this.staticInits == null) ? "null" : this.staticInits.hashCode()));
+    if (Utils.DEBUG_PRINT) {
+      builder.append(getAllVarValsToString());
+      builder.append("staticInits = " + ((this.staticInits == null) ? "null" : this.staticInits.hashCode()));
+    }
     return builder.toString();
   }
 

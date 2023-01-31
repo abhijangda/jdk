@@ -572,7 +572,7 @@ public class ShimpleMethod {
       //If the block instead does a heap event then do not go 
       //to the successors
       if (heapUpdateStmtBeforeCall(start, callee) != null) {
-        Utils.infoPrintln(start.getIndexInMethod());
+        // Utils.infoPrintln(start.getIndexInMethod());
       } else {
         boolean validPath = true;
         Iterator<Unit> stmtIter = start.iterator();

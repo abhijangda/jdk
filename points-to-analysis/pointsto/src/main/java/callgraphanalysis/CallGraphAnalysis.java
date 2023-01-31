@@ -69,12 +69,12 @@ public class CallGraphAnalysis {
 
     callStack.push(rootFrame);
     frameToGraphNode.put(rootFrame, rootNode);
-    traverseCallStack(rootFrame, callStack, eventIterator, 0);
+    traverseCallStack(rootFrame, callStack, new CallEdges(), eventIterator, 0);
     System.out.println("Edges:");
     System.out.println(rootNode.edgesToString());
   }
   
-  private static void traverseCallStack(CallFrame startFrame, Stack<CallFrame> callStack, ArrayListIterator<HeapEvent> eventIterator, int iterations) {
+  private static void traverseCallStack(CallFrame startFrame, Stack<CallFrame> callStack, CallEdges edges, ArrayListIterator<HeapEvent> eventIterator, int iterations) {
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
     Utils.infoPrintln("new call frame " + startFrame.method.fullname() + " " + startFrame.getPC());
     while (!callStack.isEmpty() && iterations++ < 3000) {
@@ -138,7 +138,7 @@ public class CallGraphAnalysis {
           newCallStack.addAll(callStack);
           newCallStack.pop();
           newCallStack.push(newFrame);
-          traverseCallStack(newFrame, newCallStack, 
+          traverseCallStack(newFrame, newCallStack, edges.clone(),
                             eventIterator.clone(), iterations);
         }
         // Utils.debugPrintln("");
@@ -173,12 +173,17 @@ public class CallGraphAnalysis {
         // CallGraphNode childNode = new CallGraphNode(nextFrame, parentNode);
         // parentNode.addChild(childNode);
         // frameToGraphNode.put(nextFrame, childNode);
+        edges.add(frame.method, nextFrame.method);
       } else {
       }
     }
     
     Utils.infoPrintln("DONE");
     if (eventIterator.index() >= 635) {
+      Utils.infoPrintln("Edges:");
+
+      Utils.infoPrintln(edges.toString());
+
       System.exit(0);
     }
     // System.exit(0);

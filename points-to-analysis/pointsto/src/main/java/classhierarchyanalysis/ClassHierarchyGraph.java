@@ -15,17 +15,34 @@ public class ClassHierarchyGraph extends HashMap<SootClass, ArrayList<SootClass>
 
   private ClassHierarchyGraph() {}
 
-  public ArrayList<SootClass> getSubClasses(SootClass superclass) {
+  public ArrayList<SootClass> getImmediateSubClasses(SootClass superclass) {
     if (!containsKey(superclass)) {
       put(superclass, new ArrayList<SootClass>());
     }
     return get(superclass);
   }
 
+  public HashSet<SootClass> getAllSubclasses(SootClass superClass) {
+    HashSet<SootClass> allSubClasses = new HashSet<>();
+    Stack<SootClass> stack = new Stack<>();
+
+    stack.push(superClass);
+
+    while (!stack.isEmpty()) {
+      SootClass klass = stack.pop();
+      
+      ArrayList<SootClass> subclasses = getImmediateSubClasses(klass);
+      stack.addAll(subclasses);
+      allSubClasses.addAll(subclasses);
+    }
+
+    return allSubClasses;
+  }
+
   public ArrayList<ShimpleMethod> getAllOverridenMethods(ShimpleMethod baseMethod) {
     ArrayList<ShimpleMethod> overridenMethods = new ArrayList<ShimpleMethod>();
     // Utils.debugPrintln("searching for " + baseMethod.fullname());
-    for (SootClass subclass : getSubClasses(baseMethod.sootMethod.getDeclaringClass())) {
+    for (SootClass subclass : getAllSubclasses(baseMethod.sootMethod.getDeclaringClass())) {
       SootMethod m = subclass.getMethodUnsafe(baseMethod.sootMethod.getName(), baseMethod.sootMethod.getParameterTypes(), baseMethod.sootMethod.getReturnType());
       if (m != null) {
         ShimpleMethod sm = ParsedMethodMap.v().getOrParseToShimple(m);
@@ -39,10 +56,10 @@ public class ClassHierarchyGraph extends HashMap<SootClass, ArrayList<SootClass>
   public void build(JavaClassCollection classCollection) {
     for (SootClass klass : classCollection.values()) {
       if (klass.hasSuperclass()) {
-        getSubClasses(klass.getSuperclass()).add(klass);
+        getImmediateSubClasses(klass.getSuperclass()).add(klass);
       }
       for (SootClass interfaceImpl : klass.getInterfaces()) {
-        getSubClasses(interfaceImpl).add(klass);
+        getImmediateSubClasses(interfaceImpl).add(klass);
       }
     }
   }

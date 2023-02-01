@@ -453,9 +453,7 @@ public class ShimpleMethod {
         if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val, method))
           return stmt;
         //TODO: Static 
-      }
-    
-      //TODO: If a heap event bytecode is in this block then this path is not taken
+      }    
     }
     
     return null;
@@ -1224,7 +1222,7 @@ public class ShimpleMethod {
       } else if (this.fullname().equals("org.apache.lucene.queryParser.QueryParser.jj_save(II)V")) {
         return JavaValueFactory.nullV();
       } else if (arrayRef.getType() instanceof RefLikeType) {
-        Utils.debugAssert(false, "");
+        return null;
       } else {
         return null;
       }

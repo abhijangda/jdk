@@ -154,7 +154,11 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.dacapo.lusearch.Search$QueryProcessor.run()V");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.analysis.StopFilter.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    // if (canPrint) {
+    //   System.out.println(method.basicBlockStr());
+    //   System.exit(0);
+    // }
     isSegmentReaderGet = this.method.fullname().contains("org.apache.lucene.index.SegmentReader.get(ZLorg/apache/lucene/store/Directory;Lorg/apache/lucene/index/SegmentInfo;Lorg/apache/lucene/index/SegmentInfos;ZZIZ)Lorg/apache/lucene/index/SegmentReader;");
     isSegmentReaderOpenNorms = method.fullname().contains("SegmentReader.openNorms");
     isQueryParseModifiers = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");
@@ -541,26 +545,30 @@ public class CallFrame {
             } else {
               Utils.infoPrintln(succ1);
               HashMap<Block, ArrayList<CFGPath>> allPaths1 = method.allPathsToCallee(succ1, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
-              // for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths1.entrySet()) {
-              //   for (ArrayList<Block> _path : entry.getValue()) {
-              //     String o = entry.getKey().getIndexInMethod() + "-> " + succ1.getIndexInMethod() + ": [";
-              //     for (Block node : _path) {
-              //       o += node.getIndexInMethod() + ", ";
-              //     }
-              //     Utils.debugPrintln(o+"]");
-              //   }
-              // }
+              if (Utils.DEBUG_PRINT) {
+                for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths1.entrySet()) {
+                  for (ArrayList<Block> _path : entry.getValue()) {
+                    String o = entry.getKey().getIndexInMethod() + "-> " + succ1.getIndexInMethod() + ": [";
+                    for (Block node : _path) {
+                      o += node.getIndexInMethod() + ", ";
+                    }
+                    Utils.debugPrintln(o+"]");
+                  }
+                }
+              }
               Utils.debugPrintln(succ2);
               HashMap<Block, ArrayList<CFGPath>> allPaths2 = method.allPathsToCallee(succ2, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
-              // for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths2.entrySet()) {
-              //   for (ArrayList<Block> _path : entry.getValue()) {
-              //     String o = entry.getKey().getIndexInMethod() + "-> " + succ2.getIndexInMethod() + ": [";
-              //     for (Block node : _path) {
-              //       o += node.getIndexInMethod() + ", ";
-              //     }
-              //     Utils.debugPrintln(o+"]");
-              //   }
-              // }
+              if (Utils.DEBUG_PRINT) {
+                for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths2.entrySet()) {
+                  for (ArrayList<Block> _path : entry.getValue()) {
+                    String o = entry.getKey().getIndexInMethod() + "-> " + succ2.getIndexInMethod() + ": [";
+                    for (Block node : _path) {
+                      o += node.getIndexInMethod() + ", ";
+                    }
+                    Utils.debugPrintln(o+"]");
+                  }
+                }
+              }
               Utils.debugPrintln(allPaths1.size());
               Utils.debugPrintln(allPaths2.size());
 

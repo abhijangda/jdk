@@ -75,9 +75,16 @@ public class CHACaller {
             addCallee(callees, sootCallee);
           }
           if (!sootCallee.isNative() && !sootCallee.isFinal()) {
-            for (SootClass subclass : chaGraph.getSubClasses(sootCalleeClass)) {
+            for (SootClass subclass : chaGraph.getAllSubclasses(sootCalleeClass)) {
+              if (caller.fullname().contains("StopFilter.next")) {
+                Utils.infoPrintln(val + " " + val.getClass() + " " + chaGraph.getAllSubclasses(sootCalleeClass).size());
+              }
               if (subclass.declaresMethod(sootCallee.getSubSignature())) {
-                addCallee(callees, subclass.getMethodUnsafe(sootCallee.getSubSignature()));
+                SootMethod overrideCallee = subclass.getMethodUnsafe(sootCallee.getSubSignature());
+                if (caller.fullname().contains("StopFilter.next")) {
+                  Utils.infoPrintln(val + " " + Utils.methodFullName(overrideCallee));
+                }
+                addCallee(callees, overrideCallee);
               }
             }
           }

@@ -91,15 +91,16 @@ public class ClassHierarchyAnalysis extends HashMap<ShimpleMethod, CHACaller> {
         return false;
       }
     } 
-
+    Utils.debugPrintln(expr);
     HashSet<ShimpleMethod> callees = getCallees(chaGraph, caller).getCalleesAtExpr(expr);
     if (callees == null)
       return false;
       
     if (callees.contains(callee))
       return true;
-
+    
     for (ShimpleMethod directCallee : callees) {
+      Utils.debugPrintln(directCallee.fullname());
       if (mayCall(chaGraph, directCallee, callee)) {
         return true;
       }

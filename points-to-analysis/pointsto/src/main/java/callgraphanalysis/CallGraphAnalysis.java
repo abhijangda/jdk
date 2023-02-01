@@ -80,8 +80,8 @@ public class CallGraphAnalysis {
     while (!callStack.isEmpty() && iterations++ < 5000) {
       HeapEvent currEvent;
       CallFrame frame = callStack.peek();
-      // if (eventIterator.index() >= 600)
-      //   Utils.DEBUG_PRINT = true;
+      if (eventIterator.index() >= 640)
+        Utils.DEBUG_PRINT = true;
       if (frame.parent != null) {
         Utils.infoPrintln("parent frame " + frame.parent.toString());
       }

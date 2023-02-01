@@ -77,7 +77,7 @@ public class CallGraphAnalysis {
   private static void traverseCallStack(CallFrame startFrame, Stack<CallFrame> callStack, CallEdges edges, ArrayListIterator<HeapEvent> eventIterator, int iterations) {
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
     Utils.infoPrintln("new call frame " + startFrame.method.fullname() + " " + startFrame.getPC());
-    while (!callStack.isEmpty() && iterations++ < 5000) {
+    while (!callStack.isEmpty() && iterations++ < 4000) {
       HeapEvent currEvent;
       CallFrame frame = callStack.peek();
       if (eventIterator.index() >= 640)

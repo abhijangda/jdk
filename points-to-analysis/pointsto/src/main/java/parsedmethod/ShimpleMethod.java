@@ -329,6 +329,13 @@ public class ShimpleMethod {
     return stmtToBlock.get(getAssignStmtForBci(bci));
   }
 
+  public Block getBlock(int index) {
+    for (Block b : basicBlockGraph) {
+      if (b.getIndexInMethod() == index) return b;
+    }
+
+    return null;
+  }
   private boolean hasheapUpdateStmtInAllPathsToExit(Block start) {
     Utils.infoPrintln("for " + fullname());
 
@@ -687,6 +694,7 @@ public class ShimpleMethod {
   private void allPathsToEventStmt(Block start, HeapEvent event, Block eventBlock, CFGPath currPath, 
                                    HashSet<Block> visited, ArrayList<CFGPath> allPaths) {
     // Mark the current node and store it in path[]
+    Utils.debugPrintln(start.getIndexInMethod() + " " + eventBlock.getIndexInMethod());
     visited.add(start);
     currPath.add(start);
     // If current vertex is same as destination, then print
@@ -740,6 +748,7 @@ public class ShimpleMethod {
     HashSet<Block> visited = new HashSet<>();
     ArrayList<CFGPath> allPaths = new ArrayList<>();
     CFGPath currPath = new CFGPath();
+    Utils.debugPrintln("");
     allPathsToEventStmt(start, event, getBlockForBci(event.bci), currPath, visited, allPaths);
 
     return allPaths;

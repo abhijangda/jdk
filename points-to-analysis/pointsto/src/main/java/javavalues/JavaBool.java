@@ -26,7 +26,16 @@ public class JavaBool extends JavaPrimValue implements JavaPrimOps {
   }
 
   public JavaBool eq(JavaPrimValue o) {
-    return JavaValueFactory.v(value == ((JavaBool)o).value);
+    if (o instanceof JavaInt) {
+      JavaInt i = (JavaInt)o;
+      if (i.value == 0 && value == false)
+        return JavaValueFactory.v(true);
+      if (i.value == 1 && value == true)
+        return JavaValueFactory.v(true);
+      return JavaValueFactory.v(false);
+    } else {
+      return JavaValueFactory.v(value == ((JavaBool)o).value);
+    }
   }
   
   public JavaBool neq(JavaPrimValue o) {
@@ -54,7 +63,7 @@ public class JavaBool extends JavaPrimValue implements JavaPrimOps {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof JavaBool && eq((JavaBool)o).value;
+    return o instanceof JavaPrimValue && eq((JavaPrimValue)o).value;
   }
 
   @Override

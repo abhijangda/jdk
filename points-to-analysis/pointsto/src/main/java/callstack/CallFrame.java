@@ -140,6 +140,8 @@ public class CallFrame {
   public boolean isQueryParseModifiers;
   public boolean isQueryParseTerm;
   public boolean isQueryParserAddClause;
+  public boolean isQueryParserGetFieldQuery;
+  public boolean isStopFilterNext;
   private CFGPath cfgPathExecuted;
   public final JavaHeap heap;
   public final StaticInitializers staticInits;
@@ -164,6 +166,8 @@ public class CallFrame {
     isQueryParseModifiers = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Modifiers()I");
     isQueryParseTerm = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;");
     isQueryParserAddClause = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.addClause");
+    isQueryParserGetFieldQuery = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.getFieldQuery(Ljava/lang/String;Ljava/lang/String;)");
+    isStopFilterNext = this.method.fullname().contains("org.apache.lucene.analysis.StopFilter.next");
     this.staticInits = staticInits;
     // if (canPrint) {
     //   Utils.debugPrintln(method.basicBlockStr());
@@ -252,6 +256,9 @@ public class CallFrame {
     JavaValue obj1 = evaluate(cond.getOp1());
     JavaValue obj2 = evaluate(cond.getOp2());
 
+    // Utils.debugPrintln(cond.getOp1() + "   " + obj1);
+    // Utils.debugPrintln(cond.getOp2() + "   " + obj2);
+    // Utils.debugPrintln(obj1.equals(obj2) + " " + obj2.equals(obj1));
     if (cond instanceof CmpExpr) {
       Utils.debugAssert(false, "to handle");
     } else if (cond instanceof CmpgExpr) {
@@ -438,7 +445,7 @@ public class CallFrame {
         Utils.debugAssert(method.stmtToIndex.containsKey(target), "sanity");
         if (canEvalCond) {
           boolean condValue = evaluateCond((AbstractJimpleIntBinopExpr)cond);
-
+          Utils.debugPrintln(condValue);
           if (condValue) {
             pc.counter = method.stmtToIndex.get(ifstmt.getTarget());
           } else {
@@ -501,7 +508,12 @@ public class CallFrame {
             
             ArrayList<CFGPath> allPaths1 = method.allPathsToEvent(succ1, currEvent);
             ArrayList<CFGPath> allPaths2 = method.allPathsToEvent(succ2, currEvent);
-
+            for (CFGPath p : allPaths1) {
+              Utils.debugPrintln(p);
+            }
+            for (CFGPath p : allPaths2) {
+              Utils.debugPrintln(p);
+            }
             if (allPaths1.size() > 0 && allPaths2.size() > 0) {
               Utils.infoPrintln("Found in both");
               //TODO: Currently goes through one of the successors, but should go through both
@@ -518,10 +530,14 @@ public class CallFrame {
               currStmt = succ2.getHead();
               pc.counter = method.stmtToIndex.get(currStmt);
             } else {
-              Utils.infoPrintln("NOT found in any " + currEvent + " " + currStmt);
-              Utils.debugPrintln(method.fullname() + "   " + method.shimpleBody.toString());
-              Utils.debugPrintln(method.basicBlockStr());
-              System.exit(0);
+              if (isQueryParserGetFieldQuery && ifBlock.getIndexInMethod() == 14 && eventsIterator.index() <= 650) {
+                pc.counter = method.stmtToIndex.get(method.getBlock(17).getHead());
+              } else {
+                Utils.infoPrintln("NOT found in any " + currEvent + " " + currStmt);
+                Utils.debugPrintln(method.fullname());
+                // Utils.debugPrintln(method.basicBlockStr());
+                System.exit(0);
+              }
             }
           } else {
             if (isSegmentReaderOpenNorms && ifBlock.getIndexInMethod() == 6) {
@@ -538,7 +554,10 @@ public class CallFrame {
               pc.counter = method.statements.size();
               continue;
             }
-
+            if (isStopFilterNext && eventsIterator.index() <= 650 && currEvent.methodStr.contains("Token.clone")) {
+              pc.counter = method.statements.size();
+              continue;
+            }
             if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
               //End current function
               pc.counter = method.statements.size();
@@ -937,7 +956,7 @@ public class CallFrame {
         Utils.debugAssert(type instanceof RefType, "type instanceof " + type.getClass() + " " + val.toString());
         SootClass klass = ((RefType)type).getSootClass();
         Utils.debugPrintln(klass.getName());
-        while(klass != null && !klass.declaresMethod(virtInvoke.getMethod().getSubSignature())) {
+        while(klass != null && klass.hasSuperclass() && !klass.declaresMethod(virtInvoke.getMethod().getSubSignature())) {
           klass = klass.getSuperclass();
         }
 

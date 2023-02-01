@@ -80,8 +80,8 @@ public class CallGraphAnalysis {
     while (!callStack.isEmpty() && iterations++ < 4000) {
       HeapEvent currEvent;
       CallFrame frame = callStack.peek();
-      if (eventIterator.index() >= 640)
-        Utils.DEBUG_PRINT = true;
+      // if (eventIterator.index() >= 640)
+      //   Utils.DEBUG_PRINT = true;
       if (frame.parent != null) {
         Utils.infoPrintln("parent frame " + frame.parent.toString());
       }
@@ -119,10 +119,10 @@ public class CallGraphAnalysis {
       } catch (InvalidCallStackException e) {
         e.printStackTrace();
         Utils.infoPrintln(eventIterator.index());
-        if (eventIterator.index() >= 635) {
-          System.exit(0);
-        }
-        return;
+        // if (eventIterator.index() >= 635) {
+        //   System.exit(0);
+        // }
+        break;
       } catch (MultipleNextBlocksException e) {
         Utils.infoPrintf("Create new frames %d at %s\n", e.nextBlocks.size(), frame.getPC());
         if (e.nextBlocks.size() == 1) {
@@ -184,7 +184,7 @@ public class CallGraphAnalysis {
     }
     
     Utils.infoPrintln("DONE");
-    if (eventIterator.index() >= 635) {
+    if (eventIterator.index() >= 670) {
       Utils.infoPrintln("Edges:");
 
       Utils.infoPrintln(edges.toString());

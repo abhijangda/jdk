@@ -78,16 +78,20 @@ public class CallGraphAnalysis {
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
     Utils.infoPrintln("new call frame " + startFrame.method.fullname() + " " + startFrame.getPC());
     while (!callStack.isEmpty() && iterations++ < 4000) {
+      if (iterations >= 3180 && eventIterator.index() < 668)
+        return;
+        
       HeapEvent currEvent;
       CallFrame frame = callStack.peek();
-      // if (eventIterator.index() >= 640)
-      //   Utils.DEBUG_PRINT = true;
+      if (eventIterator.index() >= 646) // && frame.method.fullname().contains("QueryProcessor.run"))
+        Utils.DEBUG_PRINT = true;
       if (frame.parent != null) {
         Utils.infoPrintln("parent frame " + frame.parent.toString());
       }
+      
       Utils.infoPrintln("current frame " + frame + " iterations " + iterations);
       currEvent = eventIterator.get();
-      Utils.infoPrintln("currevent " + currEvent.toString() + " at " + eventIterator.nextIndex());
+      Utils.infoPrintln("currevent " + currEvent.toString() + " at " + eventIterator.index());
       // if (frame.canPrint) {
       //   Utils.debugPrintln(frame.method.basicBlockStr());
       //   System.exit(0);;
@@ -112,19 +116,26 @@ public class CallGraphAnalysis {
       //   frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
       //   heapEventIdx++;
       // }
+      if (iterations >= 3900 && eventIterator.index() >= 654 && frame.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Term")) {
+        // Utils.infoPrintln(frame.method.fullname());
+        // Utils.infoPrintln(eventIterator.index());
+        return;
+      }
       CallGraphNode parentNode = frameToGraphNode.get(frame);
       CallFrame nextFrame = null;
       try {
         nextFrame = frame.nextInvokeMethod(eventIterator);
       } catch (InvalidCallStackException e) {
+        Utils.debugPrintln("");
         e.printStackTrace();
         Utils.infoPrintln(eventIterator.index());
-        // if (eventIterator.index() >= 635) {
-        //   System.exit(0);
-        // }
+        Utils.debugPrintln(frame.method.fullname());
+        if (frame.method.fullname().contains("org.apache.lucene.search.Query.createWeight") && eventIterator.index() >= 669) {
+          System.exit(0);
+        }
         break;
       } catch (MultipleNextBlocksException e) {
-        Utils.infoPrintf("Create new frames %d at %s\n", e.nextBlocks.size(), frame.getPC());
+        Utils.infoPrintf("Create new frames %s %d at %s\n", frame.method.fullname(), e.nextBlocks.size(), frame.getPC());
         if (e.nextBlocks.size() == 1) {
           frame.setPC(e.nextBlocks.iterator().next());
           continue;
@@ -184,7 +195,7 @@ public class CallGraphAnalysis {
     }
     
     Utils.infoPrintln("DONE");
-    if (eventIterator.index() >= 670) {
+    if (eventIterator.index() >= 680) {
       Utils.infoPrintln("Edges:");
 
       Utils.infoPrintln(edges.toString());

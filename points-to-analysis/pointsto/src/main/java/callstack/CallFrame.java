@@ -141,6 +141,7 @@ public class CallFrame {
   public boolean isQueryParseTerm;
   public boolean isQueryParserAddClause;
   public boolean isQueryParserGetFieldQuery;
+  public boolean isQueryParserQuery;
   public boolean isStopFilterNext;
   private CFGPath cfgPathExecuted;
   public final JavaHeap heap;
@@ -150,13 +151,12 @@ public class CallFrame {
     this.heap = heap;
     method = m;
     allVariableValues = method.initVarValues(invokeExpr, (parent == null) ? null : parent.allVariableValues);
-    Utils.infoPrintln(toString());
     this.parent = parent;
     pc = new ProgramCounter();
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.analysis.StopFilter.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Clause");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     // if (canPrint) {
     //   System.out.println(method.basicBlockStr());
     //   System.exit(0);
@@ -168,13 +168,14 @@ public class CallFrame {
     isQueryParserAddClause = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.addClause");
     isQueryParserGetFieldQuery = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.getFieldQuery(Ljava/lang/String;Ljava/lang/String;)");
     isStopFilterNext = this.method.fullname().contains("org.apache.lucene.analysis.StopFilter.next");
+    isQueryParserQuery = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Query");
     this.staticInits = staticInits;
     // if (canPrint) {
     //   Utils.debugPrintln(method.basicBlockStr());
     // }
     // if (canPrint) {
-    //   Utils.debugPrintln(method.fullname());
-    //   Utils.debugPrintln(method.basicBlockStr());
+    //   Utils.infoPrintln(method.fullname());
+    //   Utils.infoPrintln(method.basicBlockStr());
     //   System.exit(0);
     // }
   }
@@ -306,7 +307,7 @@ public class CallFrame {
     return null;
   }
 
-  private void updateParentFromRet(JReturnStmt retStmt) {
+  private void updateParentFromRet(JReturnStmt retStmt, JavaValue customRetValue) {
     Value retVal = retStmt.getOp();
     // Utils.debugPrintln(this.parent.method.shimpleBody);
     // Utils.debugPrintln(this.method.shimpleBody);
@@ -321,7 +322,7 @@ public class CallFrame {
         if (this.allVariableValues.get(retVal) == null) {
           Utils.infoPrintln("0 values for " + retVal);
         }
-        JavaValue retValue = this.allVariableValues.get(retVal);
+        JavaValue retValue = (customRetValue != null) ? customRetValue : this.allVariableValues.get(retVal);
         this.parent.allVariableValues.put(leftVal, retValue);
 
         // this.parent.method.propogateValuesToSucc(this.parent.allVariableValues, this.parent.method.getBlockForStmt(this.parentStmt));
@@ -385,7 +386,11 @@ public class CallFrame {
       methodMatches = currEvent.method == method.sootMethod;
       currStmt = method.statements.get(pc.counter);
       Block block = method.getBlockForStmt(currStmt);
-
+      boolean isQueryParserQueryRightEvent = isQueryParserQuery && currEvent.methodStr.contains("QueryParser.jj_consume_token(I)") && eventsIterator.index() == 669;
+      if (isQueryParserQuery && currEvent.methodStr.contains("QueryParser.jj_consume_token(I)"))
+        {
+          Utils.debugPrintln(eventsIterator.index() + " " + block.getIndexInMethod());
+        }
       // if (currStmt instanceof JAssignStmt && ((JAssignStmt)currStmt).getRightOp() instanceof PhiExpr) {
       //   Utils.debugPrintln(cfgPathExecuted.get(cfgPathExecuted.size() - 1).getIndexInMethod());
       // }
@@ -556,6 +561,12 @@ public class CallFrame {
             }
             if (isStopFilterNext && eventsIterator.index() <= 650 && currEvent.methodStr.contains("Token.clone")) {
               pc.counter = method.statements.size();
+              continue;
+            }
+            
+            if (ifBlock.getIndexInMethod() == 2 && isQueryParserQueryRightEvent) {
+              pc.counter = method.stmtToIndex.get(method.getBlock(11).getHead());
+              Utils.debugPrintln("");
               continue;
             }
             if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
@@ -748,8 +759,17 @@ public class CallFrame {
         Utils.debugAssert(method.stmtToIndex.containsKey(target), "sanity");
         pc.counter = method.stmtToIndex.get(target);
         currStmt = method.statements.get(pc.counter);
-      } else if (currStmt instanceof JReturnStmt) { 
-        updateParentFromRet((JReturnStmt)currStmt);
+      } else if (currStmt instanceof JReturnStmt) {
+        JavaValue customRetValue = null;
+        if (isQueryParserQueryRightEvent) {
+          for (var entry : allVariableValues.entrySet()) {
+            if (entry.getKey().toString() == "r3" || entry.getKey().toString() == "$r3") {
+              Utils.debugPrintln("found r3");
+              customRetValue = entry.getValue();
+            }
+          }
+        }
+        updateParentFromRet((JReturnStmt)currStmt, customRetValue);
         pc.counter = method.statements.size();
         return null;
       } else if (currStmt instanceof JThrowStmt) {
@@ -760,6 +780,7 @@ public class CallFrame {
       } else {        
         funcToCall = null;
         boolean incrementPC = true;
+
         for (ValueBox use : currStmt.getUseBoxes()) {
           Value val = use.getValue();
           if (val instanceof JNewExpr) {

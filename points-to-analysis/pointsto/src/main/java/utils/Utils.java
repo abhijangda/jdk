@@ -170,9 +170,10 @@ public abstract class Utils {
         if (((ArrayType)left.getType()).baseType instanceof PrimType)
           return false;
       }
-      if (right instanceof JNewExpr || 
-          right instanceof JNewMultiArrayExpr ||
-          right instanceof JNewArrayExpr) {
+      if (right instanceof JNewExpr) {
+      //  || 
+      //     right instanceof JNewMultiArrayExpr ||
+      //     right instanceof JNewArrayExpr) {
             return true;
       }
       

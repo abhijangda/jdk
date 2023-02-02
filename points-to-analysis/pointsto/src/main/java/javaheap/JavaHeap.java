@@ -54,7 +54,11 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
         utils.Utils.infoLog("Creating the object %d not found in heap\n", event.dstPtr);
         put(event.dstPtr, new JavaObject((RefType)event.dstClass, event.dstPtr));
       }
-      ((JavaObject)get(event.dstPtr)).addField(event.fieldName, val);
+      JavaObject obj = (JavaObject)get(event.dstPtr);
+      obj.addField(event.fieldName, val);
+      if (event.dstPtr == 139941317268960L) {
+        Utils.infoPrintln(obj.fieldValues.get(event.fieldName));
+      }
     } else if (event.eventType == HeapEvent.EventType.ArrayElementSet) {
       JavaHeapElem val = null;
       if (event.srcPtr == 0) val = null;

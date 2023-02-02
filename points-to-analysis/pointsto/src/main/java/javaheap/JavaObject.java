@@ -8,7 +8,7 @@ import soot.SootField;
 import soot.sootify.ValueTemplatePrinter;
 
 public class JavaObject extends JavaHeapElem {
-  protected final HashMap<String, JavaHeapElem> fieldValues;
+  public final HashMap<String, JavaHeapElem> fieldValues;
 
   public JavaObject(RefType type, long address) {
     super(type, address);
@@ -63,7 +63,7 @@ public class JavaObject extends JavaHeapElem {
 
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append("JavaObject: " + getType().toString());
+    builder.append("JavaObject: " + getType().toString() + ": " + getAddress());
     return builder.toString();
   }
 }

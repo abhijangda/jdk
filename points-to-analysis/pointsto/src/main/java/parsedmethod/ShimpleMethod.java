@@ -1167,6 +1167,7 @@ public class ShimpleMethod {
       SootFieldRef field = ((JInstanceFieldRef)val).getFieldRef();
       JavaValue baseVal = allVariableValues.get(base);
       if (baseVal == null || baseVal instanceof JavaNull) return null;
+      Utils.debugPrintln(((JavaObjectRef)baseVal).ref.getAddress());
       return (((JavaObjectRef)baseVal).getField(field.resolve()));
     } else if (val instanceof JInterfaceInvokeExpr) {
       return null;

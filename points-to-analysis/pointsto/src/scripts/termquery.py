@@ -17,16 +17,18 @@ f.close()
 
 termquerystacks = set()
 
+d = "org.apache.lucene.index.TermBuffer.toTerm"
+
 for callstack in callstacks:
   found = False
   for f in callstack:
-    if f.find("TermQuery.createWeight") != -1:
+    if f.find(d) != -1:
       found = True
   strcallstack = ""
   if found:
     callstack.reverse()
     for f in callstack:
-      if f.find("TermQuery.createWeight") != -1:
+      if f.find(d) != -1:
         strcallstack += f
         break
       strcallstack += f

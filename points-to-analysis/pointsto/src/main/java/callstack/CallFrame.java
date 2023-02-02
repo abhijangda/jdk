@@ -1045,6 +1045,19 @@ public class CallFrame {
         builder.append("null");
       } else {
         builder.append(val.getValue().getType());
+        if (val.getValue() instanceof JavaRefValue) {
+          Long addr = ((JavaRefValue)val.getValue()).ref.getAddress();
+          builder.append(": " + addr);
+
+          if (addr == 139941317268960L) {
+            JavaObject obj = (JavaObject)((JavaObjectRef)val.getValue()).ref;
+            String o = " hashcode = " + obj.hashCode() + " " + " heap = " + this.heap.hashCode();
+            for (var entry : obj.fieldValues.entrySet()) {
+              o += (entry.getKey() + ": " + ((entry.getValue() != null) ? entry.getValue().getAddress() : null) + ", ");
+            }
+            builder.append(o);
+          }
+        }
       }
       builder.append(", ");
       

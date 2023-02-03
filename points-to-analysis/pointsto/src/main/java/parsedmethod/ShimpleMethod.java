@@ -451,16 +451,42 @@ public class ShimpleMethod {
     return builder.toString();
   }
 
-  public Unit mayCallMethodInBlock(Block block, ShimpleMethod method) {  
+  public Unit mayCallMethodInBlock(CallFrame frame, Block block, ShimpleMethod method) {  
     Iterator<Unit> stmtIter = block.iterator();
     while (stmtIter.hasNext()) {
       Unit stmt = stmtIter.next();
+      
+      if (stmt instanceof JAssignStmt && ((JAssignStmt)stmt).getRightOp() instanceof InvokeExpr) {
+        InvokeExpr invoke = (InvokeExpr)((JAssignStmt)stmt).getRightOp();
+        if (invoke instanceof JVirtualInvokeExpr) {
+          JVirtualInvokeExpr virtinvoke = (JVirtualInvokeExpr)invoke;
+          Value base = virtinvoke.getBase();
+          if (frame.getAllVariableValues().containsKey(base)) {
+            JavaValue javaVal = frame.getAllVariableValues().get(base);
+            if (javaVal instanceof JavaObjectRef) {
+              JavaObject obj = ((JavaObjectRef)javaVal).getObject();
+              SootClass klass = obj.getClassType().getSootClass();
+              Utils.debugPrintln(klass.getName());
+              while(klass != null && klass.hasSuperclass() && !klass.declaresMethod(virtinvoke.getMethod().getSubSignature())) {
+                klass = klass.getSuperclass();
+              }
+
+              ShimpleMethod invokeMethod = ParsedMethodMap.v().getOrParseToShimple(klass.getMethod(virtinvoke.getMethod().getSubSignature()));
+              if (ClassHierarchyAnalysis.v().mayCall(ClassHierarchyGraph.v(), invokeMethod, method)) {
+                Utils.debugPrintln("can call from " + invokeMethod.fullname());
+                return stmt;
+              }
+            }
+          }
+        }
+      } 
+      
       for (ValueBox valBox : stmt.getUseBoxes()) {
         Value val = valBox.getValue();
         if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val, method))
           return stmt;
         //TODO: Static 
-      }    
+      }
     }
     
     return null;
@@ -539,15 +565,15 @@ public class ShimpleMethod {
   // }
 
 
-  private void allPathsToCalleeBlock(Block start, ShimpleMethod callee, CFGPath currPath, 
-                                      HashSet<Block> visited,
-                                      HashMap<Block, ArrayList<CFGPath>> allPaths) {
+  private void allPathsToCalleeBlock(CallFrame frame, Block start, ShimpleMethod callee, CFGPath currPath, 
+                                     HashSet<Block> visited,
+                                     HashMap<Block, ArrayList<CFGPath>> allPaths) {
     // Mark the current node and store it in path[]
     visited.add(start);
     currPath.add(start);
     // If current vertex is same as destination, then print
     // current path[]
-    Unit calleeStmt = mayCallMethodInBlock(start, callee);
+    Unit calleeStmt = mayCallMethodInBlock(frame, start, callee);
     if (calleeStmt != null) {
       Unit heapUpdStmt = heapUpdateStmtBeforeCall(start, callee);
       boolean heapUpdBeforeCallee = true;
@@ -632,7 +658,7 @@ public class ShimpleMethod {
           // vertex
           for (Block succ : start.getSuccs()) {
             if (!visited.contains(succ) && !isDominator(succ, start)) {
-              allPathsToCalleeBlock(succ, callee, currPath, visited, allPaths);
+              allPathsToCalleeBlock(frame, succ, callee, currPath, visited, allPaths);
             }
           }
         }
@@ -645,11 +671,11 @@ public class ShimpleMethod {
     visited.remove(start);
   }
 
-  public HashMap<Block, ArrayList<CFGPath>> allPathsToCallee(Block start, ShimpleMethod callee) {
+  public HashMap<Block, ArrayList<CFGPath>> allPathsToCallee(CallFrame frame, Block start, ShimpleMethod callee) {
     HashSet<Block> visited = new HashSet<>();
     HashMap<Block, ArrayList<CFGPath>> allPaths = new HashMap<>();
     CFGPath currPath = new CFGPath();
-    allPathsToCalleeBlock(start, callee, currPath, visited, allPaths);
+    allPathsToCalleeBlock(frame, start, callee, currPath, visited, allPaths);
     if (fullname().contains("QueryParser.addClause")) {
       Utils.infoPrintln("found paths for " + start.getIndexInMethod());
     }

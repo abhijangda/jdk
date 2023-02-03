@@ -46,7 +46,6 @@ public class ClassHierarchyGraph extends HashMap<SootClass, ArrayList<SootClass>
       SootMethod m = subclass.getMethodUnsafe(baseMethod.sootMethod.getName(), baseMethod.sootMethod.getParameterTypes(), baseMethod.sootMethod.getReturnType());
       if (m != null) {
         ShimpleMethod sm = ParsedMethodMap.v().getOrParseToShimple(m);
-        Utils.infoPrintln(sm.fullname());
         overridenMethods.add(sm);
       }
     }

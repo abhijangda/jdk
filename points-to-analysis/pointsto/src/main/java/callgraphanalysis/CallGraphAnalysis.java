@@ -77,13 +77,11 @@ public class CallGraphAnalysis {
   private static void traverseCallStack(CallFrame startFrame, Stack<CallFrame> callStack, CallEdges edges, ArrayListIterator<HeapEvent> eventIterator, int iterations) {
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
     Utils.infoPrintln("new call frame " + startFrame.method.fullname() + " " + startFrame.getPC());
-    while (!callStack.isEmpty() && iterations++ < 4000) {
-      if (iterations >= 3180 && eventIterator.index() < 668)
-        return;
-        
+    while (!callStack.isEmpty() && iterations++ < 4000) {        
       HeapEvent currEvent;
       CallFrame frame = callStack.peek();
-      if (eventIterator.index() >= 646) // && frame.method.fullname().contains("QueryProcessor.run"))
+      
+      if (eventIterator.index() >= 640 && frame.method.fullname().contains("LowerCaseFilter.next(Lorg/apache/lucene/analysis/Token;)L"))
         Utils.DEBUG_PRINT = true;
       if (frame.parent != null) {
         Utils.infoPrintln("parent frame " + frame.parent.toString());
@@ -139,24 +137,29 @@ public class CallGraphAnalysis {
         if (e.nextBlocks.size() == 1) {
           frame.setPC(e.nextBlocks.iterator().next());
           continue;
+        } else if (e.nextBlocks.size() == 0) {
+          return;
         } else {
           for (Block block : e.nextBlocks) {
             JavaHeap newHeap = (JavaHeap)frame.heap.clone();
             StaticFieldValues newStaticVals = frame.heap.getStaticFieldValues().clone(newHeap);
             newHeap.setStaticFieldValues(newStaticVals);
             StaticInitializers newStaticInits = frame.staticInits.clone();
-            // Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
-            CallFrame newFrame = frame.clone(newHeap, newStaticInits);
-            Utils.infoPrintln("NewFrame.staticInits " + newFrame.staticInits.hashCode());
-            newFrame.setPC(block);
             Stack<CallFrame> newCallStack = new Stack<CallFrame>();
-            newCallStack.addAll(callStack);
-            newCallStack.pop();
-            newCallStack.push(newFrame);
+            for (CallFrame sourceStackFrame : callStack) {
+              CallFrame copiedParentFrame = newCallStack.isEmpty() ? null : newCallStack.peek();
+              CallFrame copyFrame = sourceStackFrame.clone(newHeap, newStaticInits, copiedParentFrame);
+              newCallStack.push(copyFrame);
+            }
+            
+            // Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
+            CallFrame newFrame = newCallStack.peek();
+            newFrame.setPC(block);
             traverseCallStack(newFrame, newCallStack, edges.clone(),
                               eventIterator.clone(), iterations);
           }
         }
+
         // Utils.debugPrintln("");
         // System.exit(0);
       } catch (CallGraphException e) {
@@ -195,6 +198,7 @@ public class CallGraphAnalysis {
     }
     
     Utils.infoPrintln("DONE");
+
     if (eventIterator.index() >= 680) {
       Utils.infoPrintln("Edges:");
 

@@ -1397,6 +1397,12 @@ public class ShimpleMethod {
         }
         Utils.debugAssert(left instanceof JInstanceFieldRef, "sanity");
         Value base = ((JInstanceFieldRef)left).getBase();
+        Utils.debugPrintln(javaHeap.get(heapEvent.dstPtr));
+        Utils.debugPrintln(javaHeap.getId());
+        JavaValue baseVal = obtainVariableValues(frame, null, stmt, base);
+        if (baseVal != null && !(baseVal instanceof JavaNull)) {
+          Utils.debugAssert(((JavaObjectRef)baseVal).ref == javaHeap.get(heapEvent.dstPtr), "%d != %d\n", ((JavaObjectRef)baseVal).ref.getId(), javaHeap.get(heapEvent.dstPtr).getId());
+        } 
         allVariableValues.put(base, JavaValueFactory.v(javaHeap.get(heapEvent.dstPtr)));
         Utils.debugAssert(stmt.getUseBoxes().size() <= 2, "Only one use in " + stmt.toString());
         break;

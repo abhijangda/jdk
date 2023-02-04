@@ -56,18 +56,20 @@ public class JavaObject extends JavaHeapElem {
   }
 
   public void deepClone(JavaHeap newHeap, JavaHeapElem src) {
-    HashMap<String, JavaHeapElem> updatedFieldValues = new HashMap<>();
+    this.fieldValues.clear();
     for (Map.Entry<String, JavaHeapElem> entry : ((JavaObject)src).fieldValues.entrySet()) {
       if (entry.getValue() == null) {
-        updatedFieldValues.put(entry.getKey(), null);
+        this.fieldValues.put(entry.getKey(), null);
       } else {
+        JavaHeapElem newHeapElem = newHeap.get(entry.getValue().getAddress());
         if (entry.getValue().getAddress() == 139941317268960L) {
           Utils.infoPrintln(src);
-          Utils.infoPrintln(src.hashCode());
+          Utils.infoPrintln(src.getId());
           Utils.infoPrintln(entry.getValue());
           Utils.infoPrintln(entry.getValue().hashCode());
+          Utils.infoPrintln(newHeapElem.getId());
         }
-        updatedFieldValues.put(entry.getKey(), newHeap.get(entry.getValue().getAddress()));
+        this.fieldValues.put(entry.getKey(), newHeapElem);
       }
     }
   }
@@ -77,9 +79,9 @@ public class JavaObject extends JavaHeapElem {
     builder.append("JavaObject: " + getType().toString() + ": " + getAddress());
     if (getAddress() == 139941317268544L || getAddress() == 139941317268960L) {
         JavaObject obj = this;
-        String o = " hashcode = " + obj.hashCode() + " ";
+        String o = " id = " + obj.getId() + " ";
         for (var entry : obj.fieldValues.entrySet()) {
-          o += (entry.getKey() + ": " + ((entry.getValue() != null) ? entry.getValue().getAddress() + " " + entry.getValue().hashCode() : null) + ", ");
+          o += (entry.getKey() + ": " + ((entry.getValue() != null) ? entry.getValue().getAddress() + " " + entry.getValue().getId() : null) + ", ");
         }
         builder.append(o);
     }

@@ -1,0 +1,10 @@
+org.apache.lucene.queryParser.QueryParser.Clause(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:8
+org.apache.lucene.queryParser.QueryParser.Clause(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:12
+org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:110
+org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:111
+org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:115
+org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:121
+org.apache.lucene.analysis.standard.StandardTokenizer.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;:8
+org.apache.lucene.analysis.standard.StandardTokenizer.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;:9
+org.apache.lucene.index.SegmentTermEnum.next()Z:2
+org.apache.lucene.index.TermBuffer.read(Lorg/apache/lucene/store/IndexInput;Lorg/apache/lucene/index/FieldInfos;)V:1

@@ -22,6 +22,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Stack;
+
+import com.google.common.io.Files;
+
 import java.util.Iterator;
 
 import parsedmethod.CFGPath;
@@ -34,6 +37,13 @@ import soot.CharType;
 import soot.PrimType;
 import soot.RefLikeType;
 import soot.SootClass;
+import sun.misc.Unsafe;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.lang.reflect.Field;
+import java.nio.file.Paths;
 
 public abstract class Utils {
   public static boolean DEBUG_PRINT = false;
@@ -280,4 +290,64 @@ public abstract class Utils {
 
     return false;
   }
+
+  private static Unsafe unsafe;
+
+    static
+    {
+        try
+        {
+            Field field = Unsafe.class.getDeclaredField("theUnsafe");
+            field.setAccessible(true);
+            unsafe = (Unsafe)field.get(null);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public static long addressOf(Object o)
+    {
+        Object[] array = new Object[] {o};
+
+        long baseOffset = unsafe.arrayBaseOffset(Object[].class);
+        int addressSize = unsafe.addressSize();
+        long objectAddress = 0;
+        switch (addressSize)
+        {
+            case 4:
+                objectAddress = unsafe.getInt(array, baseOffset);
+                break;
+            case 8:
+                objectAddress = unsafe.getLong(array, baseOffset);
+                break;
+            default:
+                objectAddress = 0;
+                break;
+        }       
+
+        return(objectAddress);
+    }
+
+    public static String readFileAsString(String fileName) {
+      StringBuilder data = new StringBuilder();
+      try {
+        BufferedReader reader = new BufferedReader(new FileReader(fileName));
+
+        String line = reader.readLine();
+        while (line != null) {
+          data.append(line);
+          data.append("\n");
+          line = reader.readLine();
+        }
+        reader.close();
+        return data.toString();
+      } catch (Exception e) {
+        e.printStackTrace();
+        System.exit(0);
+      }
+
+      return data.toString();
+    }
 }

@@ -3,6 +3,8 @@ import java.util.*;
 
 import org.slf4j.helpers.Util;
 
+import com.google.common.hash.HashCode;
+
 import callstack.StaticFieldValues;
 import classcollections.*;
 import classhierarchyanalysis.ClassHierarchyAnalysis;
@@ -18,6 +20,42 @@ import parsedmethod.*;
 import callstack.*;
 
 public class CallGraphAnalysis {
+  static class MultipleNextBlockPath extends ArrayList<Pair<ShimpleMethod, Block>> {
+    private boolean loaded;
+    
+    public boolean isLoaded() {
+      return loaded;
+    }
+
+    MultipleNextBlockPath() {
+      super();
+      loaded = false;
+    }
+
+    public String toString() {
+      StringBuilder builder = new StringBuilder();
+      for (Pair<ShimpleMethod, Block> pair : this) {
+        builder.append(pair.first.fullname());
+        builder.append(":");
+        builder.append(pair.second.getIndexInMethod() + "\n");
+      }
+
+      return builder.toString();
+    }
+
+    public void load(String str) {
+      for (String line : str.split("\n")) {
+        loaded = true;
+        String[] split = line.split(":");
+        String methodStr = split[0];
+        ShimpleMethod sm = ParsedMethodMap.v().getOrParseToShimple(methodStr);
+        int blockIndex = Integer.parseInt(split[1]);
+        Block block = sm.getBlock(blockIndex);
+        this.add(Pair.v(sm, block));
+      }
+    }
+  }
+
   public static boolean methodToCare(String name) {
     return !name.equals("NULL") && !name.contains("java.") && !name.contains("jdk.") && !name.contains("sun.") && !name.contains("<clinit>");
   }
@@ -60,28 +98,35 @@ public class CallGraphAnalysis {
     System.out.printf("Starting heap event from with method %s\n", 
     startEvent, Utils.methodFullName(startEvent.method));
 
-    Stack<CallFrame> callStack = new Stack<>();
+    CallStack callStack = new CallStack();
     HeapEvent currEvent = startEvent;
     StaticInitializers staticInits = new StaticInitializers();
     CallFrame rootFrame = new CallFrame(javaHeap, staticInits, startEvent, null, null, null);
     CallGraphNode rootNode = new CallGraphNode(rootFrame, null);
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
-
+    MultipleNextBlockPath multipleNextBlockPath = new MultipleNextBlockPath();
+    if (true) {
+      String nextBlockPath = "./multipleblockpath";
+      multipleNextBlockPath.load(Utils.readFileAsString(nextBlockPath));
+    }
     callStack.push(rootFrame);
     frameToGraphNode.put(rootFrame, rootNode);
-    traverseCallStack(rootFrame, callStack, new CallEdges(), eventIterator, 0);
-    System.out.println("Edges:");
-    System.out.println(rootNode.edgesToString());
+    
+    traverseCallStack(multipleNextBlockPath, rootFrame, callStack, new CallEdges(), eventIterator, 0);
   }
   
-  private static void traverseCallStack(CallFrame startFrame, Stack<CallFrame> callStack, CallEdges edges, ArrayListIterator<HeapEvent> eventIterator, int iterations) {
+  private static void traverseCallStack(MultipleNextBlockPath multipleNextBlockPath, CallFrame startFrame, CallStack callStack, CallEdges edges, ArrayListIterator<HeapEvent> eventIterator, int iterations) {
     HashMap<CallFrame, CallGraphNode> frameToGraphNode = new HashMap<>();
     Utils.infoPrintln("new call frame " + startFrame.method.fullname() + " " + startFrame.getPC());
+    Utils.infoPrintln("new callStack " + callStack.getId());
+    for (CallFrame f : callStack) {
+      Utils.infoPrintln(f.method.fullname() + " hashcode: " + f.getId() + " heap: " + f.heap.getId());
+    }
     while (!callStack.isEmpty() && iterations++ < 4000) {        
       HeapEvent currEvent;
       CallFrame frame = callStack.peek();
-      
-      if (eventIterator.index() >= 640 && frame.method.fullname().contains("LowerCaseFilter.next(Lorg/apache/lucene/analysis/Token;)L"))
+      Utils.infoPrintln("callStack " + callStack.getId() + " frame hascode: " + frame.getId());
+      if (frame.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Clause"))
         Utils.DEBUG_PRINT = true;
       if (frame.parent != null) {
         Utils.infoPrintln("parent frame " + frame.parent.toString());
@@ -94,6 +139,9 @@ public class CallGraphAnalysis {
       //   Utils.debugPrintln(frame.method.basicBlockStr());
       //   System.exit(0);;
       // }
+      // if (frame.method.fullname().contains("org.dacapo.lusearch.Search$QueryProcessor.run") && eventIterator.index() == 647) {
+      //   return;
+      // }k
       if (!frame.hasNextInvokeStmt()) {
         // if (frame.canPrint) return;
         callStack.pop();
@@ -101,7 +149,7 @@ public class CallGraphAnalysis {
       }
       
       while (!Utils.methodToCare(currEvent.method) ||
-            //  currEvent.methodStr.contains("org.apache.lucene.store.FSDirectory") ||
+             currEvent.methodStr.contains("org.apache.lucene.util.UnicodeUtil.<clinit>()V") ||
              currEvent.methodStr.contains("org.apache.lucene.analysis.CharArraySet.add")) {
         startFrame.heap.update(currEvent);
         eventIterator.moveNext();
@@ -117,7 +165,7 @@ public class CallGraphAnalysis {
       if (iterations >= 3900 && eventIterator.index() >= 654 && frame.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Term")) {
         // Utils.infoPrintln(frame.method.fullname());
         // Utils.infoPrintln(eventIterator.index());
-        return;
+        break;
       }
       CallGraphNode parentNode = frameToGraphNode.get(frame);
       CallFrame nextFrame = null;
@@ -130,31 +178,57 @@ public class CallGraphAnalysis {
         Utils.debugPrintln(frame.method.fullname());
         break;
       } catch (MultipleNextBlocksException e) {
-        Utils.infoPrintf("Create new frames %s %d at %s\n", frame.method.fullname(), e.nextBlocks.size(), frame.getPC());
+        Utils.infoPrintf("Create new frames %s %d at %s for frame %d\n", frame.method.fullname(), e.nextBlocks.size(), frame.getPC(), frame.getId());
         if (e.nextBlocks.size() == 1) {
           frame.setPC(e.nextBlocks.iterator().next());
           continue;
         } else if (e.nextBlocks.size() == 0) {
-          return;
+          break;
         } else {
+          boolean nextBlockNotFound = false;
           for (Block block : e.nextBlocks) {
             JavaHeap newHeap = (JavaHeap)frame.heap.clone();
+            Utils.debugPrintln(newHeap.hashCode());
             StaticFieldValues newStaticVals = frame.heap.getStaticFieldValues().clone(newHeap);
             newHeap.setStaticFieldValues(newStaticVals);
             StaticInitializers newStaticInits = frame.staticInits.clone();
-            Stack<CallFrame> newCallStack = new Stack<CallFrame>();
+            CallStack newCallStack = new CallStack();
+            Utils.infoPrintln("newCallStack: " + newCallStack.getId() + " parent: " + callStack.getId());
             for (CallFrame sourceStackFrame : callStack) {
               CallFrame copiedParentFrame = newCallStack.isEmpty() ? null : newCallStack.peek();
               CallFrame copyFrame = sourceStackFrame.clone(newHeap, newStaticInits, copiedParentFrame);
               newCallStack.push(copyFrame);
             }
             
-            // Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
-            CallFrame newFrame = newCallStack.peek();
-            newFrame.setPC(block);
-            traverseCallStack(newFrame, newCallStack, edges.clone(),
-                              eventIterator.clone(), iterations);
+            boolean gotoBlock = false;
+            if (!multipleNextBlockPath.loaded) {
+              gotoBlock = true;
+              multipleNextBlockPath.add(Pair.v(frame.method, block));
+              // Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
+            } else if (multipleNextBlockPath.size() > 0) {
+              Pair<ShimpleMethod, Block> pair = multipleNextBlockPath.get(0);
+              Utils.debugAssert(pair.first == frame.method, "");
+              if (pair.second == block) {
+                multipleNextBlockPath.remove(0);
+                gotoBlock = true;
+                Utils.infoPrintln("going to block " + block.getIndexInMethod());
+              }
+            } else if (multipleNextBlockPath.loaded && multipleNextBlockPath.size() == 0) {
+              nextBlockNotFound = true;
+              Utils.infoPrintln("Next block not found");
+              break;
+            } 
+
+            if (gotoBlock) {
+              CallFrame newFrame = newCallStack.peek();
+              newFrame.setPC(block);
+              traverseCallStack(multipleNextBlockPath, newFrame, newCallStack, edges.clone(),
+                                eventIterator.clone(), iterations);
+            }
+
           }
+
+          if (nextBlockNotFound) break;
         }
 
         // Utils.debugPrintln("");
@@ -179,6 +253,7 @@ public class CallGraphAnalysis {
           ((frame.parent != null) || frame.parent == null) &&
           !Utils.methodFullName(nextFrame.method.sootMethod).contains("java.lang.SecurityManager.checkPermission") &&
           Utils.methodToCare(frame.method.sootMethod)) {
+            // if (frame.isQueryParserClause && nextFrame.isQueryParserQuery) return;
         //Skip recursion
         Utils.infoPrintln("next frame: " + utils.Utils.methodFullName(nextFrame.method.sootMethod) + " parent " + ((frame == null) ?  "" : frame.method.fullname()));
         if (nextFrame.method.sootMethod.getDeclaringClass().getName().contains("QueryProcessor") &&
@@ -196,13 +271,17 @@ public class CallGraphAnalysis {
     
     Utils.infoPrintln("DONE");
 
-    if (eventIterator.index() >= 680) {
-      Utils.infoPrintln("Edges:");
+    if (eventIterator.index() >= 670) {
 
-      Utils.infoPrintln(edges.toString());
+      Utils.debugPrintln(multipleNextBlockPath.toString());
+      // Utils.infoPrintln("Edges:");
+
+      // Utils.infoPrintln(edges.toString());
 
       System.exit(0);
     }
+    if (!multipleNextBlockPath.loaded)
+      multipleNextBlockPath.remove(multipleNextBlockPath.size() - 1);
     // System.exit(0);
     //String callGraphTxt = rootNode.toString();
 

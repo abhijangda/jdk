@@ -10,13 +10,19 @@ import soot.JastAddJ.StaticInitializer;
 import utils.Utils;
 
 public class JavaHeap extends HashMap<Long, JavaHeapElem> {
+  private static int numHeaps = 0;
+  private int id;
   public JavaHeap() {
     super();
     this.staticFieldValues = null;
+    this.id = numHeaps;
+    numHeaps++;
   }
   
   private StaticFieldValues staticFieldValues;
-  
+  public int getId() {
+    return id;
+  }
   public void setStaticFieldValues(StaticFieldValues staticFieldValues) {
     this.staticFieldValues = staticFieldValues;
   }

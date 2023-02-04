@@ -142,6 +142,7 @@ public class CallFrame {
   public boolean isQueryParserAddClause;
   public boolean isQueryParserGetFieldQuery;
   public boolean isQueryParserQuery;
+  public boolean isQueryParserClause;
   public boolean isStopFilterNext;
   public boolean isStandardTokenizerNext;
   public boolean isLowerCaseFilterNext;
@@ -149,6 +150,8 @@ public class CallFrame {
   public final JavaHeap heap;
   public final StaticInitializers staticInits;
   
+  private static int numCallFrames = 0;
+  private int id = 0;
   public CallFrame(JavaHeap heap, StaticInitializers staticInits, ShimpleMethod m, Value invokeExpr, Unit stmt, CallFrame parent) {
     this.heap = heap;
     method = m;
@@ -174,6 +177,8 @@ public class CallFrame {
     //   Utils.infoPrintln(method.basicBlockStr());
     //   System.exit(0);
     // }
+    id = numCallFrames;
+    numCallFrames++;
   }
 
   public CallFrame(JavaHeap heap, StaticInitializers staticInits, HeapEvent event, InvokeExpr invokeExpr, Unit stmt, CallFrame root) {
@@ -198,12 +203,18 @@ public class CallFrame {
       }
     }
     initBools();
+    id = numCallFrames;
+    numCallFrames++;
   }
 
   public CallFrame clone(JavaHeap newHeap, StaticInitializers staticInits, CallFrame newParent) {
     CallFrame newFrame = new CallFrame(newHeap, staticInits, this, newParent);
     
     return newFrame;
+  }
+
+  public int getId() {
+    return id;
   }
 
   public void initBools() {
@@ -217,7 +228,7 @@ public class CallFrame {
     isQueryParserQuery = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Query");
     isStandardTokenizerNext = this.method.fullname().contains("org.apache.lucene.analysis.standard.StandardTokenizer.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;");
     isLowerCaseFilterNext = this.method.fullname().contains("org.apache.lucene.analysis.LowerCaseFilter.next");
-    
+    isQueryParserClause = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Clause");
   }
 
   public void setPC(Block block) {
@@ -1058,10 +1069,11 @@ public class CallFrame {
   public String toString() {
     StringBuilder builder = new StringBuilder();
 
-    builder.append(method.fullname() + "\n");
+    builder.append(method.fullname() + ": " + getId() + "\n");
     if (Utils.DEBUG_PRINT) {
       builder.append(getAllVarValsToString());
       builder.append("staticInits = " + ((this.staticInits == null) ? "null" : this.staticInits.hashCode()));
+      builder.append(" heap = " + this.heap.getId());
     }
     return builder.toString();
   }
@@ -1082,16 +1094,7 @@ public class CallFrame {
         builder.append(val.getValue().getType());
         if (val.getValue() instanceof JavaRefValue) {
           Long addr = ((JavaRefValue)val.getValue()).ref.getAddress();
-          builder.append(": " + addr);
-
-          if (addr == 139941317268960L) {
-            JavaObject obj = (JavaObject)((JavaObjectRef)val.getValue()).ref;
-            String o = " hashcode = " + obj.hashCode() + " " + " heap = " + this.heap.hashCode();
-            for (var entry : obj.fieldValues.entrySet()) {
-              o += (entry.getKey() + ": " + ((entry.getValue() != null) ? entry.getValue().getAddress() : null) + ", ");
-            }
-            builder.append(o);
-          }
+          builder.append(": " + ((JavaRefValue)val.getValue()));
         }
       }
       builder.append(", ");

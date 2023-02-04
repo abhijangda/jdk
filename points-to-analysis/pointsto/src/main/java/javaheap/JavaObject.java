@@ -75,6 +75,14 @@ public class JavaObject extends JavaHeapElem {
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append("JavaObject: " + getType().toString() + ": " + getAddress());
+    if (getAddress() == 139941317268544L || getAddress() == 139941317268960L) {
+        JavaObject obj = this;
+        String o = " hashcode = " + obj.hashCode() + " ";
+        for (var entry : obj.fieldValues.entrySet()) {
+          o += (entry.getKey() + ": " + ((entry.getValue() != null) ? entry.getValue().getAddress() + " " + entry.getValue().hashCode() : null) + ", ");
+        }
+        builder.append(o);
+    }
     return builder.toString();
   }
 }

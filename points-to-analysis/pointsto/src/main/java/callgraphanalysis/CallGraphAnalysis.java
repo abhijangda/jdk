@@ -207,7 +207,7 @@ public class CallGraphAnalysis {
               // Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
             } else if (multipleNextBlockPath.size() > 0) {
               Pair<ShimpleMethod, Block> pair = multipleNextBlockPath.get(0);
-              Utils.debugAssert(pair.first == frame.method, "");
+              Utils.debugAssert(pair.first == frame.method, "%s != %s", pair.first.fullname(), frame.method.fullname());
               if (pair.second == block) {
                 multipleNextBlockPath.remove(0);
                 gotoBlock = true;

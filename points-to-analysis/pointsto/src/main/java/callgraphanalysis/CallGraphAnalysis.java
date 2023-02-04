@@ -128,9 +128,6 @@ public class CallGraphAnalysis {
         e.printStackTrace();
         Utils.infoPrintln(eventIterator.index());
         Utils.debugPrintln(frame.method.fullname());
-        if (frame.method.fullname().contains("org.apache.lucene.search.Query.createWeight") && eventIterator.index() >= 669) {
-          System.exit(0);
-        }
         break;
       } catch (MultipleNextBlocksException e) {
         Utils.infoPrintf("Create new frames %s %d at %s\n", frame.method.fullname(), e.nextBlocks.size(), frame.getPC());

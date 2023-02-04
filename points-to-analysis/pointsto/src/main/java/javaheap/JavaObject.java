@@ -6,6 +6,7 @@ import soot.RefType;
 import soot.SootClass;
 import soot.SootField;
 import soot.sootify.ValueTemplatePrinter;
+import utils.Utils;
 
 public class JavaObject extends JavaHeapElem {
   public final HashMap<String, JavaHeapElem> fieldValues;
@@ -54,10 +55,20 @@ public class JavaObject extends JavaHeapElem {
     return newObj;
   }
 
-  public void deepClone(JavaHeap newHeap) {
+  public void deepClone(JavaHeap newHeap, JavaHeapElem src) {
     HashMap<String, JavaHeapElem> updatedFieldValues = new HashMap<>();
-    for (Map.Entry<String, JavaHeapElem> entry : fieldValues.entrySet()) {
-      updatedFieldValues.put(entry.getKey(), newHeap.get(entry.getValue().getAddress()));
+    for (Map.Entry<String, JavaHeapElem> entry : ((JavaObject)src).fieldValues.entrySet()) {
+      if (entry.getValue() == null) {
+        updatedFieldValues.put(entry.getKey(), null);
+      } else {
+        if (entry.getValue().getAddress() == 139941317268960L) {
+          Utils.infoPrintln(src);
+          Utils.infoPrintln(src.hashCode());
+          Utils.infoPrintln(entry.getValue());
+          Utils.infoPrintln(entry.getValue().hashCode());
+        }
+        updatedFieldValues.put(entry.getKey(), newHeap.get(entry.getValue().getAddress()));
+      }
     }
   }
 

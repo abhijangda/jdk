@@ -455,7 +455,7 @@ public class ShimpleMethod {
     Iterator<Unit> stmtIter = block.iterator();
     while (stmtIter.hasNext()) {
       Unit stmt = stmtIter.next();
-      
+      boolean mayCallChecked = false;
       if (stmt instanceof JAssignStmt && ((JAssignStmt)stmt).getRightOp() instanceof InvokeExpr) {
         InvokeExpr invoke = (InvokeExpr)((JAssignStmt)stmt).getRightOp();
         if (invoke instanceof JVirtualInvokeExpr) {
@@ -472,7 +472,10 @@ public class ShimpleMethod {
               }
 
               ShimpleMethod invokeMethod = ParsedMethodMap.v().getOrParseToShimple(klass.getMethod(virtinvoke.getMethod().getSubSignature()));
-              if (ClassHierarchyAnalysis.v().mayCall(ClassHierarchyGraph.v(), invokeMethod, method)) {
+              mayCallChecked = true;
+              if (invokeMethod.fullname().contains("QueryParser.getFieldQuery") && method.fullname().contains("org.apache.lucene.search.BooleanClause$Occur.<clinit>()"))
+                mayCallChecked = true;
+              else if (ClassHierarchyAnalysis.v().mayCall(ClassHierarchyGraph.v(), invokeMethod, method)) {
                 Utils.debugPrintln("can call from " + invokeMethod.fullname());
                 return stmt;
               }
@@ -481,11 +484,13 @@ public class ShimpleMethod {
         }
       } 
       
-      for (ValueBox valBox : stmt.getUseBoxes()) {
-        Value val = valBox.getValue();
-        if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val, method))
-          return stmt;
-        //TODO: Static 
+      if (!mayCallChecked) {
+        for (ValueBox valBox : stmt.getUseBoxes()) {
+          Value val = valBox.getValue();
+          if (ClassHierarchyAnalysis.v().mayCallInExpr(ClassHierarchyGraph.v(), this, val, method))
+            return stmt;
+          //TODO: Static 
+        }
       }
     }
     
@@ -571,6 +576,7 @@ public class ShimpleMethod {
     // Mark the current node and store it in path[]
     visited.add(start);
     currPath.add(start);
+    Utils.debugPrintln(currPath);
     // If current vertex is same as destination, then print
     // current path[]
     Unit calleeStmt = mayCallMethodInBlock(frame, start, callee);
@@ -597,6 +603,8 @@ public class ShimpleMethod {
           allPaths.put(start, new ArrayList<>());
         }
         allPaths.get(start).add(_path);
+        Utils.debugPrintln(calleeStmt);
+        Utils.debugPrintln(_path);
         Utils.debugPrintln(start.getIndexInMethod());
       }
     } else {
@@ -610,7 +618,7 @@ public class ShimpleMethod {
         while (stmtIter.hasNext()) {
           InvokeExpr invokeExpr = null;
           Unit stmt = stmtIter.next();
-          Utils.debugPrintln(stmt);
+          // Utils.debugPrintln(stmt);
           if (stmt instanceof JAssignStmt) {
             JAssignStmt assign = (JAssignStmt)stmt;
             if (assign.containsInvokeExpr())
@@ -649,7 +657,7 @@ public class ShimpleMethod {
             if (!validPath) break;
           }
 
-          Utils.debugPrintln(validPath + " for " + stmt  + " in " + fullname());
+          // Utils.debugPrintln(validPath + " for " + stmt  + " in " + fullname());
         }
         
         if (validPath) {
@@ -1034,7 +1042,7 @@ public class ShimpleMethod {
               Value arg = invokeExpr.getArg(i);
               // utils.Utils.debugPrintln(arg.toString() + " has values " + callerVariableValues.get(arg));
               if (param.getType() instanceof RefLikeType) {
-                Utils.debugPrintln(param + " " + arg + " " + arg.getType() + " " + callerVariableValues.containsKey(arg));
+                Utils.debugPrintln(param + " " + arg + " " + arg.getType() + " " + callerVariableValues.get(arg));
                 if (arg.getType() instanceof NullType) {
                   allVariableValues.put(param, JavaValueFactory.nullV());
                 } else if (callerVariableValues.containsKey(arg)) {

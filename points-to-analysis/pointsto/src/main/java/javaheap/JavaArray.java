@@ -42,9 +42,13 @@ public class JavaArray extends JavaHeapElem {
     return newArray;
   }
 
-  public void deepClone(JavaHeap newHeap) {
+  public void deepClone(JavaHeap newHeap, JavaHeapElem src) {
     for (int i = 0; i < getLength(); i++) {
-      setElem(i, newHeap.get(getElem(i).getAddress()));
+      if (((JavaArray)src).getElem(i) == null) {
+        setElem(i, null);
+      } else {
+        setElem(i, newHeap.get(((JavaArray)src).getElem(i).getAddress()));
+      }
     }
   }
 

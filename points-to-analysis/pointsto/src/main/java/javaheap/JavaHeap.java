@@ -111,6 +111,10 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
       newHeap.put(entry.getKey(), entry.getValue().clone());
     }
 
+    for (Map.Entry<Long, JavaHeapElem> entry : this.entrySet()) {
+      entry.getValue().deepClone(newHeap, this.get(entry.getKey()));
+    }
+
     return newHeap;
   }
 }

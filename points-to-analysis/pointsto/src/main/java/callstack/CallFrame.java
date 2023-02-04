@@ -158,10 +158,11 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.analysis.LowerCaseFilter.next");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.dacapo.lusearch.Search$QueryProcessor.run");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     initBools();
     // if (canPrint) {
-    //   System.out.println(method.basicBlockStr());
+    //   System.out.println(method);
+    //   Utils.infoPrintln(method.basicBlockStr());
     //   System.exit(0);
     // }
     this.staticInits = staticInits;
@@ -571,7 +572,9 @@ public class CallFrame {
               pc.counter = method.statements.size();
               continue;
             }
-            Utils.debugPrintln(isStopFilterNext);
+            if (isQueryParseTerm && currEvent.methodStr.contains("org.apache.lucene.search.BooleanClause$Occur.<clinit>")) {
+              throw new InvalidCallStackException(this, eventsIterator, currStmt);
+            }
             if (isStopFilterNext && eventsIterator.index() <= 650 && currEvent.methodStr.contains("Token.clone")) {
               pc.counter = method.stmtToIndex.get(method.getBlock(8).getHead());
               Utils.debugPrintln("");

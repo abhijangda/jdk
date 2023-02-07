@@ -155,7 +155,7 @@ public abstract class Utils {
 
   public static boolean methodToCare(String name) {
     return !name.equals("NULL") && !name.startsWith("java.") && !name.startsWith("jdk.") && 
-            !name.startsWith("sun.");
+            !name.startsWith("sun.") && !name.contains("org.apache.lucene.util.UnicodeUtil.<clinit>()V");
   }
 
   public static String getCurrFileAndLine(int index) {

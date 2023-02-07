@@ -14,6 +14,7 @@ public class StaticInitializers {
 
   public StaticInitializers() {
     executedClInit = new HashSet<>();
+    setExecuted("org.apache.lucene.util.UnicodeUtil.<clinit>()V");
   }
 
   public StaticInitializers clone() {

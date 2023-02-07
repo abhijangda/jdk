@@ -219,11 +219,14 @@ public class CallGraphAnalysis {
                 Utils.infoPrintln("going to block " + block.getIndexInMethod());
               }
             } else if (multipleNextBlockPath.loaded && multipleNextBlockPath.size() == 0) {
-              nextBlockNotFound = true;
-              Utils.infoPrintln("Next block not found");
-              Utils.infoPrintln(frame.method.fullname());
-              Utils.infoPrintln(frame.method.basicBlockStr());
-              break;
+              multipleNextBlockPath.loaded = false;
+              // nextBlockNotFound = true;
+              // Utils.infoPrintln("Next block not found");
+              // Utils.infoPrintln(frame.method.fullname());
+              // Utils.infoPrintln(frame.method.basicBlockStr());
+              // break;
+              gotoBlock = true;
+              multipleNextBlockPath.add(Pair.v(frame.method, block));
             } 
 
             if (gotoBlock) {
@@ -278,9 +281,9 @@ public class CallGraphAnalysis {
     
     Utils.infoPrintln("DONE");
 
-    if (eventIterator.index() >= 670) {
+    if (eventIterator.index() >= 717) {
 
-      // Utils.debugPrintln(multipleNextBlockPath.toString());
+      Utils.debugPrintln(multipleNextBlockPath.toString());
       Utils.infoPrintln("Edges:");
 
       // Utils.infoPrintln(edges.toString());

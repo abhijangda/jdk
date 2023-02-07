@@ -146,6 +146,9 @@ public class CallFrame {
   public boolean isStopFilterNext;
   public boolean isStandardTokenizerNext;
   public boolean isLowerCaseFilterNext;
+  public boolean isBufferedIndexInputReadByte;
+  public boolean isIndexInputReadVLong;
+  public boolean isIndexInputReadVInt;
   private CFGPath cfgPathExecuted;
   public final JavaHeap heap;
   public final StaticInitializers staticInits;
@@ -229,6 +232,9 @@ public class CallFrame {
     isStandardTokenizerNext = this.method.fullname().contains("org.apache.lucene.analysis.standard.StandardTokenizer.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;");
     isLowerCaseFilterNext = this.method.fullname().contains("org.apache.lucene.analysis.LowerCaseFilter.next");
     isQueryParserClause = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Clause");
+    isBufferedIndexInputReadByte = this.method.fullname().contains("org.apache.lucene.store.BufferedIndexInput.readByte()B");
+    isIndexInputReadVLong = this.method.fullname().contains("org.apache.lucene.store.IndexInput.readVLong()");
+    isIndexInputReadVInt = this.method.fullname().contains("org.apache.lucene.store.IndexInput.readVInt()");
   }
 
   public void setPC(Block block) {
@@ -597,9 +603,18 @@ public class CallFrame {
               Utils.debugPrintln("");
               continue;
             }
+            
             if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
               //End current function
               pc.counter = method.statements.size();
+            } else if (eventsIterator.index() >= 689) {
+              if (isBufferedIndexInputReadByte || 
+                  isIndexInputReadVInt ||
+                  isIndexInputReadVLong)
+                pc.counter = method.statements.size();
+              else {
+                throw new MultipleNextBlocksException(this, succ1, succ2);
+              }
             } else {
               Utils.infoPrintln(succ1);
               HashMap<Block, ArrayList<CFGPath>> allPaths1 = method.allPathsToCallee(this, succ1, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
@@ -738,10 +753,15 @@ public class CallFrame {
                       updateParentFromRet(null, r3);
                       Utils.debugPrintln("");
                     } else {
-                      pc.counter = method.statements.size();
+                      if (eventsIterator.index() < 686 || 
+                          isBufferedIndexInputReadByte || 
+                          isIndexInputReadVInt ||
+                          isIndexInputReadVLong)
+                        pc.counter = method.statements.size();
+                      else
+                        throw new MultipleNextBlocksException(this, succ1, succ2);
                     }
                   }
-                  // throw new MultipleNextBlocksException(this, succ1, succ2);
                 }
               }
             }

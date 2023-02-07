@@ -17,7 +17,8 @@ f.close()
 
 termquerystacks = set()
 
-d = "org.apache.lucene.index.TermBuffer.toTerm"
+d = "TermInfosReader.ensureIndexIsRead"
+# d = "org.apache.lucene.index.TermInfosReader.get"
 
 for callstack in callstacks:
   found = False

@@ -179,6 +179,11 @@ public class CallGraphAnalysis {
         break;
       } catch (MultipleNextBlocksException e) {
         Utils.infoPrintf("Create new frames %s %d at %s for frame %d\n", frame.method.fullname(), e.nextBlocks.size(), frame.getPC(), frame.getId());
+        String o = "";
+        for (Block block : e.nextBlocks) {
+          o += block.getIndexInMethod() + ", ";
+        }
+        Utils.debugPrintln(o);
         if (e.nextBlocks.size() == 1) {
           frame.setPC(e.nextBlocks.iterator().next());
           continue;
@@ -216,6 +221,8 @@ public class CallGraphAnalysis {
             } else if (multipleNextBlockPath.loaded && multipleNextBlockPath.size() == 0) {
               nextBlockNotFound = true;
               Utils.infoPrintln("Next block not found");
+              Utils.infoPrintln(frame.method.fullname());
+              Utils.infoPrintln(frame.method.basicBlockStr());
               break;
             } 
 
@@ -273,8 +280,8 @@ public class CallGraphAnalysis {
 
     if (eventIterator.index() >= 670) {
 
-      Utils.debugPrintln(multipleNextBlockPath.toString());
-      // Utils.infoPrintln("Edges:");
+      // Utils.debugPrintln(multipleNextBlockPath.toString());
+      Utils.infoPrintln("Edges:");
 
       // Utils.infoPrintln(edges.toString());
 

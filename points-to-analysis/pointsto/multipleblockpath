@@ -7,3 +7,10 @@ org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lu
 org.apache.lucene.analysis.standard.StandardTokenizer.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;:8
 org.apache.lucene.analysis.standard.StandardTokenizer.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;:9
 org.apache.lucene.index.SegmentTermEnum.next()Z:2
+org.apache.lucene.index.TermInfosReader.ensureIndexIsRead()V:43
+org.apache.lucene.index.SegmentTermEnum.next()Z:2
+org.apache.lucene.index.SegmentTermEnum.next()Z:6
+org.apache.lucene.index.SegmentTermEnum.next()Z:8
+org.apache.lucene.index.SegmentTermEnum.next()Z:10
+org.apache.lucene.index.TermInfosReader.ensureIndexIsRead()V:21
+org.apache.lucene.index.TermInfosReader.ensureIndexIsRead()V:43

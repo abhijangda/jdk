@@ -191,6 +191,7 @@ public class CallGraphAnalysis {
           break;
         } else {
           boolean nextBlockNotFound = false;
+          boolean nextBlockFromPath = false;
           for (Block block : e.nextBlocks) {            
             boolean gotoBlock = false;
             if (!multipleNextBlockPath.loaded) {
@@ -203,6 +204,7 @@ public class CallGraphAnalysis {
               if (pair.second == block) {
                 multipleNextBlockPath.remove(0);
                 gotoBlock = true;
+                nextBlockFromPath = true;
                 Utils.infoPrintln("going to block " + block.getIndexInMethod());
               }
             } else if (multipleNextBlockPath.loaded && multipleNextBlockPath.size() == 0) {
@@ -216,7 +218,10 @@ public class CallGraphAnalysis {
               multipleNextBlockPath.add(Pair.v(frame.method, block));
             } 
 
-            if (gotoBlock) {
+            if (nextBlockFromPath) {
+              frame.setPC(block);
+              break;
+            } else if (gotoBlock) {
               JavaHeap newHeap = (JavaHeap)frame.heap.clone();
               Utils.debugPrintln(newHeap.hashCode());
               StaticFieldValues newStaticVals = frame.heap.getStaticFieldValues().clone(newHeap);
@@ -234,10 +239,10 @@ public class CallGraphAnalysis {
               traverseCallStack(multipleNextBlockPath, newFrame, newCallStack, edges.clone(),
                                 eventIterator.clone(), iterations);
             }
-
           }
 
           if (nextBlockNotFound) break;
+          if (nextBlockFromPath) continue;
         }
 
         // Utils.debugPrintln("");

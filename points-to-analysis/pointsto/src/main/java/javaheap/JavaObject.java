@@ -62,13 +62,6 @@ public class JavaObject extends JavaHeapElem {
         this.fieldValues.put(entry.getKey(), null);
       } else {
         JavaHeapElem newHeapElem = newHeap.get(entry.getValue().getAddress());
-        if (entry.getValue().getAddress() == 139941317268960L) {
-          Utils.infoPrintln(src);
-          Utils.infoPrintln(src.getId());
-          Utils.infoPrintln(entry.getValue());
-          Utils.infoPrintln(entry.getValue().hashCode());
-          Utils.infoPrintln(newHeapElem.getId());
-        }
         this.fieldValues.put(entry.getKey(), newHeapElem);
       }
     }
@@ -77,14 +70,6 @@ public class JavaObject extends JavaHeapElem {
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append("JavaObject: " + getType().toString() + ": " + getAddress());
-    if (getAddress() == 139941317268544L || getAddress() == 139941317268960L) {
-        JavaObject obj = this;
-        String o = " id = " + obj.getId() + " ";
-        for (var entry : obj.fieldValues.entrySet()) {
-          o += (entry.getKey() + ": " + ((entry.getValue() != null) ? entry.getValue().getAddress() + " " + entry.getValue().getId() : null) + ", ");
-        }
-        builder.append(o);
-    }
     return builder.toString();
   }
 }

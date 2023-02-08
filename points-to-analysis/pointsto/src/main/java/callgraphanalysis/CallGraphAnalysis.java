@@ -126,7 +126,7 @@ public class CallGraphAnalysis {
       HeapEvent currEvent;
       CallFrame frame = callStack.peek();
       Utils.infoPrintln("callStack " + callStack.getId() + " frame hascode: " + frame.getId());
-      if (eventIterator.index() > 2600)
+      if (eventIterator.index() > 3400)
         Utils.DEBUG_PRINT = true;
       if (frame.parent != null) {
         Utils.infoPrintln("parent frame " + frame.parent.toString());
@@ -200,7 +200,7 @@ public class CallGraphAnalysis {
               // Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
             } else if (multipleNextBlockPath.size() > 0) {
               Pair<ShimpleMethod, Block> pair = multipleNextBlockPath.get(0);
-              Utils.debugAssert(pair.first == frame.method, "%s != %s", pair.first.fullname(), frame.method.fullname());
+              Utils.debugAssert(pair.first == frame.method, "%s != %s\n%s", pair.first.fullname(), frame.method.fullname(), frame.method.basicBlockStr());
               if (pair.second == block) {
                 multipleNextBlockPath.remove(0);
                 gotoBlock = true;

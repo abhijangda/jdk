@@ -1529,3 +1529,5 @@ org.apache.lucene.index.SegmentReader.getNorms(Ljava/lang/String;)[B:5
 org.apache.lucene.index.IndexReader.ensureOpen()V:2
 org.apache.lucene.index.SegmentReader.norms(Ljava/lang/String;[BI)V:2
 org.apache.lucene.index.SegmentReader.norms(Ljava/lang/String;[BI)V:5
+org.apache.lucene.index.SegmentReader.norms(Ljava/lang/String;)[B:2
+org.apache.lucene.index.SegmentTermDocs.readNoTf([I[II)I:6

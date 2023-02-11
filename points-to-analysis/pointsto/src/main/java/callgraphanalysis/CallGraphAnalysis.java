@@ -200,11 +200,11 @@ public class CallGraphAnalysis {
               // Utils.debugPrintln("cloning staticinit " + frame.staticInits.hashCode() + " to " + newStaticInits.hashCode());
             } else if (multipleNextBlockPath.size() > 0) {
               Pair<ShimpleMethod, Block> pair = multipleNextBlockPath.get(0);
-              if (eventIterator.index() >= 3575 && pair.first != frame.method) {
-                Utils.infoPrintln("Edges:");
+              // if (eventIterator.index() >= 3575 && pair.first != frame.method) {
+              //   Utils.infoPrintln("Edges:");
 
-                Utils.infoPrintln(edges.toString());
-              }
+              //   Utils.infoPrintln(edges.toString());
+              // }
               Utils.debugAssert(pair.first == frame.method, "%s != %s\n%s", pair.first.fullname(), frame.method.fullname(), frame.method.basicBlockStr());
               if (pair.second == block) {
                 multipleNextBlockPath.remove(0);
@@ -290,12 +290,12 @@ public class CallGraphAnalysis {
     
     Utils.infoPrintln("DONE");
 
-    if (eventIterator.index() >= 717) {
+    if (eventIterator.index() >= 3584) {
 
       Utils.debugPrintln(multipleNextBlockPath.toString());
-      Utils.infoPrintln("Edges:");
+      // Utils.infoPrintln("Edges:");
 
-      Utils.infoPrintln(edges.toString());
+      // Utils.infoPrintln(edges.toString());
 
       System.exit(0);
     }

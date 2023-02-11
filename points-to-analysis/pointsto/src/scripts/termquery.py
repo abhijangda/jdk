@@ -17,7 +17,10 @@ f.close()
 
 termquerystacks = set()
 
-d = "TermInfosReader.ensureIndexIsRead"
+d = "org.apache.lucene.index.TermBuffer.set"
+# d = "org.apache.lucene.index.IndexReader.ensureOpen"
+# d = "org.apache.lucene.index.SegmentReader.docFreq"
+# d = "TermInfosReader.ensureIndexIsRead"
 # d = "org.apache.lucene.index.TermInfosReader.get"
 
 for callstack in callstacks:

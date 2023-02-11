@@ -1046,11 +1046,17 @@ public class CallFrame {
         Type type = val.getType();
         Utils.debugAssert(type instanceof RefType, "type instanceof " + type.getClass() + " " + val.toString());
         SootClass klass = ((RefType)type).getSootClass();
-        Utils.debugPrintln(klass.getName());
+        // if (virtInvoke.getMethod().getName().contains("termDocs") && klass.getName().contains("SegmentReader")) {
+        //   for (SootMethod m : klass.getMethods()) {
+        //     Utils.debugPrintln(Utils.methodFullName(m));
+        //   }
+        // }
+        Utils.debugPrintln(klass.getName() + " " + virtInvoke.getMethod().getSubSignature());
+        // Utils.debugPrintln(klass.declaresMethod(virtInvoke.getMethod().getSubSignature()));
         while(klass != null && klass.hasSuperclass() && !klass.declaresMethod(virtInvoke.getMethod().getSubSignature())) {
           klass = klass.getSuperclass();
         }
-
+        // Utils.debugPrintln(klass.getName());
         invokeMethod = ParsedMethodMap.v().getOrParseToShimple(klass.getMethod(virtInvoke.getMethod().getSubSignature()));
         Utils.infoPrintln("new method " + invokeMethod.toString());
       }

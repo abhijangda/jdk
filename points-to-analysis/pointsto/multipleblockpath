@@ -1557,6 +1557,4 @@ org.apache.lucene.index.TermBuffer.compareChars([CI[CI)I:8
 org.apache.lucene.index.SegmentTermEnum.scanTo(Lorg/apache/lucene/index/Term;)I:4
 org.apache.lucene.index.TermBuffer.toTerm()Lorg/apache/lucene/index/Term;:1
 org.apache.lucene.index.IndexReader.ensureOpen()V:2
-org.apache.lucene.index.TermInfosReader.get(Lorg/apache/lucene/index/Term;Z)Lorg/apache/lucene/index/TermInfo;:1
-org.apache.lucene.index.SegmentTermDocs.seek(Lorg/apache/lucene/index/TermInfo;Lorg/apache/lucene/index/Term;)V:1
-org.apache.lucene.index.SegmentTermDocs.seek(Lorg/apache/lucene/index/TermInfo;Lorg/apache/lucene/index/Term;)V:4
+org.apache.lucene.index.IndexReader.ensureOpen()V:2

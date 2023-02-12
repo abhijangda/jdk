@@ -293,9 +293,9 @@ public class CallGraphAnalysis {
     if (eventIterator.index() >= 3584) {
 
       Utils.debugPrintln(multipleNextBlockPath.toString());
-      Utils.infoPrintln("Edges:");
+      // Utils.infoPrintln("Edges:");
 
-      Utils.infoPrintln(edges.toString());
+      // Utils.infoPrintln(edges.toString());
 
       System.exit(0);
     }

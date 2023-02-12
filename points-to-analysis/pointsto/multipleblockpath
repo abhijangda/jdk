@@ -1569,4 +1569,9 @@ org.apache.lucene.store.FSDirectory$FSIndexInput.close()V:2
 org.apache.lucene.search.TermScorer.score(Lorg/apache/lucene/search/HitCollector;I)Z:10
 org.dacapo.lusearch.Search$QueryProcessor.doPagingSearch(Lorg/apache/lucene/search/Query;)V:2
 org.dacapo.lusearch.Search$QueryProcessor.doPagingSearch(Lorg/apache/lucene/search/Query;)V:4
+org.dacapo.lusearch.Search$QueryProcessor.doPagingSearch(Lorg/apache/lucene/search/Query;)V:6
 org.dacapo.lusearch.Search$QueryProcessor.doPagingSearch(Lorg/apache/lucene/search/Query;)V:8
+org.apache.lucene.index.IndexReader.ensureOpen()V:2
+org.apache.lucene.index.IndexReader.ensureOpen()V:2
+org.apache.lucene.index.SegmentReader.document(ILorg/apache/lucene/document/FieldSelector;)Lorg/apache/lucene/document/Document;:2
+org.apache.lucene.store.BufferedIndexInput.seek(J)V:2

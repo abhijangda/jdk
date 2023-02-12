@@ -122,11 +122,11 @@ public class CallGraphAnalysis {
     for (CallFrame f : callStack) {
       Utils.infoPrintln(f.method.fullname() + " hashcode: " + f.getId() + " heap: " + f.heap.getId());
     }
-    while (!callStack.isEmpty() && iterations++ < 30000) {        
+    while (!callStack.isEmpty() && iterations++ < 35000) {        
       HeapEvent currEvent;
       CallFrame frame = callStack.peek();
       Utils.infoPrintln("callStack " + callStack.getId() + " frame hascode: " + frame.getId());
-      if (eventIterator.index() > 3400)
+      if (eventIterator.index() > 3500)
         Utils.DEBUG_PRINT = true;
       if (frame.parent != null) {
         Utils.infoPrintln("parent frame " + frame.parent.toString());

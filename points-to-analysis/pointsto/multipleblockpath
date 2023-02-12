@@ -1561,3 +1561,12 @@ org.apache.lucene.index.IndexReader.ensureOpen()V:2
 org.apache.lucene.index.SegmentReader.getNorms(Ljava/lang/String;)[B:2
 org.apache.lucene.index.SegmentReader.getNorms(Ljava/lang/String;)[B:10
 org.apache.lucene.index.SegmentReader.norms(Ljava/lang/String;)[B:2
+org.apache.lucene.search.TermScorer.next()Z:1
+org.apache.lucene.index.SegmentTermDocs.read([I[I)I:2
+org.apache.lucene.index.SegmentTermDocs.read([I[I)I:12
+org.apache.lucene.search.TermScorer.next()Z:3
+org.apache.lucene.store.FSDirectory$FSIndexInput.close()V:2
+org.apache.lucene.search.TermScorer.score(Lorg/apache/lucene/search/HitCollector;I)Z:10
+org.dacapo.lusearch.Search$QueryProcessor.doPagingSearch(Lorg/apache/lucene/search/Query;)V:2
+org.dacapo.lusearch.Search$QueryProcessor.doPagingSearch(Lorg/apache/lucene/search/Query;)V:4
+org.dacapo.lusearch.Search$QueryProcessor.doPagingSearch(Lorg/apache/lucene/search/Query;)V:8

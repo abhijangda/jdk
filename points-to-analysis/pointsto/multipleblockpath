@@ -1558,3 +1558,6 @@ org.apache.lucene.index.SegmentTermEnum.scanTo(Lorg/apache/lucene/index/Term;)I:
 org.apache.lucene.index.TermBuffer.toTerm()Lorg/apache/lucene/index/Term;:1
 org.apache.lucene.index.IndexReader.ensureOpen()V:2
 org.apache.lucene.index.IndexReader.ensureOpen()V:2
+org.apache.lucene.index.SegmentReader.getNorms(Ljava/lang/String;)[B:2
+org.apache.lucene.index.SegmentReader.getNorms(Ljava/lang/String;)[B:10
+org.apache.lucene.index.SegmentReader.norms(Ljava/lang/String;)[B:2

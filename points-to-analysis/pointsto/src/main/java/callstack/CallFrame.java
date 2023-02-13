@@ -783,15 +783,17 @@ public class CallFrame {
             ShimpleMethod eventMethod = ParsedMethodMap.v().getOrParseToShimple(currEvent.method);
             for (Unit targetstmt : tableSwitch.getTargets()) {
               Block targetBlock = method.getBlockForStmt(targetstmt);
-              if (method.allPathsToCallee(this, targetBlock, eventMethod).size() > 0) {
-                targets.add(targetBlock);
-              }
+              targets.add(targetBlock);
+              // if (method.allPathsToCallee(this, targetBlock, eventMethod).size() > 0) {
+              //   targets.add(targetBlock);
+              // }
             }
             if (tableSwitch.getDefaultTarget() != null) {
               Block targetBlock = method.getBlockForStmt(tableSwitch.getDefaultTarget());
-              if (method.allPathsToCallee(this, targetBlock, eventMethod).size() > 0) {
-                targets.add(targetBlock);
-              }
+              targets.add(targetBlock);
+              // if (method.allPathsToCallee(this, targetBlock, eventMethod).size() > 0) {
+              //   targets.add(targetBlock);
+              // }
             }
 
             throw new MultipleNextBlocksException(this, targets);
@@ -809,15 +811,17 @@ public class CallFrame {
             ShimpleMethod eventMethod = ParsedMethodMap.v().getOrParseToShimple(currEvent.method);
             for (Unit targetstmt : lookup.getTargets()) {
               Block targetBlock = method.getBlockForStmt(targetstmt);
-              if (method.allPathsToCallee(this, targetBlock, eventMethod).size() > 0) {
-                targets.add(targetBlock);
-              }
+              targets.add(targetBlock);
+              // if (method.allPathsToCallee(this, targetBlock, eventMethod).size() > 0) {
+              //   targets.add(targetBlock);
+              // }
             }
             if (lookup.getDefaultTarget() != null) {
               Block targetBlock = method.getBlockForStmt(lookup.getDefaultTarget());
-              if (method.allPathsToCallee(this, targetBlock, eventMethod).size() > 0) {
-                targets.add(targetBlock);
-              }
+              targets.add(targetBlock);
+              // if (method.allPathsToCallee(this, targetBlock, eventMethod).size() > 0) {
+              //   targets.add(targetBlock);
+              // }
             }
 
             throw new MultipleNextBlocksException(this, targets);

@@ -126,7 +126,7 @@ public class CallGraphAnalysis {
       HeapEvent currEvent;
       CallFrame frame = callStack.peek();
       Utils.infoPrintln("callStack " + callStack.getId() + " frame hascode: " + frame.getId());
-      if (eventIterator.index() > 3500)
+      if (eventIterator.index() > 3600)
         Utils.DEBUG_PRINT = true;
       if (frame.parent != null) {
         Utils.infoPrintln("parent frame " + frame.parent.toString());
@@ -289,13 +289,15 @@ public class CallGraphAnalysis {
     }
     
     Utils.infoPrintln("DONE");
-
-    if (eventIterator.index() >= 3584) {
+    Utils.infoPrintln(callStack.toString());
+    if (eventIterator.index() >= 3640) {
 
       Utils.debugPrintln(multipleNextBlockPath.toString());
-      Utils.infoPrintln("Edges:");
 
-      Utils.infoPrintln(edges.toString());
+      
+      // Utils.infoPrintln("Edges:");
+
+      // Utils.infoPrintln(edges.toString());
 
       System.exit(0);
     }

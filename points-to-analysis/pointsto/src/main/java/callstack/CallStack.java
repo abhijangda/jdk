@@ -14,4 +14,16 @@ public class CallStack extends Stack<CallFrame> {
   public int getId() {
     return id;
   }
+
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    for (CallFrame frame : this) {
+      builder.append(frame.method.fullname());
+      builder.append(" at ");
+      builder.append(frame.getPC());
+      builder.append("\n");
+    }
+
+    return builder.toString();
+  }
 }

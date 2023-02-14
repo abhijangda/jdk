@@ -615,8 +615,20 @@ public class CallFrame {
                   eventsIterator.moveNext();
                 }
                 pc.counter = method.statements.size();
-              }
-              else {
+              } else if (eventsIterator.index() >= 3600) {
+                HashMap<Block, ArrayList<CFGPath>> allPaths1 = method.allPathsToCallee(this, succ1, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
+                HashMap<Block, ArrayList<CFGPath>> allPaths2 = method.allPathsToCallee(this, succ2, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
+                
+                if (allPaths1.size() > 0 && allPaths2.size() > 0) {
+                  throw new MultipleNextBlocksException(this, succ1, succ2);
+                } else if (allPaths1.size() > 0) {
+                  throw new MultipleNextBlocksException(this, succ1);
+                } else if (allPaths2.size() > 0) {
+                  throw new MultipleNextBlocksException(this, succ2);
+                } else {
+                  pc.counter = method.statements.size();
+                }
+              } else {
                 throw new MultipleNextBlocksException(this, succ1, succ2);
               }
             } else {

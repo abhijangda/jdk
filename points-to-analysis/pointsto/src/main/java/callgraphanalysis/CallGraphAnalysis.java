@@ -162,18 +162,13 @@ public class CallGraphAnalysis {
       //   frame.updateValuesWithHeapEvent(mainThreadEvents.get(heapEventIdx));
       //   heapEventIdx++;
       // }
-      if (iterations >= 3900 && eventIterator.index() >= 654 && frame.method.fullname().contains("org.apache.lucene.queryParser.QueryParser.Term")) {
-        // Utils.infoPrintln(frame.method.fullname());
-        // Utils.infoPrintln(eventIterator.index());
-        break;
-      }
       CallGraphNode parentNode = frameToGraphNode.get(frame);
       CallFrame nextFrame = null;
       try {
         nextFrame = frame.nextInvokeMethod(eventIterator);
       } catch (InvalidCallStackException e) {
         Utils.debugPrintln("");
-        e.printStackTrace();
+        Utils.infoPrintln(e.toString());
         Utils.infoPrintln(eventIterator.index());
         Utils.debugPrintln(frame.method.fullname());
         break;
@@ -250,7 +245,7 @@ public class CallGraphAnalysis {
           if (nextBlockFromPath) continue;
         }
 
-        // Utils.debugPrintln("");
+        Utils.debugPrintln("");
         // System.exit(0);
       } catch (CallGraphException e) {
         e.printStackTrace();
@@ -288,9 +283,9 @@ public class CallGraphAnalysis {
       }
     }
     
-    Utils.infoPrintln("DONE");
+    Utils.infoPrintln("DONE " + iterations);
     Utils.infoPrintln(callStack.toString());
-    if (eventIterator.index() >= 3640) {
+    if (eventIterator.index() >= 3630) {
 
       Utils.debugPrintln(multipleNextBlockPath.toString());
 
@@ -299,7 +294,7 @@ public class CallGraphAnalysis {
 
       // Utils.infoPrintln(edges.toString());
 
-      System.exit(0);
+      // System.exit(0);
     }
     if (!multipleNextBlockPath.loaded)
       multipleNextBlockPath.remove(multipleNextBlockPath.size() - 1);

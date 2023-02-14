@@ -20,7 +20,7 @@ public class CallStack extends Stack<CallFrame> {
     for (CallFrame frame : this) {
       builder.append(frame.method.fullname());
       builder.append(" at ");
-      builder.append(frame.getPC());
+      builder.append(frame.getCurrStmt());
       builder.append("\n");
     }
 

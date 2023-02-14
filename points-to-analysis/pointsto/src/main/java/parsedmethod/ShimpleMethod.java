@@ -611,7 +611,7 @@ public class ShimpleMethod {
       //If the block instead does a heap event then do not go 
       //to the successors
       if (heapUpdateStmtBeforeCall(start, callee) != null) {
-        // Utils.infoPrintln(start.getIndexInMethod());
+        Utils.debugPrintln(start.getIndexInMethod());
       } else {
         boolean validPath = true;
         Iterator<Unit> stmtIter = start.iterator();
@@ -657,7 +657,7 @@ public class ShimpleMethod {
             if (!validPath) break;
           }
 
-          // Utils.debugPrintln(validPath + " for " + stmt  + " in " + fullname());
+          Utils.debugPrintln(validPath + " for " + stmt  + " in " + fullname());
         }
         
         if (validPath) {

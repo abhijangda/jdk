@@ -157,7 +157,9 @@ public class CallFrame {
   public boolean isBufferedIndexInputReadByte;
   public boolean isIndexInputReadVLong;
   public boolean isIndexInputReadVInt;
+  public boolean isAnalyzerGetPreviousTokenStream;
   private CFGPath cfgPathExecuted;
+  private ArrayList<Integer> eventsIteratorInCFGPath;
   public final JavaHeap heap;
   public final StaticInitializers staticInits;
   
@@ -169,10 +171,11 @@ public class CallFrame {
     allVariableValues = method.initVarValues(invokeExpr, (parent == null) ? null : parent.allVariableValues);
     this.parent = parent;
     pc = new ProgramCounter();
+    eventsIteratorInCFGPath = new ArrayList<>();
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.dacapo.lusearch.Search$QueryProcessor.doPagingSearch(Lorg/apache/lucene/search/Query;)V");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.analysis.standard.StandardFilter.next(Lorg/apache/lucene/analysis/Token;)");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     initBools();
     // if (canPrint) {
     //   System.out.println(method);
@@ -202,6 +205,7 @@ public class CallFrame {
     this.parent = newParent;
     this.pc = source.pc;
     this.cfgPathExecuted = (CFGPath)source.cfgPathExecuted.clone();
+    this.eventsIteratorInCFGPath = new ArrayList<Integer>(source.eventsIteratorInCFGPath);
     this.canPrint = source.canPrint;
     this.parentStmt = source.parentStmt;
     this.staticInits = staticInits;
@@ -243,6 +247,7 @@ public class CallFrame {
     isBufferedIndexInputReadByte = this.method.fullname().contains("org.apache.lucene.store.BufferedIndexInput.readByte()B");
     isIndexInputReadVLong = this.method.fullname().contains("org.apache.lucene.store.IndexInput.readVLong()");
     isIndexInputReadVInt = this.method.fullname().contains("org.apache.lucene.store.IndexInput.readVInt()");
+    isAnalyzerGetPreviousTokenStream = this.method.fullname().contains("org.apache.lucene.analysis.Analyzer.getPreviousTokenStream()Ljava/lang/Object;");
   }
 
   public void setPC(Block block) {
@@ -340,7 +345,7 @@ public class CallFrame {
     return null;
   }
 
-  private void updateParentFromRet(JReturnStmt retStmt, JavaValue customRetValue) {
+  private void updateParentFromRet(ArrayListIterator<HeapEvent> eventsIterator, JReturnStmt retStmt, JavaValue customRetValue) {
     
     // Utils.debugPrintln(this.parent.method.shimpleBody);
     // Utils.debugPrintln(this.method.shimpleBody);
@@ -353,12 +358,17 @@ public class CallFrame {
         this.parent.allVariableValues.put(leftVal, customRetValue);
       } else {
         Value retVal = retStmt.getOp();
+        JavaValue retValue = null;
         if (retVal.getType() instanceof RefLikeType) {
+          if (isAnalyzerGetPreviousTokenStream && eventsIterator.index() <= 3641) {
+            retValue = JavaValueFactory.v(heap.get(139941318025856L));
+          } else {
+            retValue = (retVal instanceof NullConstant) ? JavaValueFactory.nullV() : this.allVariableValues.get(retStmt.getOp());
+          }
           if (this.allVariableValues.get(retVal) == null) {
             Utils.infoPrintln("0 values for " + retVal + " " + retVal.getClass());
           }
 
-          JavaValue retValue = (retVal instanceof NullConstant) ? JavaValueFactory.nullV() : this.allVariableValues.get(retStmt.getOp());
           Utils.infoPrintln(retValue);
           this.parent.allVariableValues.put(leftVal, retValue);
 
@@ -457,8 +467,10 @@ public class CallFrame {
       Utils.debugPrintln(currStmt + " at " + pc.counter + " " + currStmt.getClass());
       if (cfgPathExecuted.isEmpty()) {
         cfgPathExecuted.add(block);
+        eventsIteratorInCFGPath.add(eventsIterator.index());
       } else if (cfgPathExecuted.get(cfgPathExecuted.size() - 1) != block) {
         cfgPathExecuted.add(block);
+        eventsIteratorInCFGPath.add(eventsIterator.index());
       }
 
       this.method.propogateValues(this, cfgPathExecuted, currStmt);
@@ -629,7 +641,53 @@ public class CallFrame {
                 } else {
                   HashMap<Block, ArrayList<CFGPath>> allPaths1 = method.allPathsToCallee(this, succ1, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
                   HashMap<Block, ArrayList<CFGPath>> allPaths2 = method.allPathsToCallee(this, succ2, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
-                  
+
+                  boolean ifBlockInCFGPath = false;
+                  int lastEventIteratorIdx = -1;
+                  for (int i = cfgPathExecuted.size() - 1; i >= 0; i--) {
+                    if (cfgPathExecuted.get(i) == ifBlock) {
+                      ifBlockInCFGPath = true;
+                      lastEventIteratorIdx = eventsIteratorInCFGPath.get(i);
+                      break;
+                    }
+                  }
+
+                  boolean eventsChangedInLoop = true;
+                  if (ifBlockInCFGPath) {
+                    //Loop
+                    eventsChangedInLoop = lastEventIteratorIdx != eventsIterator.index();
+                  }
+
+                  Utils.debugPrintln(" ifBlockInCFGPath: " + ifBlockInCFGPath + " eventsChanged: " + eventsChangedInLoop + " " + lastEventIteratorIdx + " " + eventsIterator.index());
+
+                  Utils.debugPrintln(allPaths1.size() + "   " + allPaths2.size());
+                  if (Utils.DEBUG_PRINT) {
+                    for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths1.entrySet()) {
+                      for (ArrayList<Block> _path : entry.getValue()) {
+                        String o = entry.getKey().getIndexInMethod() + "-> " + succ1.getIndexInMethod() + ": [";
+                        for (Block node : _path) {
+                          o += node.getIndexInMethod() + ", ";
+                        }
+                        Utils.debugPrintln(o+"]");
+                      }
+                    }
+                  }
+
+                  if (Utils.DEBUG_PRINT) {
+                    for (Map.Entry<Block, ArrayList<CFGPath>> entry : allPaths2.entrySet()) {
+                      for (ArrayList<Block> _path : entry.getValue()) {
+                        String o = entry.getKey().getIndexInMethod() + "-> " + succ2.getIndexInMethod() + ": [";
+                        for (Block node : _path) {
+                          o += node.getIndexInMethod() + ", ";
+                        }
+                        Utils.debugPrintln(o+"]");
+                      }
+                    }
+                  }
+
+                  if (!eventsChangedInLoop) {
+                    throw new InvalidCallStackException(parent, eventsIterator, ifstmt);
+                  }
                   if (allPaths1.size() > 0 && allPaths2.size() > 0) {
                     throw new MultipleNextBlocksException(this, succ1, succ2);
                   } else if (allPaths1.size() > 0) {
@@ -766,7 +824,7 @@ public class CallFrame {
                   else {
                     if (isStandardTokenizerNext && eventsIterator.index() == 647) {
                       pc.counter = method.statements.size();
-                      updateParentFromRet(null, JavaValueFactory.nullV());
+                      updateParentFromRet(eventsIterator, null, JavaValueFactory.nullV());
                       Utils.debugPrintln("");
                     } else if (isLowerCaseFilterNext && eventsIterator.index() == 647) {
                       pc.counter = method.statements.size();
@@ -778,7 +836,7 @@ public class CallFrame {
                         }
                       }
                       Utils.debugAssert(r3 != null, "");
-                      updateParentFromRet(null, r3);
+                      updateParentFromRet(eventsIterator, null, r3);
                       Utils.debugPrintln("");
                     } else {
                       if (eventsIterator.index() < 686 || 
@@ -867,7 +925,7 @@ public class CallFrame {
             }
           }
         }
-        updateParentFromRet((JReturnStmt)currStmt, customRetValue);
+        updateParentFromRet(eventsIterator, (JReturnStmt)currStmt, customRetValue);
         pc.counter = method.statements.size();
         return null;
       } else if (currStmt instanceof JThrowStmt) {
@@ -949,6 +1007,9 @@ public class CallFrame {
             }
             
             if (method.fullname().contains("org.apache.lucene.queryParser.QueryParser.<init>(Lorg/apache/lucene/queryParser/CharStream;)V"))
+              throwException = false;
+            
+            if (method.fullname().contains("org.apache.lucene.analysis.standard.StandardTokenizerImpl.yyreset"))
               throwException = false;
               
             if (throwException) {

@@ -296,7 +296,7 @@ public class CallGraphAnalysis {
 
       // System.exit(0);
     }
-    if (!multipleNextBlockPath.loaded)
+    if (!multipleNextBlockPath.loaded && multipleNextBlockPath.size() > 0)
       multipleNextBlockPath.remove(multipleNextBlockPath.size() - 1);
     // System.exit(0);
     //String callGraphTxt = rootNode.toString();

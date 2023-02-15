@@ -26,19 +26,27 @@ print("Edges of first", len(firstEdges))
 print("Edges of second", len(secondEdges))
 
 found = 0
+notfound = 0
 for e in firstEdges:
   if e in secondEdges:
     #print(e)
     found += 1
-  else:
-    print(e)
+  elif "clinit" not in e:
+    # print(e)
+    notfound += 1
+  # else:
+  #   print(e)
 
-print("Edges of first found in second: ", found, "Edges NOT found in second: ", len(firstEdges) - found)
+print("Edges of first found in second: ", found, "Edges NOT found in second: ", notfound)
 
 found = 0
+notfound = 0
 for e in secondEdges:
   if e in firstEdges:
     #print(e)
     found += 1
+  elif "clinit" not in e:
+    print(e)
+    notfound += 1  
 
-print("Edges of second found in first: ", found, "Edges NOT found in first: ", len(secondEdges) - found)
+print("Edges of second found in first: ", found, "Edges NOT found in first: ", notfound)

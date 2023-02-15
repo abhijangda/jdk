@@ -44,7 +44,7 @@ callstacks = processCallTraces(call_sites)
 newedges = set()
 
 for edge in callEdges:
-  validEdge = True
+  validEdge = False
   for stack in callstacks:
     m1idx = -1
     m2idx = -1

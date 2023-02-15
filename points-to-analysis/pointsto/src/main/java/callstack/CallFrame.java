@@ -644,7 +644,7 @@ public class CallFrame {
 
                   boolean ifBlockInCFGPath = false;
                   int lastEventIteratorIdx = -1;
-                  for (int i = cfgPathExecuted.size() - 1; i >= 0; i--) {
+                  for (int i = cfgPathExecuted.size() - 2; i >= 0; i--) {
                     if (cfgPathExecuted.get(i) == ifBlock) {
                       ifBlockInCFGPath = true;
                       lastEventIteratorIdx = eventsIteratorInCFGPath.get(i);
@@ -686,9 +686,9 @@ public class CallFrame {
                   }
 
                   if (!eventsChangedInLoop) {
-                    throw new InvalidCallStackException(parent, eventsIterator, ifstmt);
-                  }
-                  if (allPaths1.size() > 0 && allPaths2.size() > 0) {
+                    pc.counter = method.statements.size();
+                    //TODO: Go to the exit of loop
+                  } else if (allPaths1.size() > 0 && allPaths2.size() > 0) {
                     throw new MultipleNextBlocksException(this, succ1, succ2);
                   } else if (allPaths1.size() > 0) {
                     throw new MultipleNextBlocksException(this, succ1);

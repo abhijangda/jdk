@@ -201,6 +201,7 @@ public class CallGraphAnalysis {
               //   Utils.infoPrintln(edges.toString());
               // }
               Utils.debugAssert(pair.first == frame.method, "%s != %s\n%s", pair.first.fullname(), frame.method.fullname(), frame.method.basicBlockStr());
+              Utils.debugAssert(e.nextBlocks.contains(pair.second), pair.second + " not in " + e.nextBlocks.toString());
               if (pair.second == block) {
                 multipleNextBlockPath.remove(0);
                 gotoBlock = true;

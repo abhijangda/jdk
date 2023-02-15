@@ -159,6 +159,7 @@ public class CallFrame {
   public boolean isIndexInputReadVInt;
   public boolean isAnalyzerGetPreviousTokenStream;
   public boolean isQueryParserTokenManagerJJMoveNfa_3;
+  public boolean isSegmentTermEnumScanTo;
   private CFGPath cfgPathExecuted;
   private ArrayList<Integer> eventsIteratorInCFGPath;
   public final JavaHeap heap;
@@ -176,7 +177,7 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.analysis.standard.StandardFilter.next(Lorg/apache/lucene/analysis/Token;)");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("org.apache.lucene.index.SegmentTermEnum.scanTo(Lorg/apache/lucene/index/Term;)I");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     initBools();
     // if (canPrint) {
     //   System.out.println(method);
@@ -250,6 +251,7 @@ public class CallFrame {
     isIndexInputReadVInt = this.method.fullname().contains("org.apache.lucene.store.IndexInput.readVInt()");
     isAnalyzerGetPreviousTokenStream = this.method.fullname().contains("org.apache.lucene.analysis.Analyzer.getPreviousTokenStream()Ljava/lang/Object;");
     isQueryParserTokenManagerJJMoveNfa_3 = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParserTokenManager.jjMoveNfa_3(II)I");
+    isSegmentTermEnumScanTo = this.method.fullname().contains("org.apache.lucene.index.SegmentTermEnum.scanTo(Lorg/apache/lucene/index/Term;)I");
   }
 
   public void setPC(Block block) {
@@ -630,6 +632,12 @@ public class CallFrame {
               pc.counter = method.statements.size();
               continue;
             }
+
+            if (isSegmentTermEnumScanTo && eventsIterator.index() >= 3600 && ifBlock.getIndexInMethod() == 2 && currEvent.methodStr.contains("org.apache.lucene.index.TermBuffer.set(Lorg/apache/lucene/index/TermBuffer;)")) {
+              pc.counter = method.stmtToIndex.get(method.getBlock(3).getHead());
+              continue;
+            }
+            
             if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
               //End current function
               pc.counter = method.statements.size();
@@ -659,7 +667,7 @@ public class CallFrame {
                   }
 
                   boolean eventsChangedInLoop = true;
-                  if (ifBlockInCFGPath) {
+                  if (ifBlockInCFGPath && lastEventIteratorIdx != -1) {
                     //Loop
                     eventsChangedInLoop = lastEventIteratorIdx != eventsIterator.index();
                   }

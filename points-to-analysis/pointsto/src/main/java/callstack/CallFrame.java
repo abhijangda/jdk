@@ -158,6 +158,7 @@ public class CallFrame {
   public boolean isIndexInputReadVLong;
   public boolean isIndexInputReadVInt;
   public boolean isAnalyzerGetPreviousTokenStream;
+  public boolean isQueryParserTokenManagerJJMoveNfa_3;
   private CFGPath cfgPathExecuted;
   private ArrayList<Integer> eventsIteratorInCFGPath;
   public final JavaHeap heap;
@@ -248,6 +249,7 @@ public class CallFrame {
     isIndexInputReadVLong = this.method.fullname().contains("org.apache.lucene.store.IndexInput.readVLong()");
     isIndexInputReadVInt = this.method.fullname().contains("org.apache.lucene.store.IndexInput.readVInt()");
     isAnalyzerGetPreviousTokenStream = this.method.fullname().contains("org.apache.lucene.analysis.Analyzer.getPreviousTokenStream()Ljava/lang/Object;");
+    isQueryParserTokenManagerJJMoveNfa_3 = this.method.fullname().contains("org.apache.lucene.queryParser.QueryParserTokenManager.jjMoveNfa_3(II)I");
   }
 
   public void setPC(Block block) {
@@ -585,7 +587,7 @@ public class CallFrame {
               currStmt = succ2.getHead();
               pc.counter = method.stmtToIndex.get(currStmt);
             } else {
-              if (isQueryParserGetFieldQuery && ifBlock.getIndexInMethod() == 14 && eventsIterator.index() <= 650) {
+              if (isQueryParserGetFieldQuery && ifBlock.getIndexInMethod() == 14 && (eventsIterator.index() <= 650 || (eventsIterator.index() >= 650 && eventsIterator.index() <= 3660))) {
                 pc.counter = method.stmtToIndex.get(method.getBlock(17).getHead());
               } else {
                 Utils.infoPrintln("NOT found in any " + currEvent + " " + currStmt);
@@ -624,6 +626,10 @@ public class CallFrame {
               continue;
             }
             
+            if (isQueryParserTokenManagerJJMoveNfa_3 && eventsIterator.index() <= 3662) {
+              pc.counter = method.statements.size();
+              continue;
+            }
             if(isMethodInCallStack(this, ParsedMethodMap.v().getOrParseToShimple(currEvent.method))) {
               //End current function
               pc.counter = method.statements.size();

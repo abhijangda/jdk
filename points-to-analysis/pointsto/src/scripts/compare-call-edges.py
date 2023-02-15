@@ -30,6 +30,8 @@ for e in firstEdges:
   if e in secondEdges:
     #print(e)
     found += 1
+  else:
+    print(e)
 
 print("Edges of first found in second: ", found, "Edges NOT found in second: ", len(firstEdges) - found)
 

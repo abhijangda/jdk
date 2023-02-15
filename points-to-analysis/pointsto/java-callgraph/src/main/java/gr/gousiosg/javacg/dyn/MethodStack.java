@@ -49,6 +49,7 @@ public class MethodStack {
     static FileWriter callSitesWriter;
     static StringBuffer sb;
     static long threadid = -1L;
+    static boolean instrumentStackTrace = false;
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -64,25 +65,33 @@ public class MethodStack {
                     });
 
                     for (Pair<String, String> key : keys) {
+                        if (key.first.contains("java.") || key.second.contains("java."))
+                            continue;
                         fw.write(key + "\n");
                     }
                 
                     fw.close();
-
-                    for (String site : callSites) {
-                        callSitesWriter.write(site + "\n\n");
+                    if (instrumentStackTrace) {
+                        for (String site : callSites) {
+                            callSitesWriter.write(site + "\n\n");
+                        }
+                        callSitesWriter.close();
                     }
-                    callSitesWriter.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         });
         File log = new File("call-edges-2.txt");
-        File call_sites = new File("call-sites.txt");
+        File call_sites = null;
+        if (instrumentStackTrace) {
+            call_sites = new File("call-sites.txt");
+        }
         try {
             fw = new FileWriter(log);
-            callSitesWriter = new FileWriter(call_sites);
+            if (instrumentStackTrace) {
+                callSitesWriter = new FileWriter(call_sites);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -98,12 +107,14 @@ public class MethodStack {
         if (Thread.currentThread().getId() != threadid)
             return;
 
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        StringBuilder stackTraceStr = new StringBuilder();
-        for (StackTraceElement elem : stackTrace) {
-            stackTraceStr.append(elem.toString() + "\n");
+        if (instrumentStackTrace) {
+            StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+            StringBuilder stackTraceStr = new StringBuilder();
+            for (StackTraceElement elem : stackTrace) {
+                stackTraceStr.append(elem.toString() + "\n");
+            }
+            callSites.add(stackTraceStr.toString());
         }
-        callSites.add(stackTraceStr.toString());
         
         if (!stack.isEmpty()) {
             Pair<String, String> p = new Pair<>(stack.peek(), callname);

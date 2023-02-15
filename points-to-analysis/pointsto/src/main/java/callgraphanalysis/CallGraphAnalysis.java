@@ -285,17 +285,17 @@ public class CallGraphAnalysis {
     }
     
     Utils.infoPrintln("DONE " + iterations);
-    Utils.infoPrintln(callStack.toString());
-    if (eventIterator.index() >= 3630) {
+    // Utils.infoPrintln(callStack.toString());
+    if (eventIterator.index() >= 3868) {
 
       Utils.debugPrintln(multipleNextBlockPath.toString());
 
       
-      // Utils.infoPrintln("Edges:");
+      Utils.infoPrintln("Edges:");
 
-      // Utils.infoPrintln(edges.toString());
+      Utils.infoPrintln(edges.toString());
 
-      // System.exit(0);
+      System.exit(0);
     }
     if (!multipleNextBlockPath.loaded && multipleNextBlockPath.size() > 0)
       multipleNextBlockPath.remove(multipleNextBlockPath.size() - 1);

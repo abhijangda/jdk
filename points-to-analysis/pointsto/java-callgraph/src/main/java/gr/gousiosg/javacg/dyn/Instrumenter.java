@@ -91,8 +91,9 @@ public class Instrumenter implements ClassFileTransformer {
                 } catch (PatternSyntaxException pse) {
                     err("pattern: " + pattern + " not valid, ignoring");
                 }
-                if (argtype.equals("incl"))
+                if (argtype.equals("incl")) {
                     pkgIncl.add(p);
+                }
                 else
                     pkgExcl.add(p);
             }

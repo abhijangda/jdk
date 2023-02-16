@@ -21,6 +21,11 @@ public class JavaBool extends JavaPrimValue implements JavaPrimOps {
     return null;
   }
 
+  public JavaPrimValue mul(JavaPrimValue o) {
+    Utils.shouldNotReachHere();
+    return null;
+  }
+
   public JavaBool not() {
     return JavaValueFactory.v(!value);
   }

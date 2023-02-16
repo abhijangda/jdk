@@ -22,6 +22,10 @@ public class JavaDouble extends JavaPrimValue implements JavaPrimOps {
     return v((value - ((JavaDouble)o).value));
   }
 
+  public JavaPrimValue mul(JavaPrimValue o) {
+    return v((value * ((JavaDouble)o).value));
+  }
+
   public JavaBool eq(JavaPrimValue o) {
     return JavaValueFactory.v(((JavaDouble)o).value == value);
   }

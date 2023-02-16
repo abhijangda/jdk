@@ -12,7 +12,8 @@ public abstract class JavaPrimValue extends JavaValue {
 
   public abstract JavaPrimValue add(JavaPrimValue o);
   public abstract JavaPrimValue minus(JavaPrimValue o);
-  
+  public abstract JavaPrimValue mul(JavaPrimValue o);
+
   public abstract JavaBool eq(JavaPrimValue o);
   public abstract JavaBool neq(JavaPrimValue o);
   public abstract JavaBool gt(JavaPrimValue o);
@@ -26,6 +27,8 @@ public abstract class JavaPrimValue extends JavaValue {
       return primVal1.add(primVal2);
     } else if (binop instanceof JSubExpr) {
       return primVal1.minus(primVal2);
+    } else if (binop instanceof JMulExpr) {
+      return primVal1.mul(primVal2);
     } else if (binop instanceof JDivExpr) {
     } else if (binop instanceof JMulExpr) {
     } else if (binop instanceof JRemExpr) {

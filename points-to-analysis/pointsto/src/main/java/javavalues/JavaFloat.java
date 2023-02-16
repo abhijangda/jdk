@@ -22,6 +22,10 @@ public class JavaFloat extends JavaPrimValue implements JavaPrimOps {
     return v((value - ((JavaFloat)o).value));
   }
 
+  public JavaPrimValue mul(JavaPrimValue o) {
+    return v((value * ((JavaFloat)o).value));
+  }
+
   public JavaBool eq(JavaPrimValue o) {
     return JavaValueFactory.v(((JavaFloat)o).value == value);
   }

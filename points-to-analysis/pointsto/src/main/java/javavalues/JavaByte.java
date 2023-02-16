@@ -22,6 +22,10 @@ public class JavaByte extends JavaPrimValue implements JavaPrimOps {
     return v((value - ((JavaByte)o).value));
   }
 
+  public JavaPrimValue mul(JavaPrimValue o) {
+    return v((value * ((JavaByte)o).value));
+  }
+
   public JavaBool eq(JavaPrimValue o) {
     return JavaValueFactory.v(((JavaByte)o).value == value);
   }

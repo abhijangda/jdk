@@ -22,6 +22,10 @@ public class JavaChar extends JavaPrimValue implements JavaPrimOps {
     return v((value - ((JavaChar)o).value));
   }
 
+  public JavaPrimValue mul(JavaPrimValue o) {
+    return v((value * ((JavaChar)o).value));
+  }
+
   public JavaBool eq(JavaPrimValue o) {
     return JavaValueFactory.v(((JavaChar)o).value == value);
   }

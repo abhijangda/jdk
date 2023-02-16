@@ -22,6 +22,10 @@ public class JavaLong extends JavaPrimValue implements JavaPrimOps {
     return v((value - ((JavaLong)o).value));
   }
 
+  public JavaPrimValue mul(JavaPrimValue o) {
+    return v((value * ((JavaLong)o).value));
+  }
+
   public JavaBool eq(JavaPrimValue o) {
     return JavaValueFactory.v(((JavaLong)o).value == value);
   }

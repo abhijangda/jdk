@@ -22,6 +22,10 @@ public class JavaInt extends JavaPrimValue implements JavaPrimOps {
     return v((value - ((JavaInt)o).value));
   }
 
+  public JavaPrimValue mul(JavaPrimValue o) {
+    return v((value * ((JavaInt)o).value));
+  }
+
   public JavaBool eq(JavaPrimValue o) {
     return JavaValueFactory.v(((JavaInt)o).value == value);
   }

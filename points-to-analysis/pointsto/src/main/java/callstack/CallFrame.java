@@ -710,7 +710,17 @@ public class CallFrame {
                   } else if (allPaths2.size() > 0) {
                     throw new MultipleNextBlocksException(this, succ2);
                   } else {
-                    pc.counter = method.statements.size();
+                    HashMap<Block, ArrayList<CFGPath>> pathToExit1 = method.pathToExits(succ1);
+                    HashMap<Block, ArrayList<CFGPath>> pathToExit2 = method.pathToExits(succ2);
+                    if (pathToExit1.size() > 0 && pathToExit2.size() > 0)
+                      pc.counter = method.statements.size();
+                    else if (pathToExit1.size() > 0) {
+                      pc.counter = method.stmtToIndex.get(succ1.getHead());
+                    } else if (pathToExit2.size() > 0) {
+                      pc.counter = method.stmtToIndex.get(succ2.getHead());
+                    } else {
+                      Utils.shouldNotReachHere();
+                    }
                   }
                 }
               } else {

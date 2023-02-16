@@ -1561,5 +1561,3 @@ org.apache.lucene.index.IndexReader.ensureOpen()V:2
 org.apache.lucene.index.SegmentReader.getNorms(Ljava/lang/String;)[B:2
 org.apache.lucene.index.SegmentReader.getNorms(Ljava/lang/String;)[B:10
 org.apache.lucene.index.SegmentReader.norms(Ljava/lang/String;)[B:2
-org.apache.lucene.queryParser.QueryParser.Modifiers()I:1
-org.apache.lucene.queryParser.QueryParser.jj_2_1(I)Z:3

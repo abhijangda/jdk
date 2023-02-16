@@ -1580,13 +1580,3 @@ org.apache.lucene.analysis.standard.StandardTokenizer.next(Lorg/apache/lucene/an
 org.apache.lucene.analysis.standard.StandardTokenizer.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;:9
 org.apache.lucene.analysis.LowerCaseFilter.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;:1
 org.apache.lucene.analysis.standard.StandardFilter.next(Lorg/apache/lucene/analysis/Token;)Lorg/apache/lucene/analysis/Token;:1
-org.apache.lucene.queryParser.QueryParser.addClause(Ljava/util/List;IILorg/apache/lucene/search/Query;)V:1
-org.apache.lucene.queryParser.QueryParser.addClause(Ljava/util/List;IILorg/apache/lucene/search/Query;)V:2
-org.apache.lucene.queryParser.QueryParser.addClause(Ljava/util/List;IILorg/apache/lucene/search/Query;)V:4
-org.apache.lucene.queryParser.QueryParser.addClause(Ljava/util/List;IILorg/apache/lucene/search/Query;)V:5
-org.apache.lucene.queryParser.QueryParser.addClause(Ljava/util/List;IILorg/apache/lucene/search/Query;)V:13
-org.apache.lucene.queryParser.QueryParser.addClause(Ljava/util/List;IILorg/apache/lucene/search/Query;)V:17
-org.apache.lucene.queryParser.QueryParser.addClause(Ljava/util/List;IILorg/apache/lucene/search/Query;)V:19
-org.apache.lucene.queryParser.QueryParser.Query(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:1
-org.apache.lucene.queryParser.QueryParser.Query(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:4
-org.apache.lucene.queryParser.QueryParser.Query(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:6

@@ -1563,12 +1563,3 @@ org.apache.lucene.index.SegmentReader.getNorms(Ljava/lang/String;)[B:10
 org.apache.lucene.index.SegmentReader.norms(Ljava/lang/String;)[B:2
 org.apache.lucene.queryParser.QueryParser.Modifiers()I:1
 org.apache.lucene.queryParser.QueryParser.jj_2_1(I)Z:3
-org.apache.lucene.queryParser.QueryParser.Clause(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:8
-org.apache.lucene.queryParser.QueryParser.Clause(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:10
-org.apache.lucene.queryParser.QueryParser.Clause(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:12
-org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:2
-org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:110
-org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:111
-org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:115
-org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:118
-org.apache.lucene.queryParser.QueryParser.Term(Ljava/lang/String;)Lorg/apache/lucene/search/Query;:121

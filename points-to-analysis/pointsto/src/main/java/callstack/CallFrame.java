@@ -650,9 +650,10 @@ public class CallFrame {
                 }
                 pc.counter = method.statements.size();
               } else if (eventsIterator.index() >= 3600) {
-                if (method.fullname().contains("org.apache.lucene.queryParser.QueryParser.addClause")) {
-                  throw new MultipleNextBlocksException(this, succ1, succ2);
-                } else {
+                // if (method.fullname().contains("org.apache.lucene.queryParser.QueryParser.addClause")) {
+                //   throw new MultipleNextBlocksException(this, succ1, succ2);
+                // } else 
+                {
                   HashMap<Block, ArrayList<CFGPath>> allPaths1 = method.allPathsToCallee(this, succ1, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
                   HashMap<Block, ArrayList<CFGPath>> allPaths2 = method.allPathsToCallee(this, succ2, ParsedMethodMap.v().getOrParseToShimple(currEvent.method));
 

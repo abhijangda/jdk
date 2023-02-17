@@ -22,6 +22,24 @@ public class ClassHierarchyGraph extends HashMap<SootClass, ArrayList<SootClass>
     return get(superclass);
   }
 
+  public boolean isSubClass(SootClass parent, SootClass child) {
+    Stack<SootClass> stack = new Stack<>();
+
+    stack.push(parent);
+
+    while (!stack.isEmpty()) {
+      SootClass klass = stack.pop();
+      
+      ArrayList<SootClass> subclasses = getImmediateSubClasses(klass);
+      if (subclasses.contains(child)) {
+        return true;
+      }
+      stack.addAll(subclasses);
+    }
+
+    return false;
+  }
+
   public HashSet<SootClass> getAllSubclasses(SootClass superClass) {
     HashSet<SootClass> allSubClasses = new HashSet<>();
     Stack<SootClass> stack = new Stack<>();

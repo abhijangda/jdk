@@ -286,14 +286,14 @@ public class CallGraphAnalysis {
     
     Utils.infoPrintln("DONE " + iterations);
     // Utils.infoPrintln(callStack.toString());
-    if (eventIterator.index() >= 3868) {
+    if (eventIterator.index() >= 3876) {
 
-      Utils.debugPrintln(multipleNextBlockPath.toString());
+      // Utils.debugPrintln(multipleNextBlockPath.toString());
 
       
-      Utils.infoPrintln("Edges:");
+      // Utils.infoPrintln("Edges:");
 
-      Utils.infoPrintln(edges.toString());
+      // Utils.infoPrintln(edges.toString());
 
       System.exit(0);
     }

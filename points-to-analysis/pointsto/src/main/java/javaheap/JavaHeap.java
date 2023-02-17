@@ -1,11 +1,18 @@
 package javaheap;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 import callstack.StaticFieldValues;
+import classcollections.JavaClassCollection;
+import classhierarchyanalysis.ClassHierarchyGraph;
 import soot.ArrayType;
 import soot.RefType;
+import soot.SootClass;
+import soot.Type;
 import soot.JastAddJ.StaticInitializer;
 import utils.Utils;
 
@@ -108,6 +115,26 @@ public class JavaHeap extends HashMap<Long, JavaHeapElem> {
     }
 
     return super.get(ptr);
+  }
+
+  public JavaHeapElem getLastObjOfClass(String klass) {
+    TreeMap<Long, JavaHeapElem> objs = new TreeMap<>();
+    SootClass klassToFind = JavaClassCollection.v().getClassForString(klass);
+    Utils.debugAssert(klassToFind != null, klass + " is null");
+    ClassHierarchyGraph chGraph = ClassHierarchyGraph.v();
+
+    for (Map.Entry<Long, JavaHeapElem> entry : this.entrySet()) {
+      Type type = entry.getValue().type;
+      if (type instanceof RefType) {
+        SootClass entryKlass = ((RefType)type).getSootClass();
+        if (entryKlass == klassToFind || 
+            (entryKlass != klassToFind && chGraph.isSubClass(entryKlass, klassToFind))) {
+          objs.put(entry.getKey(), entry.getValue());
+        }
+      }
+    }
+
+    return objs.lastEntry().getValue();
   }
 
   public Object clone() {

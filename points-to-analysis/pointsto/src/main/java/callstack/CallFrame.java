@@ -366,6 +366,10 @@ public class CallFrame {
         if (retVal.getType() instanceof RefLikeType) {
           if (isAnalyzerGetPreviousTokenStream && eventsIterator.index() <= 3641) {
             retValue = JavaValueFactory.v(heap.get(139941318025856L));
+          } else if (isAnalyzerGetPreviousTokenStream) {
+            JavaHeapElem e = heap.getLastObjOfClass("org.apache.lucene.analysis.standard.StandardAnalyzer$SavedStreams");
+            Utils.debugPrintln(e);
+            retValue = JavaValueFactory.v(e);
           } else {
             retValue = (retVal instanceof NullConstant) ? JavaValueFactory.nullV() : this.allVariableValues.get(retStmt.getOp());
           }

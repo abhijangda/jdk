@@ -177,7 +177,7 @@ public class CallFrame {
     this.parentStmt = stmt;
     cfgPathExecuted = new CFGPath();
     Utils.debugAssert(invokeExpr != null || (invokeExpr == null && parent == null), "sanity");
-    canPrint = this.method.fullname().contains("org.apache.lucene.index.SegmentTermEnum.scanTo(Lorg/apache/lucene/index/Term;)I");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
+    canPrint = this.method.fullname().contains("StopFilter.next");//"org.apache.lucene.index.IndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/apache/lucene/index/IndexDeletionPolicy;Lorg/apache/lucene/index/IndexCommit;Z)Lorg/apache/lucene/index/IndexReader;");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.index.SegmentInfos$FindSegmentsFile.run()");//this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init"); //this.method.fullname().contains("org.apache.lucene.store.FSDirectory.getLockID()Ljava/lang/String;"); //this.method.fullname().contains("org.apache.lucene.index.DirectoryIndexReader.open(Lorg/apache/lucene/store/Directory;ZLorg/a");//this.method.fullname().contains("org.apache.lucene.store.SimpleFSLockFactory.<init>") || this.method.fullname().contains("org.apache.lucene.store.FSDirectory.init");
     initBools();
     // if (canPrint) {
     //   System.out.println(method);
@@ -593,7 +593,7 @@ public class CallFrame {
               currStmt = succ2.getHead();
               pc.counter = method.stmtToIndex.get(currStmt);
             } else {
-              if (isQueryParserGetFieldQuery && ifBlock.getIndexInMethod() == 14 && (eventsIterator.index() <= 650 || (eventsIterator.index() >= 650 && eventsIterator.index() <= 3660))) {
+              if (isQueryParserGetFieldQuery && ifBlock.getIndexInMethod() == 14 && (eventsIterator.index() <= 650 || (eventsIterator.index() >= 650 && eventsIterator.index() <= 3660) || (eventsIterator.index() >= 3880 && eventsIterator.index() <= 3885))) {
                 pc.counter = method.stmtToIndex.get(method.getBlock(17).getHead());
               } else {
                 Utils.infoPrintln("NOT found in any " + currEvent + " " + currStmt);
